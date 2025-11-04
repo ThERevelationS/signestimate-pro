@@ -1,0 +1,372 @@
+import React, { useState, useEffect, useCallback } from "react";
+import { Settings as SettingsEntity, User } from "@/entities/all";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Save, DollarSign, Clock, Paintbrush, Calculator } from "lucide-react";
+import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
+
+const unitFactors = {
+  oz: 1 / 128,    // 1 oz is 1/128 of a gallon
+  pint: 1 / 8,    // 1 pint is 1/8 of a gallon
+  quart: 1 / 4,   // 1 quart is 1/4 of a gallon
+  liter: 1 / 3.78541, // 1 liter is 1/3.78541 of a gallon
+  gallon: 1,      // 1 gallon is 1 gallon
+};
+
+const unitOptions = [
+  { value: "oz", label: "Ounces (oz)" },
+  { value: "pint", label: "Pints (pt)" },
+  { value: "quart", label: "Quarts (qt)" },
+  { value: "liter", label: "Liters (L)" },
+  { value: "gallon", label: "Gallons (gal)" },
+];
+
+const getCostPerGallon = (cost, unit) => {
+  const parsedCost = parseFloat(cost);
+  if (isNaN(parsedCost) || parsedCost <= 0) return 0;
+  const factor = unitFactors[unit] || unitFactors['gallon']; 
+  if (factor === 0) return 0;
+  return parsedCost / factor;
+};
+
+const settingsDefinitions = [
+    // General Pricing & Labor
+    { name: "default_labor_rate", type: "number", category: "painting_pricing", description: "Default hourly labor rate for all painting tasks", default: "60" },
+    { name: "base_supplies_per_job", type: "number", category: "painting_supplies", description: "Flat cost for general consumables per job", default: "50" },
+    { name: "paint_mixing_labor_hours", type: "number", category: "painting_labor", description: "Fixed labor hours for mixing paint per job", default: "0.25" },
+    { name: "setup_time_labor_hours", type: "number", category: "painting_labor", description: "Fixed labor hours for job setup and cleanup", default: "0.5" },
+    
+    // Paint Application & Materials
+    { name: "paint_cost_per_unit", type: "number", category: "painting_pricing", description: "Cost of one unit of paint", default: "25" },
+    { name: "paint_unit", type: "select", options: ["oz", "pint", "quart", "liter", "gallon"], category: "painting_pricing", description: "The unit of measure for paint cost", default: "gallon" },
+    { name: "hardener_cost_per_unit", type: "number", category: "painting_pricing", description: "Cost of one unit of hardener", default: "15" },
+    { name: "hardener_unit", type: "select", options: ["oz", "pint", "quart", "liter", "gallon"], category: "painting_pricing", description: "The unit of measure for hardener cost", default: "gallon" },
+    { name: "reducer_cost_per_unit", type: "number", category: "painting_pricing", description: "Cost of one unit of reducer", default: "12" },
+    { name: "reducer_unit", type: "select", options: ["oz", "pint", "quart", "liter", "gallon"], category: "painting_pricing", description: "The unit of measure for reducer cost", default: "gallon" },
+    { name: "paint_mix_ratio", type: "number", category: "painting_supplies", description: "Paint component ratio in the mix (e.g., 3 parts paint)", default: "3" },
+    { name: "hardener_mix_ratio", type: "number", category: "painting_supplies", description: "Hardener component ratio in the mix (e.g., 1 part hardener)", default: "1" },
+    { name: "reducer_mix_ratio", type: "number", category: "painting_supplies", description: "Reducer component ratio in the mix (e.g., 1 part reducer)", default: "1" },
+    { name: "mixed_paint_coverage_sqft_per_gallon", type: "number", category: "painting_supplies", description: "Coverage in square feet for one gallon of mixed paint", default: "350" },
+    { name: "paint_waste_multiplier", type: "number", category: "painting_supplies", description: "Multiplier to account for paint waste (e.g., 1.25 for 25% waste)", default: "1.25" },
+    { name: "default_paint_supplies_per_sqft", type: "number", category: "painting_supplies", description: "Cost of paint-specific supplies per sq. ft. per color (rollers, trays, etc.)", default: "1.25" },
+
+    // Paint Mask
+    { name: "paint_mask_rate_per_sqft", type: "number", category: "painting_supplies", description: "Material cost for paint mask vinyl per square foot", default: "0.75" },
+    { name: "paint_mask_cutting_labor_rate_per_sqft", type: "number", category: "painting_labor", description: "Labor cost for cutting the paint mask per sq. ft.", default: "0.15" },
+    { name: "paint_mask_machine_cutting_rate_per_sqft", type: "number", category: "painting_pricing", description: "Machine cost for cutting the paint mask per sq. ft.", default: "0.10" },
+    { name: "paint_mask_application_labor_rate_per_sqft", type: "number", category: "painting_labor", description: "Labor cost for applying the paint mask per sq. ft.", default: "0.25" },
+
+    // Labor Multipliers
+    { name: "base_labor_hours_per_sqft", type: "number", category: "painting_labor", description: "Base labor hours for painting per square foot", default: "0.5" },
+    { name: "simple_complexity_multiplier", type: "number", category: "painting_labor", description: "Labor multiplier for simple complexity jobs", default: "0.7" },
+    { name: "moderate_complexity_multiplier", type: "number", category: "painting_labor", description: "Labor multiplier for moderate complexity jobs", default: "1.0" },
+    { name: "complex_complexity_multiplier", type: "number", category: "painting_labor", description: "Labor multiplier for complex complexity jobs", default: "1.5" },
+    { name: "one_side_paint_multiplier", type: "number", category: "painting_labor", description: "Labor multiplier for painting one side only", default: "0.8" },
+    { name: "both_sides_paint_multiplier", type: "number", category: "painting_labor", description: "Labor multiplier for painting both sides", default: "1.0" },
+    { name: "additional_color_multiplier", type: "number", category: "painting_labor", description: "Labor multiplier for each additional color applied", default: "0.3" },
+    { name: "letter_perimeter_factor", type: "number", category: "painting_labor", description: "Multiplier to estimate letter perimeter from its height", default: "3.5" },
+    
+    // Minimums
+    { name: "min_labor_hours", type: "number", category: "painting_pricing", description: "Minimum total labor hours for a paint job", default: "0" },
+    { name: "min_paint_cost", type: "number", category: "painting_pricing", description: "Minimum total cost for liquid paint and supplies", default: "0" },
+];
+
+
+export default function PaintSettings() {
+  const [isLocked, setIsLocked] = useState(true);
+  const [settings, setSettings] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [liquidPaintRate, setLiquidPaintRate] = useState(0);
+
+  const initializeAndLoad = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [dbSettings, user] = await Promise.all([
+        SettingsEntity.list(),
+        User.me()
+      ]);
+      setCurrentUser(user);
+
+      const settingsMap = {};
+      dbSettings.forEach(s => {
+        settingsMap[s.setting_name] = s.setting_value;
+      });
+
+      const finalSettings = {};
+      settingsDefinitions.forEach(def => {
+        finalSettings[def.name] = settingsMap[def.name] !== undefined ? settingsMap[def.name] : def.default;
+      });
+      
+      setSettings(finalSettings);
+    } catch (error) {
+      console.error('Error loading settings, using all defaults:', error);
+      const defaultSettings = {};
+      settingsDefinitions.forEach(def => {
+        defaultSettings[def.name] = def.default;
+      });
+      setSettings(defaultSettings);
+    }
+    setIsLoading(false);
+  }, []); 
+
+  useEffect(() => {
+    initializeAndLoad();
+  }, [initializeAndLoad]);
+
+  useEffect(() => {
+    // Recalculate rate whenever relevant settings change
+    const paintCostPerGallon = getCostPerGallon(
+      settings.paint_cost_per_unit,
+      settings.paint_unit
+    );
+    const hardenerCostPerGallon = getCostPerGallon(
+      settings.hardener_cost_per_unit,
+      settings.hardener_unit
+    );
+    const reducerCostPerGallon = getCostPerGallon(
+      settings.reducer_cost_per_unit,
+      settings.reducer_unit
+    );
+    
+    const paintMixRatio = parseFloat(settings.paint_mix_ratio) || 0;
+    const hardenerMixRatio = parseFloat(settings.hardener_mix_ratio) || 0;
+    const reducerMixRatio = parseFloat(settings.reducer_mix_ratio) || 0;
+
+    const totalRatioParts = paintMixRatio + hardenerMixRatio + reducerMixRatio;
+    
+    if (totalRatioParts === 0) {
+      setLiquidPaintRate(0);
+      return;
+    }
+
+    const costOfMixedBatchGallonEquivalent = 
+      (paintCostPerGallon * paintMixRatio) +
+      (hardenerCostPerGallon * hardenerMixRatio) +
+      (reducerCostPerGallon * reducerMixRatio);
+
+    const costPerGallonOfMixedPaint = costOfMixedBatchGallonEquivalent / totalRatioParts;
+
+
+    const coverageSqFtPerGallon = parseFloat(settings.mixed_paint_coverage_sqft_per_gallon) || 1;
+    
+    const finalRate = coverageSqFtPerGallon > 0 ? costPerGallonOfMixedPaint / coverageSqFtPerGallon : 0;
+    setLiquidPaintRate(finalRate);
+
+  }, [settings]);
+
+  const saveSettings = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+
+    try {
+      const existingDbSettings = await SettingsEntity.list();
+      const existingSettingsMap = new Map(
+        existingDbSettings.map(s => [s.setting_name, s])
+      );
+
+      const updates = [];
+      const creates = [];
+
+      for (const def of settingsDefinitions) {
+        const valueToSave = settings[def.name];
+        if (valueToSave === undefined || valueToSave === null) {
+          continue;
+        }
+
+        const data = {
+          setting_name: def.name,
+          setting_value: String(valueToSave),
+          setting_type: def.type,
+          category: def.category,
+          description: def.description,
+        };
+
+        const existing = existingSettingsMap.get(def.name);
+        if (existing) {
+          if (existing.setting_value !== data.setting_value) {
+            updates.push(SettingsEntity.update(existing.id, data));
+          }
+        } else {
+          creates.push(SettingsEntity.create(data));
+        }
+      }
+
+      if (updates.length > 0 || creates.length > 0) {
+        await Promise.all([...updates, ...creates]);
+        alert('Settings saved successfully!');
+      } else {
+        alert('No settings were changed. Nothing to save.');
+      }
+      
+    } catch (error) {
+      console.error('Save process failed:', error);
+      alert('Save failed: ' + (error.message || 'An unknown error occurred.'));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const updateSetting = (key, value) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 md:p-8 bg-slate-50 min-h-screen flex items-center justify-center">
+        <p className="text-slate-600">Loading settings...</p>
+      </div>
+    );
+  }
+
+  const renderSettingInput = (def) => {
+    const value = settings[def.name];
+    const commonProps = {
+      id: def.name,
+      value: value || '',
+      onChange: (e) => updateSetting(def.name, e.target.value),
+      disabled: isLocked,
+      className: "mt-1",
+      min: def.type === "number" ? "0" : undefined,
+      step: def.type === "number" ? "0.01" : undefined,
+    };
+
+    switch (def.type) {
+      case "number":
+        let step = "0.01";
+        if (def.name.includes("ratio") || def.name.includes("multiplier") || def.name.includes("factor")) {
+          step = "0.1";
+        } else if (def.name.includes("hours")) {
+          step = "0.25";
+        } else if (def.name.includes("per_sqft")) {
+            step = "0.01";
+        } else if (def.name.includes("cost") && !def.name.includes("per_sqft")) {
+            step = "1";
+        }
+        
+        return (
+          <div key={def.name}>
+            <Label htmlFor={def.name}>{def.description}</Label>
+            <Input type="number" step={step} {...commonProps} />
+          </div>
+        );
+      case "select":
+        return (
+          <div key={def.name}>
+            <Label htmlFor={def.name}>{def.description}</Label>
+            <Select value={value || def.default} onValueChange={(val) => updateSetting(def.name, val)} disabled={isLocked}>
+              <SelectTrigger className="mt-1"><SelectValue placeholder="Select unit" /></SelectTrigger>
+              <SelectContent>
+                {def.options.map(optionValue => (
+                  <SelectItem key={optionValue} value={optionValue}>
+                    {unitOptions.find(o => o.value === optionValue)?.label || optionValue}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+      default:
+        return (
+          <div key={def.name}>
+            <Label htmlFor={def.name}>{def.description}</Label>
+            <Input type="text" {...commonProps} />
+          </div>
+        );
+    }
+  };
+
+  const categoryDescriptions = {
+    "painting_pricing": "Define the core rates, costs, and minimum charges for painting projects.",
+    "painting_supplies": "Set parameters for paint mixing ratios, coverage, waste, and other supplies.",
+    "painting_labor": "Control all labor calculations, including fixed times, base rates, and complexity multipliers."
+  };
+
+  const renderCategory = (title, category, icon) => {
+    const Icon = icon;
+    const filteredSettings = settingsDefinitions.filter(def => def.category === category);
+    if (filteredSettings.length === 0) return null;
+
+    return (
+      <Card className="bg-white border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-3 text-lg font-semibold text-slate-900">
+            <Icon className="w-6 h-6 text-slate-500" />
+            {title}
+          </CardTitle>
+          {categoryDescriptions[category] && <CardDescription>{categoryDescriptions[category]}</CardDescription>}
+        </CardHeader>
+        <CardContent className="grid md:grid-cols-2 gap-6">
+          {filteredSettings.map(def => renderSettingInput(def))}
+        </CardContent>
+      </Card>
+    );
+  };
+  
+  const managementContent = (
+    <div className="space-y-8">
+      {renderCategory("Pricing & Minimums", "painting_pricing", DollarSign)}
+      {renderCategory("Supplies & Materials", "painting_supplies", Paintbrush)}
+      {renderCategory("Labor & Complexity", "painting_labor", Clock)}
+
+      <Card className="bg-white border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-3 text-lg font-semibold text-blue-900">
+            <Calculator className="w-6 h-6 text-blue-500" />
+            Calculated Liquid Paint Cost
+          </CardTitle>
+          <CardDescription>This value is derived from the paint, hardener, reducer, and coverage settings above.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center p-6 bg-blue-50 rounded-lg">
+          <div className="text-center">
+            <p className="text-blue-800 font-medium mb-1">Cost per square foot of mixed paint:</p>
+            <h3 className="text-3xl font-bold text-blue-900 flex items-center gap-2">
+              <DollarSign className="w-7 h-7" />
+              {liquidPaintRate.toFixed(4)}
+              <span className="text-lg font-normal text-blue-700">/ sq ft</span>
+            </h3>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  return (
+    <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+              <Paintbrush className="w-8 h-8" />
+              Painting Settings
+            </h1>
+            <p className="text-slate-600">Configure parameters for the Painting Estimator module</p>
+          </div>
+          <Button 
+            onClick={saveSettings} 
+            disabled={isSaving || isLocked}
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3"
+          >
+            {isSaving ? "Saving..." : <><Save className="w-4 h-4 mr-2" /> Save Settings</>}
+          </Button>
+        </div>
+
+        <SettingsAuthWrapper
+          correctPassword="Cinci2467"
+          onUnlock={() => setIsLocked(false)}
+          user={currentUser}
+        >
+          {managementContent}
+        </SettingsAuthWrapper>
+
+        <div className="mt-8 flex justify-end">
+          <Button onClick={saveSettings} disabled={isSaving || isLocked} className="bg-green-600 hover:bg-green-700 text-white px-8 py-3">{isSaving ? "Saving..." : <><Save className="w-4 h-4 mr-2" /> Save All Settings</>}</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
