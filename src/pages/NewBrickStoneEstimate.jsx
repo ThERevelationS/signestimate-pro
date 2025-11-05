@@ -586,8 +586,9 @@ export default function NewBrickStoneEstimate() {
                   </div>
                 </div>
               </CardContent>
+            </Card>
 
-            <Card>
+            <Card> {/* This Card is now a sibling to Visual Editor Card */}
               <CardHeader><CardTitle>Base Configuration</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div> 
