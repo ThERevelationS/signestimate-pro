@@ -126,7 +126,6 @@ export default function NewBrickStoneEstimate() {
 
     const material = selectedMaterial;
     
-    // baseType is implicitly "hollow_rectangular" now
     const bricksAlongLength = project.bricks_along_length;
     const bricksAlongWidth = project.bricks_along_width;
     const coursesHigh = project.courses_high;
@@ -147,13 +146,18 @@ export default function NewBrickStoneEstimate() {
     // Wall thickness - no gap after last layer
     const wallThickness = layers * brickW + Math.max(0, layers - 1) * mortarGap; 
     
-    // Front and back walls
+    // Front and back walls span the LENGTH and use LAYERS deep
     const frontBackBricks = coursesHigh * bricksAlongLength * layers * 2;
     
-    // Side walls - calculate how many bricks fit in the inner space
-    const innerSpace = actualWidth - (2 * wallThickness);
-    // Using Math.floor to ensure bricks fit completely
-    const bricksAlongInnerWidth = Math.max(0, Math.floor((innerSpace + mortarGap) / (brickL + mortarGap)));
+    // Side walls: bricksAlongWidth defines TOTAL width in brick-widths
+    // Front wall uses 'layers' brick-widths, back wall uses 'layers' brick-widths
+    // So inner space has: bricksAlongWidth - 2*layers brick-widths worth of space
+    const innerBrickWidths = Math.max(0, bricksAlongWidth - (2 * layers));
+    
+    // For side walls, bricks are laid with their LENGTH along the width direction
+    // We need to calculate how many bricks (of length brickL) fit in the space defined by innerBrickWidths
+    const innerSpaceInches = innerBrickWidths * brickW + Math.max(0, innerBrickWidths - 1) * mortarGap;
+    const bricksAlongInnerWidth = innerSpaceInches > 0 ? Math.max(0, Math.floor((innerSpaceInches + mortarGap) / (brickL + mortarGap))) : 0;
     const leftRightBricks = coursesHigh * bricksAlongInnerWidth * layers * 2;
     
     const totalBricks = frontBackBricks + leftRightBricks;
@@ -287,14 +291,15 @@ export default function NewBrickStoneEstimate() {
           const innerSpace = backWallStart - frontWallEnd;
           
           // Calculate number of bricks that fit - use Math.floor to match calculations
-          const numBricksInnerHeight = Math.max(0, Math.floor((innerSpace + mortarGap) / (brickL + mortarGap)));
+          // This should match the `bricksAlongInnerWidth` from performCalculations for consistency
+          const numBricksInnerLengthForSideWalls = calculations.bricksAlongInnerWidth; // Reusing from calculations for visual consistency
           
           // LEFT WALL
           for (let layerIndex = 0; layerIndex < layersInWall; layerIndex++) {
             const xStart = layerIndex * (brickW + mortarGap);
-            const runningBondOffset = (layerIndex % 2) * (brickL / 2);
+            const runningBondOffset = (layerIndex % 2) * (brickL / 2); // Bricks are laid with their length along the width
             
-            for (let row = 0; row < numBricksInnerHeight; row++) {
+            for (let row = 0; row < numBricksInnerLengthForSideWalls; row++) {
               let yStart = frontWallEnd + row * (brickL + mortarGap) - runningBondOffset;
               
               const brickYStart = Math.max(frontWallEnd, yStart);
@@ -310,9 +315,9 @@ export default function NewBrickStoneEstimate() {
           // RIGHT WALL
           for (let layerIndex = 0; layerIndex < layersInWall; layerIndex++) {
             const xStart = actualLength - brickW - layerIndex * (brickW + mortarGap);
-            const runningBondOffset = (layerIndex % 2) * (brickL / 2);
+            const runningBondOffset = (layerIndex % 2) * (brickL / 2); // Bricks are laid with their length along the width
             
-            for (let row = 0; row < numBricksInnerHeight; row++) {
+            for (let row = 0; row < numBricksInnerLengthForSideWalls; row++) {
               let yStart = frontWallEnd + row * (brickL + mortarGap) - runningBondOffset;
               
               const brickYStart = Math.max(frontWallEnd, yStart);
