@@ -501,11 +501,11 @@ Return your response as a JSON object with the optimal block selection and quant
                 const blockW = firstCoreMaterial.width;
                 
                 // Calculate how many blocks fit (try both orientations)
-                const normalCols = Math.floor(innerLength / (blockL + mortarGap));
-                const normalRows = Math.floor(innerWidth / (blockW + mortarGap));
+                const normalCols = Math.floor((innerLength + mortarGap) / (blockL + mortarGap));
+                const normalRows = Math.floor((innerWidth + mortarGap) / (blockW + mortarGap));
                 
-                const rotatedCols = Math.floor(innerLength / (blockW + mortarGap));
-                const rotatedRows = Math.floor(innerWidth / (blockL + mortarGap));
+                const rotatedCols = Math.floor((innerLength + mortarGap) / (blockW + mortarGap));
+                const rotatedRows = Math.floor((innerWidth + mortarGap) / (blockL + mortarGap));
                 
                 // Use orientation that fits more blocks
                 const useRotated = (rotatedCols * rotatedRows) > (normalCols * normalRows);
@@ -514,11 +514,9 @@ Return your response as a JSON object with the optimal block selection and quant
                 const blockDrawL = useRotated ? blockW : blockL;
                 const blockDrawW = useRotated ? blockL : blockW;
                 
-                // Calculate centering offset
-                const totalGridWidth = cols * blockDrawL + (cols > 0 ? (cols - 1) * mortarGap : 0);
-                const totalGridHeight = rows * blockDrawW + (rows > 0 ? (rows - 1) * mortarGap : 0);
-                const offsetX = innerXStart + (innerLength - totalGridWidth) / 2;
-                const offsetY = innerYStart + (innerWidth - totalGridHeight) / 2;
+                // No centering - start right at the inner edge
+                const offsetX = innerXStart;
+                const offsetY = innerYStart;
                 
                 // Track which block we're on across all materials
                 let globalIndex = 0;
@@ -551,12 +549,16 @@ Return your response as a JSON object with the optimal block selection and quant
                 ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
                 ctx.lineWidth = 0.5;
                 
+                // Calculate actual grid dimensions
+                const actualGridWidth = cols * blockDrawL + (cols > 0 ? (cols - 1) * mortarGap : 0);
+                const actualGridHeight = rows * blockDrawW + (rows > 0 ? (rows - 1) * mortarGap : 0);
+                
                 // Vertical lines
                 for (let col = 0; col <= cols; col++) {
                   const x = offsetX + col * (blockDrawL + mortarGap);
                   ctx.beginPath();
                   ctx.moveTo(x * scale, offsetY * scale);
-                  ctx.lineTo(x * scale, (offsetY + totalGridHeight) * scale);
+                  ctx.lineTo(x * scale, (offsetY + actualGridHeight) * scale);
                   ctx.stroke();
                 }
                 
@@ -565,7 +567,7 @@ Return your response as a JSON object with the optimal block selection and quant
                   const y = offsetY + row * (blockDrawW + mortarGap);
                   ctx.beginPath();
                   ctx.moveTo(offsetX * scale, y * scale);
-                  ctx.lineTo((offsetX + totalGridWidth) * scale, y * scale);
+                  ctx.lineTo((offsetX + actualGridWidth) * scale, y * scale);
                   ctx.stroke();
                 }
               }
