@@ -471,16 +471,16 @@ Return your response as a JSON object with the optimal block selection and quant
             }
           }
           
-          // Fill hollow center with white first
+          // Fill hollow center first
           const innerXStart = wallThickness;
           const innerYStart = frontWallEnd;
           const innerXEnd = actualLength - wallThickness;
           const innerYEnd = backWallStart;
           
-          ctx.fillStyle = '#ffffff';
+          ctx.fillStyle = '#f5f5f5';
           ctx.fillRect(innerXStart * scale, innerYStart * scale, (innerXEnd - innerXStart) * scale, (innerYEnd - innerYStart) * scale);
 
-          // Draw core blocks filling the hollow space
+          // Draw core blocks filling the ENTIRE hollow space
           if (project.core_materials && project.core_materials.length > 0) {
             const innerLength = innerXEnd - innerXStart;
             const innerWidth = innerYEnd - innerYStart;
@@ -491,7 +491,7 @@ Return your response as a JSON object with the optimal block selection and quant
               return mat && item.quantity > 0;
             });
             
-            if (validCoreMaterials.length > 0) {
+            if (validCoreMaterials.length > 0 && innerLength > 0 && innerWidth > 0) {
               const firstCoreItem = validCoreMaterials[0];
               const firstCoreMaterial = inventory.find(m => m.id === firstCoreItem.material_id);
               
@@ -499,7 +499,7 @@ Return your response as a JSON object with the optimal block selection and quant
                 const blockL = firstCoreMaterial.length;
                 const blockW = firstCoreMaterial.width;
                 
-                // Calculate how many blocks fit in each direction
+                // Calculate how many blocks fit (NO mortar gap added to dimension for division)
                 const normalCols = Math.floor(innerLength / (blockL + mortarGap));
                 const normalRows = Math.floor(innerWidth / (blockW + mortarGap));
                 const rotatedCols = Math.floor(innerLength / (blockW + mortarGap));
@@ -512,40 +512,44 @@ Return your response as a JSON object with the optimal block selection and quant
                 const blockDrawL = useRotated ? blockW : blockL;
                 const blockDrawW = useRotated ? blockL : blockW;
                 
-                // Draw grid of blocks
+                // Calculate total user blocks
+                const totalUserBlocks = validCoreMaterials.reduce((sum, item) => sum + item.quantity, 0);
+                
+                // Draw EVERY block position in the grid
                 const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
                 let blockIndex = 0;
-                const totalBlocks = cols * rows;
                 
                 for (let row = 0; row < rows; row++) {
                   for (let col = 0; col < cols; col++) {
-                    // Find which material this block belongs to
-                    let currentMaterialIndex = 0;
-                    let cumulativeBlocks = 0;
+                    const x = innerXStart + col * (blockDrawL + mortarGap);
+                    const y = innerYStart + row * (blockDrawW + mortarGap);
                     
-                    for (let i = 0; i < validCoreMaterials.length; i++) {
-                      cumulativeBlocks += validCoreMaterials[i].quantity;
-                      if (blockIndex < cumulativeBlocks) {
-                        currentMaterialIndex = i;
-                        break;
-                      }
-                    }
-                    
-                    // Only draw if within user's total quantity
-                    const totalUserBlocks = validCoreMaterials.reduce((sum, item) => sum + item.quantity, 0);
+                    // Determine which material this block belongs to
                     if (blockIndex < totalUserBlocks) {
-                      const x = innerXStart + col * (blockDrawL + mortarGap);
-                      const y = innerYStart + row * (blockDrawW + mortarGap);
+                      let currentMaterialIndex = 0;
+                      let cumulativeBlocks = 0;
                       
-                      // Fill block
+                      for (let i = 0; i < validCoreMaterials.length; i++) {
+                        cumulativeBlocks += validCoreMaterials[i].quantity;
+                        if (blockIndex < cumulativeBlocks) {
+                          currentMaterialIndex = i;
+                          break;
+                        }
+                      }
+                      
+                      // Draw filled block with material color
                       ctx.fillStyle = colors[currentMaterialIndex % colors.length];
-                      ctx.fillRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
-                      
-                      // Draw border
-                      ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-                      ctx.lineWidth = 1;
-                      ctx.strokeRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
+                    } else {
+                      // Draw empty block (not specified by user)
+                      ctx.fillStyle = '#e5e7eb';
                     }
+                    
+                    ctx.fillRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
+                    
+                    // Draw border for all blocks
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                    ctx.lineWidth = 0.5;
+                    ctx.strokeRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
                     
                     blockIndex++;
                   }
