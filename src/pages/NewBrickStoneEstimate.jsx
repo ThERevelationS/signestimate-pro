@@ -142,45 +142,27 @@ export default function NewBrickStoneEstimate() {
     const brickH = material.height;
     const costPerUnit = material.cost_per_unit;
 
-    // Calculate actual dimensions from brick counts
+    // Calculate actual dimensions - these define the OUTER perimeter
     const actualLength = bricksAlongLength * brickL + (bricksAlongLength - 1) * mortarGap;
     const actualWidth = bricksAlongWidth * brickW + (bricksAlongWidth - 1) * mortarGap;
     const actualHeight = coursesHigh * brickH + (coursesHigh - 1) * mortarGap;
 
-    // Wall thickness includes mortar gaps between layers, but only *between* layers, not after the last one
+    // Wall thickness - no gap after last layer
     const wallThickness = layers * brickW + Math.max(0, layers - 1) * mortarGap; 
     
+    // Front and back walls
     const frontBackBricks = coursesHigh * bricksAlongLength * layers * 2;
     
-    // The inner width calculation needs to consider the true wall thickness on both sides
-    const innerWidth = actualWidth - (2 * wallThickness);
-    // For the side walls, bricks are laid with their length forming the "height" of the inner wall
-    const bricksAlongInnerWidth = Math.max(0, Math.round(innerWidth / (brickL + mortarGap))); // This is incorrect, should use width
-    // Re-evaluating total bricks calculation for hollow rectangular:
-    // Outer perimeter bricks: 2 * bricksAlongLength * layers (for front/back) + 2 * (bricksAlongWidth - 2*layers) * layers (for sides)
-    // This is a simplified approach, but the current one for front/back and left/right based on inner dimensions can also work.
-    // Let's re-align the calculation with the drawing logic:
-    // Front and Back Walls: Each is (bricksAlongLength * layers * coursesHigh) bricks.
-    const numBricksFrontBack = bricksAlongLength * layers * coursesHigh * 2; // Two walls
+    // Side walls - calculate how many bricks fit in the inner space
+    const innerSpace = actualWidth - (2 * wallThickness);
+    // Using Math.floor to ensure bricks fit completely
+    const bricksAlongInnerWidth = Math.max(0, Math.floor((innerSpace + mortarGap) / (brickL + mortarGap)));
+    const leftRightBricks = coursesHigh * bricksAlongInnerWidth * layers * 2;
+    
+    const totalBricks = frontBackBricks + leftRightBricks;
 
-    // Side Walls: These connect the front and back walls. Their length is actualWidth - 2 * wallThickness.
-    // The number of bricks along this inner width. Each brick is laid with its length vertical (height of wall).
-    // So the width of each brick (material.width) contributes to the thickness, and its length (material.length) to the horizontal span.
-    // However, the drawing logic lays bricks with their length along the dimension. So for side walls, bricks have their length along actualWidth - 2*wallThickness.
-    // The count of bricks for side walls should be calculated based on the available INNER width, and each brick's length (material.length) will be vertical in side view.
-    // But in top view, for the side walls, bricks are oriented with length along the Y-axis.
-    // So, the 'bricks along inner width' (which is Y-axis in top view) is:
-    const numBricksInnerSide = Math.max(0, Math.round((actualWidth - 2 * wallThickness) / (brickL + mortarGap)));
-    const numBricksSideWalls = numBricksInnerSide * layers * coursesHigh * 2; // Two side walls
-
-    const totalBricks = numBricksFrontBack + numBricksSideWalls;
-
-    // Surface area is for mortar calculation. Assuming exterior surface area of the hollow rectangle.
-    // (2 * (actualLength * actualHeight)) + (2 * (actualWidth * actualHeight)) is for solid.
-    // For hollow, it's the external surface area.
-    // The `wallThickness` variable here refers to the actual material depth.
     const exteriorPerimeter = 2 * (actualLength + actualWidth);
-    const exteriorSurfaceArea = (exteriorPerimeter * actualHeight) / 144; // Total exterior surface area in sq ft
+    const exteriorSurfaceArea = (exteriorPerimeter * actualHeight) / 144;
 
     const totalBricksWithWaste = Math.ceil(totalBricks * wasteFactor);
     const mortarBagsPerSqFt = parseFloat(settings.brick_mortar_bags_per_100sqft || 3) / 100;
@@ -258,16 +240,15 @@ export default function NewBrickStoneEstimate() {
           const numBricksLength = calculations.bricksAlongLength;
           const layersInWall = project.layers;
           
-          // Calculate wall thickness correctly - no gap after the last layer
+          // Wall thickness - no gap after last layer
           const wallThickness = layersInWall * brickW + Math.max(0, layersInWall - 1) * mortarGap;
           
           // Draw all bricks as solid red rectangles
           ctx.fillStyle = '#a8332e';
 
-          // FRONT WALL (bottom horizontal) - ALWAYS starts at y=0, builds inward with more layers
+          // FRONT WALL
           for (let layerIndex = 0; layerIndex < layersInWall; layerIndex++) {
             const yStart = layerIndex * (brickW + mortarGap);
-            
             const runningBondOffset = (layerIndex % 2) * (brickL / 2);
             
             for (let col = 0; col < numBricksLength; col++) {
@@ -284,10 +265,9 @@ export default function NewBrickStoneEstimate() {
             }
           }
           
-          // BACK WALL (top horizontal) - ALWAYS starts at actualWidth-brickW, builds inward with more layers
+          // BACK WALL
           for (let layerIndex = 0; layerIndex < layersInWall; layerIndex++) {
             const yStart = actualWidth - brickW - layerIndex * (brickW + mortarGap);
-            
             const runningBondOffset = (layerIndex % 2) * (brickL / 2);
             
             for (let col = 0; col < numBricksLength; col++) {
@@ -304,16 +284,17 @@ export default function NewBrickStoneEstimate() {
             }
           }
           
-          // Calculate the space between walls using the correct wall thickness
+          // Side walls - calculate space between front and back walls
           const frontWallEnd = wallThickness;
           const backWallStart = actualWidth - wallThickness;
-          const innerHeightForLeftRight = backWallStart - frontWallEnd;
-          const numBricksInnerHeight = Math.max(1, Math.round(innerHeightForLeftRight / (brickL + mortarGap)));
+          const innerSpace = backWallStart - frontWallEnd;
           
-          // LEFT WALL (vertical - bricks rotated 90°) - ALWAYS starts at x=0, builds inward with more layers
+          // Calculate number of bricks that fit - use Math.floor to match calculations
+          const numBricksInnerHeight = Math.max(0, Math.floor((innerSpace + mortarGap) / (brickL + mortarGap)));
+          
+          // LEFT WALL
           for (let layerIndex = 0; layerIndex < layersInWall; layerIndex++) {
             const xStart = layerIndex * (brickW + mortarGap);
-            
             const runningBondOffset = (layerIndex % 2) * (brickL / 2);
             
             for (let row = 0; row < numBricksInnerHeight; row++) {
@@ -329,10 +310,9 @@ export default function NewBrickStoneEstimate() {
             }
           }
           
-          // RIGHT WALL (vertical - bricks rotated 90°) - ALWAYS starts at actualLength-brickW, builds inward with more layers
+          // RIGHT WALL
           for (let layerIndex = 0; layerIndex < layersInWall; layerIndex++) {
             const xStart = actualLength - brickW - layerIndex * (brickW + mortarGap);
-            
             const runningBondOffset = (layerIndex % 2) * (brickL / 2);
             
             for (let row = 0; row < numBricksInnerHeight; row++) {
@@ -348,7 +328,7 @@ export default function NewBrickStoneEstimate() {
             }
           }
           
-          // Fill hollow center with white - use the correct wall thickness
+          // Fill hollow center with white
           const innerXStart = wallThickness;
           const innerYStart = frontWallEnd;
           const innerXEnd = actualLength - wallThickness;
@@ -604,7 +584,7 @@ export default function NewBrickStoneEstimate() {
                     <canvas ref={topViewRef} width="300" height="300" className="border border-slate-200 rounded-lg bg-white w-full"></canvas>
                   </div>
                   <div>
-                    <h4 className="font-medium mb-2 text-center">Side View</h4>
+                    <h4 className="font-medium mb-2 text-center}>Side View</h4>
                     <canvas ref={sideViewRef} width="300" height="300" className="border border-slate-200 rounded-lg bg-white w-full"></canvas>
                   </div>
                 </div>
