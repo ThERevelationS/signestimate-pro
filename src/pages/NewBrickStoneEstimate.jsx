@@ -84,9 +84,6 @@ export default function NewBrickStoneEstimate() {
     drawVisualizations();
   }, [project, selectedMaterial, showDimensions, calculations]);
 
-  // loadData is refactored into the initial useEffect.
-  // const loadData = async () => { ... } // Removed
-
   const loadProjectForEdit = async (projectId, inventoryData) => {
     try {
       const projectData = await BrickStoneProject.get(projectId);
@@ -584,17 +581,16 @@ export default function NewBrickStoneEstimate() {
                     <canvas ref={topViewRef} width="300" height="300" className="border border-slate-200 rounded-lg bg-white w-full"></canvas>
                   </div>
                   <div>
-                    <h4 className="font-medium mb-2 text-center}>Side View</h4>
+                    <h4 className="font-medium mb-2 text-center">Side View</h4>
                     <canvas ref={sideViewRef} width="300" height="300" className="border border-slate-200 rounded-lg bg-white w-full"></canvas>
                   </div>
                 </div>
               </CardContent>
-            </Card>
 
             <Card>
               <CardHeader><CardTitle>Base Configuration</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <div> {/* Removed grid md:grid-cols-2 gap-4 parent div as Base Type is removed */}
+                <div> 
                   <Label>Select Material</Label>
                   <Select value={project.selected_material_id} onValueChange={handleMaterialSelect}>
                     <SelectTrigger><SelectValue placeholder="Choose from inventory" /></SelectTrigger>
