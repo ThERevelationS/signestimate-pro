@@ -471,107 +471,81 @@ Return your response as a JSON object with the optimal block selection and quant
             }
           }
           
-          // Fill hollow center with light background first
+          // Fill hollow center first
           const innerXStart = wallThickness;
           const innerYStart = frontWallEnd;
           const innerXEnd = actualLength - wallThickness;
           const innerYEnd = backWallStart;
           
-          ctx.fillStyle = '#e5e7eb';
-          ctx.fillRect(innerXStart * scale, innerYStart * scale, (innerXEnd - innerXStart) * scale, (innerYEnd - innerYStart) * scale);
+          const innerLength = innerXEnd - innerXStart;
+          const innerWidth = innerYEnd - innerYStart;
 
-          // Draw core blocks - completely fill the hollow interior
+          // Draw core materials - SIMPLE SOLID FILL of the hollow space
           if (project.core_materials && project.core_materials.length > 0) {
-            const innerLength = innerXEnd - innerXStart;
-            const innerWidth = innerYEnd - innerYStart;
-            
-            // Get valid core materials
             const validCoreMaterials = project.core_materials.filter(item => {
               const mat = inventory.find(m => m.id === item.material_id);
               return mat && item.quantity > 0;
             });
             
             if (validCoreMaterials.length > 0) {
-              const firstCoreItem = validCoreMaterials[0];
-              const firstCoreMaterial = inventory.find(m => m.id === firstCoreItem.material_id);
+              // Calculate total blocks to visualize proportion
+              const totalBlocks = validCoreMaterials.reduce((sum, item) => sum + item.quantity, 0);
+              let cumulativeBlocks = 0;
               
-              if (firstCoreMaterial) {
-                const blockL = firstCoreMaterial.length;
-                const blockW = firstCoreMaterial.width;
+              // Colors for different materials
+              const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
+              
+              // Draw each material as a proportional section of the hollow space
+              validCoreMaterials.forEach((coreItem, idx) => {
+                const material = inventory.find(m => m.id === coreItem.material_id);
+                if (!material) return;
                 
-                // Try both orientations
-                const normalCols = Math.floor(innerLength / (blockL + mortarGap));
-                const normalRows = Math.floor(innerWidth / (blockW + mortarGap));
-                const rotatedCols = Math.floor(innerLength / (blockW + mortarGap));
-                const rotatedRows = Math.floor(innerWidth / (blockL + mortarGap));
+                const proportion = coreItem.quantity / totalBlocks;
+                const sectionHeight = innerWidth * proportion;
+                const yStart = innerYStart + (cumulativeBlocks / totalBlocks) * innerWidth;
                 
-                // Pick best orientation
-                const useRotated = (rotatedCols * rotatedRows) > (normalCols * normalRows);
-                const cols = useRotated ? rotatedCols : normalCols;
-                const rows = useRotated ? rotatedRows : normalRows;
-                const blockDrawL = useRotated ? blockW : blockL;
-                const blockDrawW = useRotated ? blockL : blockW;
+                // Fill this section with the material color
+                ctx.fillStyle = colors[idx % colors.length];
+                ctx.fillRect(
+                  innerXStart * scale,
+                  yStart * scale,
+                  innerLength * scale,
+                  sectionHeight * scale
+                );
                 
-                // Colors for materials
-                const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
+                // Add label
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'center';
+                const labelY = yStart + sectionHeight / 2;
+                ctx.fillText(
+                  `${material.material_name} (${coreItem.quantity})`,
+                  (innerXStart + innerLength / 2) * scale,
+                  labelY * scale
+                );
                 
-                // Calculate total user blocks
-                const totalUserBlocks = validCoreMaterials.reduce((sum, item) => sum + item.quantity, 0);
-                
-                // Draw every single block position
-                let blockIndex = 0;
-                for (let row = 0; row < rows; row++) {
-                  for (let col = 0; col < cols; col++) {
-                    const x = innerXStart + col * (blockDrawL + mortarGap);
-                    const y = innerYStart + row * (blockDrawW + mortarGap);
-                    
-                    // Determine color based on whether this block is specified by user
-                    if (blockIndex < totalUserBlocks) {
-                      // Find which material this block belongs to
-                      let cumulativeCount = 0;
-                      let materialIndex = 0;
-                      for (let i = 0; i < validCoreMaterials.length; i++) {
-                        cumulativeCount += validCoreMaterials[i].quantity;
-                        if (blockIndex < cumulativeCount) {
-                          materialIndex = i;
-                          break;
-                        }
-                      }
-                      ctx.fillStyle = colors[materialIndex % colors.length];
-                    } else {
-                      // Empty space - light gray
-                      ctx.fillStyle = '#d1d5db';
-                    }
-                    
-                    // Draw the block
-                    ctx.fillRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
-                    
-                    // Draw border
-                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
-                    ctx.lineWidth = 0.5;
-                    ctx.strokeRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
-                    
-                    blockIndex++;
-                  }
-                }
-                
-                // Draw legend showing how many blocks of each type
-                if (validCoreMaterials.length > 0) {
-                  ctx.font = '9px sans-serif';
-                  let legendY = (innerYEnd + 10) * scale;
-                  validCoreMaterials.forEach((coreItem, idx) => {
-                    const coreMat = inventory.find(m => m.id === coreItem.material_id);
-                    if (coreMat) {
-                      ctx.fillStyle = colors[idx % colors.length];
-                      ctx.fillRect(innerXStart * scale, legendY, 8 * scale, 8 * scale);
-                      ctx.fillStyle = '#64748b';
-                      ctx.fillText(`${coreMat.material_name}: ${coreItem.quantity}`, (innerXStart + 10) * scale, legendY + 6 * scale);
-                      legendY += 12 * scale;
-                    }
-                  });
-                }
-              }
+                cumulativeBlocks += coreItem.quantity;
+              });
+              
+              // Draw border around filled core
+              ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+              ctx.lineWidth = 1;
+              ctx.strokeRect(
+                innerXStart * scale,
+                innerYStart * scale,
+                innerLength * scale,
+                innerWidth * scale
+              );
             }
+          } else {
+            // No core materials - show empty hollow space
+            ctx.fillStyle = '#f5f5f5';
+            ctx.fillRect(
+              innerXStart * scale,
+              innerYStart * scale,
+              innerLength * scale,
+              innerWidth * scale
+            );
           }
 
           // Draw borders
@@ -582,8 +556,8 @@ Return your response as a JSON object with the optimal block selection and quant
           ctx.strokeStyle = '#1e293b';
           ctx.lineWidth = 2;
           ctx.strokeRect(innerXStart * scale, innerYStart * scale,
-                        (innerXEnd - innerXStart) * scale,
-                        (innerYEnd - innerYStart) * scale);
+                        innerLength * scale,
+                        innerWidth * scale);
         }
 
       if (showDimensions) {
