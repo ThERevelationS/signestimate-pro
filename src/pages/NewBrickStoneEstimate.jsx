@@ -403,7 +403,7 @@ export default function NewBrickStoneEstimate() {
 
         for (let courseIndex = 0; courseIndex < calculations.coursesHigh; courseIndex++) {
           const y = courseIndex * (brickH + mortarGap);
-          if (y + brickH > actualHeight * scale + 0.1) break; // Break if full brick height doesn't fit
+          if (y + brickH > actualHeight * scale + 0.1) break;
 
           ctx.beginPath();
           ctx.moveTo(0, y);
@@ -413,15 +413,28 @@ export default function NewBrickStoneEstimate() {
           const offset = (courseIndex % 2) * (brickL / 2);
 
           for (let x = -offset; x < actualLength * scale; x += brickL + mortarGap) {
-            const drawX = Math.max(0, x);
-
-            // Only draw vertical line if full brick length fits
-            if (drawX + brickL > actualLength * scale + 0.1) continue;
-
-            ctx.beginPath();
-            ctx.moveTo(drawX, y);
-            ctx.lineTo(drawX, y + brickH); // Draw up to full brick height
-            ctx.stroke();
+            const brickStart = x;
+            const brickEnd = x + brickL;
+            
+            // Only draw vertical lines for bricks that start within or before the wall
+            if (brickStart < actualLength * scale - 0.1) {
+              // If brick starts within the wall, draw line at start position
+              if (brickStart >= -0.1) {
+                ctx.beginPath();
+                ctx.moveTo(brickStart, y);
+                ctx.lineTo(brickStart, y + brickH);
+                ctx.stroke();
+              }
+              
+              // If brick extends beyond the wall, draw line at wall edge
+              if (brickEnd > actualLength * scale + 0.1) {
+                ctx.beginPath();
+                ctx.moveTo(actualLength * scale, y);
+                ctx.lineTo(actualLength * scale, y + brickH);
+                ctx.stroke();
+                break; // No more bricks fit in this course
+              }
+            }
           }
         }
       }
