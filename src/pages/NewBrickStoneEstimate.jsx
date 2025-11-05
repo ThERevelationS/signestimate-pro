@@ -154,9 +154,7 @@ export default function NewBrickStoneEstimate() {
     const actualHeight = coursesHigh * brickH + (coursesHigh - 1) * mortarGap;
     
     // Calculate brick counts for walls
-    // Front and back walls
     const frontBackBricks = coursesHigh * bricksAlongLength * layers * 2;
-    // Side walls - bricksAlongWidth directly defines how many bricks per wall
     const leftRightBricks = coursesHigh * bricksAlongWidth * layers * 2;
     const totalWallBricks = frontBackBricks + leftRightBricks;
 
@@ -167,20 +165,31 @@ export default function NewBrickStoneEstimate() {
     
     if (selectedCoreMaterial) {
       const coreL = selectedCoreMaterial.length;
-      const coreW = selectedCoreMaterial.width;
+      const coreW = selectedCoreMaterial.width; // Core block width, used for its thickness
       const coreH = selectedCoreMaterial.height;
       const coreCostPerUnit = selectedCoreMaterial.cost_per_unit;
       
-      // Inner space dimensions
+      // Inner space dimensions (excluding the main wall thickness)
       const innerLength = actualLength - 2 * wallThickness;
       const innerWidth = actualWidth - 2 * wallThickness;
       
-      // Calculate how many core blocks fit
-      const coreBlocksAlongLength = Math.floor((innerLength + mortarGap) / (coreL + mortarGap));
-      const coreBlocksAlongWidth = Math.floor((innerWidth + mortarGap) / (coreW + mortarGap));
-      const coreBlocksHigh = Math.floor((actualHeight + mortarGap) / (coreH + mortarGap));
+      // Core blocks follow the inner perimeter of the walls
+      // Calculate how many blocks fit along each inner wall (assuming coreL is laid along the length of the wall segment)
+      const coreBlocksAlongInnerLength = Math.floor((innerLength + mortarGap) / (coreL + mortarGap));
+      const coreBlocksAlongInnerWidth = Math.floor((innerWidth + mortarGap) / (coreL + mortarGap));
+      const coreCoursesHigh = Math.floor((actualHeight + mortarGap) / (coreH + mortarGap));
       
-      coreBricks = coreBlocksAlongLength * coreBlocksAlongWidth * coreBlocksHigh;
+      // Front and back inner walls
+      const coreFrontBackBricks = coreCoursesHigh * coreBlocksAlongInnerLength * 2;
+      // Left and right inner walls (subtract corners to avoid double counting)
+      // Each corner accounts for one block in 'length' and one in 'width'.
+      // So, if coreBlocksAlongInnerWidth is, say, 5, the two 'end' blocks are already counted
+      // by the front/back walls (if we consider them extending to the corners).
+      // We need to count the *intermediate* blocks for the side walls.
+      // Math.max(0, ...) to prevent negative counts if the inner width is too small.
+      const coreLeftRightBricks = coreCoursesHigh * Math.max(0, coreBlocksAlongInnerWidth - 2) * 2;
+      
+      coreBricks = coreFrontBackBricks + coreLeftRightBricks;
       coreBricksWithWaste = Math.ceil(coreBricks * wasteFactor);
       coreMaterialCost = coreBricksWithWaste * coreCostPerUnit;
     }
@@ -327,7 +336,7 @@ export default function NewBrickStoneEstimate() {
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(innerXStart * scale, innerYStart * scale, (innerXEnd - innerXStart) * scale, (innerYEnd - innerYStart) * scale);
 
-          // Draw core blocks if selected
+          // Draw core blocks if selected - following inner perimeter
           if (selectedCoreMaterial) {
             ctx.fillStyle = '#7c6a46'; // Different color for core blocks (tan/brown)
             
@@ -337,15 +346,36 @@ export default function NewBrickStoneEstimate() {
             const innerLength = innerXEnd - innerXStart;
             const innerWidth = innerYEnd - innerYStart;
             
-            const coreBlocksAlongLength = Math.floor((innerLength + mortarGap) / (coreL + mortarGap));
-            const coreBlocksAlongWidth = Math.floor((innerWidth + mortarGap) / (coreW + mortarGap));
+            // Re-calculate these for drawing consistency, although they should match the calculations function
+            const coreBlocksAlongInnerLength = Math.floor((innerLength + mortarGap) / (coreL + mortarGap));
+            const coreBlocksAlongInnerWidth = Math.floor((innerWidth + mortarGap) / (coreL + mortarGap));
             
-            for (let row = 0; row < coreBlocksAlongWidth; row++) {
-              for (let col = 0; col < coreBlocksAlongLength; col++) {
-                const x = innerXStart + col * (coreL + mortarGap);
-                const y = innerYStart + row * (coreW + mortarGap);
-                ctx.fillRect(x * scale, y * scale, coreL * scale, coreW * scale);
-              }
+            // Front inner wall (blocks along length)
+            for (let col = 0; col < coreBlocksAlongInnerLength; col++) {
+              const x = innerXStart + col * (coreL + mortarGap);
+              const y = innerYStart;
+              ctx.fillRect(x * scale, y * scale, coreL * scale, coreW * scale);
+            }
+            
+            // Back inner wall (blocks along length)
+            for (let col = 0; col < coreBlocksAlongInnerLength; col++) {
+              const x = innerXStart + col * (coreL + mortarGap);
+              const y = innerYEnd - coreW;
+              ctx.fillRect(x * scale, y * scale, coreL * scale, coreW * scale);
+            }
+            
+            // Left inner wall (blocks along width, excluding corners)
+            for (let row = 1; row < coreBlocksAlongInnerWidth - 1; row++) {
+              const x = innerXStart;
+              const y = innerYStart + row * (coreL + mortarGap);
+              ctx.fillRect(x * scale, y * scale, coreW * scale, coreL * scale);
+            }
+            
+            // Right inner wall (blocks along width, excluding corners)
+            for (let row = 1; row < coreBlocksAlongInnerWidth - 1; row++) {
+              const x = innerXEnd - coreW;
+              const y = innerYStart + row * (coreL + mortarGap);
+              ctx.fillRect(x * scale, y * scale, coreW * scale, coreL * scale);
             }
           }
 
@@ -676,15 +706,17 @@ export default function NewBrickStoneEstimate() {
                     <SelectTrigger><SelectValue placeholder="None - leave hollow" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value={null}>None - leave hollow</SelectItem>
-                      {inventory.map(mat => (
-                        <SelectItem key={mat.id} value={mat.id}>
-                          {mat.material_name} ({mat.length}×{mat.width}×{mat.height}")
-                        </SelectItem>
-                      ))}
+                      {inventory
+                        .filter(mat => mat.material_type === 'block')
+                        .map(mat => (
+                          <SelectItem key={mat.id} value={mat.id}>
+                            {mat.material_name} ({mat.length}×{mat.width}×{mat.height}")
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-slate-500 mt-1">
-                    Select blocks to fill the hollow core
+                    Select blocks to line the hollow core (blocks only)
                   </p>
                 </div>
 
