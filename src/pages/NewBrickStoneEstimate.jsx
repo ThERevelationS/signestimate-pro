@@ -886,29 +886,29 @@ Return your response as a JSON object with the optimal block selection and quant
   }
 
   return (
-    <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+    <div className="p-4 md:p-6 lg:p-8 bg-slate-50 min-h-screen">
+      <div className="w-full mx-auto" style={{ maxWidth: '100%' }}>
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-              <Box className="w-8 h-8" />
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-3">
+              <Box className="w-6 h-6 md:w-8 md:h-8" />
               {editId ? 'Edit' : 'New'} Brick & Stone Estimate
             </h1>
-            <p className="text-slate-600">Design and calculate sign base materials</p>
+            <p className="text-sm md:text-base text-slate-600">Design and calculate sign base materials</p>
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => navigate(createPageUrl("BrickStoneProjects"))}>
+          <div className="flex gap-3 w-full lg:w-auto">
+            <Button variant="outline" onClick={() => navigate(createPageUrl("BrickStoneProjects"))} className="flex-1 lg:flex-none">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
-            <Button onClick={saveProject} disabled={isSaving || !selectedMaterial} className="bg-green-600 hover:bg-green-700">
+            <Button onClick={saveProject} disabled={isSaving || !selectedMaterial} className="bg-green-600 hover:bg-green-700 flex-1 lg:flex-none">
               {isSaving ? "Saving..." : <><Save className="w-4 h-4 mr-2" />Save Project</>}
             </Button>
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
+          <div className="xl:col-span-2 space-y-6">
             <Card>
               <CardHeader><CardTitle>Project Information</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -932,24 +932,36 @@ Return your response as a JSON object with the optimal block selection and quant
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-3 gap-6">
+              <CardContent className="p-4 md:p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
                   <div className="flex flex-col">
-                    <h4 className="font-medium mb-2 text-center">Top View</h4>
-                    <div className="relative w-full aspect-square">
-                      <canvas ref={topViewRef} className="border border-slate-200 rounded-lg bg-white w-full h-full"></canvas>
+                    <h4 className="font-medium mb-3 text-center text-sm md:text-base">Top View</h4>
+                    <div className="relative w-full" style={{ paddingBottom: '100%' }}>
+                      <canvas 
+                        ref={topViewRef} 
+                        className="absolute inset-0 border border-slate-200 rounded-lg bg-white w-full h-full"
+                        style={{ width: '100%', height: '100%' }}
+                      ></canvas>
                     </div>
                   </div>
                   <div className="flex flex-col">
-                    <h4 className="font-medium mb-2 text-center">Side View - Walls</h4>
-                    <div className="relative w-full aspect-square">
-                      <canvas ref={sideViewRef} className="border border-slate-200 rounded-lg bg-white w-full h-full"></canvas>
+                    <h4 className="font-medium mb-3 text-center text-sm md:text-base">Side View - Walls</h4>
+                    <div className="relative w-full" style={{ paddingBottom: '100%' }}>
+                      <canvas 
+                        ref={sideViewRef} 
+                        className="absolute inset-0 border border-slate-200 rounded-lg bg-white w-full h-full"
+                        style={{ width: '100%', height: '100%' }}
+                      ></canvas>
                     </div>
                   </div>
                   <div className="flex flex-col">
-                    <h4 className="font-medium mb-2 text-center">Side View - Core</h4>
-                    <div className="relative w-full aspect-square">
-                      <canvas ref={coreSideViewRef} className="border border-slate-200 rounded-lg bg-white w-full h-full"></canvas>
+                    <h4 className="font-medium mb-3 text-center text-sm md:text-base">Side View - Core</h4>
+                    <div className="relative w-full" style={{ paddingBottom: '100%' }}>
+                      <canvas 
+                        ref={coreSideViewRef} 
+                        className="absolute inset-0 border border-slate-200 rounded-lg bg-white w-full h-full"
+                        style={{ width: '100%', height: '100%' }}
+                      ></canvas>
                     </div>
                   </div>
                 </div>
