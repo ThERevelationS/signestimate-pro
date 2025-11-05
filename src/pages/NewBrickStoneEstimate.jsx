@@ -24,9 +24,9 @@ export default function NewBrickStoneEstimate() {
     estimate_number: "",
     hyperlink: "",
     base_type: "solid_rectangular",
-    base_length: 48,
-    base_width: 36,
-    base_height: 36,
+    bricks_along_length: 6,
+    bricks_along_width: 9,
+    courses_high: 5,
     layers: 1,
     mortar_gap: 0.375,
     waste_factor: 1.1,
@@ -43,56 +43,77 @@ export default function NewBrickStoneEstimate() {
   const [showDimensions, setShowDimensions] = useState(true);
 
   useEffect(() => {
-    loadData();
-    if (editId) {
-      loadProjectForEdit(editId);
-    }
+    // Inventory needs to be loaded first for loadProjectForEdit to convert old dimensions
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const inventoryData = await BrickStoneInventory.list();
+        setInventory(inventoryData);
+
+        const settingsData = await Settings.list();
+        const settingsObj = {};
+        settingsData.forEach(s => {
+          settingsObj[s.setting_name] = s.setting_value;
+        });
+        setSettings(settingsObj);
+
+        if (editId) {
+          await loadProjectForEdit(editId, inventoryData); // Pass inventoryData
+        } else {
+          setProject(prev => ({
+            ...prev,
+            mortar_gap: parseFloat(settingsObj.brick_mortar_gap || 0.375),
+            waste_factor: parseFloat(settingsObj.brick_waste_factor || 1.1)
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+      }
+      setIsLoading(false);
+    };
+    fetchData();
   }, [editId]);
 
   useEffect(() => {
-    if (selectedMaterial && project.base_length && project.base_width && project.base_height) {
+    if (selectedMaterial && project.bricks_along_length && project.bricks_along_width && project.courses_high) {
       performCalculations();
     }
-  }, [selectedMaterial, project.base_type, project.base_length, project.base_width, project.base_height, project.layers, project.mortar_gap, project.waste_factor]);
+  }, [selectedMaterial, project.base_type, project.bricks_along_length, project.bricks_along_width, project.courses_high, project.layers, project.mortar_gap, project.waste_factor]);
 
   useEffect(() => {
     drawVisualizations();
   }, [project, selectedMaterial, showDimensions, calculations]);
 
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      const inventoryData = await BrickStoneInventory.list();
-      const settingsData = await Settings.list();
-      
-      setInventory(inventoryData);
-      
-      const settingsObj = {};
-      settingsData.forEach(s => {
-        settingsObj[s.setting_name] = s.setting_value;
-      });
-      setSettings(settingsObj);
+  // loadData is refactored into the initial useEffect.
+  // const loadData = async () => { ... } // Removed
 
-      if (!editId) {
-        setProject(prev => ({
-          ...prev,
-          mortar_gap: parseFloat(settingsObj.brick_mortar_gap || 0.375),
-          waste_factor: parseFloat(settingsObj.brick_waste_factor || 1.1)
-        }));
-      }
-    } catch (error) {
-      console.error('Error loading data:', error);
-    }
-    setIsLoading(false);
-  };
-
-  const loadProjectForEdit = async (projectId) => {
+  const loadProjectForEdit = async (projectId, inventoryData) => {
     try {
       const projectData = await BrickStoneProject.get(projectId);
       if (projectData) {
+        // Convert saved dimensions back to brick counts if needed for old projects
+        if (projectData.base_length && !projectData.bricks_along_length && inventoryData.length > 0) {
+          const material = inventoryData.find(m => m.id === projectData.selected_material_id);
+          if (material && projectData.mortar_gap !== undefined) {
+            const effectiveBrickL = material.length + projectData.mortar_gap;
+            const effectiveBrickW = material.width + projectData.mortar_gap;
+            const effectiveBrickH = material.height + projectData.mortar_gap;
+
+            // Calculate brick counts based on old base_length/width/height
+            // Formula: N = (total_dim + mortar_gap) / (brick_dim + mortar_gap)
+            projectData.bricks_along_length = Math.max(1, Math.round((projectData.base_length + projectData.mortar_gap) / effectiveBrickL));
+            projectData.bricks_along_width = Math.max(1, Math.round((projectData.base_width + projectData.mortar_gap) / effectiveBrickW));
+            projectData.courses_high = Math.max(1, Math.round((projectData.base_height + projectData.mortar_gap) / effectiveBrickH));
+          }
+        }
+        // Remove old base_length/width/height fields if they exist, as they are now derived.
+        delete projectData.base_length;
+        delete projectData.base_width;
+        delete projectData.base_height;
+
         setProject(projectData);
         if (projectData.selected_material_id) {
-          const material = inventory.find(m => m.id === projectData.selected_material_id);
+          const material = inventoryData.find(m => m.id === projectData.selected_material_id);
           setSelectedMaterial(material);
         }
       }
@@ -106,43 +127,26 @@ export default function NewBrickStoneEstimate() {
       return;
     }
 
-    const projectData = project;
     const material = selectedMaterial;
-    
-    const baseType = projectData.base_type;
-    const baseLength = projectData.base_length;
-    const baseWidth = projectData.base_width;
-    const baseHeight = projectData.base_height;
-    const layers = projectData.layers;
-    const mortarGap = projectData.mortar_gap;
-    const wasteFactor = projectData.waste_factor;
-    
+
+    const baseType = project.base_type;
+    const bricksAlongLength = project.bricks_along_length;
+    const bricksAlongWidth = project.bricks_along_width;
+    const coursesHigh = project.courses_high;
+    const layers = project.layers;
+    const mortarGap = project.mortar_gap;
+    const wasteFactor = project.waste_factor;
+
     const brickL = material.length;
     const brickW = material.width;
     const brickH = material.height;
     const costPerUnit = material.cost_per_unit;
 
-    const effectiveBrickL = brickL + mortarGap;
-    const effectiveBrickW = brickW + mortarGap;
-    const effectiveBrickH = brickH + mortarGap;
-
-    // Calculate actual dimensions using whole bricks only (no cutting)
-    const bricksAlongLength = Math.round(baseLength / effectiveBrickL);
-    const actualLength = bricksAlongLength * effectiveBrickL - mortarGap;
-    
-    const bricksAlongWidth = Math.round(baseWidth / effectiveBrickW);
-    const actualWidth = bricksAlongWidth * effectiveBrickW - mortarGap;
-    
-    const coursesHigh = Math.round(baseHeight / effectiveBrickH);
-    const actualHeight = coursesHigh * effectiveBrickH - mortarGap;
-
-    // AUTO-ADJUST PROJECT DIMENSIONS TO ACTUAL BUILD DIMENSIONS
-    setProject(prev => ({
-      ...prev,
-      base_length: parseFloat(actualLength.toFixed(3)),
-      base_width: parseFloat(actualWidth.toFixed(3)),
-      base_height: parseFloat(actualHeight.toFixed(3))
-    }));
+    // Calculate actual dimensions from brick counts and mortar gaps
+    // N bricks means N-1 mortar gaps
+    const actualLength = bricksAlongLength * brickL + Math.max(0, bricksAlongLength - 1) * mortarGap;
+    const actualWidth = bricksAlongWidth * brickW + Math.max(0, bricksAlongWidth - 1) * mortarGap;
+    const actualHeight = coursesHigh * brickH + Math.max(0, coursesHigh - 1) * mortarGap;
 
     let totalBricks = 0;
     let surfaceArea = 0;
@@ -152,13 +156,14 @@ export default function NewBrickStoneEstimate() {
       surfaceArea = ((actualLength * actualHeight) * 2 + (actualWidth * actualHeight) * 2 + (actualLength * actualWidth)) / 144;
     } else if (baseType === 'hollow_rectangular') {
       const wallThickness = layers * brickW;
-      
+
       const frontBackBricks = coursesHigh * bricksAlongLength * layers * 2;
-      
+
+      const effectiveBrickL = brickL + mortarGap;
       const innerWidth = actualWidth - (2 * wallThickness);
       const bricksAlongInnerWidth = Math.max(0, Math.round(innerWidth / effectiveBrickL));
       const leftRightBricks = coursesHigh * bricksAlongInnerWidth * layers * 2;
-      
+
       totalBricks = frontBackBricks + leftRightBricks;
       surfaceArea = ((actualLength * actualHeight) * 2 + ((actualWidth - 2 * wallThickness) * actualHeight) * 2) / 144;
     }
@@ -189,7 +194,7 @@ export default function NewBrickStoneEstimate() {
   };
 
   const drawVisualizations = () => {
-    if (!topViewRef.current || !sideViewRef.current || !project.base_length || !calculations) {
+    if (!topViewRef.current || !sideViewRef.current || !project.bricks_along_length || !calculations) {
       return;
     }
 
@@ -212,7 +217,7 @@ export default function NewBrickStoneEstimate() {
       if (!selectedMaterial || !showDimensions) {
         ctx.fillStyle = selectedMaterial ? '#dc2626' : '#cbd5e1';
         ctx.fillRect(0, 0, actualLength * scale, actualWidth * scale);
-        
+
         if (project.base_type === 'hollow_rectangular' && selectedMaterial) {
           const wallThickness = project.layers * selectedMaterial.width;
           const innerX = wallThickness * scale;
@@ -222,7 +227,7 @@ export default function NewBrickStoneEstimate() {
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(innerX, innerY, innerW, innerH);
         }
-        
+
         ctx.strokeStyle = '#1e293b';
         ctx.lineWidth = 2;
         ctx.strokeRect(0, 0, actualLength * scale, actualWidth * scale);
@@ -238,25 +243,25 @@ export default function NewBrickStoneEstimate() {
           if (project.base_type === 'solid_rectangular') {
             const numBricksLength = calculations.bricksAlongLength;
             const numBricksWidth = calculations.bricksAlongWidth;
-            
+
             // Draw each brick as a solid red rectangle - NO OVERLAY
             ctx.fillStyle = '#a8332e';
-            
+
             for (let row = 0; row < numBricksWidth; row++) {
               const yStart = row * (brickW + mortarGap);
               const runningBondOffset = (row % 2) * (brickL / 2);
-              
+
               for (let col = 0; col < numBricksLength; col++) {
                 let xStart = col * (brickL + mortarGap) - runningBondOffset;
-                
+
                 if (xStart < -brickL * 0.99) continue;
-                
+
                 const brickXStart = Math.max(0, xStart);
                 const brickXEnd = Math.min(actualLength, xStart + brickL);
                 const visibleLength = brickXEnd - brickXStart;
-                
+
                 if (visibleLength < brickL * 0.05) continue;
-                
+
                 // Draw solid brick - no overlay
                 ctx.fillRect(brickXStart * scale, yStart * scale, visibleLength * scale, brickW * scale);
               }
@@ -267,117 +272,122 @@ export default function NewBrickStoneEstimate() {
             const innerYStart = wallThickness;
             const innerXEnd = actualLength - wallThickness;
             const innerYEnd = actualWidth - wallThickness;
-            
+
             const numBricksLength = calculations.bricksAlongLength;
-            const coursesInWall = Math.max(1, Math.round(wallThickness / (brickW + mortarGap)));
-            const innerHeight = innerYEnd - innerYStart;
-            const numBricksInnerHeight = Math.max(1, Math.round(innerHeight / (brickL + mortarGap)));
-            
+            // This `coursesInWall` is for side thickness (how many layers deep the wall is, not courses high)
+            // It's calculated based on how many brick widths fit in the `wallThickness` without mortar.
+            // If mortar is included in `wallThickness` (which it's not currently, it's `layers * brickW`),
+            // then it should be `Math.max(1, Math.round(wallThickness / (brickW + mortarGap)))`.
+            // Sticking with previous implicit interpretation for drawing.
+            const coursesInWall = Math.max(1, Math.round(wallThickness / (brickW))); // Assuming no mortar along depth for visualization simplification
+            const innerHeightDraw = innerYEnd - innerYStart; // This is the space available for bricks laid perpendicular
+            const numBricksInnerLengthRotated = Math.max(1, Math.round(innerHeightDraw / (brickL + mortarGap)));
+
             // Draw all bricks as solid red rectangles - NO OVERLAY
             ctx.fillStyle = '#a8332e';
-            
+
             // FRONT WALL (bottom horizontal)
-            for (let row = 0; row < coursesInWall; row++) {
-              const yStart = row * (brickW + mortarGap);
+            for (let row = 0; row < coursesInWall; row++) { // Iterate for depth of wall
+              const yStart = row * (brickW + mortarGap); // Assuming brickW is depth
               if (yStart + brickW > wallThickness + 0.01) break;
-              
+
               const runningBondOffset = (row % 2) * (brickL / 2);
-              
+
               for (let col = 0; col < numBricksLength; col++) {
                 let xStart = col * (brickL + mortarGap) - runningBondOffset;
                 if (xStart < -brickL * 0.99) continue;
-                
+
                 const brickXStart = Math.max(0, xStart);
                 const brickXEnd = Math.min(actualLength, xStart + brickL);
                 const visibleLength = brickXEnd - brickXStart;
-                
+
                 if (visibleLength < brickL * 0.05) continue;
-                
+
                 ctx.fillRect(brickXStart * scale, yStart * scale, visibleLength * scale, brickW * scale);
               }
             }
-            
+
             // BACK WALL (top horizontal)
             const backWallYStart = actualWidth - wallThickness;
             for (let row = 0; row < coursesInWall; row++) {
               const yStart = backWallYStart + row * (brickW + mortarGap);
               if (yStart + brickW > actualWidth + 0.01) break;
-              
+
               const runningBondOffset = (row % 2) * (brickL / 2);
-              
+
               for (let col = 0; col < numBricksLength; col++) {
                 let xStart = col * (brickL + mortarGap) - runningBondOffset;
                 if (xStart < -brickL * 0.99) continue;
-                
+
                 const brickXStart = Math.max(0, xStart);
                 const brickXEnd = Math.min(actualLength, xStart + brickL);
                 const visibleLength = brickXEnd - brickXStart;
-                
+
                 if (visibleLength < brickL * 0.05) continue;
-                
+
                 ctx.fillRect(brickXStart * scale, yStart * scale, visibleLength * scale, brickW * scale);
               }
             }
-            
+
             // LEFT WALL (vertical - bricks rotated 90°)
             for (let col = 0; col < coursesInWall; col++) {
               const xStart = col * (brickW + mortarGap);
               if (xStart + brickW > wallThickness + 0.01) break;
-              
+
               const runningBondOffset = (col % 2) * (brickL / 2);
-              
-              for (let row = 0; row < numBricksInnerHeight; row++) {
+
+              for (let row = 0; row < numBricksInnerLengthRotated; row++) {
                 let yStart = innerYStart + row * (brickL + mortarGap) - runningBondOffset;
                 if (yStart < innerYStart - brickL * 0.99) continue;
-                
+
                 const brickYStart = Math.max(innerYStart, yStart);
                 const brickYEnd = Math.min(innerYEnd, yStart + brickL);
                 const visibleLength = brickYEnd - brickYStart;
-                
+
                 if (visibleLength < brickL * 0.05) continue;
-                
+
                 ctx.fillRect(xStart * scale, brickYStart * scale, brickW * scale, visibleLength * scale);
               }
             }
-            
+
             // RIGHT WALL (vertical - bricks rotated 90°)
             const rightWallXStart = actualLength - wallThickness;
             for (let col = 0; col < coursesInWall; col++) {
               const xStart = rightWallXStart + col * (brickW + mortarGap);
               if (xStart + brickW > actualLength + 0.01) break;
-              
+
               const runningBondOffset = (col % 2) * (brickL / 2);
-              
-              for (let row = 0; row < numBricksInnerHeight; row++) {
+
+              for (let row = 0; row < numBricksInnerLengthRotated; row++) {
                 let yStart = innerYStart + row * (brickL + mortarGap) - runningBondOffset;
                 if (yStart < innerYStart - brickL * 0.99) continue;
-                
+
                 const brickYStart = Math.max(innerYStart, yStart);
                 const brickYEnd = Math.min(innerYEnd, yStart + brickL);
                 const visibleLength = brickYEnd - brickYStart;
-                
+
                 if (visibleLength < brickL * 0.05) continue;
-                
+
                 ctx.fillRect(xStart * scale, brickYStart * scale, brickW * scale, visibleLength * scale);
               }
             }
-            
+
             // Fill hollow center with white
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(innerXStart * scale, innerYStart * scale, (innerXEnd - innerXStart) * scale, (innerYEnd - innerYStart) * scale);
           }
-          
+
           // Draw borders
           ctx.strokeStyle = '#1e293b';
           ctx.lineWidth = 3;
           ctx.strokeRect(0, 0, actualLength * scale, actualWidth * scale);
-          
+
           if (project.base_type === 'hollow_rectangular') {
             const wallThickness = project.layers * selectedMaterial.width;
             ctx.strokeStyle = '#1e293b';
             ctx.lineWidth = 2;
-            ctx.strokeRect(wallThickness * scale, wallThickness * scale, 
-                          (actualLength - 2 * wallThickness) * scale, 
+            ctx.strokeRect(wallThickness * scale, wallThickness * scale,
+                          (actualLength - 2 * wallThickness) * scale,
                           (actualWidth - 2 * wallThickness) * scale);
           }
         }
@@ -386,22 +396,22 @@ export default function NewBrickStoneEstimate() {
         ctx.fillStyle = '#1e293b';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
-        
+
         ctx.fillText(calculations.actualLength + '"', (actualLength * scale) / 2, -15);
-        
+
         ctx.save();
         ctx.translate(-15, (actualWidth * scale) / 2);
         ctx.rotate(-Math.PI / 2);
         ctx.fillText(calculations.actualWidth + '"', 0, 0);
         ctx.restore();
-        
+
         ctx.font = '12px sans-serif';
         ctx.fillStyle = '#64748b';
         ctx.fillText('TOP VIEW', (actualLength * scale) / 2, actualWidth * scale + 25);
-        
+
         if (selectedMaterial && project.layers > 1) {
           ctx.font = '10px sans-serif';
-          ctx.fillText(`${calculations.bricksAlongLength} × ${calculations.bricksAlongWidth} bricks (${project.layers} layers)`, 
+          ctx.fillText(`${calculations.bricksAlongLength} × ${calculations.bricksAlongWidth} bricks (${project.layers} layers)`,
                       (actualLength * scale) / 2, actualWidth * scale + 38);
         }
       }
@@ -444,13 +454,13 @@ export default function NewBrickStoneEstimate() {
           ctx.stroke();
 
           const offset = (courseIndex % 2) * (brickL / 2);
-          
+
           for (let x = -offset; x < actualLength * scale; x += brickL + mortarGap) {
             const drawX = Math.max(0, x);
-            
+
             // Only draw vertical line if full brick length fits
             if (drawX + brickL > actualLength * scale + 0.1) continue;
-            
+
             ctx.beginPath();
             ctx.moveTo(drawX, y);
             ctx.lineTo(drawX, y + brickH); // Draw up to full brick height
@@ -463,22 +473,22 @@ export default function NewBrickStoneEstimate() {
         ctx.fillStyle = '#1e293b';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
-        
+
         ctx.fillText(calculations.actualLength + '"', (actualLength * scale) / 2, -15);
-        
+
         ctx.save();
         ctx.translate(-15, (actualHeight * scale) / 2);
         ctx.rotate(-Math.PI / 2);
         ctx.fillText(calculations.actualHeight + '"', 0, 0);
         ctx.restore();
-        
+
         ctx.font = '12px sans-serif';
         ctx.fillStyle = '#64748b';
         ctx.fillText('SIDE VIEW (Actual Built Size)', (actualLength * scale) / 2, actualHeight * scale + 25);
-        
+
         if (selectedMaterial && calculations) {
           ctx.font = '10px sans-serif';
-          ctx.fillText(`${calculations.bricksAlongLength} × ${calculations.coursesHigh} courses = ${calculations.totalBricksWithWaste} bricks`, 
+          ctx.fillText(`${calculations.bricksAlongLength} × ${calculations.coursesHigh} courses`,
                       (actualLength * scale) / 2, actualHeight * scale + 38);
         }
       }
@@ -505,6 +515,13 @@ export default function NewBrickStoneEstimate() {
     }));
   };
 
+  const updateBrickCount = (dimension, delta) => {
+    setProject(prev => ({
+      ...prev,
+      [dimension]: Math.max(1, (prev[dimension] || 0) + delta)
+    }));
+  };
+
   const saveProject = async () => {
     if (!project.project_name || !project.client_name || !project.estimate_number || !project.hyperlink) {
       alert('Please fill in all required project fields');
@@ -520,6 +537,10 @@ export default function NewBrickStoneEstimate() {
     try {
       const dataToSave = {
         ...project,
+        // Store the calculated actual dimensions based on brick counts and mortar
+        base_length: parseFloat(calculations.actualLength),
+        base_width: parseFloat(calculations.actualWidth),
+        base_height: parseFloat(calculations.actualHeight),
         calculated_bricks: calculations.totalBricksWithWaste,
         calculated_surface_area: parseFloat(calculations.surfaceArea),
         mortar_bags_needed: calculations.mortarBags,
@@ -644,64 +665,139 @@ export default function NewBrickStoneEstimate() {
 
                 <div className="grid md:grid-cols-3 gap-4">
                   <div>
-                    <Label>Length (inches)</Label>
-                    <Input 
-                      type="number" 
-                      step="0.001"
-                      value={project.base_length} 
-                      onChange={(e) => setProject(prev => ({ ...prev, base_length: parseFloat(e.target.value) || 0 }))} 
-                    />
+                    <Label>Bricks Along Length</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => updateBrickCount('bricks_along_length', -1)}
+                        disabled={!selectedMaterial || project.bricks_along_length <= 1}
+                      >
+                        -
+                      </Button>
+                      <Input
+                        type="number"
+                        value={project.bricks_along_length}
+                        onChange={(e) => setProject(prev => ({ ...prev, bricks_along_length: Math.max(1, parseInt(e.target.value) || 1) }))}
+                        className="text-center"
+                        disabled={!selectedMaterial}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => updateBrickCount('bricks_along_length', 1)}
+                        disabled={!selectedMaterial}
+                      >
+                        +
+                      </Button>
+                    </div>
                     {calculations && (
-                      <p className="text-xs text-green-600 mt-1">✓ {calculations.bricksAlongLength} whole bricks</p>
+                      <p className="text-xs text-green-600 mt-1 font-medium">→ {calculations.actualLength}"</p>
                     )}
                   </div>
                   <div>
-                    <Label>Width (inches)</Label>
-                    <Input 
-                      type="number" 
-                      step="0.001"
-                      value={project.base_width} 
-                      onChange={(e) => setProject(prev => ({ ...prev, base_width: parseFloat(e.target.value) || 0 }))} 
-                    />
+                    <Label>Bricks Along Width</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => updateBrickCount('bricks_along_width', -1)}
+                        disabled={!selectedMaterial || project.bricks_along_width <= 1}
+                      >
+                        -
+                      </Button>
+                      <Input
+                        type="number"
+                        value={project.bricks_along_width}
+                        onChange={(e) => setProject(prev => ({ ...prev, bricks_along_width: Math.max(1, parseInt(e.target.value) || 1) }))}
+                        className="text-center"
+                        disabled={!selectedMaterial}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => updateBrickCount('bricks_along_width', 1)}
+                        disabled={!selectedMaterial}
+                      >
+                        +
+                      </Button>
+                    </div>
                     {calculations && (
-                      <p className="text-xs text-green-600 mt-1">✓ {calculations.bricksAlongWidth} whole bricks</p>
+                      <p className="text-xs text-green-600 mt-1 font-medium">→ {calculations.actualWidth}"</p>
                     )}
                   </div>
                   <div>
-                    <Label>Height (inches)</Label>
-                    <Input 
-                      type="number" 
-                      step="0.001"
-                      value={project.base_height} 
-                      onChange={(e) => setProject(prev => ({ ...prev, base_height: parseFloat(e.target.value) || 0 }))} 
-                    />
+                    <Label>Courses High</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => updateBrickCount('courses_high', -1)}
+                        disabled={!selectedMaterial || project.courses_high <= 1}
+                      >
+                        -
+                      </Button>
+                      <Input
+                        type="number"
+                        value={project.courses_high}
+                        onChange={(e) => setProject(prev => ({ ...prev, courses_high: Math.max(1, parseInt(e.target.value) || 1) }))}
+                        className="text-center"
+                        disabled={!selectedMaterial}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => updateBrickCount('courses_high', 1)}
+                        disabled={!selectedMaterial}
+                      >
+                        +
+                      </Button>
+                    </div>
                     {calculations && (
-                      <p className="text-xs text-green-600 mt-1">✓ {calculations.coursesHigh} courses</p>
+                      <p className="text-xs text-green-600 mt-1 font-medium">→ {calculations.actualHeight}"</p>
                     )}
                   </div>
                 </div>
 
-                <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                  <p className="text-sm text-green-800 flex items-center gap-2">
-                    <span className="font-semibold">✓ Dimensions auto-adjusted to whole bricks only</span>
-                  </p>
-                  <p className="text-xs text-green-700 mt-1">No cutting required • Standard {project.mortar_gap}" mortar gaps throughout</p>
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <h4 className="font-semibold text-blue-900 mb-2">Final Build Dimensions</h4>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="text-blue-700">Length:</span>
+                      <p className="font-bold text-blue-900 text-lg">{calculations?.actualLength || '0'}"</p>
+                    </div>
+                    <div>
+                      <span className="text-blue-700">Width:</span>
+                      <p className="font-bold text-blue-900 text-lg">{calculations?.actualWidth || '0'}"</p>
+                    </div>
+                    <div>
+                      <span className="text-blue-700">Height:</span>
+                      <p className="font-bold text-blue-900 text-lg">{calculations?.actualHeight || '0'}"</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-blue-700 mt-2">These are the actual dimensions considering brick counts and mortar gaps.</p>
                 </div>
 
                 <div>
                   <Label>Layers (Depth)</Label>
-                  <Input type="number" min="1" value={project.layers} onChange={(e) => setProject(prev => ({ ...prev, layers: parseInt(e.target.value) || 1 }))} />
+                  <Input type="number" min="1" value={project.layers} onChange={(e) => setProject(prev => ({ ...prev, layers: parseInt(e.target.value) || 1 }))} disabled={!selectedMaterial} />
                   <p className="text-xs text-slate-500 mt-1">
-                    {project.base_type === 'solid_rectangular' 
+                    {project.base_type === 'solid_rectangular'
                       ? 'Number of brick layers for the entire base'
                       : 'Number of brick layers for wall thickness'}
                     {selectedMaterial && ` (${(project.layers * selectedMaterial.width).toFixed(1)}" thick)`}
                   </p>
                 </div>
-                
+
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div><Label>Mortar Gap (inches)</Label><Input type="number" step="0.125" value={project.mortar_gap} onChange={(e) => setProject(prev => ({ ...prev, mortar_gap: parseFloat(e.target.value) || 0 }))} /></div>
-                  <div><Label>Waste Factor</Label><Input type="number" step="0.05" value={project.waste_factor} onChange={(e) => setProject(prev => ({ ...prev, waste_factor: parseFloat(e.target.value) || 1 }))} /></div>
+                  <div><Label>Mortar Gap (inches)</Label><Input type="number" step="0.125" value={project.mortar_gap} onChange={(e) => setProject(prev => ({ ...prev, mortar_gap: parseFloat(e.target.value) || 0 }))} disabled={!selectedMaterial} /></div>
+                  <div><Label>Waste Factor</Label><Input type="number" step="0.05" value={project.waste_factor} onChange={(e) => setProject(prev => ({ ...prev, waste_factor: parseFloat(e.target.value) || 1 }))} disabled={!selectedMaterial} /></div>
                 </div>
 
                 <div><Label>Notes</Label><Textarea value={project.notes} onChange={(e) => setProject(prev => ({ ...prev, notes: e.target.value }))} className="h-20" /></div>
@@ -748,7 +844,7 @@ export default function NewBrickStoneEstimate() {
                     <div className="border-t pt-4 space-y-3">
                       <div className="flex justify-between text-sm">
                         <span>Material Cost:</span>
-                        <span className="font-medium">${calculations.materialCost.toFixed(2)}}</span>
+                        <span className="font-medium">${calculations.materialCost.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Mortar Cost:</span>
