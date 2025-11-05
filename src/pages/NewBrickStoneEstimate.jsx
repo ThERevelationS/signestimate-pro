@@ -274,7 +274,6 @@ export default function NewBrickStoneEstimate() {
             const innerYEnd = actualWidth - wallThickness;
             
             const numBricksLength = calculations.bricksAlongLength;
-            // Number of brick layers in the wall depth
             const layersInWall = project.layers;
             const innerHeightDraw = innerYEnd - innerYStart;
             const numBricksInnerLengthRotated = Math.max(1, Math.round(innerHeightDraw / (brickL + mortarGap)));
@@ -282,9 +281,9 @@ export default function NewBrickStoneEstimate() {
             // Draw all bricks as solid red rectangles
             ctx.fillStyle = '#a8332e';
 
-            // FRONT WALL (bottom horizontal) - multiple layers deep
+            // FRONT WALL (bottom horizontal) - outer layer stays at y=0, build inward
             for (let layerIndex = 0; layerIndex < layersInWall; layerIndex++) {
-              const yStart = layerIndex * (brickW + mortarGap);
+              const yStart = layerIndex * (brickW + mortarGap); // Start from 0 and build inward
               if (yStart + brickW > wallThickness + 0.01) break;
               
               const runningBondOffset = (layerIndex % 2) * (brickL / 2);
@@ -303,11 +302,10 @@ export default function NewBrickStoneEstimate() {
               }
             }
             
-            // BACK WALL (top horizontal) - multiple layers deep
-            const backWallYStart = actualWidth - wallThickness;
+            // BACK WALL (top horizontal) - outer layer stays at actualWidth-brickW, build inward
             for (let layerIndex = 0; layerIndex < layersInWall; layerIndex++) {
-              const yStart = backWallYStart + layerIndex * (brickW + mortarGap);
-              if (yStart + brickW > actualWidth + 0.01) break;
+              const yStart = actualWidth - brickW - layerIndex * (brickW + mortarGap); // Start from outer edge and build inward
+              if (yStart < actualWidth - wallThickness - 0.01) break;
               
               const runningBondOffset = (layerIndex % 2) * (brickL / 2);
               
@@ -325,9 +323,9 @@ export default function NewBrickStoneEstimate() {
               }
             }
             
-            // LEFT WALL (vertical - bricks rotated 90°) - multiple layers deep
+            // LEFT WALL (vertical - bricks rotated 90°) - outer layer stays at x=0, build inward
             for (let layerIndex = 0; layerIndex < layersInWall; layerIndex++) {
-              const xStart = layerIndex * (brickW + mortarGap);
+              const xStart = layerIndex * (brickW + mortarGap); // Start from 0 and build inward
               if (xStart + brickW > wallThickness + 0.01) break;
               
               const runningBondOffset = (layerIndex % 2) * (brickL / 2);
@@ -346,11 +344,10 @@ export default function NewBrickStoneEstimate() {
               }
             }
             
-            // RIGHT WALL (vertical - bricks rotated 90°) - multiple layers deep
-            const rightWallXStart = actualLength - wallThickness;
+            // RIGHT WALL (vertical - bricks rotated 90°) - outer layer stays at actualLength-brickW, build inward
             for (let layerIndex = 0; layerIndex < layersInWall; layerIndex++) {
-              const xStart = rightWallXStart + layerIndex * (brickW + mortarGap);
-              if (xStart + brickW > actualLength + 0.01) break;
+              const xStart = actualLength - brickW - layerIndex * (brickW + mortarGap); // Start from outer edge and build inward
+              if (xStart < actualLength - wallThickness - 0.01) break;
               
               const runningBondOffset = (layerIndex % 2) * (brickL / 2);
               
