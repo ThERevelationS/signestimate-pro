@@ -480,12 +480,12 @@ Return your response as a JSON object with the optimal block selection and quant
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(innerXStart * scale, innerYStart * scale, (innerXEnd - innerXStart) * scale, (innerYEnd - innerYStart) * scale);
 
-          // Draw core blocks - simple and clear visualization
+          // Draw core blocks filling the hollow space
           if (project.core_materials && project.core_materials.length > 0) {
             const innerLength = innerXEnd - innerXStart;
             const innerWidth = innerYEnd - innerYStart;
             
-            // Filter valid core materials
+            // Get valid core materials
             const validCoreMaterials = project.core_materials.filter(item => {
               const mat = inventory.find(m => m.id === item.material_id);
               return mat && item.quantity > 0;
@@ -499,48 +499,57 @@ Return your response as a JSON object with the optimal block selection and quant
                 const blockL = firstCoreMaterial.length;
                 const blockW = firstCoreMaterial.width;
                 
-                // Calculate grid WITHOUT adding mortar gap to dimensions
+                // Calculate how many blocks fit in each direction
                 const normalCols = Math.floor(innerLength / (blockL + mortarGap));
                 const normalRows = Math.floor(innerWidth / (blockW + mortarGap));
-                
                 const rotatedCols = Math.floor(innerLength / (blockW + mortarGap));
                 const rotatedRows = Math.floor(innerWidth / (blockL + mortarGap));
                 
+                // Choose best orientation
                 const useRotated = (rotatedCols * rotatedRows) > (normalCols * normalRows);
                 const cols = useRotated ? rotatedCols : normalCols;
                 const rows = useRotated ? rotatedRows : normalRows;
                 const blockDrawL = useRotated ? blockW : blockL;
                 const blockDrawW = useRotated ? blockL : blockW;
                 
-                // Colors for different materials - bright and distinct
+                // Draw grid of blocks
                 const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
+                let blockIndex = 0;
+                const totalBlocks = cols * rows;
                 
-                let globalIndex = 0;
-                const totalCells = cols * rows;
-                
-                validCoreMaterials.forEach((coreItem, matIndex) => {
-                  ctx.fillStyle = colors[matIndex % colors.length];
-                  
-                  let placed = 0;
-                  while (placed < coreItem.quantity && globalIndex < totalCells) {
-                    const row = Math.floor(globalIndex / cols);
-                    const col = globalIndex % cols;
+                for (let row = 0; row < rows; row++) {
+                  for (let col = 0; col < cols; col++) {
+                    // Find which material this block belongs to
+                    let currentMaterialIndex = 0;
+                    let cumulativeBlocks = 0;
                     
-                    const x = innerXStart + col * (blockDrawL + mortarGap);
-                    const y = innerYStart + row * (blockDrawW + mortarGap);
+                    for (let i = 0; i < validCoreMaterials.length; i++) {
+                      cumulativeBlocks += validCoreMaterials[i].quantity;
+                      if (blockIndex < cumulativeBlocks) {
+                        currentMaterialIndex = i;
+                        break;
+                      }
+                    }
                     
-                    // Draw solid block
-                    ctx.fillRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
+                    // Only draw if within user's total quantity
+                    const totalUserBlocks = validCoreMaterials.reduce((sum, item) => sum + item.quantity, 0);
+                    if (blockIndex < totalUserBlocks) {
+                      const x = innerXStart + col * (blockDrawL + mortarGap);
+                      const y = innerYStart + row * (blockDrawW + mortarGap);
+                      
+                      // Fill block
+                      ctx.fillStyle = colors[currentMaterialIndex % colors.length];
+                      ctx.fillRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
+                      
+                      // Draw border
+                      ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                      ctx.lineWidth = 1;
+                      ctx.strokeRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
+                    }
                     
-                    // Draw border for visibility
-                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-                    ctx.lineWidth = 1;
-                    ctx.strokeRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
-                    
-                    placed++;
-                    globalIndex++;
+                    blockIndex++;
                   }
-                });
+                }
               }
             }
           }
