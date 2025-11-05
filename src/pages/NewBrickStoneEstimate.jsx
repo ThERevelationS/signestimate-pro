@@ -480,19 +480,18 @@ Return your response as a JSON object with the optimal block selection and quant
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(innerXStart * scale, innerYStart * scale, (innerXEnd - innerXStart) * scale, (innerYEnd - innerYStart) * scale);
 
-          // Draw core blocks if selected - fill entire inner hollow space
+          // Draw core blocks - simple and clear visualization
           if (project.core_materials && project.core_materials.length > 0) {
             const innerLength = innerXEnd - innerXStart;
             const innerWidth = innerYEnd - innerYStart;
             
-            // Get all core materials that have quantity > 0
+            // Filter valid core materials
             const validCoreMaterials = project.core_materials.filter(item => {
               const mat = inventory.find(m => m.id === item.material_id);
               return mat && item.quantity > 0;
             });
             
             if (validCoreMaterials.length > 0) {
-              // Use first valid material to determine grid
               const firstCoreItem = validCoreMaterials[0];
               const firstCoreMaterial = inventory.find(m => m.id === firstCoreItem.material_id);
               
@@ -500,76 +499,48 @@ Return your response as a JSON object with the optimal block selection and quant
                 const blockL = firstCoreMaterial.length;
                 const blockW = firstCoreMaterial.width;
                 
-                // Calculate how many blocks fit (try both orientations)
-                const normalCols = Math.floor((innerLength + mortarGap) / (blockL + mortarGap));
-                const normalRows = Math.floor((innerWidth + mortarGap) / (blockW + mortarGap));
+                // Calculate grid WITHOUT adding mortar gap to dimensions
+                const normalCols = Math.floor(innerLength / (blockL + mortarGap));
+                const normalRows = Math.floor(innerWidth / (blockW + mortarGap));
                 
-                const rotatedCols = Math.floor((innerLength + mortarGap) / (blockW + mortarGap));
-                const rotatedRows = Math.floor((innerWidth + mortarGap) / (blockL + mortarGap));
+                const rotatedCols = Math.floor(innerLength / (blockW + mortarGap));
+                const rotatedRows = Math.floor(innerWidth / (blockL + mortarGap));
                 
-                // Use orientation that fits more blocks
                 const useRotated = (rotatedCols * rotatedRows) > (normalCols * normalRows);
                 const cols = useRotated ? rotatedCols : normalCols;
                 const rows = useRotated ? rotatedRows : normalRows;
                 const blockDrawL = useRotated ? blockW : blockL;
                 const blockDrawW = useRotated ? blockL : blockW;
                 
-                // No centering - start right at the inner edge
-                const offsetX = innerXStart;
-                const offsetY = innerYStart;
+                // Colors for different materials - bright and distinct
+                const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
                 
-                // Track which block we're on across all materials
                 let globalIndex = 0;
                 const totalCells = cols * rows;
                 
-                // Draw each material type sequentially
-                const colors = ['#8b7355', '#7c6a46', '#9a8266', '#6b5d42', '#a59173', '#b8a286'];
-                
                 validCoreMaterials.forEach((coreItem, matIndex) => {
-                  const quantity = coreItem.quantity;
                   ctx.fillStyle = colors[matIndex % colors.length];
                   
                   let placed = 0;
-                  while (placed < quantity && globalIndex < totalCells) {
+                  while (placed < coreItem.quantity && globalIndex < totalCells) {
                     const row = Math.floor(globalIndex / cols);
                     const col = globalIndex % cols;
                     
-                    const x = offsetX + col * (blockDrawL + mortarGap);
-                    const y = offsetY + row * (blockDrawW + mortarGap);
+                    const x = innerXStart + col * (blockDrawL + mortarGap);
+                    const y = innerYStart + row * (blockDrawW + mortarGap);
                     
-                    // Draw the block
+                    // Draw solid block
                     ctx.fillRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
+                    
+                    // Draw border for visibility
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
                     
                     placed++;
                     globalIndex++;
                   }
                 });
-                
-                // Draw grid lines for clarity
-                ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-                ctx.lineWidth = 0.5;
-                
-                // Calculate actual grid dimensions
-                const actualGridWidth = cols * blockDrawL + (cols > 0 ? (cols - 1) * mortarGap : 0);
-                const actualGridHeight = rows * blockDrawW + (rows > 0 ? (rows - 1) * mortarGap : 0);
-                
-                // Vertical lines
-                for (let col = 0; col <= cols; col++) {
-                  const x = offsetX + col * (blockDrawL + mortarGap);
-                  ctx.beginPath();
-                  ctx.moveTo(x * scale, offsetY * scale);
-                  ctx.lineTo(x * scale, (offsetY + actualGridHeight) * scale);
-                  ctx.stroke();
-                }
-                
-                // Horizontal lines
-                for (let row = 0; row <= rows; row++) {
-                  const y = offsetY + row * (blockDrawW + mortarGap);
-                  ctx.beginPath();
-                  ctx.moveTo(offsetX * scale, y * scale);
-                  ctx.lineTo((offsetX + actualGridWidth) * scale, y * scale);
-                  ctx.stroke();
-                }
               }
             }
           }
