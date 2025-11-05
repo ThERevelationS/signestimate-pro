@@ -4,7 +4,7 @@ import { BrickStoneProject, BrickStoneInventory, Settings } from "@/entities/all
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } => {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -227,65 +227,80 @@ export default function NewBrickStoneEstimate() {
         ctx.lineWidth = 2;
         ctx.strokeRect(0, 0, actualLength * scale, actualWidth * scale);
       } else {
-        // Draw background
+        // Background
         ctx.fillStyle = '#f8f8f8';
         ctx.fillRect(0, 0, actualLength * scale, actualWidth * scale);
 
-        // Brick dimensions in REAL inches (not scaled)
-        const brickLength = selectedMaterial.length;
-        const brickWidth = selectedMaterial.width;
-        const mortarGap = project.mortar_gap;
+        const brickL = selectedMaterial.length;  // e.g., 8"
+        const brickW = selectedMaterial.width;   // e.g., 4"
+        const mortarGap = project.mortar_gap;    // e.g., 0.375"
 
         if (project.base_type === 'solid_rectangular') {
-          // For solid: draw all bricks in a single layer (top view)
+          // Calculate exact brick counts
           const numBricksLength = calculations.bricksAlongLength;
           const numBricksWidth = calculations.bricksAlongWidth;
           
-          let courseIndex = 0;
-          for (let rowIndex = 0; rowIndex < numBricksWidth; rowIndex++) {
-            // Y position in REAL inches
-            const yReal = rowIndex * (brickWidth + mortarGap);
+          // Draw each course (row going across width)
+          for (let row = 0; row < numBricksWidth; row++) {
+            // Y position: each row is brick width + mortar gap apart
+            const yStart = row * (brickW + mortarGap);
+            const runningBondOffset = (row % 2) * (brickL / 2);
             
-            // Running bond: alternate courses shift by half brick
-            const offsetReal = (courseIndex % 2) * (brickLength / 2);
-            
-            for (let colIndex = 0; colIndex < numBricksLength; colIndex++) {
-              // X position in REAL inches (before offset)
-              let xReal = colIndex * (brickLength + mortarGap);
+            // Draw bricks in this course
+            for (let col = 0; col < numBricksLength; col++) {
+              // X position before offset
+              let xStart = col * (brickL + mortarGap);
               
               // Apply running bond offset
-              xReal -= offsetReal;
+              xStart -= runningBondOffset;
               
-              // Skip bricks that would go too far negative
-              if (xReal < -brickLength * 0.99) continue;
-              
-              // Clip brick to bounds
-              const brickXReal = Math.max(0, xReal);
-              const brickYReal = yReal;
-              const brickLengthReal = xReal < 0 ? brickLength + xReal : Math.min(brickLength, actualLength - xReal);
-              const brickWidthReal = brickWidth;
-              
-              // Check if brick fits
-              if (brickXReal + brickLengthReal > actualLength + 0.01) continue;
-              if (brickYReal + brickWidthReal > actualWidth + 0.01) continue;
-              
-              // Now scale everything for drawing
-              const drawX = brickXReal * scale;
-              const drawY = brickYReal * scale;
-              const drawLength = brickLengthReal * scale;
-              const drawWidth = brickWidthReal * scale;
-              
-              // Draw the brick
-              ctx.fillStyle = '#a8332e';
-              ctx.fillRect(drawX, drawY, drawLength, drawWidth);
-              ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
-              ctx.fillRect(drawX + 1, drawY + 1, Math.max(0, drawLength - 2), drawWidth - 2);
-              ctx.strokeStyle = '#e8ddd1';
-              ctx.lineWidth = Math.max(1, mortarGap * scale);
-              ctx.strokeRect(drawX, drawY, drawLength, drawWidth);
+              // Clip to boundaries - only draw if brick fits
+              if (xStart < 0 || xStart + brickL > actualLength) {
+                // Partial brick at edge - calculate visible portion
+                const visibleXStart = Math.max(0, xStart);
+                const visibleXEnd = Math.min(actualLength, xStart + brickL);
+                const visibleLength = visibleXEnd - visibleXStart;
+                
+                if (visibleLength < brickL * 0.1) continue; // Skip if too small
+                
+                // Draw the visible portion
+                ctx.fillStyle = '#a8332e';
+                ctx.fillRect(visibleXStart * scale, yStart * scale, visibleLength * scale, brickW * scale);
+                ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
+                ctx.fillRect(visibleXStart * scale + 1, yStart * scale + 1, Math.max(0, visibleLength * scale - 2), brickW * scale - 2);
+              } else {
+                // Full brick
+                ctx.fillStyle = '#a8332e';
+                ctx.fillRect(xStart * scale, yStart * scale, brickL * scale, brickW * scale);
+                ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
+                ctx.fillRect(xStart * scale + 1, yStart * scale + 1, brickL * scale - 2, brickW * scale - 2);
+              }
             }
-            courseIndex++;
           }
+          
+          // Draw mortar gaps (the gaps between bricks)
+          ctx.fillStyle = '#e8ddd1';
+          
+          // Horizontal mortar gaps (between courses)
+          for (let row = 1; row < numBricksWidth; row++) {
+            const yGap = row * (brickW + mortarGap) - mortarGap;
+            ctx.fillRect(0, yGap * scale, actualLength * scale, mortarGap * scale);
+          }
+          
+          // Vertical mortar gaps (between bricks in same course)
+          for (let row = 0; row < numBricksWidth; row++) {
+            const yStart = row * (brickW + mortarGap);
+            const runningBondOffset = (row % 2) * (brickL / 2);
+            
+            for (let col = 1; col < numBricksLength; col++) {
+              let xGap = col * (brickL + mortarGap) - mortarGap - runningBondOffset;
+              
+              if (xGap >= 0 && xGap + mortarGap <= actualLength) {
+                ctx.fillRect(xGap * scale, yStart * scale, mortarGap * scale, brickW * scale);
+              }
+            }
+          }
+          
         } else if (project.base_type === 'hollow_rectangular') {
           const wallThickness = project.layers * selectedMaterial.width;
           const innerXStart = wallThickness;
@@ -294,129 +309,181 @@ export default function NewBrickStoneEstimate() {
           const innerYEnd = actualWidth - wallThickness;
           
           const numBricksLength = calculations.bricksAlongLength;
-          const coursesInWall = Math.max(1, Math.round(wallThickness / (brickWidth + mortarGap)));
-          
-          // Calculate bricks for side walls (rotated)
+          const coursesInWall = Math.max(1, Math.round(wallThickness / (brickW + mortarGap)));
           const innerHeight = innerYEnd - innerYStart;
-          const numBricksInnerHeight = Math.max(1, Math.round(innerHeight / (brickLength + mortarGap)));
+          const numBricksInnerHeight = Math.max(1, Math.round(innerHeight / (brickL + mortarGap)));
           
-          // FRONT WALL (bottom)
-          let courseIndex = 0;
+          // FRONT WALL (bottom horizontal)
           for (let row = 0; row < coursesInWall; row++) {
-            const yReal = row * (brickWidth + mortarGap);
-            if (yReal + brickWidth > wallThickness + 0.01) break;
+            const yStart = row * (brickW + mortarGap);
+            if (yStart + brickW > wallThickness) break;
             
-            const offsetReal = (courseIndex % 2) * (brickLength / 2);
+            const runningBondOffset = (row % 2) * (brickL / 2);
             
             for (let col = 0; col < numBricksLength; col++) {
-              let xReal = col * (brickLength + mortarGap) - offsetReal;
-              if (xReal < -brickLength * 0.99) continue;
+              let xStart = col * (brickL + mortarGap) - runningBondOffset;
               
-              const brickXReal = Math.max(0, xReal);
-              const brickLengthReal = xReal < 0 ? brickLength + xReal : Math.min(brickLength, actualLength - xReal);
-              
-              if (brickXReal + brickLengthReal > actualLength + 0.01) continue;
-              
-              ctx.fillStyle = '#a8332e';
-              ctx.fillRect(brickXReal * scale, yReal * scale, brickLengthReal * scale, brickWidth * scale);
-              ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
-              ctx.fillRect(brickXReal * scale + 1, yReal * scale + 1, Math.max(0, brickLengthReal * scale - 2), brickWidth * scale - 2);
-              ctx.strokeStyle = '#e8ddd1';
-              ctx.lineWidth = Math.max(1, mortarGap * scale);
-              ctx.strokeRect(brickXReal * scale, yReal * scale, brickLengthReal * scale, brickWidth * scale);
+              if (xStart < 0 || xStart + brickL > actualLength) {
+                const visibleXStart = Math.max(0, xStart);
+                const visibleXEnd = Math.min(actualLength, xStart + brickL);
+                const visibleLength = visibleXEnd - visibleXStart;
+                if (visibleLength < brickL * 0.1) continue;
+                
+                ctx.fillStyle = '#a8332e';
+                ctx.fillRect(visibleXStart * scale, yStart * scale, visibleLength * scale, brickW * scale);
+                ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
+                ctx.fillRect(visibleXStart * scale + 1, yStart * scale + 1, Math.max(0, visibleLength * scale - 2), brickW * scale - 2);
+              } else {
+                ctx.fillStyle = '#a8332e';
+                ctx.fillRect(xStart * scale, yStart * scale, brickL * scale, brickW * scale);
+                ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
+                ctx.fillRect(xStart * scale + 1, yStart * scale + 1, brickL * scale - 2, brickW * scale - 2);
+              }
             }
-            courseIndex++;
           }
-
-          // BACK WALL (top)
-          courseIndex = 0;
+          
+          // BACK WALL (top horizontal)
           const backWallYStart = actualWidth - wallThickness;
           for (let row = 0; row < coursesInWall; row++) {
-            const yReal = backWallYStart + row * (brickWidth + mortarGap);
-            if (yReal + brickWidth > actualWidth + 0.01) break;
+            const yStart = backWallYStart + row * (brickW + mortarGap);
+            if (yStart + brickW > actualWidth) break;
             
-            const offsetReal = (courseIndex % 2) * (brickLength / 2);
+            const runningBondOffset = (row % 2) * (brickL / 2);
             
             for (let col = 0; col < numBricksLength; col++) {
-              let xReal = col * (brickLength + mortarGap) - offsetReal;
-              if (xReal < -brickLength * 0.99) continue;
+              let xStart = col * (brickL + mortarGap) - runningBondOffset;
               
-              const brickXReal = Math.max(0, xReal);
-              const brickLengthReal = xReal < 0 ? brickLength + xReal : Math.min(brickLength, actualLength - xReal);
-              
-              if (brickXReal + brickLengthReal > actualLength + 0.01) continue;
-              
-              ctx.fillStyle = '#a8332e';
-              ctx.fillRect(brickXReal * scale, yReal * scale, brickLengthReal * scale, brickWidth * scale);
-              ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
-              ctx.fillRect(brickXReal * scale + 1, yReal * scale + 1, Math.max(0, brickLengthReal * scale - 2), brickWidth * scale - 2);
-              ctx.strokeStyle = '#e8ddd1';
-              ctx.lineWidth = Math.max(1, mortarGap * scale);
-              ctx.strokeRect(brickXReal * scale, yReal * scale, brickLengthReal * scale, brickWidth * scale);
+              if (xStart < 0 || xStart + brickL > actualLength) {
+                const visibleXStart = Math.max(0, xStart);
+                const visibleXEnd = Math.min(actualLength, xStart + brickL);
+                const visibleLength = visibleXEnd - visibleXStart;
+                if (visibleLength < brickL * 0.1) continue;
+                
+                ctx.fillStyle = '#a8332e';
+                ctx.fillRect(visibleXStart * scale, yStart * scale, visibleLength * scale, brickW * scale);
+                ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
+                ctx.fillRect(visibleXStart * scale + 1, yStart * scale + 1, Math.max(0, visibleLength * scale - 2), brickW * scale - 2);
+              } else {
+                ctx.fillStyle = '#a8332e';
+                ctx.fillRect(xStart * scale, yStart * scale, brickL * scale, brickW * scale);
+                ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
+                ctx.fillRect(xStart * scale + 1, yStart * scale + 1, brickL * scale - 2, brickW * scale - 2);
+              }
             }
-            courseIndex++;
           }
-
-          // LEFT WALL (bricks rotated 90°)
-          courseIndex = 0;
+          
+          // LEFT WALL (vertical - bricks rotated 90°)
           for (let col = 0; col < coursesInWall; col++) {
-            const xReal = col * (brickWidth + mortarGap);
-            if (xReal + brickWidth > wallThickness + 0.01) break;
+            const xStart = col * (brickW + mortarGap);
+            if (xStart + brickW > wallThickness) break;
             
-            const offsetReal = (courseIndex % 2) * (brickLength / 2);
+            const runningBondOffset = (col % 2) * (brickL / 2);
             
             for (let row = 0; row < numBricksInnerHeight; row++) {
-              let yReal = innerYStart + row * (brickLength + mortarGap) - offsetReal;
-              if (yReal < innerYStart - brickLength * 0.99) continue;
+              let yStart = innerYStart + row * (brickL + mortarGap) - runningBondOffset;
               
-              const brickYReal = Math.max(innerYStart, yReal);
-              const brickLengthReal = yReal < innerYStart ? brickLength + (yReal - innerYStart) : Math.min(brickLength, innerYEnd - yReal);
-              
-              if (brickYReal + brickLengthReal > innerYEnd + 0.01) continue;
-              
-              ctx.fillStyle = '#a8332e';
-              ctx.fillRect(xReal * scale, brickYReal * scale, brickWidth * scale, brickLengthReal * scale);
-              ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
-              ctx.fillRect(xReal * scale + 1, brickYReal * scale + 1, brickWidth * scale - 2, Math.max(0, brickLengthReal * scale - 2));
-              ctx.strokeStyle = '#e8ddd1';
-              ctx.lineWidth = Math.max(1, mortarGap * scale);
-              ctx.strokeRect(xReal * scale, brickYReal * scale, brickWidth * scale, brickLengthReal * scale);
+              if (yStart < innerYStart || yStart + brickL > innerYEnd) {
+                const visibleYStart = Math.max(innerYStart, yStart);
+                const visibleYEnd = Math.min(innerYEnd, yStart + brickL);
+                const visibleLength = visibleYEnd - visibleYStart;
+                if (visibleLength < brickL * 0.1) continue;
+                
+                ctx.fillStyle = '#a8332e';
+                ctx.fillRect(xStart * scale, visibleYStart * scale, brickW * scale, visibleLength * scale);
+                ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
+                ctx.fillRect(xStart * scale + 1, visibleYStart * scale + 1, brickW * scale - 2, Math.max(0, visibleLength * scale - 2));
+              } else {
+                ctx.fillStyle = '#a8332e';
+                ctx.fillRect(xStart * scale, yStart * scale, brickW * scale, brickL * scale);
+                ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
+                ctx.fillRect(xStart * scale + 1, yStart * scale + 1, brickW * scale - 2, brickL * scale - 2);
+              }
             }
-            courseIndex++;
           }
-
-          // RIGHT WALL (bricks rotated 90°)
-          courseIndex = 0;
+          
+          // RIGHT WALL (vertical - bricks rotated 90°)
           const rightWallXStart = actualLength - wallThickness;
           for (let col = 0; col < coursesInWall; col++) {
-            const xReal = rightWallXStart + col * (brickWidth + mortarGap);
-            if (xReal + brickWidth > actualLength + 0.01) break;
+            const xStart = rightWallXStart + col * (brickW + mortarGap);
+            if (xStart + brickW > actualLength) break;
             
-            const offsetReal = (courseIndex % 2) * (brickLength / 2);
+            const runningBondOffset = (col % 2) * (brickL / 2);
             
             for (let row = 0; row < numBricksInnerHeight; row++) {
-              let yReal = innerYStart + row * (brickLength + mortarGap) - offsetReal;
-              if (yReal < innerYStart - brickLength * 0.99) continue;
+              let yStart = innerYStart + row * (brickL + mortarGap) - runningBondOffset;
               
-              const brickYReal = Math.max(innerYStart, yReal);
-              const brickLengthReal = yReal < innerYStart ? brickLength + (yReal - innerYStart) : Math.min(brickLength, innerYEnd - yReal);
-              
-              if (brickYReal + brickLengthReal > innerYEnd + 0.01) continue;
-              
-              ctx.fillStyle = '#a8332e';
-              ctx.fillRect(xReal * scale, brickYReal * scale, brickWidth * scale, brickLengthReal * scale);
-              ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
-              ctx.fillRect(xReal * scale + 1, brickYReal * scale + 1, brickWidth * scale - 2, Math.max(0, brickLengthReal * scale - 2));
-              ctx.strokeStyle = '#e8ddd1';
-              ctx.lineWidth = Math.max(1, mortarGap * scale);
-              ctx.strokeRect(xReal * scale, brickYReal * scale, brickWidth * scale, brickLengthReal * scale);
+              if (yStart < innerYStart || yStart + brickL > innerYEnd) {
+                const visibleYStart = Math.max(innerYStart, yStart);
+                const visibleYEnd = Math.min(innerYEnd, yStart + brickL);
+                const visibleLength = visibleYEnd - visibleYStart;
+                if (visibleLength < brickL * 0.1) continue;
+                
+                ctx.fillStyle = '#a8332e';
+                ctx.fillRect(xStart * scale, visibleYStart * scale, brickW * scale, visibleLength * scale);
+                ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
+                ctx.fillRect(xStart * scale + 1, visibleYStart * scale + 1, brickW * scale - 2, Math.max(0, visibleLength * scale - 2));
+              } else {
+                ctx.fillStyle = '#a8332e';
+                ctx.fillRect(xStart * scale, yStart * scale, brickW * scale, brickL * scale);
+                ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
+                ctx.fillRect(xStart * scale + 1, yStart * scale + 1, brickW * scale - 2, brickL * scale - 2);
+              }
             }
-            courseIndex++;
           }
           
           // Fill hollow center
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(innerXStart * scale, innerYStart * scale, (innerXEnd - innerXStart) * scale, (innerYEnd - innerYStart) * scale);
+
+
+          // Draw mortar gaps for hollow rectangular structure
+          ctx.fillStyle = '#e8ddd1';
+
+          // Horizontal mortar gaps for front and back walls
+          for (let row = 1; row < coursesInWall; row++) {
+              const yGapFront = row * (brickW + mortarGap) - mortarGap;
+              ctx.fillRect(0, yGapFront * scale, actualLength * scale, mortarGap * scale);
+
+              const yGapBack = backWallYStart + row * (brickW + mortarGap) - mortarGap;
+              ctx.fillRect(0, yGapBack * scale, actualLength * scale, mortarGap * scale);
+          }
+
+          // Vertical mortar gaps for front and back walls
+          for (let row = 0; row < coursesInWall; row++) {
+              const yStartFront = row * (brickW + mortarGap);
+              const yStartBack = backWallYStart + row * (brickW + mortarGap);
+              const runningBondOffset = (row % 2) * (brickL / 2);
+
+              for (let col = 1; col < numBricksLength; col++) {
+                  let xGap = col * (brickL + mortarGap) - mortarGap - runningBondOffset;
+                  if (xGap >= 0 && xGap + mortarGap <= actualLength) {
+                      ctx.fillRect(xGap * scale, yStartFront * scale, mortarGap * scale, brickW * scale);
+                      ctx.fillRect(xGap * scale, yStartBack * scale, mortarGap * scale, brickW * scale);
+                  }
+              }
+          }
+
+          // Horizontal mortar gaps for left and right walls (bricks rotated)
+          for (let row = 1; row < numBricksInnerHeight; row++) {
+              const yGap = innerYStart + row * (brickL + mortarGap) - mortarGap;
+              if (yGap >= innerYStart && yGap + mortarGap <= innerYEnd) { // Ensure gap is within inner region
+                  ctx.fillRect(0, yGap * scale, wallThickness * scale, mortarGap * scale); // Left wall
+                  ctx.fillRect(rightWallXStart * scale, yGap * scale, wallThickness * scale, mortarGap * scale); // Right wall
+              }
+          }
+          
+          // Vertical mortar gaps for left and right walls (bricks rotated)
+          for (let col = 1; col < coursesInWall; col++) {
+              const xGapLeft = col * (brickW + mortarGap) - mortarGap;
+              const xGapRight = rightWallXStart + col * (brickW + mortarGap) - mortarGap;
+              
+              if (xGapLeft >= 0 && xGapLeft + mortarGap <= wallThickness) {
+                  ctx.fillRect(xGapLeft * scale, innerYStart * scale, mortarGap * scale, (innerYEnd - innerYStart) * scale); // Left wall
+              }
+              if (xGapRight >= rightWallXStart && xGapRight + mortarGap <= actualLength) {
+                  ctx.fillRect(xGapRight * scale, innerYStart * scale, mortarGap * scale, (innerYEnd - innerYStart) * scale); // Right wall
+              }
+          }
         }
         
         // Draw borders
@@ -449,7 +516,7 @@ export default function NewBrickStoneEstimate() {
         
         ctx.font = '12px sans-serif';
         ctx.fillStyle = '#64748b';
-        ctx.fillText('TOP VIEW (Whole Bricks)', (actualLength * scale) / 2, actualWidth * scale + 25);
+        ctx.fillText('TOP VIEW', (actualLength * scale) / 2, actualWidth * scale + 25);
         
         if (selectedMaterial && project.layers > 1) {
           ctx.font = '10px sans-serif';
