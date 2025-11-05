@@ -190,6 +190,8 @@ export default function NewBrickStoneEstimate() {
     const actualHeight = coursesHigh * brickH + (coursesHigh - 1) * mortarGap;
     
     // Calculate inner dimensions of the hollow space
+    const innerXStart = wallThickness;
+    const innerYStart = wallThickness; // Assuming wallThickness is same for length/width (due to brick orientation)
     const innerLength = actualLength - 2 * wallThickness;
     const innerWidth = actualWidth - 2 * wallThickness;
     const innerHeight = actualHeight;
@@ -473,9 +475,9 @@ Return your response as a JSON object with the optimal block selection and quant
           
           // Fill hollow center first
           const innerXStart = wallThickness;
-          const innerYStart = frontWallEnd;
+          const innerYStart = frontWallEnd; // Corrected to use frontWallEnd for inner cavity Y-start
           const innerXEnd = actualLength - wallThickness;
-          const innerYEnd = backWallStart;
+          const innerYEnd = backWallStart; // Corrected to use backWallStart for inner cavity Y-end
           
           const innerLength = innerXEnd - innerXStart;
           const innerWidth = innerYEnd - innerYStart;
@@ -484,7 +486,7 @@ Return your response as a JSON object with the optimal block selection and quant
           ctx.fillStyle = '#f5f5f5';
           ctx.fillRect(innerXStart * scale, innerYStart * scale, innerLength * scale, innerWidth * scale);
 
-          // Draw core blocks as actual individual blocks in a grid
+          // Draw core blocks around the perimeter of the hollow space
           if (project.core_materials && project.core_materials.length > 0) {
             const validCoreMaterials = project.core_materials.filter(item => {
               const mat = inventory.find(m => m.id === item.material_id);
@@ -492,30 +494,12 @@ Return your response as a JSON object with the optimal block selection and quant
             });
             
             if (validCoreMaterials.length > 0) {
-              const firstCoreItem = validCoreMaterials[0]; // Assuming for visualization simplicity, one type defines the grid
+              const firstCoreItem = validCoreMaterials[0];
               const firstCoreMaterial = inventory.find(m => m.id === firstCoreItem.material_id);
               
               if (firstCoreMaterial) {
                 const blockL = firstCoreMaterial.length;
                 const blockW = firstCoreMaterial.width;
-                
-                // Calculate grid dimensions (blocks that fit)
-                // N = floor((total_dim + mortar_gap) / (block_dim + mortar_gap))
-                const normalCols = Math.floor((innerLength + mortarGap) / (blockL + mortarGap));
-                const normalRows = Math.floor((innerWidth + mortarGap) / (blockW + mortarGap));
-                const rotatedCols = Math.floor((innerLength + mortarGap) / (blockW + mortarGap));
-                const rotatedRows = Math.floor((innerWidth + mortarGap) / (blockL + mortarGap));
-                
-                // Pick best orientation based on total block count
-                const totalNormalBlocks = normalCols * normalRows;
-                const totalRotatedBlocks = rotatedCols * rotatedRows;
-
-                const useRotated = totalRotatedBlocks > totalNormalBlocks;
-
-                const cols = useRotated ? rotatedCols : normalCols;
-                const rows = useRotated ? rotatedRows : normalRows;
-                const blockDrawL = useRotated ? blockW : blockL;
-                const blockDrawW = useRotated ? blockL : blockW;
                 
                 // Colors for different materials
                 const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
@@ -523,38 +507,85 @@ Return your response as a JSON object with the optimal block selection and quant
                 // Calculate total user blocks for allocation
                 const totalUserBlocks = validCoreMaterials.reduce((sum, item) => sum + item.quantity, 0);
                 
-                // Draw every single block position in the grid
                 let blockIndex = 0;
-                for (let row = 0; row < rows; row++) {
-                  for (let col = 0; col < cols; col++) {
-                    const x = innerXStart + col * (blockDrawL + mortarGap);
-                    const y = innerYStart + row * (blockDrawW + mortarGap);
-                    
-                    // Determine which material this block belongs to
-                    if (blockIndex < totalUserBlocks) {
-                      let cumulativeCount = 0;
-                      let materialIndex = 0;
-                      for (let i = 0; i < validCoreMaterials.length; i++) {
-                        cumulativeCount += validCoreMaterials[i].quantity;
-                        if (blockIndex < cumulativeCount) {
-                          materialIndex = i;
-                          break;
-                        }
-                      }
-                      ctx.fillStyle = colors[materialIndex % colors.length];
-                    } else {
-                      // Empty space - light gray to show where more blocks could go
-                      ctx.fillStyle = '#d1d5db';
+                
+                // Helper function to get material color for current block
+                const getMaterialColor = () => {
+                  if (blockIndex >= totalUserBlocks) return '#d1d5db'; // gray for unfilled
+                  
+                  let cumulativeCount = 0;
+                  for (let i = 0; i < validCoreMaterials.length; i++) {
+                    cumulativeCount += validCoreMaterials[i].quantity;
+                    if (blockIndex < cumulativeCount) {
+                      return colors[i % colors.length];
                     }
+                  }
+                  return '#d1d5db';
+                };
+                
+                // Draw blocks around the perimeter in a rectangular ring
+                
+                // FRONT INNER WALL (horizontal blocks along length)
+                const numBlocksFrontInner = Math.floor((innerLength + mortarGap) / (blockL + mortarGap));
+                for (let i = 0; i < numBlocksFrontInner; i++) {
+                  const x = innerXStart + i * (blockL + mortarGap);
+                  const y = innerYStart;
+                  
+                  ctx.fillStyle = getMaterialColor();
+                  ctx.fillRect(x * scale, y * scale, blockL * scale, blockW * scale);
+                  ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+                  ctx.lineWidth = 0.5;
+                  ctx.strokeRect(x * scale, y * scale, blockL * scale, blockW * scale);
+                  blockIndex++;
+                }
+                
+                // BACK INNER WALL (horizontal blocks along length)
+                const numBlocksBackInner = Math.floor((innerLength + mortarGap) / (blockL + mortarGap));
+                for (let i = 0; i < numBlocksBackInner; i++) {
+                  const x = innerXStart + i * (blockL + mortarGap);
+                  const y = innerYEnd - blockW;
+                  
+                  ctx.fillStyle = getMaterialColor();
+                  ctx.fillRect(x * scale, y * scale, blockL * scale, blockW * scale);
+                  ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+                  ctx.lineWidth = 0.5;
+                  ctx.strokeRect(x * scale, y * scale, blockL * scale, blockW * scale);
+                  blockIndex++;
+                }
+                
+                // Calculate inner side wall area (excluding corners already covered)
+                const sideWallStart = innerYStart + blockW + mortarGap;
+                const sideWallEnd = innerYEnd - blockW - mortarGap;
+                const sideWallLength = sideWallEnd - sideWallStart;
+                
+                // LEFT INNER WALL (vertical blocks along width, excluding corners)
+                if (sideWallLength > 0) {
+                  const numBlocksLeftInner = Math.floor((sideWallLength + mortarGap) / (blockL + mortarGap));
+                  for (let i = 0; i < numBlocksLeftInner; i++) {
+                    const x = innerXStart;
+                    const y = sideWallStart + i * (blockL + mortarGap);
                     
-                    // Draw the block
-                    ctx.fillRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
-                    
-                    // Draw border
+                    ctx.fillStyle = getMaterialColor();
+                    ctx.fillRect(x * scale, y * scale, blockW * scale, blockL * scale);
                     ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
                     ctx.lineWidth = 0.5;
-                    ctx.strokeRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
+                    ctx.strokeRect(x * scale, y * scale, blockW * scale, blockL * scale);
+                    blockIndex++;
+                  }
+                }
+                
+                // RIGHT INNER WALL (vertical blocks along width, excluding corners)
+                if (sideWallLength > 0) {
+                  const numBlocksRightInner = Math.floor((sideWallLength + mortarGap) / (blockL + mortarGap));
+                  for (let i = 0; i < numBlocksRightInner; i++) {
+                    const x = innerXEnd - blockW;
+                    const y = sideWallStart + i * (blockL + mortarGap);
                     
+                    ctx.fillStyle = getMaterialColor();
+                    ctx.fillRect(x * scale, y * scale, blockW * scale, blockL * scale);
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+                    ctx.lineWidth = 0.5;
+                    ctx.strokeRect(x * scale, y * scale, blockW * scale, blockL * scale);
                     blockIndex++;
                   }
                 }
