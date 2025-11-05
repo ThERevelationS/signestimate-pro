@@ -480,72 +480,92 @@ Return your response as a JSON object with the optimal block selection and quant
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(innerXStart * scale, innerYStart * scale, (innerXEnd - innerXStart) * scale, (innerYEnd - innerYStart) * scale);
 
-          // Draw core blocks if selected - fill entire inner space with consistent orientation
+          // Draw core blocks if selected - fill entire inner hollow space
           if (project.core_materials && project.core_materials.length > 0) {
             const innerLength = innerXEnd - innerXStart;
             const innerWidth = innerYEnd - innerYStart;
             
-            // Determine optimal orientation ONCE for all materials (using first material as reference)
-            const firstCoreMaterialItem = project.core_materials[0];
-            const firstCoreMaterial = firstCoreMaterialItem ? inventory.find(m => m.id === firstCoreMaterialItem.material_id) : null;
+            // Use first material to determine grid layout
+            const firstCoreItem = project.core_materials[0];
+            const firstCoreMaterial = firstCoreItem ? inventory.find(m => m.id === firstCoreItem.material_id) : null;
             
-            let blockDrawLength = 0;
-            let blockDrawWidth = 0;
-            let blocksPerRow = 0;
-            let totalRows = 0;
-
             if (firstCoreMaterial) {
               const coreL = firstCoreMaterial.length;
               const coreW = firstCoreMaterial.width;
               
-              // Test both orientations
-              const normalFitLength = Math.floor((innerLength + mortarGap) / (coreL + mortarGap));
-              const normalFitWidth = Math.floor((innerWidth + mortarGap) / (coreW + mortarGap));
+              // Test both orientations to maximize fill
+              const normalFitLength = Math.floor(innerLength / (coreL + mortarGap));
+              const normalFitWidth = Math.floor(innerWidth / (coreW + mortarGap));
               const normalTotal = normalFitLength * normalFitWidth;
               
-              const rotatedFitLength = Math.floor((innerLength + mortarGap) / (coreW + mortarGap));
-              const rotatedFitWidth = Math.floor((innerWidth + mortarGap) / (coreL + mortarGap));
+              const rotatedFitLength = Math.floor(innerLength / (coreW + mortarGap));
+              const rotatedFitWidth = Math.floor(innerWidth / (coreL + mortarGap));
               const rotatedTotal = rotatedFitLength * rotatedFitWidth;
               
-              // Use orientation that fits more blocks - APPLY TO ALL MATERIALS
+              // Choose orientation that fits more blocks
               const useRotated = rotatedTotal > normalTotal;
-              blocksPerRow = useRotated ? rotatedFitLength : normalFitLength;
-              totalRows = useRotated ? rotatedFitWidth : normalFitWidth;
-              blockDrawLength = useRotated ? coreW : coreL;
-              blockDrawWidth = useRotated ? coreL : coreW;
-            }
-            
-            // Track position across ALL materials using shared grid
-            let globalBlockIndex = 0;
-            
-            // Draw each core material type sequentially
-            project.core_materials.forEach((coreItem, materialIndex) => {
-              const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
-              if (!coreMaterial || coreItem.quantity <= 0 || blocksPerRow === 0 || totalRows === 0) return; // Ensure calculated grid is valid
+              const blocksPerRow = useRotated ? rotatedFitLength : normalFitLength;
+              const totalRows = useRotated ? rotatedFitWidth : normalFitWidth;
+              const blockDrawLength = useRotated ? coreW : coreL;
+              const blockDrawWidth = useRotated ? coreL : coreW;
               
-              // Different colors for different materials
-              const colors = ['#7c6a46', '#8b7355', '#9a8266', '#6b5d42', '#a59173', '#b8a286'];
-              ctx.fillStyle = colors[materialIndex % colors.length];
+              // Track position for sequential filling
+              let globalBlockIndex = 0;
+              const maxBlocks = blocksPerRow * totalRows;
               
-              const targetBlocks = coreItem.quantity;
-              let blocksPlacedThisMaterial = 0;
-              
-              // Fill using the shared grid pattern
-              while (blocksPlacedThisMaterial < targetBlocks && globalBlockIndex < (blocksPerRow * totalRows)) {
-                const row = Math.floor(globalBlockIndex / blocksPerRow);
-                const col = globalBlockIndex % blocksPerRow;
+              // Draw each core material sequentially
+              project.core_materials.forEach((coreItem, materialIndex) => {
+                const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
+                if (!coreMaterial || coreItem.quantity <= 0) return;
                 
-                // Calculate position using consistent block dimensions
+                // Color coding for different materials
+                const colors = ['#8b7355', '#7c6a46', '#9a8266', '#6b5d42', '#a59173', '#b8a286'];
+                ctx.fillStyle = colors[materialIndex % colors.length];
+                
+                let blocksPlaced = 0;
+                const targetBlocks = coreItem.quantity;
+                
+                // Fill the hollow space row by row
+                while (blocksPlaced < targetBlocks && globalBlockIndex < maxBlocks) {
+                  const row = Math.floor(globalBlockIndex / blocksPerRow);
+                  const col = globalBlockIndex % blocksPerRow;
+                  
+                  // Calculate position with proper spacing
+                  const x = innerXStart + col * (blockDrawLength + mortarGap);
+                  const y = innerYStart + row * (blockDrawWidth + mortarGap);
+                  
+                  // Only draw if within bounds
+                  if (x + blockDrawLength <= innerXEnd && y + blockDrawWidth <= innerYEnd) {
+                    ctx.fillRect(x * scale, y * scale, blockDrawLength * scale, blockDrawWidth * scale);
+                    blocksPlaced++;
+                  }
+                  
+                  globalBlockIndex++;
+                }
+              });
+              
+              // Draw grid lines for clarity
+              ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+              ctx.lineWidth = 0.5;
+              
+              // Vertical grid lines
+              for (let col = 0; col <= blocksPerRow; col++) {
                 const x = innerXStart + col * (blockDrawLength + mortarGap);
-                const y = innerYStart + row * (blockDrawWidth + mortarGap);
-                
-                // Draw block with consistent dimensions
-                ctx.fillRect(x * scale, y * scale, blockDrawLength * scale, blockDrawWidth * scale);
-                
-                blocksPlacedThisMaterial++;
-                globalBlockIndex++;
+                ctx.beginPath();
+                ctx.moveTo(x * scale, innerYStart * scale);
+                ctx.lineTo(x * scale, innerYEnd * scale);
+                ctx.stroke();
               }
-            });
+              
+              // Horizontal grid lines
+              for (let row = 0; row <= totalRows; row++) {
+                const y = innerYStart + row * (blockDrawWidth + mortarGap);
+                ctx.beginPath();
+                ctx.moveTo(innerXStart * scale, y * scale);
+                ctx.lineTo(innerXEnd * scale, y * scale);
+                ctx.stroke();
+              }
+            }
           }
 
           // Draw borders
