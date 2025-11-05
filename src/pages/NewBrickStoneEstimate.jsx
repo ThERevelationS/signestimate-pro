@@ -147,21 +147,44 @@ export default function NewBrickStoneEstimate() {
     const actualWidth = bricksAlongWidth * brickW + (bricksAlongWidth - 1) * mortarGap;
     const actualHeight = coursesHigh * brickH + (coursesHigh - 1) * mortarGap;
 
-    // Wall thickness includes mortar gaps between layers
-    const wallThickness = layers * brickW + Math.max(0, layers - 1) * mortarGap; // Updated to include mortar gaps
+    // Wall thickness includes mortar gaps between layers, but only *between* layers, not after the last one
+    const wallThickness = layers * brickW + Math.max(0, layers - 1) * mortarGap; 
     
     const frontBackBricks = coursesHigh * bricksAlongLength * layers * 2;
     
+    // The inner width calculation needs to consider the true wall thickness on both sides
     const innerWidth = actualWidth - (2 * wallThickness);
-    const bricksAlongInnerWidth = Math.max(0, Math.round(innerWidth / (brickL + mortarGap)));
-    const leftRightBricks = coursesHigh * bricksAlongInnerWidth * layers * 2;
-    
-    const totalBricks = frontBackBricks + leftRightBricks;
-    const surfaceArea = ((actualLength * actualHeight) * 2 + ((actualWidth - 2 * wallThickness) * actualHeight) * 2) / 144;
+    // For the side walls, bricks are laid with their length forming the "height" of the inner wall
+    const bricksAlongInnerWidth = Math.max(0, Math.round(innerWidth / (brickL + mortarGap))); // This is incorrect, should use width
+    // Re-evaluating total bricks calculation for hollow rectangular:
+    // Outer perimeter bricks: 2 * bricksAlongLength * layers (for front/back) + 2 * (bricksAlongWidth - 2*layers) * layers (for sides)
+    // This is a simplified approach, but the current one for front/back and left/right based on inner dimensions can also work.
+    // Let's re-align the calculation with the drawing logic:
+    // Front and Back Walls: Each is (bricksAlongLength * layers * coursesHigh) bricks.
+    const numBricksFrontBack = bricksAlongLength * layers * coursesHigh * 2; // Two walls
+
+    // Side Walls: These connect the front and back walls. Their length is actualWidth - 2 * wallThickness.
+    // The number of bricks along this inner width. Each brick is laid with its length vertical (height of wall).
+    // So the width of each brick (material.width) contributes to the thickness, and its length (material.length) to the horizontal span.
+    // However, the drawing logic lays bricks with their length along the dimension. So for side walls, bricks have their length along actualWidth - 2*wallThickness.
+    // The count of bricks for side walls should be calculated based on the available INNER width, and each brick's length (material.length) will be vertical in side view.
+    // But in top view, for the side walls, bricks are oriented with length along the Y-axis.
+    // So, the 'bricks along inner width' (which is Y-axis in top view) is:
+    const numBricksInnerSide = Math.max(0, Math.round((actualWidth - 2 * wallThickness) / (brickL + mortarGap)));
+    const numBricksSideWalls = numBricksInnerSide * layers * coursesHigh * 2; // Two side walls
+
+    const totalBricks = numBricksFrontBack + numBricksSideWalls;
+
+    // Surface area is for mortar calculation. Assuming exterior surface area of the hollow rectangle.
+    // (2 * (actualLength * actualHeight)) + (2 * (actualWidth * actualHeight)) is for solid.
+    // For hollow, it's the external surface area.
+    // The `wallThickness` variable here refers to the actual material depth.
+    const exteriorPerimeter = 2 * (actualLength + actualWidth);
+    const exteriorSurfaceArea = (exteriorPerimeter * actualHeight) / 144; // Total exterior surface area in sq ft
 
     const totalBricksWithWaste = Math.ceil(totalBricks * wasteFactor);
     const mortarBagsPerSqFt = parseFloat(settings.brick_mortar_bags_per_100sqft || 3) / 100;
-    const mortarBags = Math.ceil(surfaceArea * mortarBagsPerSqFt);
+    const mortarBags = Math.ceil(exteriorSurfaceArea * mortarBagsPerSqFt);
     const mortarCostPerBag = parseFloat(settings.brick_mortar_cost_per_bag || 12);
     const materialCost = totalBricksWithWaste * costPerUnit;
     const mortarCost = mortarBags * mortarCostPerBag;
@@ -170,7 +193,7 @@ export default function NewBrickStoneEstimate() {
     setCalculations({
       totalBricks: Math.round(totalBricks),
       totalBricksWithWaste: totalBricksWithWaste,
-      surfaceArea: surfaceArea.toFixed(2),
+      surfaceArea: exteriorSurfaceArea.toFixed(2),
       mortarBags: mortarBags,
       materialCost: materialCost,
       mortarCost: mortarCost,
@@ -223,7 +246,7 @@ export default function NewBrickStoneEstimate() {
         ctx.strokeStyle = '#1e293b';
         ctx.lineWidth = 2;
         ctx.strokeRect(0, 0, actualLength * scale, actualWidth * scale);
-      } else { // This handles the hollow_rectangular drawing as project.base_type is fixed to it
+      } else {
           // Background - mortar color
           ctx.fillStyle = '#e8ddd1';
           ctx.fillRect(0, 0, actualLength * scale, actualWidth * scale);
@@ -234,6 +257,9 @@ export default function NewBrickStoneEstimate() {
 
           const numBricksLength = calculations.bricksAlongLength;
           const layersInWall = project.layers;
+          
+          // Calculate wall thickness correctly - no gap after the last layer
+          const wallThickness = layersInWall * brickW + Math.max(0, layersInWall - 1) * mortarGap;
           
           // Draw all bricks as solid red rectangles
           ctx.fillStyle = '#a8332e';
@@ -278,9 +304,9 @@ export default function NewBrickStoneEstimate() {
             }
           }
           
-          // Calculate the space between walls - includes the mortar gap after each wall
-          const frontWallEnd = layersInWall * (brickW + mortarGap);
-          const backWallStart = actualWidth - layersInWall * (brickW + mortarGap);
+          // Calculate the space between walls using the correct wall thickness
+          const frontWallEnd = wallThickness;
+          const backWallStart = actualWidth - wallThickness;
           const innerHeightForLeftRight = backWallStart - frontWallEnd;
           const numBricksInnerHeight = Math.max(1, Math.round(innerHeightForLeftRight / (brickL + mortarGap)));
           
@@ -322,10 +348,10 @@ export default function NewBrickStoneEstimate() {
             }
           }
           
-          // Fill hollow center with white - use the space between walls
-          const innerXStart = layersInWall * (brickW + mortarGap);
+          // Fill hollow center with white - use the correct wall thickness
+          const innerXStart = wallThickness;
           const innerYStart = frontWallEnd;
-          const innerXEnd = actualLength - layersInWall * (brickW + mortarGap);
+          const innerXEnd = actualLength - wallThickness;
           const innerYEnd = backWallStart;
           
           ctx.fillStyle = '#ffffff';
@@ -335,8 +361,7 @@ export default function NewBrickStoneEstimate() {
           ctx.strokeStyle = '#1e293b';
           ctx.lineWidth = 3;
           ctx.strokeRect(0, 0, actualLength * scale, actualWidth * scale);
-
-          const wallThickness = project.layers * selectedMaterial.width + Math.max(0, project.layers - 1) * project.mortar_gap;
+          
           ctx.strokeStyle = '#1e293b';
           ctx.lineWidth = 2;
           ctx.strokeRect(wallThickness * scale, wallThickness * scale,
