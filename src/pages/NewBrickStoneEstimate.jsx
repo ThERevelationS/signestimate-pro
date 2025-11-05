@@ -40,7 +40,7 @@ export default function NewBrickStoneEstimate() {
   const [calculations, setCalculations] = useState(null);
   const [settings, setSettings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving, setIsSaving] = false);
   const [showDimensions, setShowDimensions] = useState(true);
 
   useEffect(() => {
@@ -339,7 +339,7 @@ export default function NewBrickStoneEstimate() {
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(innerXStart * scale, innerYStart * scale, (innerXEnd - innerXStart) * scale, (innerYEnd - innerYStart) * scale);
 
-          // Draw core blocks if selected - following inner perimeter
+          // Draw core blocks if selected - fill entire inner space
           if (project.core_materials && project.core_materials.length > 0) {
             const innerLength = innerXEnd - innerXStart;
             const innerWidth = innerYEnd - innerYStart;
@@ -356,47 +356,21 @@ export default function NewBrickStoneEstimate() {
               const colors = ['#7c6a46', '#8b7355', '#9a8266', '#6b5d42', '#a0a0a0', '#c0c0c0'];
               ctx.fillStyle = colors[index % colors.length];
               
-              // Calculate how many blocks fit along each wall segment
-              const blocksAlongInnerLength = Math.max(0, Math.floor((innerLength + mortarGap) / (coreL + mortarGap)));
-              const blocksAlongInnerWidth = Math.max(0, Math.floor((innerWidth + mortarGap) / (coreL + mortarGap)));
+              // Calculate how many blocks fit in the inner space
+              const blocksAlongLength = Math.max(0, Math.floor((innerLength + mortarGap) / (coreL + mortarGap)));
+              const blocksAlongWidth = Math.max(0, Math.floor((innerWidth + mortarGap) / (coreW + mortarGap)));
               
               let blocksDrawn = 0;
               const targetBlocks = coreItem.quantity;
               
-              // Front inner wall
-              for (let col = 0; col < blocksAlongInnerLength && blocksDrawn < targetBlocks; col++) {
-                const x = innerXStart + col * (coreL + mortarGap);
-                const y = innerYStart;
-                ctx.fillRect(x * scale, y * scale, coreL * scale, coreW * scale);
-                blocksDrawn++;
-              }
-              
-              // Back inner wall
-              for (let col = 0; col < blocksAlongInnerLength && blocksDrawn < targetBlocks; col++) {
-                const x = innerXStart + col * (coreL + mortarGap);
-                const y = innerYEnd - coreW;
-                ctx.fillRect(x * scale, y * scale, coreL * scale, coreW * scale);
-                blocksDrawn++;
-              }
-              
-              // Left inner wall (excluding corners, as corners are typically covered by front/back wall blocks)
-              // This relies on coreW for thickness and coreL for length along the inner perimeter.
-              // To avoid drawing over corners already covered by front/back walls, we start drawing after one block width from the top,
-              // and ensure we don't draw past one block width from the bottom.
-              const effectiveBlocksAlongInnerWidthForSides = Math.max(0, blocksAlongInnerWidth - 2); // Assuming corners take 2 block positions
-              for (let row = 0; row < effectiveBlocksAlongInnerWidthForSides && blocksDrawn < targetBlocks; row++) {
-                const x = innerXStart; 
-                const y = innerYStart + coreW + row * (coreL + mortarGap); // Start after the "corner" block and then proceed with blocks of length coreL
-                ctx.fillRect(x * scale, y * scale, coreW * scale, coreL * scale); 
-                blocksDrawn++;
-              }
-              
-              // Right inner wall (excluding corners)
-              for (let row = 0; row < effectiveBlocksAlongInnerWidthForSides && blocksDrawn < targetBlocks; row++) {
-                const x = innerXEnd - coreW; 
-                const y = innerYStart + coreW + row * (coreL + mortarGap);
-                ctx.fillRect(x * scale, y * scale, coreW * scale, coreL * scale); 
-                blocksDrawn++;
+              // Fill the entire inner space with blocks in a grid pattern
+              for (let row = 0; row < blocksAlongWidth && blocksDrawn < targetBlocks; row++) {
+                for (let col = 0; col < blocksAlongLength && blocksDrawn < targetBlocks; col++) {
+                  const x = innerXStart + col * (coreL + mortarGap);
+                  const y = innerYStart + row * (coreW + mortarGap);
+                  ctx.fillRect(x * scale, y * scale, coreL * scale, coreW * scale);
+                  blocksDrawn++;
+                }
               }
             });
           }
