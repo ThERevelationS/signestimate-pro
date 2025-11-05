@@ -88,6 +88,11 @@ export default function NewBrickStoneEstimate() {
 
   useEffect(() => {
     drawVisualizations();
+    
+    // Add resize listener for responsive canvas
+    const handleResize = () => drawVisualizations();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [project, selectedMaterial, showDimensions, calculations]);
 
   const loadProjectForEdit = async (projectId, inventoryData) => {
@@ -386,13 +391,21 @@ Return your response as a JSON object with the optimal block selection and quant
 
     const drawTopView = () => {
       const canvas = topViewRef.current;
+      const container = canvas.parentElement;
+      const containerWidth = container.clientWidth;
+      const containerHeight = containerWidth; // Keep square aspect
+      
+      // Set canvas size to match container
+      canvas.width = containerWidth;
+      canvas.height = containerHeight;
+      
       const ctx = canvas.getContext('2d');
-      const padding = 40;
-      const availableWidth = 300 - (padding * 2);
-      const availableHeight = 300 - (padding * 2);
+      const padding = Math.max(40, containerWidth * 0.1);
+      const availableWidth = containerWidth - (padding * 2);
+      const availableHeight = containerHeight - (padding * 2);
       const scale = Math.min(availableWidth / actualLength, availableHeight / actualWidth);
 
-      ctx.clearRect(0, 0, 300, 300);
+      ctx.clearRect(0, 0, containerWidth, containerHeight);
       ctx.save();
       ctx.translate(padding, padding);
 
@@ -497,7 +510,6 @@ Return your response as a JSON object with the optimal block selection and quant
                 const blockL = firstCoreMaterial.length;
                 const blockW = firstCoreMaterial.width;
                 
-                // Calculate grid dimensions for optimal fit
                 const normalCols = Math.floor((innerLength + mortarGap) / (blockL + mortarGap));
                 const normalRows = Math.floor((innerWidth + mortarGap) / (blockW + mortarGap));
                 const rotatedCols = Math.floor((innerLength + mortarGap) / (blockW + mortarGap));
@@ -527,7 +539,6 @@ Return your response as a JSON object with the optimal block selection and quant
                     
                     if (x + blockDrawL * scale > (innerXStart + innerLength) * scale + 0.001 ||
                         y + blockDrawW * scale > (innerYStart + innerWidth) * scale + 0.001) {
-                        // If block goes out of bounds, skip drawing it
                         continue;
                     }
 
@@ -543,7 +554,7 @@ Return your response as a JSON object with the optimal block selection and quant
                       }
                       ctx.fillStyle = colors[materialIndex % colors.length];
                     } else {
-                      ctx.fillStyle = '#d1d5db'; // Gray for unfilled space
+                      ctx.fillStyle = '#d1d5db';
                     }
                     
                     ctx.fillRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
@@ -570,26 +581,29 @@ Return your response as a JSON object with the optimal block selection and quant
         }
 
       if (showDimensions) {
+        const fontSize = Math.max(12, containerWidth * 0.04);
         ctx.fillStyle = '#1e293b';
-        ctx.font = 'bold 14px sans-serif';
+        ctx.font = `bold ${fontSize}px sans-serif`;
         ctx.textAlign = 'center';
 
-        ctx.fillText(calculations.actualLength + '"', (actualLength * scale) / 2, -15);
+        ctx.fillText(calculations.actualLength + '"', (actualLength * scale) / 2, -fontSize * 1.2);
 
         ctx.save();
-        ctx.translate(-15, (actualWidth * scale) / 2);
+        ctx.translate(-fontSize * 1.2, (actualWidth * scale) / 2);
         ctx.rotate(-Math.PI / 2);
         ctx.fillText(calculations.actualWidth + '"', 0, 0);
         ctx.restore();
 
-        ctx.font = '12px sans-serif';
+        const labelFontSize = Math.max(10, containerWidth * 0.035);
+        ctx.font = `${labelFontSize}px sans-serif`;
         ctx.fillStyle = '#64748b';
-        ctx.fillText('TOP VIEW', (actualLength * scale) / 2, actualWidth * scale + 25);
+        ctx.fillText('TOP VIEW', (actualLength * scale) / 2, actualWidth * scale + fontSize * 2);
 
         if (selectedMaterial) {
-          ctx.font = '10px sans-serif';
+          const detailFontSize = Math.max(8, containerWidth * 0.03);
+          ctx.font = `${detailFontSize}px sans-serif`;
           ctx.fillText(`${calculations.bricksAlongLength} × ${calculations.bricksAlongWidth} bricks (1 layer)`,
-                      (actualLength * scale) / 2, actualWidth * scale + 38);
+                      (actualLength * scale) / 2, actualWidth * scale + fontSize * 3);
         }
       }
 
@@ -598,13 +612,20 @@ Return your response as a JSON object with the optimal block selection and quant
 
     const drawSideView = () => {
       const canvas = sideViewRef.current;
+      const container = canvas.parentElement;
+      const containerWidth = container.clientWidth;
+      const containerHeight = containerWidth;
+      
+      canvas.width = containerWidth;
+      canvas.height = containerHeight;
+      
       const ctx = canvas.getContext('2d');
-      const padding = 40;
-      const availableWidth = 300 - (padding * 2);
-      const availableHeight = 300 - (padding * 2);
+      const padding = Math.max(40, containerWidth * 0.1);
+      const availableWidth = containerWidth - (padding * 2);
+      const availableHeight = containerHeight - (padding * 2);
       const scale = Math.min(availableWidth / actualLength, availableHeight / actualHeight);
 
-      ctx.clearRect(0, 0, 300, 300);
+      ctx.clearRect(0, 0, containerWidth, containerHeight);
       ctx.save();
       ctx.translate(padding, padding);
 
@@ -657,26 +678,29 @@ Return your response as a JSON object with the optimal block selection and quant
       }
 
       if (showDimensions) {
+        const fontSize = Math.max(12, containerWidth * 0.04);
         ctx.fillStyle = '#1e293b';
-        ctx.font = 'bold 14px sans-serif';
+        ctx.font = `bold ${fontSize}px sans-serif`;
         ctx.textAlign = 'center';
 
-        ctx.fillText(calculations.actualLength + '"', (actualLength * scale) / 2, -15);
+        ctx.fillText(calculations.actualLength + '"', (actualLength * scale) / 2, -fontSize * 1.2);
 
         ctx.save();
-        ctx.translate(-15, (actualHeight * scale) / 2);
+        ctx.translate(-fontSize * 1.2, (actualHeight * scale) / 2);
         ctx.rotate(-Math.PI / 2);
         ctx.fillText(calculations.actualHeight + '"', 0, 0);
         ctx.restore();
 
-        ctx.font = '12px sans-serif';
+        const labelFontSize = Math.max(10, containerWidth * 0.035);
+        ctx.font = `${labelFontSize}px sans-serif`;
         ctx.fillStyle = '#64748b';
-        ctx.fillText('SIDE VIEW - Wall Material', (actualLength * scale) / 2, actualHeight * scale + 25);
+        ctx.fillText('SIDE VIEW - Wall Material', (actualLength * scale) / 2, actualHeight * scale + fontSize * 2);
 
         if (selectedMaterial && calculations) {
-          ctx.font = '10px sans-serif';
+          const detailFontSize = Math.max(8, containerWidth * 0.03);
+          ctx.font = `${detailFontSize}px sans-serif`;
           ctx.fillText(`${calculations.bricksAlongLength} × ${calculations.coursesHigh} courses`,
-                      (actualLength * scale) / 2, actualHeight * scale + 38);
+                      (actualLength * scale) / 2, actualHeight * scale + fontSize * 3);
         }
       }
 
@@ -685,10 +709,17 @@ Return your response as a JSON object with the optimal block selection and quant
 
     const drawCoreSideView = () => {
       const canvas = coreSideViewRef.current;
+      const container = canvas.parentElement;
+      const containerWidth = container.clientWidth;
+      const containerHeight = containerWidth;
+      
+      canvas.width = containerWidth;
+      canvas.height = containerHeight;
+      
       const ctx = canvas.getContext('2d');
-      const padding = 40;
-      const availableWidth = 300 - (padding * 2);
-      const availableHeight = 300 - (padding * 2);
+      const padding = Math.max(40, containerWidth * 0.1);
+      const availableWidth = containerWidth - (padding * 2);
+      const availableHeight = containerHeight - (padding * 2);
       
       const wallThickness = calculations.wallThickness;
       const innerLength = actualLength - (2 * wallThickness);
@@ -696,15 +727,13 @@ Return your response as a JSON object with the optimal block selection and quant
       
       const scale = Math.min(availableWidth / innerLength, availableHeight / innerHeight);
 
-      ctx.clearRect(0, 0, 300, 300);
+      ctx.clearRect(0, 0, containerWidth, containerHeight);
       ctx.save();
       ctx.translate(padding, padding);
 
-      // Background
       ctx.fillStyle = '#f5f5f5';
       ctx.fillRect(0, 0, innerLength * scale, innerHeight * scale);
 
-      // Draw core blocks
       if (project.core_materials && project.core_materials.length > 0) {
         const validCoreMaterials = project.core_materials.filter(item => {
           const mat = inventory.find(m => m.id === item.material_id);
@@ -719,7 +748,6 @@ Return your response as a JSON object with the optimal block selection and quant
             const blockL = firstCoreMaterial.length;
             const blockH = firstCoreMaterial.height;
             
-            // Calculate grid
             const cols = Math.floor((innerLength + mortarGap) / (blockL + mortarGap));
             const rows = Math.floor((innerHeight + mortarGap) / (blockH + mortarGap));
             
@@ -734,7 +762,6 @@ Return your response as a JSON object with the optimal block selection and quant
                 
                 if (x + blockL * scale > innerLength * scale + 0.001 ||
                     y + blockH * scale > innerHeight * scale + 0.001) {
-                    // If block goes out of bounds, skip drawing it
                     continue;
                 }
 
@@ -750,7 +777,7 @@ Return your response as a JSON object with the optimal block selection and quant
                   }
                   ctx.fillStyle = colors[materialIndex % colors.length];
                 } else {
-                  ctx.fillStyle = '#d1d5db'; // Gray for unfilled space
+                  ctx.fillStyle = '#d1d5db';
                 }
                 
                 ctx.fillRect(x * scale, y * scale, blockL * scale, blockH * scale);
@@ -765,27 +792,28 @@ Return your response as a JSON object with the optimal block selection and quant
         }
       }
 
-      // Border
       ctx.strokeStyle = '#1e293b';
       ctx.lineWidth = 2;
       ctx.strokeRect(0, 0, innerLength * scale, innerHeight * scale);
 
       if (showDimensions) {
+        const fontSize = Math.max(12, containerWidth * 0.04);
         ctx.fillStyle = '#1e293b';
-        ctx.font = 'bold 14px sans-serif';
+        ctx.font = `bold ${fontSize}px sans-serif`;
         ctx.textAlign = 'center';
 
-        ctx.fillText(innerLength.toFixed(2) + '"', (innerLength * scale) / 2, -15);
+        ctx.fillText(innerLength.toFixed(2) + '"', (innerLength * scale) / 2, -fontSize * 1.2);
 
         ctx.save();
-        ctx.translate(-15, (innerHeight * scale) / 2);
+        ctx.translate(-fontSize * 1.2, (innerHeight * scale) / 2);
         ctx.rotate(-Math.PI / 2);
         ctx.fillText(innerHeight.toFixed(2) + '"', 0, 0);
         ctx.restore();
 
-        ctx.font = '12px sans-serif';
+        const labelFontSize = Math.max(10, containerWidth * 0.035);
+        ctx.font = `${labelFontSize}px sans-serif`;
         ctx.fillStyle = '#64748b';
-        ctx.fillText('SIDE VIEW - Core Materials', (innerLength * scale) / 2, innerHeight * scale + 25);
+        ctx.fillText('SIDE VIEW - Core Materials', (innerLength * scale) / 2, innerHeight * scale + fontSize * 2);
       }
 
       ctx.restore();
@@ -905,18 +933,24 @@ Return your response as a JSON object with the optimal block selection and quant
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div>
+                <div className="grid md:grid-cols-3 gap-6">
+                  <div className="flex flex-col">
                     <h4 className="font-medium mb-2 text-center">Top View</h4>
-                    <canvas ref={topViewRef} width="300" height="300" className="border border-slate-200 rounded-lg bg-white w-full"></canvas>
+                    <div className="relative w-full aspect-square">
+                      <canvas ref={topViewRef} className="border border-slate-200 rounded-lg bg-white w-full h-full"></canvas>
+                    </div>
                   </div>
-                  <div>
+                  <div className="flex flex-col">
                     <h4 className="font-medium mb-2 text-center">Side View - Walls</h4>
-                    <canvas ref={sideViewRef} width="300" height="300" className="border border-slate-200 rounded-lg bg-white w-full"></canvas>
+                    <div className="relative w-full aspect-square">
+                      <canvas ref={sideViewRef} className="border border-slate-200 rounded-lg bg-white w-full h-full"></canvas>
+                    </div>
                   </div>
-                  <div>
+                  <div className="flex flex-col">
                     <h4 className="font-medium mb-2 text-center">Side View - Core</h4>
-                    <canvas ref={coreSideViewRef} width="300" height="300" className="border border-slate-200 rounded-lg bg-white w-full"></canvas>
+                    <div className="relative w-full aspect-square">
+                      <canvas ref={coreSideViewRef} className="border border-slate-200 rounded-lg bg-white w-full h-full"></canvas>
+                    </div>
                   </div>
                 </div>
               </CardContent>
