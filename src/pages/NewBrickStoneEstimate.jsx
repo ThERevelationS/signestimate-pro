@@ -485,25 +485,51 @@ export default function NewBrickStoneEstimate() {
   const handleMaterialSelect = (materialId) => {
     const material = inventory.find(m => m.id === materialId);
     setSelectedMaterial(material);
-    setProject(prev => ({
-      ...prev,
-      selected_material_id: materialId,
-      material_name: material ? material.material_name : "",
-      material_dimensions: material ? {
-        length: material.length,
-        width: material.width,
-        height: material.height
-      } : null
-    }));
+    
+    // Auto-select the same material for core unless user has already explicitly chosen one
+    if (!project.core_material_id && material) {
+      setSelectedCoreMaterial(material);
+      setProject(prev => ({
+        ...prev,
+        selected_material_id: materialId,
+        core_material_id: materialId, // Auto-fill with same material
+        material_name: material.material_name,
+        material_dimensions: {
+          length: material.length,
+          width: material.width,
+          height: material.height
+        }
+      }));
+    } else {
+      setProject(prev => ({
+        ...prev,
+        selected_material_id: materialId,
+        material_name: material ? material.material_name : "",
+        material_dimensions: material ? {
+          length: material.length,
+          width: material.width,
+          height: material.height
+        } : null
+      }));
+    }
   };
 
   const handleCoreMaterialSelect = (materialId) => {
-    const material = inventory.find(m => m.id === materialId);
-    setSelectedCoreMaterial(material);
-    setProject(prev => ({
-      ...prev,
-      core_material_id: materialId
-    }));
+    if (materialId === "" || materialId === null) {
+      // User explicitly chose to leave hollow
+      setSelectedCoreMaterial(null);
+      setProject(prev => ({
+        ...prev,
+        core_material_id: ""
+      }));
+    } else {
+      const material = inventory.find(m => m.id === materialId);
+      setSelectedCoreMaterial(material);
+      setProject(prev => ({
+        ...prev,
+        core_material_id: materialId
+      }));
+    }
   };
 
   const updateBrickCount = (dimension, delta) => {
