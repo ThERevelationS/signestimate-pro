@@ -18,6 +18,7 @@ export default function NewBrickStoneEstimate() {
   const editId = searchParams.get('edit');
   const topViewRef = useRef(null);
   const sideViewRef = useRef(null);
+  const coreSideViewRef = useRef(null); // New ref for core materials side view
 
   const [project, setProject] = useState({
     project_name: "",
@@ -374,7 +375,7 @@ Return your response as a JSON object with the optimal block selection and quant
   };
 
   const drawVisualizations = () => {
-    if (!topViewRef.current || !sideViewRef.current || !project.bricks_along_length || !calculations || !selectedMaterial) {
+    if (!topViewRef.current || !sideViewRef.current || !coreSideViewRef.current || !project.bricks_along_length || !calculations || !selectedMaterial) {
       return;
     }
 
@@ -399,9 +400,8 @@ Return your response as a JSON object with the optimal block selection and quant
         ctx.fillStyle = selectedMaterial ? '#dc2626' : '#cbd5e1';
         ctx.fillRect(0, 0, actualLength * scale, actualWidth * scale);
 
-        // Always draw as hollow rectangular now
         if (selectedMaterial) {
-          const wallThickness = calculations.wallThickness; // Use calculated wallThickness
+          const wallThickness = calculations.wallThickness;
           const innerX = wallThickness * scale;
           const innerY = wallThickness * scale;
           const innerW = (actualLength - 2 * wallThickness) * scale;
@@ -414,7 +414,6 @@ Return your response as a JSON object with the optimal block selection and quant
         ctx.lineWidth = 2;
         ctx.strokeRect(0, 0, actualLength * scale, actualWidth * scale);
       } else {
-          // Background - mortar color
           ctx.fillStyle = '#e8ddd1';
           ctx.fillRect(0, 0, actualLength * scale, actualWidth * scale);
 
@@ -426,28 +425,26 @@ Return your response as a JSON object with the optimal block selection and quant
           
           const wallThickness = calculations.wallThickness;
           
-          // Draw all wall bricks as solid red rectangles
           ctx.fillStyle = '#a8332e';
 
-          // FRONT WALL (single layer)
+          // FRONT WALL
           const yStartFront = 0;
           for (let col = 0; col < numBricksLength; col++) {
             let xStart = col * (brickL + mortarGap);
             ctx.fillRect(xStart * scale, yStartFront * scale, brickL * scale, brickW * scale);
           }
           
-          // BACK WALL (single layer)
+          // BACK WALL
           const yStartBack = actualWidth - brickW;
           for (let col = 0; col < numBricksLength; col++) {
             let xStart = col * (brickL + mortarGap);
             ctx.fillRect(xStart * scale, yStartBack * scale, brickL * scale, brickW * scale);
           }
           
-          // Side walls boundaries
           const frontWallEnd = wallThickness;
           const backWallStart = actualWidth - wallThickness;
           
-          // LEFT WALL (single layer) - numBricksWidth bricks
+          // LEFT WALL
           const xStartLeft = 0;
           for (let row = 0; row < numBricksWidth; row++) {
             let yStart = frontWallEnd + row * (brickL + mortarGap);
@@ -455,12 +452,12 @@ Return your response as a JSON object with the optimal block selection and quant
             const brickYEnd = Math.min(backWallStart, yStart + brickL);
             const visibleLength = brickYEnd - brickYStart;
             
-            if (visibleLength > 0.05) { // Ensure enough of the brick is visible (e.g., > 0.05 inch)
+            if (visibleLength > 0.05) {
               ctx.fillRect(xStartLeft * scale, brickYStart * scale, brickW * scale, visibleLength * scale);
             }
           }
           
-          // RIGHT WALL (single layer) - numBricksWidth bricks
+          // RIGHT WALL
           const xStartRight = actualLength - brickW;
           for (let row = 0; row < numBricksWidth; row++) {
             let yStart = frontWallEnd + row * (brickL + mortarGap);
@@ -468,25 +465,24 @@ Return your response as a JSON object with the optimal block selection and quant
             const brickYEnd = Math.min(backWallStart, yStart + brickL);
             const visibleLength = brickYEnd - brickYStart;
             
-            if (visibleLength > 0.05) { // Ensure enough of the brick is visible
+            if (visibleLength > 0.05) {
               ctx.fillRect(xStartRight * scale, brickYStart * scale, brickW * scale, visibleLength * scale);
             }
           }
           
-          // Fill hollow center first
+          // Fill hollow center with core blocks
           const innerXStart = wallThickness;
-          const innerYStart = frontWallEnd; // Corrected to use frontWallEnd for inner cavity Y-start
+          const innerYStart = frontWallEnd;
           const innerXEnd = actualLength - wallThickness;
-          const innerYEnd = backWallStart; // Corrected to use backWallStart for inner cavity Y-end
+          const innerYEnd = backWallStart;
           
           const innerLength = innerXEnd - innerXStart;
           const innerWidth = innerYEnd - innerYStart;
 
-          // Fill with light gray background first
           ctx.fillStyle = '#f5f5f5';
           ctx.fillRect(innerXStart * scale, innerYStart * scale, innerLength * scale, innerWidth * scale);
 
-          // Draw core blocks around the perimeter of the hollow space
+          // Draw core blocks filling the ENTIRE hollow space
           if (project.core_materials && project.core_materials.length > 0) {
             const validCoreMaterials = project.core_materials.filter(item => {
               const mat = inventory.find(m => m.id === item.material_id);
@@ -501,91 +497,60 @@ Return your response as a JSON object with the optimal block selection and quant
                 const blockL = firstCoreMaterial.length;
                 const blockW = firstCoreMaterial.width;
                 
-                // Colors for different materials
-                const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
+                // Calculate grid dimensions for optimal fit
+                const normalCols = Math.floor((innerLength + mortarGap) / (blockL + mortarGap));
+                const normalRows = Math.floor((innerWidth + mortarGap) / (blockW + mortarGap));
+                const rotatedCols = Math.floor((innerLength + mortarGap) / (blockW + mortarGap));
+                const rotatedRows = Math.floor((innerWidth + mortarGap) / (blockL + mortarGap));
                 
-                // Calculate total user blocks for allocation
+                let cols, rows, blockDrawL, blockDrawW;
+                if ((rotatedCols * rotatedRows) > (normalCols * normalRows)) {
+                  cols = rotatedCols;
+                  rows = rotatedRows;
+                  blockDrawL = blockW;
+                  blockDrawW = blockL;
+                } else {
+                  cols = normalCols;
+                  rows = normalRows;
+                  blockDrawL = blockL;
+                  blockDrawW = blockW;
+                }
+                
+                const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
                 const totalUserBlocks = validCoreMaterials.reduce((sum, item) => sum + item.quantity, 0);
                 
                 let blockIndex = 0;
-                
-                // Helper function to get material color for current block
-                const getMaterialColor = () => {
-                  if (blockIndex >= totalUserBlocks) return '#d1d5db'; // gray for unfilled
-                  
-                  let cumulativeCount = 0;
-                  for (let i = 0; i < validCoreMaterials.length; i++) {
-                    cumulativeCount += validCoreMaterials[i].quantity;
-                    if (blockIndex < cumulativeCount) {
-                      return colors[i % colors.length];
+                for (let row = 0; row < rows; row++) {
+                  for (let col = 0; col < cols; col++) {
+                    const x = innerXStart + col * (blockDrawL + mortarGap);
+                    const y = innerYStart + row * (blockDrawW + mortarGap);
+                    
+                    if (x + blockDrawL * scale > (innerXStart + innerLength) * scale + 0.001 ||
+                        y + blockDrawW * scale > (innerYStart + innerWidth) * scale + 0.001) {
+                        // If block goes out of bounds, skip drawing it
+                        continue;
                     }
-                  }
-                  return '#d1d5db';
-                };
-                
-                // Draw blocks around the perimeter in a rectangular ring
-                
-                // FRONT INNER WALL (horizontal blocks along length)
-                const numBlocksFrontInner = Math.floor((innerLength + mortarGap) / (blockL + mortarGap));
-                for (let i = 0; i < numBlocksFrontInner; i++) {
-                  const x = innerXStart + i * (blockL + mortarGap);
-                  const y = innerYStart;
-                  
-                  ctx.fillStyle = getMaterialColor();
-                  ctx.fillRect(x * scale, y * scale, blockL * scale, blockW * scale);
-                  ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
-                  ctx.lineWidth = 0.5;
-                  ctx.strokeRect(x * scale, y * scale, blockL * scale, blockW * scale);
-                  blockIndex++;
-                }
-                
-                // BACK INNER WALL (horizontal blocks along length)
-                const numBlocksBackInner = Math.floor((innerLength + mortarGap) / (blockL + mortarGap));
-                for (let i = 0; i < numBlocksBackInner; i++) {
-                  const x = innerXStart + i * (blockL + mortarGap);
-                  const y = innerYEnd - blockW;
-                  
-                  ctx.fillStyle = getMaterialColor();
-                  ctx.fillRect(x * scale, y * scale, blockL * scale, blockW * scale);
-                  ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
-                  ctx.lineWidth = 0.5;
-                  ctx.strokeRect(x * scale, y * scale, blockL * scale, blockW * scale);
-                  blockIndex++;
-                }
-                
-                // Calculate inner side wall area (excluding corners already covered)
-                const sideWallStart = innerYStart + blockW + mortarGap;
-                const sideWallEnd = innerYEnd - blockW - mortarGap;
-                const sideWallLength = sideWallEnd - sideWallStart;
-                
-                // LEFT INNER WALL (vertical blocks along width, excluding corners)
-                if (sideWallLength > 0) {
-                  const numBlocksLeftInner = Math.floor((sideWallLength + mortarGap) / (blockL + mortarGap));
-                  for (let i = 0; i < numBlocksLeftInner; i++) {
-                    const x = innerXStart;
-                    const y = sideWallStart + i * (blockL + mortarGap);
+
+                    if (blockIndex < totalUserBlocks) {
+                      let cumulativeCount = 0;
+                      let materialIndex = 0;
+                      for (let i = 0; i < validCoreMaterials.length; i++) {
+                        cumulativeCount += validCoreMaterials[i].quantity;
+                        if (blockIndex < cumulativeCount) {
+                          materialIndex = i;
+                          break;
+                        }
+                      }
+                      ctx.fillStyle = colors[materialIndex % colors.length];
+                    } else {
+                      ctx.fillStyle = '#d1d5db'; // Gray for unfilled space
+                    }
                     
-                    ctx.fillStyle = getMaterialColor();
-                    ctx.fillRect(x * scale, y * scale, blockW * scale, blockL * scale);
+                    ctx.fillRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
                     ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
                     ctx.lineWidth = 0.5;
-                    ctx.strokeRect(x * scale, y * scale, blockW * scale, blockL * scale);
-                    blockIndex++;
-                  }
-                }
-                
-                // RIGHT INNER WALL (vertical blocks along width, excluding corners)
-                if (sideWallLength > 0) {
-                  const numBlocksRightInner = Math.floor((sideWallLength + mortarGap) / (blockL + mortarGap));
-                  for (let i = 0; i < numBlocksRightInner; i++) {
-                    const x = innerXEnd - blockW;
-                    const y = sideWallStart + i * (blockL + mortarGap);
+                    ctx.strokeRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
                     
-                    ctx.fillStyle = getMaterialColor();
-                    ctx.fillRect(x * scale, y * scale, blockW * scale, blockL * scale);
-                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
-                    ctx.lineWidth = 0.5;
-                    ctx.strokeRect(x * scale, y * scale, blockW * scale, blockL * scale);
                     blockIndex++;
                   }
                 }
@@ -593,7 +558,6 @@ Return your response as a JSON object with the optimal block selection and quant
             }
           }
 
-          // Draw borders
           ctx.strokeStyle = '#1e293b';
           ctx.lineWidth = 3;
           ctx.strokeRect(0, 0, actualLength * scale, actualWidth * scale);
@@ -672,9 +636,7 @@ Return your response as a JSON object with the optimal block selection and quant
             const brickStart = x;
             const brickEnd = x + brickL;
             
-            // Only draw vertical lines for bricks that start within or before the wall
             if (brickStart < actualLength * scale - 0.1) {
-              // If brick starts within the wall, draw line at start position
               if (brickStart >= -0.1) {
                 ctx.beginPath();
                 ctx.moveTo(brickStart, y);
@@ -682,13 +644,12 @@ Return your response as a JSON object with the optimal block selection and quant
                 ctx.stroke();
               }
               
-              // If brick extends beyond the wall, draw line at wall edge
               if (brickEnd > actualLength * scale + 0.1) {
                 ctx.beginPath();
                 ctx.moveTo(actualLength * scale, y);
                 ctx.lineTo(actualLength * scale, y + brickH);
                 ctx.stroke();
-                break; // No more bricks fit in this course
+                break;
               }
             }
           }
@@ -710,7 +671,7 @@ Return your response as a JSON object with the optimal block selection and quant
 
         ctx.font = '12px sans-serif';
         ctx.fillStyle = '#64748b';
-        ctx.fillText('SIDE VIEW (Actual Built Size)', (actualLength * scale) / 2, actualHeight * scale + 25);
+        ctx.fillText('SIDE VIEW - Wall Material', (actualLength * scale) / 2, actualHeight * scale + 25);
 
         if (selectedMaterial && calculations) {
           ctx.font = '10px sans-serif';
@@ -722,8 +683,117 @@ Return your response as a JSON object with the optimal block selection and quant
       ctx.restore();
     };
 
+    const drawCoreSideView = () => {
+      const canvas = coreSideViewRef.current;
+      const ctx = canvas.getContext('2d');
+      const padding = 40;
+      const availableWidth = 300 - (padding * 2);
+      const availableHeight = 300 - (padding * 2);
+      
+      const wallThickness = calculations.wallThickness;
+      const innerLength = actualLength - (2 * wallThickness);
+      const innerHeight = actualHeight;
+      
+      const scale = Math.min(availableWidth / innerLength, availableHeight / innerHeight);
+
+      ctx.clearRect(0, 0, 300, 300);
+      ctx.save();
+      ctx.translate(padding, padding);
+
+      // Background
+      ctx.fillStyle = '#f5f5f5';
+      ctx.fillRect(0, 0, innerLength * scale, innerHeight * scale);
+
+      // Draw core blocks
+      if (project.core_materials && project.core_materials.length > 0) {
+        const validCoreMaterials = project.core_materials.filter(item => {
+          const mat = inventory.find(m => m.id === item.material_id);
+          return mat && item.quantity > 0;
+        });
+        
+        if (validCoreMaterials.length > 0) {
+          const firstCoreItem = validCoreMaterials[0];
+          const firstCoreMaterial = inventory.find(m => m.id === firstCoreItem.material_id);
+          
+          if (firstCoreMaterial) {
+            const blockL = firstCoreMaterial.length;
+            const blockH = firstCoreMaterial.height;
+            
+            // Calculate grid
+            const cols = Math.floor((innerLength + mortarGap) / (blockL + mortarGap));
+            const rows = Math.floor((innerHeight + mortarGap) / (blockH + mortarGap));
+            
+            const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
+            const totalUserBlocks = validCoreMaterials.reduce((sum, item) => sum + item.quantity, 0);
+            
+            let blockIndex = 0;
+            for (let row = 0; row < rows; row++) {
+              for (let col = 0; col < cols; col++) {
+                const x = col * (blockL + mortarGap);
+                const y = row * (blockH + mortarGap);
+                
+                if (x + blockL * scale > innerLength * scale + 0.001 ||
+                    y + blockH * scale > innerHeight * scale + 0.001) {
+                    // If block goes out of bounds, skip drawing it
+                    continue;
+                }
+
+                if (blockIndex < totalUserBlocks) {
+                  let cumulativeCount = 0;
+                  let materialIndex = 0;
+                  for (let i = 0; i < validCoreMaterials.length; i++) {
+                    cumulativeCount += validCoreMaterials[i].quantity;
+                    if (blockIndex < cumulativeCount) {
+                      materialIndex = i;
+                      break;
+                    }
+                  }
+                  ctx.fillStyle = colors[materialIndex % colors.length];
+                } else {
+                  ctx.fillStyle = '#d1d5db'; // Gray for unfilled space
+                }
+                
+                ctx.fillRect(x * scale, y * scale, blockL * scale, blockH * scale);
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+                ctx.lineWidth = 0.5;
+                ctx.strokeRect(x * scale, y * scale, blockL * scale, blockH * scale);
+                
+                blockIndex++;
+              }
+            }
+          }
+        }
+      }
+
+      // Border
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(0, 0, innerLength * scale, innerHeight * scale);
+
+      if (showDimensions) {
+        ctx.fillStyle = '#1e293b';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+
+        ctx.fillText(innerLength.toFixed(2) + '"', (innerLength * scale) / 2, -15);
+
+        ctx.save();
+        ctx.translate(-15, (innerHeight * scale) / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText(innerHeight.toFixed(2) + '"', 0, 0);
+        ctx.restore();
+
+        ctx.font = '12px sans-serif';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText('SIDE VIEW - Core Materials', (innerLength * scale) / 2, innerHeight * scale + 25);
+      }
+
+      ctx.restore();
+    };
+
     drawTopView();
     drawSideView();
+    drawCoreSideView();
   };
 
   const updateBrickCount = (dimension, delta) => {
@@ -835,14 +905,18 @@ Return your response as a JSON object with the optimal block selection and quant
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid md:grid-cols-3 gap-4">
                   <div>
                     <h4 className="font-medium mb-2 text-center">Top View</h4>
                     <canvas ref={topViewRef} width="300" height="300" className="border border-slate-200 rounded-lg bg-white w-full"></canvas>
                   </div>
                   <div>
-                    <h4 className="font-medium mb-2 text-center">Side View</h4>
+                    <h4 className="font-medium mb-2 text-center">Side View - Walls</h4>
                     <canvas ref={sideViewRef} width="300" height="300" className="border border-slate-200 rounded-lg bg-white w-full"></canvas>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2 text-center">Side View - Core</h4>
+                    <canvas ref={coreSideViewRef} width="300" height="300" className="border border-slate-200 rounded-lg bg-white w-full"></canvas>
                   </div>
                 </div>
               </CardContent>
