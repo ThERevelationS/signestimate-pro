@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, ArrowLeft, Box, Eye, EyeOff } from "lucide-react";
+import { Save, ArrowLeft, Box, Eye, EyeOff, Plus, Trash2 } from "lucide-react";
 
 export default function NewBrickStoneEstimate() {
   const navigate = useNavigate();
@@ -23,7 +23,7 @@ export default function NewBrickStoneEstimate() {
     client_name: "",
     estimate_number: "",
     hyperlink: "",
-    base_type: "hollow_rectangular", // Changed default to hollow_rectangular
+    base_type: "hollow_rectangular",
     bricks_along_length: 6,
     bricks_along_width: 9,
     courses_high: 5,
@@ -31,13 +31,12 @@ export default function NewBrickStoneEstimate() {
     mortar_gap: 0.375,
     waste_factor: 1.1,
     selected_material_id: "",
-    core_material_id: "", // New field for core blocks
+    core_materials: [], // Array of {material_id, quantity}
     notes: ""
   });
 
   const [inventory, setInventory] = useState([]);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
-  const [selectedCoreMaterial, setSelectedCoreMaterial] = useState(null);
   const [calculations, setCalculations] = useState(null);
   const [settings, setSettings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
@@ -77,14 +76,15 @@ export default function NewBrickStoneEstimate() {
   }, [editId]);
 
   useEffect(() => {
+    // Dependency array updated to project.core_materials
     if (selectedMaterial && project.bricks_along_length && project.bricks_along_width && project.courses_high) {
       performCalculations();
     }
-  }, [selectedMaterial, selectedCoreMaterial, project.base_type, project.bricks_along_length, project.bricks_along_width, project.courses_high, project.mortar_gap, project.waste_factor]);
+  }, [selectedMaterial, project.core_materials, project.base_type, project.bricks_along_length, project.bricks_along_width, project.courses_high, project.mortar_gap, project.waste_factor]);
 
   useEffect(() => {
     drawVisualizations();
-  }, [project, selectedMaterial, selectedCoreMaterial, showDimensions, calculations]);
+  }, [project, selectedMaterial, showDimensions, calculations]);
 
   const loadProjectForEdit = async (projectId, inventoryData) => {
     try {
@@ -110,14 +110,24 @@ export default function NewBrickStoneEstimate() {
         delete projectData.base_width;
         delete projectData.base_height;
 
+        // NEW: Convert old core_material_id to new core_materials array format if it exists
+        // This ensures backward compatibility for projects saved with a single core_material_id
+        if (projectData.core_material_id && !projectData.core_materials) {
+          projectData.core_materials = [{
+            material_id: projectData.core_material_id,
+            // Old projects didn't store quantity for core material explicitly.
+            // Setting to 0, user will have to manually adjust for existing projects if they wish to include core blocks.
+            quantity: 0
+          }];
+          delete projectData.core_material_id; // Remove the old field
+        } else if (!projectData.core_materials) {
+          projectData.core_materials = []; // Ensure it's an array if missing
+        }
+
         setProject(projectData);
         if (projectData.selected_material_id) {
           const material = inventoryData.find(m => m.id === projectData.selected_material_id);
           setSelectedMaterial(material);
-        }
-        if (projectData.core_material_id) {
-          const coreMaterial = inventoryData.find(m => m.id === projectData.core_material_id);
-          setSelectedCoreMaterial(coreMaterial);
         }
       }
     } catch (error) {
@@ -127,6 +137,7 @@ export default function NewBrickStoneEstimate() {
 
   const performCalculations = () => {
     if (!selectedMaterial) {
+      setCalculations(null); // Clear calculations if no main material is selected
       return;
     }
 
@@ -149,53 +160,47 @@ export default function NewBrickStoneEstimate() {
     
     // Calculate actual dimensions
     const actualLength = bricksAlongLength * brickL + (bricksAlongLength - 1) * mortarGap;
-    const innerSpaceForSideWalls = bricksAlongWidth * brickL + (bricksAlongWidth - 1) * mortarGap;
-    const actualWidth = wallThickness + innerSpaceForSideWalls + wallThickness;
+    // `bricksAlongWidth` defines the number of bricks along the *inner* side walls.
+    // So, the total width is two wall thicknesses plus the length of the inner side wall.
+    const innerSideWallLength = bricksAlongWidth * brickL + (bricksAlongWidth - 1) * mortarGap;
+    const actualWidth = (wallThickness * 2) + innerSideWallLength;
     const actualHeight = coursesHigh * brickH + (coursesHigh - 1) * mortarGap;
     
-    // Calculate brick counts for walls
+    // Calculate brick counts for main walls
     const frontBackBricks = coursesHigh * bricksAlongLength * layers * 2;
     const leftRightBricks = coursesHigh * bricksAlongWidth * layers * 2;
     const totalWallBricks = frontBackBricks + leftRightBricks;
 
-    // Calculate core blocks if core material is selected
-    let coreBricks = 0;
-    let coreMaterialCost = 0;
-    let coreBricksWithWaste = 0;
-    
-    if (selectedCoreMaterial) {
-      const coreL = selectedCoreMaterial.length;
-      const coreW = selectedCoreMaterial.width; // Core block width, used for its thickness
-      const coreH = selectedCoreMaterial.height;
-      const coreCostPerUnit = selectedCoreMaterial.cost_per_unit;
+    // Calculate core materials cost
+    let totalCoreMaterialCost = 0;
+    const coreBreakdown = project.core_materials.map(coreItem => {
+      const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
+      if (!coreMaterial) {
+        return {
+          material_id: coreItem.material_id,
+          material_name: "Unknown Material",
+          quantity: coreItem.quantity || 0,
+          cost_per_unit: 0,
+          total_cost: 0
+        };
+      }
       
-      // Inner space dimensions (excluding the main wall thickness)
-      const innerLength = actualLength - 2 * wallThickness;
-      const innerWidth = actualWidth - 2 * wallThickness;
+      const quantity = coreItem.quantity || 0;
+      // Per outline, waste factor is not applied to individual core material quantities for cost calculation.
+      const cost = quantity * coreMaterial.cost_per_unit;
+      totalCoreMaterialCost += cost;
       
-      // Core blocks follow the inner perimeter of the walls
-      // Calculate how many blocks fit along each inner wall (assuming coreL is laid along the length of the wall segment)
-      const coreBlocksAlongInnerLength = Math.floor((innerLength + mortarGap) / (coreL + mortarGap));
-      const coreBlocksAlongInnerWidth = Math.floor((innerWidth + mortarGap) / (coreL + mortarGap));
-      const coreCoursesHigh = Math.floor((actualHeight + mortarGap) / (coreH + mortarGap));
-      
-      // Front and back inner walls
-      const coreFrontBackBricks = coreCoursesHigh * coreBlocksAlongInnerLength * 2;
-      // Left and right inner walls (subtract corners to avoid double counting)
-      // Each corner accounts for one block in 'length' and one in 'width'.
-      // So, if coreBlocksAlongInnerWidth is, say, 5, the two 'end' blocks are already counted
-      // by the front/back walls (if we consider them extending to the corners).
-      // We need to count the *intermediate* blocks for the side walls.
-      // Math.max(0, ...) to prevent negative counts if the inner width is too small.
-      const coreLeftRightBricks = coreCoursesHigh * Math.max(0, coreBlocksAlongInnerWidth - 2) * 2;
-      
-      coreBricks = coreFrontBackBricks + coreLeftRightBricks;
-      coreBricksWithWaste = Math.ceil(coreBricks * wasteFactor);
-      coreMaterialCost = coreBricksWithWaste * coreCostPerUnit;
-    }
+      return {
+        material_id: coreItem.material_id,
+        material_name: coreMaterial.material_name,
+        quantity: quantity, // Storing user-defined quantity (without waste for cost)
+        cost_per_unit: coreMaterial.cost_per_unit,
+        total_cost: cost
+      };
+    });
 
     const exteriorPerimeter = 2 * (actualLength + actualWidth);
-    const exteriorSurfaceArea = (exteriorPerimeter * actualHeight) / 144;
+    const exteriorSurfaceArea = (exteriorPerimeter * actualHeight) / 144; // Total surface area in sq ft
 
     const totalWallBricksWithWaste = Math.ceil(totalWallBricks * wasteFactor);
     const mortarBagsPerSqFt = parseFloat(settings.brick_mortar_bags_per_100sqft || 3) / 100;
@@ -203,17 +208,16 @@ export default function NewBrickStoneEstimate() {
     const mortarCostPerBag = parseFloat(settings.brick_mortar_cost_per_bag || 12);
     const wallMaterialCost = totalWallBricksWithWaste * costPerUnit;
     const mortarCost = mortarBags * mortarCostPerBag;
-    const totalCost = wallMaterialCost + coreMaterialCost + mortarCost;
+    const totalCost = wallMaterialCost + totalCoreMaterialCost + mortarCost;
 
     setCalculations({
       totalWallBricks: Math.round(totalWallBricks),
       totalWallBricksWithWaste: totalWallBricksWithWaste,
-      coreBricks: Math.round(coreBricks),
-      coreBricksWithWaste: coreBricksWithWaste,
+      coreBreakdown: coreBreakdown, // New field for detailed core material breakdown
       surfaceArea: exteriorSurfaceArea.toFixed(2),
       mortarBags: mortarBags,
       wallMaterialCost: wallMaterialCost,
-      coreMaterialCost: coreMaterialCost,
+      coreMaterialCost: totalCoreMaterialCost, // Total cost for all core materials
       mortarCost: mortarCost,
       totalCost: totalCost,
       actualLength: actualLength.toFixed(2),
@@ -227,13 +231,14 @@ export default function NewBrickStoneEstimate() {
   };
 
   const drawVisualizations = () => {
-    if (!topViewRef.current || !sideViewRef.current || !project.bricks_along_length || !calculations) {
+    if (!topViewRef.current || !sideViewRef.current || !project.bricks_along_length || !calculations || !selectedMaterial) {
       return;
     }
 
     const actualLength = parseFloat(calculations.actualLength);
     const actualWidth = parseFloat(calculations.actualWidth);
     const actualHeight = parseFloat(calculations.actualHeight);
+    const mortarGap = project.mortar_gap;
 
     const drawTopView = () => {
       const canvas = topViewRef.current;
@@ -247,7 +252,7 @@ export default function NewBrickStoneEstimate() {
       ctx.save();
       ctx.translate(padding, padding);
 
-      if (!selectedMaterial || !showDimensions) {
+      if (!showDimensions) {
         ctx.fillStyle = selectedMaterial ? '#dc2626' : '#cbd5e1';
         ctx.fillRect(0, 0, actualLength * scale, actualWidth * scale);
 
@@ -272,11 +277,9 @@ export default function NewBrickStoneEstimate() {
 
           const brickL = selectedMaterial.length;
           const brickW = selectedMaterial.width;
-          const mortarGap = project.mortar_gap;
-
+          
           const numBricksLength = calculations.bricksAlongLength;
           const numBricksWidth = calculations.bricksAlongWidth;
-          const layersInWall = 1; // Always 1 layer for walls
           
           const wallThickness = calculations.wallThickness;
           
@@ -309,7 +312,7 @@ export default function NewBrickStoneEstimate() {
             const brickYEnd = Math.min(backWallStart, yStart + brickL);
             const visibleLength = brickYEnd - brickYStart;
             
-            if (visibleLength >= brickL * 0.05) { // Ensure enough of the brick is visible
+            if (visibleLength > 0.05) { // Ensure enough of the brick is visible (e.g., > 0.05 inch)
               ctx.fillRect(xStartLeft * scale, brickYStart * scale, brickW * scale, visibleLength * scale);
             }
           }
@@ -322,7 +325,7 @@ export default function NewBrickStoneEstimate() {
             const brickYEnd = Math.min(backWallStart, yStart + brickL);
             const visibleLength = brickYEnd - brickYStart;
             
-            if (visibleLength >= brickL * 0.05) { // Ensure enough of the brick is visible
+            if (visibleLength > 0.05) { // Ensure enough of the brick is visible
               ctx.fillRect(xStartRight * scale, brickYStart * scale, brickW * scale, visibleLength * scale);
             }
           }
@@ -337,46 +340,65 @@ export default function NewBrickStoneEstimate() {
           ctx.fillRect(innerXStart * scale, innerYStart * scale, (innerXEnd - innerXStart) * scale, (innerYEnd - innerYStart) * scale);
 
           // Draw core blocks if selected - following inner perimeter
-          if (selectedCoreMaterial) {
-            ctx.fillStyle = '#7c6a46'; // Different color for core blocks (tan/brown)
-            
-            const coreL = selectedCoreMaterial.length;
-            const coreW = selectedCoreMaterial.width;
-            
+          if (project.core_materials && project.core_materials.length > 0) {
             const innerLength = innerXEnd - innerXStart;
             const innerWidth = innerYEnd - innerYStart;
             
-            // Re-calculate these for drawing consistency, although they should match the calculations function
-            const coreBlocksAlongInnerLength = Math.floor((innerLength + mortarGap) / (coreL + mortarGap));
-            const coreBlocksAlongInnerWidth = Math.floor((innerWidth + mortarGap) / (coreL + mortarGap));
-            
-            // Front inner wall (blocks along length)
-            for (let col = 0; col < coreBlocksAlongInnerLength; col++) {
-              const x = innerXStart + col * (coreL + mortarGap);
-              const y = innerYStart;
-              ctx.fillRect(x * scale, y * scale, coreL * scale, coreW * scale);
-            }
-            
-            // Back inner wall (blocks along length)
-            for (let col = 0; col < coreBlocksAlongInnerLength; col++) {
-              const x = innerXStart + col * (coreL + mortarGap);
-              const y = innerYEnd - coreW;
-              ctx.fillRect(x * scale, y * scale, coreL * scale, coreW * scale);
-            }
-            
-            // Left inner wall (blocks along width, excluding corners)
-            for (let row = 1; row < coreBlocksAlongInnerWidth - 1; row++) {
-              const x = innerXStart;
-              const y = innerYStart + row * (coreL + mortarGap);
-              ctx.fillRect(x * scale, y * scale, coreW * scale, coreL * scale);
-            }
-            
-            // Right inner wall (blocks along width, excluding corners)
-            for (let row = 1; row < coreBlocksAlongInnerWidth - 1; row++) {
-              const x = innerXEnd - coreW;
-              const y = innerYStart + row * (coreL + mortarGap);
-              ctx.fillRect(x * scale, y * scale, coreW * scale, coreL * scale);
-            }
+            // Draw each core material type
+            project.core_materials.forEach((coreItem, index) => {
+              const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
+              if (!coreMaterial || coreItem.quantity <= 0) return;
+              
+              const coreL = coreMaterial.length;
+              const coreW = coreMaterial.width;
+              
+              // Different colors for different materials
+              const colors = ['#7c6a46', '#8b7355', '#9a8266', '#6b5d42', '#a0a0a0', '#c0c0c0'];
+              ctx.fillStyle = colors[index % colors.length];
+              
+              // Calculate how many blocks fit along each wall segment
+              const blocksAlongInnerLength = Math.max(0, Math.floor((innerLength + mortarGap) / (coreL + mortarGap)));
+              const blocksAlongInnerWidth = Math.max(0, Math.floor((innerWidth + mortarGap) / (coreL + mortarGap)));
+              
+              let blocksDrawn = 0;
+              const targetBlocks = coreItem.quantity;
+              
+              // Front inner wall
+              for (let col = 0; col < blocksAlongInnerLength && blocksDrawn < targetBlocks; col++) {
+                const x = innerXStart + col * (coreL + mortarGap);
+                const y = innerYStart;
+                ctx.fillRect(x * scale, y * scale, coreL * scale, coreW * scale);
+                blocksDrawn++;
+              }
+              
+              // Back inner wall
+              for (let col = 0; col < blocksAlongInnerLength && blocksDrawn < targetBlocks; col++) {
+                const x = innerXStart + col * (coreL + mortarGap);
+                const y = innerYEnd - coreW;
+                ctx.fillRect(x * scale, y * scale, coreL * scale, coreW * scale);
+                blocksDrawn++;
+              }
+              
+              // Left inner wall (excluding corners, as corners are typically covered by front/back wall blocks)
+              // This relies on coreW for thickness and coreL for length along the inner perimeter.
+              // To avoid drawing over corners already covered by front/back walls, we start drawing after one block width from the top,
+              // and ensure we don't draw past one block width from the bottom.
+              const effectiveBlocksAlongInnerWidthForSides = Math.max(0, blocksAlongInnerWidth - 2); // Assuming corners take 2 block positions
+              for (let row = 0; row < effectiveBlocksAlongInnerWidthForSides && blocksDrawn < targetBlocks; row++) {
+                const x = innerXStart; 
+                const y = innerYStart + coreW + row * (coreL + mortarGap); // Start after the "corner" block and then proceed with blocks of length coreL
+                ctx.fillRect(x * scale, y * scale, coreW * scale, coreL * scale); 
+                blocksDrawn++;
+              }
+              
+              // Right inner wall (excluding corners)
+              for (let row = 0; row < effectiveBlocksAlongInnerWidthForSides && blocksDrawn < targetBlocks; row++) {
+                const x = innerXEnd - coreW; 
+                const y = innerYStart + coreW + row * (coreL + mortarGap);
+                ctx.fillRect(x * scale, y * scale, coreW * scale, coreL * scale); 
+                blocksDrawn++;
+              }
+            });
           }
 
           // Draw borders
@@ -386,7 +408,7 @@ export default function NewBrickStoneEstimate() {
           
           ctx.strokeStyle = '#1e293b';
           ctx.lineWidth = 2;
-          ctx.strokeRect(wallThickness * scale, wallThickness * scale,
+          ctx.strokeRect(innerXStart * scale, innerYStart * scale,
                         (actualLength - 2 * wallThickness) * scale,
                         (actualWidth - 2 * wallThickness) * scale);
         }
@@ -408,7 +430,7 @@ export default function NewBrickStoneEstimate() {
         ctx.fillStyle = '#64748b';
         ctx.fillText('TOP VIEW', (actualLength * scale) / 2, actualWidth * scale + 25);
 
-        if (selectedMaterial) { // Removed project.layers condition as layers is always 1 for walls
+        if (selectedMaterial) {
           ctx.font = '10px sans-serif';
           ctx.fillText(`${calculations.bricksAlongLength} × ${calculations.bricksAlongWidth} bricks (1 layer)`,
                       (actualLength * scale) / 2, actualWidth * scale + 38);
@@ -441,10 +463,10 @@ export default function NewBrickStoneEstimate() {
         ctx.lineWidth = 0.8;
         const brickH = selectedMaterial.height * scale;
         const brickL = selectedMaterial.length * scale;
-        const mortarGap = project.mortar_gap * scale;
+        const mortarGapScaled = mortarGap * scale;
 
         for (let courseIndex = 0; courseIndex < calculations.coursesHigh; courseIndex++) {
-          const y = courseIndex * (brickH + mortarGap);
+          const y = courseIndex * (brickH + mortarGapScaled);
           if (y + brickH > actualHeight * scale + 0.1) break;
 
           ctx.beginPath();
@@ -454,7 +476,7 @@ export default function NewBrickStoneEstimate() {
 
           const offset = (courseIndex % 2) * (brickL / 2);
 
-          for (let x = -offset; x < actualLength * scale; x += brickL + mortarGap) {
+          for (let x = -offset; x < actualLength * scale; x += brickL + mortarGapScaled) {
             const brickStart = x;
             const brickEnd = x + brickL;
             
@@ -516,51 +538,20 @@ export default function NewBrickStoneEstimate() {
     const material = inventory.find(m => m.id === materialId);
     setSelectedMaterial(material);
     
-    // Auto-select the same material for core unless user has already explicitly chosen one
-    if (!project.core_material_id && material) {
-      setSelectedCoreMaterial(material);
-      setProject(prev => ({
-        ...prev,
-        selected_material_id: materialId,
-        core_material_id: materialId, // Auto-fill with same material
-        material_name: material.material_name,
-        material_dimensions: {
-          length: material.length,
-          width: material.width,
-          height: material.height
-        }
-      }));
-    } else {
-      setProject(prev => ({
-        ...prev,
-        selected_material_id: materialId,
-        material_name: material ? material.material_name : "",
-        material_dimensions: material ? {
-          length: material.length,
-          width: material.width,
-          height: material.height
-        } : null
-      }));
-    }
+    // Removed auto-selection of core material logic as it's now a multi-select feature
+    setProject(prev => ({
+      ...prev,
+      selected_material_id: materialId,
+      material_name: material ? material.material_name : "",
+      material_dimensions: material ? {
+        length: material.length,
+        width: material.width,
+        height: material.height
+      } : null
+    }));
   };
 
-  const handleCoreMaterialSelect = (materialId) => {
-    if (materialId === "" || materialId === null) {
-      // User explicitly chose to leave hollow
-      setSelectedCoreMaterial(null);
-      setProject(prev => ({
-        ...prev,
-        core_material_id: ""
-      }));
-    } else {
-      const material = inventory.find(m => m.id === materialId);
-      setSelectedCoreMaterial(material);
-      setProject(prev => ({
-        ...prev,
-        core_material_id: materialId
-      }));
-    }
-  };
+  // handleCoreMaterialSelect function is removed, as it's replaced by a dynamic list
 
   const updateBrickCount = (dimension, delta) => {
     setProject(prev => ({
@@ -588,12 +579,13 @@ export default function NewBrickStoneEstimate() {
         base_length: parseFloat(calculations.actualLength),
         base_width: parseFloat(calculations.actualWidth),
         base_height: parseFloat(calculations.actualHeight),
-        calculated_bricks: calculations.totalWallBricksWithWaste, // Renamed from calculated_bricks
-        core_bricks: calculations.coreBricksWithWaste, // New field for core blocks
+        calculated_bricks: calculations.totalWallBricksWithWaste,
+        // `core_bricks` field is removed, as `project.core_materials` now holds detailed info.
+        // `project.core_materials` is already part of `...project`.
         calculated_surface_area: parseFloat(calculations.surfaceArea),
         mortar_bags_needed: calculations.mortarBags,
-        material_cost: calculations.wallMaterialCost, // Renamed from material_cost
-        core_material_cost: calculations.coreMaterialCost, // New field for core material cost
+        material_cost: calculations.wallMaterialCost,
+        core_material_cost: calculations.coreMaterialCost, // This is the total cost of all core materials
         mortar_cost: calculations.mortarCost,
         total_cost: calculations.totalCost,
         status: 'calculated'
@@ -683,7 +675,7 @@ export default function NewBrickStoneEstimate() {
               </CardContent>
             </Card>
 
-            <Card> {/* This Card is now a sibling to Visual Editor Card */}
+            <Card>
               <CardHeader><CardTitle>Base Configuration</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div> 
@@ -701,23 +693,87 @@ export default function NewBrickStoneEstimate() {
                 </div>
 
                 <div> 
-                  <Label>Core Material (Optional)</Label>
-                  <Select value={project.core_material_id || ""} onValueChange={handleCoreMaterialSelect}>
-                    <SelectTrigger><SelectValue placeholder="None - leave hollow" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={null}>None - leave hollow</SelectItem>
-                      {inventory
-                        .filter(mat => mat.material_type === 'block')
-                        .map(mat => (
-                          <SelectItem key={mat.id} value={mat.id}>
-                            {mat.material_name} ({mat.length}×{mat.width}×{mat.height}")
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Select blocks to line the hollow core (blocks only)
+                  <Label>Core Materials (Optional)</Label>
+                  <p className="text-xs text-slate-500 mb-2">
+                    Add blocks to fill the hollow core - blocks only
                   </p>
+                  <div className="space-y-3">
+                    {project.core_materials.map((coreItem, index) => {
+                      const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
+                      return (
+                        <div key={index} className="flex gap-2 items-start p-3 bg-amber-50 rounded-lg border border-amber-200">
+                          <div className="flex-1">
+                            <Select 
+                              value={coreItem.material_id} 
+                              onValueChange={(value) => {
+                                const newCoreMaterials = [...project.core_materials];
+                                newCoreMaterials[index] = { ...newCoreMaterials[index], material_id: value };
+                                setProject(prev => ({ ...prev, core_materials: newCoreMaterials }));
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select block" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {inventory
+                                  .filter(mat => mat.material_type === 'block')
+                                  .map(mat => (
+                                    <SelectItem key={mat.id} value={mat.id}>
+                                      {mat.material_name} ({mat.length}×{mat.width}×{mat.height}")
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                            {coreMaterial && (
+                              <p className="text-xs text-slate-500 mt-1">
+                                ${coreMaterial.cost_per_unit.toFixed(2)} per unit
+                              </p>
+                            )}
+                          </div>
+                          <div className="w-24">
+                            <Input
+                              type="number"
+                              placeholder="Qty"
+                              min="0"
+                              value={coreItem.quantity || 0}
+                              onChange={(e) => {
+                                const newCoreMaterials = [...project.core_materials];
+                                newCoreMaterials[index] = { ...newCoreMaterials[index], quantity: parseInt(e.target.value) || 0 };
+                                setProject(prev => ({ ...prev, core_materials: newCoreMaterials }));
+                              }}
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const newCoreMaterials = project.core_materials.filter((_, i) => i !== index);
+                              setProject(prev => ({ ...prev, core_materials: newCoreMaterials }));
+                            }}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setProject(prev => ({
+                          ...prev,
+                          core_materials: [...prev.core_materials, { material_id: "", quantity: 0 }]
+                        }));
+                      }}
+                      className="w-full"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Core Material
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-4">
@@ -841,16 +897,6 @@ export default function NewBrickStoneEstimate() {
                   <p className="text-xs text-blue-700 mt-2">These are the actual dimensions considering brick counts and mortar gaps.</p>
                 </div>
 
-                {/* Layers field removed as it's fixed to 1 */}
-                {/* <div>
-                  <Label>Layers (Depth)</Label>
-                  <Input type="number" min="1" value={project.layers} onChange={(e) => setProject(prev => ({ ...prev, layers: parseInt(e.target.value) || 1 }))} disabled={!selectedMaterial} />
-                  <p className="text-xs text-slate-500 mt-1">
-                    Number of brick layers for wall thickness
-                    {selectedMaterial && ` (${(project.layers * selectedMaterial.width + Math.max(0, project.layers - 1) * project.mortar_gap).toFixed(1)}" thick)`}
-                  </p>
-                </div> */}
-
                 <div className="grid md:grid-cols-2 gap-4">
                   <div><Label>Mortar Gap (inches)</Label><Input type="number" step="0.125" value={project.mortar_gap} onChange={(e) => setProject(prev => ({ ...prev, mortar_gap: parseFloat(e.target.value) || 0 }))} disabled={!selectedMaterial} /></div>
                   <div><Label>Waste Factor</Label><Input type="number" step="0.05" value={project.waste_factor} onChange={(e) => setProject(prev => ({ ...prev, waste_factor: parseFloat(e.target.value) || 1 }))} disabled={!selectedMaterial} /></div>
@@ -876,14 +922,25 @@ export default function NewBrickStoneEstimate() {
                   </div>
                 )}
 
-                {selectedCoreMaterial && (
-                  <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
-                    <h4 className="font-medium text-amber-900 mb-2">Core Material</h4>
-                    <p className="text-sm text-amber-800">{selectedCoreMaterial.material_name}</p>
-                    <p className="text-xs text-amber-600">
-                      {selectedCoreMaterial.length}" × {selectedCoreMaterial.width}" × {selectedCoreMaterial.height}"
-                    </p>
-                    <p className="text-sm font-medium text-amber-900 mt-2">${selectedCoreMaterial.cost_per_unit.toFixed(2)} per unit</p>
+                {calculations && calculations.coreBreakdown && calculations.coreBreakdown.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-slate-900">Core Materials</h4>
+                    {calculations.coreBreakdown.map((coreItem, index) => {
+                      const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
+                      if (!coreMaterial) return null;
+                      return (
+                        <div key={index} className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                          <p className="text-sm font-medium text-amber-900">{coreMaterial.material_name}</p>
+                          <p className="text-xs text-amber-600">
+                            {coreMaterial.length}" × {coreMaterial.width}" × {coreMaterial.height}"
+                          </p>
+                          <div className="flex justify-between mt-2 text-sm">
+                            <span className="text-amber-700">Qty: {coreItem.quantity}</span>
+                            <span className="font-medium text-amber-900">${coreItem.total_cost.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -898,18 +955,6 @@ export default function NewBrickStoneEstimate() {
                         <span>Wall Bricks with {((project.waste_factor - 1) * 100).toFixed(0)}% Waste:</span>
                         <span className="font-medium text-blue-600">{calculations.totalWallBricksWithWaste}</span>
                       </div>
-                      {selectedCoreMaterial && (
-                        <>
-                          <div className="flex justify-between text-sm border-t pt-2">
-                            <span>Core Blocks (no waste):</span>
-                            <span className="font-medium">{calculations.coreBricks}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span>Core Blocks with {((project.waste_factor - 1) * 100).toFixed(0)}% Waste:</span>
-                            <span className="font-medium text-amber-600">{calculations.coreBricksWithWaste}</span>
-                          </div>
-                        </>
-                      )}
                       <div className="flex justify-between text-sm border-t pt-2">
                         <span>Surface Area:</span>
                         <span className="font-medium">{calculations.surfaceArea} sq ft</span>
@@ -925,7 +970,7 @@ export default function NewBrickStoneEstimate() {
                         <span>Wall Material Cost:</span>
                         <span className="font-medium">${calculations.wallMaterialCost.toFixed(2)}</span>
                       </div>
-                      {selectedCoreMaterial && (
+                      {calculations.coreMaterialCost > 0 && (
                         <div className="flex justify-between text-sm">
                           <span>Core Material Cost:</span>
                           <span className="font-medium">${calculations.coreMaterialCost.toFixed(2)}</span>
