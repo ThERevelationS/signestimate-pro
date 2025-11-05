@@ -186,7 +186,8 @@ export default function NewBrickStoneEstimate() {
       actualHeight: actualHeight.toFixed(2),
       bricksAlongLength: bricksAlongLength,
       bricksAlongWidth: bricksAlongWidth,
-      coursesHigh: coursesHigh
+      coursesHigh: coursesHigh,
+      bricksAlongInnerWidth: bricksAlongInnerWidth // Store this for visualization
     });
   };
 
@@ -288,7 +289,7 @@ export default function NewBrickStoneEstimate() {
           // Side walls - calculate space between front and back walls
           const frontWallEnd = wallThickness;
           const backWallStart = actualWidth - wallThickness;
-          const innerSpace = backWallStart - frontWallEnd;
+          // const innerSpace = backWallStart - frontWallEnd; // Not used directly in drawing logic below
           
           // Calculate number of bricks that fit - use Math.floor to match calculations
           // This should match the `bricksAlongInnerWidth` from performCalculations for consistency
