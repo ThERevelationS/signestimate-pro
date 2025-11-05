@@ -480,40 +480,52 @@ Return your response as a JSON object with the optimal block selection and quant
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(innerXStart * scale, innerYStart * scale, (innerXEnd - innerXStart) * scale, (innerYEnd - innerYStart) * scale);
 
-          // Draw core blocks if selected - fill entire inner space
+          // Draw core blocks if selected - fill entire inner space without overlap
           if (project.core_materials && project.core_materials.length > 0) {
             const innerLength = innerXEnd - innerXStart;
             const innerWidth = innerYEnd - innerYStart;
             
-            // Draw each core material type
-            project.core_materials.forEach((coreItem, index) => {
-              const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
-              if (!coreMaterial || coreItem.quantity <= 0) return;
+            // Calculate grid dimensions based on the first material (assume all blocks are similar size for simplicity)
+            const firstMaterial = inventory.find(m => m.id === project.core_materials[0]?.material_id);
+            if (firstMaterial) {
+              const blockLength = firstMaterial.length;
+              const blockWidth = firstMaterial.width;
               
-              const coreL = coreMaterial.length;
-              const coreW = coreMaterial.width;
+              const blocksAlongLength = Math.floor((innerLength + mortarGap) / (blockLength + mortarGap));
+              const blocksAlongWidth = Math.floor((innerWidth + mortarGap) / (blockWidth + mortarGap));
               
-              // Different colors for different materials
-              const colors = ['#7c6a46', '#8b7355', '#9a8266', '#6b5d42', '#a0a0a0', '#c0c0c0'];
-              ctx.fillStyle = colors[index % colors.length];
+              let totalBlocksDrawn = 0;
               
-              // Calculate how many blocks fit in the inner space
-              const blocksAlongLength = Math.max(0, Math.floor((innerLength + mortarGap) / (coreL + mortarGap)));
-              const blocksAlongWidth = Math.max(0, Math.floor((innerWidth + mortarGap) / (coreW + mortarGap)));
-              
-              let blocksDrawn = 0;
-              const targetBlocks = coreItem.quantity;
-              
-              // Fill the entire inner space with blocks in a grid pattern
-              for (let row = 0; row < blocksAlongWidth && blocksDrawn < targetBlocks; row++) {
-                for (let col = 0; col < blocksAlongLength && blocksDrawn < targetBlocks; col++) {
+              // Draw each core material type, continuing from where the last left off
+              project.core_materials.forEach((coreItem, index) => {
+                const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
+                if (!coreMaterial || coreItem.quantity <= 0) return;
+                
+                const coreL = coreMaterial.length;
+                const coreW = coreMaterial.width;
+                
+                // Different colors for different materials
+                const colors = ['#7c6a46', '#8b7355', '#9a8266', '#6b5d42', '#a0a0a0', '#c0c0c0'];
+                ctx.fillStyle = colors[index % colors.length];
+                
+                const targetBlocks = coreItem.quantity;
+                let blocksDrawnThisMaterial = 0;
+                
+                // Continue drawing from where we left off
+                while (blocksDrawnThisMaterial < targetBlocks && totalBlocksDrawn < (blocksAlongLength * blocksAlongWidth)) {
+                  const row = Math.floor(totalBlocksDrawn / blocksAlongLength);
+                  const col = totalBlocksDrawn % blocksAlongLength;
+                  
                   const x = innerXStart + col * (coreL + mortarGap);
                   const y = innerYStart + row * (coreW + mortarGap);
+                  
                   ctx.fillRect(x * scale, y * scale, coreL * scale, coreW * scale);
-                  blocksDrawn++;
+                  
+                  blocksDrawnThisMaterial++;
+                  totalBlocksDrawn++;
                 }
-              }
-            });
+              });
+            }
           }
 
           // Draw borders
