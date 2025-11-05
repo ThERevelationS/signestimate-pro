@@ -480,87 +480,59 @@ Return your response as a JSON object with the optimal block selection and quant
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(innerXStart * scale, innerYStart * scale, (innerXEnd - innerXStart) * scale, (innerYEnd - innerYStart) * scale);
 
-          // Draw core blocks if selected - follow the inner perimeter of the walls
+          // Draw core blocks if selected - fill entire inner space with rotation optimization
           if (project.core_materials && project.core_materials.length > 0) {
             const innerLength = innerXEnd - innerXStart;
             const innerWidth = innerYEnd - innerYStart;
             
-            let totalBlocksPlaced = 0;
+            // Track position for sequential filling across all materials
+            let globalBlockIndex = 0;
             
-            // Draw each core material type sequentially along the perimeter
-            project.core_materials.forEach((coreItem, index) => {
+            // Draw each core material type
+            project.core_materials.forEach((coreItem, materialIndex) => {
               const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
               if (!coreMaterial || coreItem.quantity <= 0) return;
               
               const coreL = coreMaterial.length;
               const coreW = coreMaterial.width;
               
+              // Test both orientations to see which fits better
+              const normalFitLength = Math.floor((innerLength + mortarGap) / (coreL + mortarGap));
+              const normalFitWidth = Math.floor((innerWidth + mortarGap) / (coreW + mortarGap));
+              const normalTotal = normalFitLength * normalFitWidth;
+              
+              const rotatedFitLength = Math.floor((innerLength + mortarGap) / (coreW + mortarGap));
+              const rotatedFitWidth = Math.floor((innerWidth + mortarGap) / (coreL + mortarGap));
+              const rotatedTotal = rotatedFitLength * rotatedFitWidth;
+              
+              // Use orientation that fits more blocks
+              const useRotated = rotatedTotal > normalTotal;
+              const blocksPerRow = useRotated ? rotatedFitLength : normalFitLength;
+              const totalRows = useRotated ? rotatedFitWidth : normalFitWidth;
+              const blockDrawLength = useRotated ? coreW : coreL;
+              const blockDrawWidth = useRotated ? coreL : coreW;
+              
               // Different colors for different materials
-              const colors = ['#7c6a46', '#8b7355', '#9a8266', '#6b5d42', '#a0a0a0', '#c0c0c0'];
-              ctx.fillStyle = colors[index % colors.length];
+              const colors = ['#7c6a46', '#8b7355', '#9a8266', '#6b5d42', '#a59173', '#b8a286'];
+              ctx.fillStyle = colors[materialIndex % colors.length];
               
-              let blocksToPlace = coreItem.quantity;
-              let blocksPlaced = 0;
+              const targetBlocks = coreItem.quantity;
+              let blocksPlacedThisMaterial = 0;
               
-              // 1. Front inner wall (horizontal)
-              const segmentLengthFrontBack = innerLength;
-              const blocksNormalFrontBack = Math.floor((segmentLengthFrontBack + mortarGap) / (coreL + mortarGap));
-              const blocksRotatedFrontBack = Math.floor((segmentLengthFrontBack + mortarGap) / (coreW + mortarGap));
-              const useRotatedForFrontBack = blocksRotatedFrontBack > blocksNormalFrontBack;
-              const blockLengthForFrontBack = useRotatedForFrontBack ? coreW : coreL;
-              const blockWidthForFrontBack = useRotatedForFrontBack ? coreL : coreW;
-              
-              for (let i = 0; i < (useRotatedForFrontBack ? blocksRotatedFrontBack : blocksNormalFrontBack) && blocksPlaced < blocksToPlace; i++) {
-                const x = innerXStart + i * (blockLengthForFrontBack + mortarGap);
-                const y = innerYStart;
-                ctx.fillRect(x * scale, y * scale, blockLengthForFrontBack * scale, blockWidthForFrontBack * scale);
-                blocksPlaced++;
-                totalBlocksPlaced++;
-              }
-              
-              // 2. Back inner wall (horizontal)
-              for (let i = 0; i < (useRotatedForFrontBack ? blocksRotatedFrontBack : blocksNormalFrontBack) && blocksPlaced < blocksToPlace; i++) {
-                const x = innerXStart + i * (blockLengthForFrontBack + mortarGap);
-                const y = innerYEnd - blockWidthForFrontBack;
-                ctx.fillRect(x * scale, y * scale, blockLengthForFrontBack * scale, blockWidthForFrontBack * scale);
-                blocksPlaced++;
-                totalBlocksPlaced++;
-              }
-              
-              // 3. Left inner wall (vertical, excluding corners to avoid overlap)
-              const sideWallLength = innerWidth - (2 * blockWidthForFrontBack) - (2 * mortarGap); // Subtract corners and their mortar gaps
-              
-              if (sideWallLength > 0) { // Only draw if there's positive space
-                const blocksNormalSides = Math.floor((sideWallLength + mortarGap) / (coreL + mortarGap));
-                const blocksRotatedSides = Math.floor((sideWallLength + mortarGap) / (coreW + mortarGap));
-                const useRotatedForSides = blocksRotatedSides > blocksNormalSides;
-                const blockLengthForSides = useRotatedForSides ? coreW : coreL;
-                const blockWidthForSides = useRotatedForSides ? coreL : coreW;
+              // Fill the entire inner space in a grid pattern
+              while (blocksPlacedThisMaterial < targetBlocks && globalBlockIndex < (blocksPerRow * totalRows)) {
+                const row = Math.floor(globalBlockIndex / blocksPerRow);
+                const col = globalBlockIndex % blocksPerRow;
                 
-                for (let i = 0; i < (useRotatedForSides ? blocksRotatedSides : blocksNormalSides) && blocksPlaced < blocksToPlace; i++) {
-                  const x = innerXStart;
-                  const y = innerYStart + blockWidthForFrontBack + mortarGap + i * (blockLengthForSides + mortarGap);
-                  ctx.fillRect(x * scale, y * scale, blockWidthForSides * scale, blockLengthForSides * scale);
-                  blocksPlaced++;
-                  totalBlocksPlaced++;
-                }
-              }
-              
-              // 4. Right inner wall (vertical, excluding corners to avoid overlap)
-              if (sideWallLength > 0) { // Only draw if there's positive space
-                const blocksNormalSides = Math.floor((sideWallLength + mortarGap) / (coreL + mortarGap));
-                const blocksRotatedSides = Math.floor((sideWallLength + mortarGap) / (coreW + mortarGap));
-                const useRotatedForSides = blocksRotatedSides > blocksNormalSides;
-                const blockLengthForSides = useRotatedForSides ? coreW : coreL;
-                const blockWidthForSides = useRotatedForSides ? coreL : coreW;
-
-                for (let i = 0; i < (useRotatedForSides ? blocksRotatedSides : blocksNormalSides) && blocksPlaced < blocksToPlace; i++) {
-                  const x = innerXEnd - blockWidthForSides;
-                  const y = innerYStart + blockWidthForFrontBack + mortarGap + i * (blockLengthForSides + mortarGap);
-                  ctx.fillRect(x * scale, y * scale, blockWidthForSides * scale, blockLengthForSides * scale);
-                  blocksPlaced++;
-                  totalBlocksPlaced++;
-                }
+                // Calculate position
+                const x = innerXStart + col * (blockDrawLength + mortarGap);
+                const y = innerYStart + row * (blockDrawWidth + mortarGap);
+                
+                // Draw block
+                ctx.fillRect(x * scale, y * scale, blockDrawLength * scale, blockDrawWidth * scale);
+                
+                blocksPlacedThisMaterial++;
+                globalBlockIndex++;
               }
             });
           }
