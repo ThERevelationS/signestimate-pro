@@ -128,7 +128,7 @@ export default function NewBrickStoneEstimate() {
     }
 
     const material = selectedMaterial;
-
+    
     const baseType = project.base_type;
     const bricksAlongLength = project.bricks_along_length;
     const bricksAlongWidth = project.bricks_along_width;
@@ -136,17 +136,16 @@ export default function NewBrickStoneEstimate() {
     const layers = project.layers;
     const mortarGap = project.mortar_gap;
     const wasteFactor = project.waste_factor;
-
+    
     const brickL = material.length;
     const brickW = material.width;
     const brickH = material.height;
     const costPerUnit = material.cost_per_unit;
 
-    // Calculate actual dimensions from brick counts and mortar gaps
-    // N bricks means N-1 mortar gaps
-    const actualLength = bricksAlongLength * brickL + Math.max(0, bricksAlongLength - 1) * mortarGap;
-    const actualWidth = bricksAlongWidth * brickW + Math.max(0, bricksAlongWidth - 1) * mortarGap;
-    const actualHeight = coursesHigh * brickH + Math.max(0, coursesHigh - 1) * mortarGap;
+    // Calculate actual dimensions from brick counts
+    const actualLength = bricksAlongLength * brickL + (bricksAlongLength - 1) * mortarGap;
+    const actualWidth = bricksAlongWidth * brickW + (bricksAlongWidth - 1) * mortarGap;
+    const actualHeight = coursesHigh * brickH + (coursesHigh - 1) * mortarGap;
 
     let totalBricks = 0;
     let surfaceArea = 0;
@@ -155,15 +154,15 @@ export default function NewBrickStoneEstimate() {
       totalBricks = coursesHigh * bricksAlongLength * bricksAlongWidth * layers;
       surfaceArea = ((actualLength * actualHeight) * 2 + (actualWidth * actualHeight) * 2 + (actualLength * actualWidth)) / 144;
     } else if (baseType === 'hollow_rectangular') {
-      const wallThickness = layers * brickW;
-
+      // Wall thickness includes mortar gaps between layers
+      const wallThickness = layers * brickW + Math.max(0, layers - 1) * mortarGap; // Updated to include mortar gaps
+      
       const frontBackBricks = coursesHigh * bricksAlongLength * layers * 2;
-
-      const effectiveBrickL = brickL + mortarGap;
+      
       const innerWidth = actualWidth - (2 * wallThickness);
-      const bricksAlongInnerWidth = Math.max(0, Math.round(innerWidth / effectiveBrickL));
+      const bricksAlongInnerWidth = Math.max(0, Math.round(innerWidth / (brickL + mortarGap)));
       const leftRightBricks = coursesHigh * bricksAlongInnerWidth * layers * 2;
-
+      
       totalBricks = frontBackBricks + leftRightBricks;
       surfaceArea = ((actualLength * actualHeight) * 2 + ((actualWidth - 2 * wallThickness) * actualHeight) * 2) / 144;
     }
@@ -219,7 +218,7 @@ export default function NewBrickStoneEstimate() {
         ctx.fillRect(0, 0, actualLength * scale, actualWidth * scale);
 
         if (project.base_type === 'hollow_rectangular' && selectedMaterial) {
-          const wallThickness = project.layers * selectedMaterial.width;
+          const wallThickness = project.layers * selectedMaterial.width + Math.max(0, project.layers - 1) * project.mortar_gap;
           const innerX = wallThickness * scale;
           const innerY = wallThickness * scale;
           const innerW = (actualLength - 2 * wallThickness) * scale;
@@ -267,111 +266,108 @@ export default function NewBrickStoneEstimate() {
               }
             }
           } else if (project.base_type === 'hollow_rectangular') {
-            const wallThickness = project.layers * selectedMaterial.width;
+            // Wall thickness now includes mortar gaps between layers
+            const wallThickness = project.layers * selectedMaterial.width + Math.max(0, project.layers - 1) * project.mortar_gap;
             const innerXStart = wallThickness;
             const innerYStart = wallThickness;
             const innerXEnd = actualLength - wallThickness;
             const innerYEnd = actualWidth - wallThickness;
-
+            
             const numBricksLength = calculations.bricksAlongLength;
-            // This `coursesInWall` is for side thickness (how many layers deep the wall is, not courses high)
-            // It's calculated based on how many brick widths fit in the `wallThickness` without mortar.
-            // If mortar is included in `wallThickness` (which it's not currently, it's `layers * brickW`),
-            // then it should be `Math.max(1, Math.round(wallThickness / (brickW + mortarGap)))`.
-            // Sticking with previous implicit interpretation for drawing.
-            const coursesInWall = Math.max(1, Math.round(wallThickness / (brickW))); // Assuming no mortar along depth for visualization simplification
-            const innerHeightDraw = innerYEnd - innerYStart; // This is the space available for bricks laid perpendicular
+            // Number of brick layers in the wall depth
+            const layersInWall = project.layers;
+            const innerHeightDraw = innerYEnd - innerYStart;
             const numBricksInnerLengthRotated = Math.max(1, Math.round(innerHeightDraw / (brickL + mortarGap)));
 
-            // Draw all bricks as solid red rectangles - NO OVERLAY
+            // Draw all bricks as solid red rectangles
             ctx.fillStyle = '#a8332e';
 
-            // FRONT WALL (bottom horizontal)
-            for (let row = 0; row < coursesInWall; row++) { // Iterate for depth of wall
-              const yStart = row * (brickW + mortarGap); // Assuming brickW is depth
+            // FRONT WALL (bottom horizontal) - multiple layers deep
+            for (let layerIndex = 0; layerIndex < layersInWall; layerIndex++) {
+              const yStart = layerIndex * (brickW + mortarGap);
               if (yStart + brickW > wallThickness + 0.01) break;
-
-              const runningBondOffset = (row % 2) * (brickL / 2);
-
+              
+              const runningBondOffset = (layerIndex % 2) * (brickL / 2);
+              
               for (let col = 0; col < numBricksLength; col++) {
                 let xStart = col * (brickL + mortarGap) - runningBondOffset;
                 if (xStart < -brickL * 0.99) continue;
-
+                
                 const brickXStart = Math.max(0, xStart);
                 const brickXEnd = Math.min(actualLength, xStart + brickL);
                 const visibleLength = brickXEnd - brickXStart;
-
+                
                 if (visibleLength < brickL * 0.05) continue;
-
+                
                 ctx.fillRect(brickXStart * scale, yStart * scale, visibleLength * scale, brickW * scale);
               }
             }
-
-            // BACK WALL (top horizontal)
+            
+            // BACK WALL (top horizontal) - multiple layers deep
             const backWallYStart = actualWidth - wallThickness;
-            for (let row = 0; row < coursesInWall; row++) {
-              const yStart = backWallYStart + row * (brickW + mortarGap);
+            for (let layerIndex = 0; layerIndex < layersInWall; layerIndex++) {
+              const yStart = backWallYStart + layerIndex * (brickW + mortarGap);
               if (yStart + brickW > actualWidth + 0.01) break;
-
-              const runningBondOffset = (row % 2) * (brickL / 2);
-
+              
+              const runningBondOffset = (layerIndex % 2) * (brickL / 2);
+              
               for (let col = 0; col < numBricksLength; col++) {
                 let xStart = col * (brickL + mortarGap) - runningBondOffset;
                 if (xStart < -brickL * 0.99) continue;
-
+                
                 const brickXStart = Math.max(0, xStart);
                 const brickXEnd = Math.min(actualLength, xStart + brickL);
                 const visibleLength = brickXEnd - brickXStart;
-
+                
                 if (visibleLength < brickL * 0.05) continue;
-
+                
                 ctx.fillRect(brickXStart * scale, yStart * scale, visibleLength * scale, brickW * scale);
               }
             }
-
-            // LEFT WALL (vertical - bricks rotated 90°)
-            for (let col = 0; col < coursesInWall; col++) {
-              const xStart = col * (brickW + mortarGap);
+            
+            // LEFT WALL (vertical - bricks rotated 90°) - multiple layers deep
+            for (let layerIndex = 0; layerIndex < layersInWall; layerIndex++) {
+              const xStart = layerIndex * (brickW + mortarGap);
               if (xStart + brickW > wallThickness + 0.01) break;
-
-              const runningBondOffset = (col % 2) * (brickL / 2);
-
+              
+              const runningBondOffset = (layerIndex % 2) * (brickL / 2);
+              
               for (let row = 0; row < numBricksInnerLengthRotated; row++) {
                 let yStart = innerYStart + row * (brickL + mortarGap) - runningBondOffset;
                 if (yStart < innerYStart - brickL * 0.99) continue;
-
+                
                 const brickYStart = Math.max(innerYStart, yStart);
                 const brickYEnd = Math.min(innerYEnd, yStart + brickL);
                 const visibleLength = brickYEnd - brickYStart;
-
+                
                 if (visibleLength < brickL * 0.05) continue;
-
+                
                 ctx.fillRect(xStart * scale, brickYStart * scale, brickW * scale, visibleLength * scale);
               }
             }
-
-            // RIGHT WALL (vertical - bricks rotated 90°)
+            
+            // RIGHT WALL (vertical - bricks rotated 90°) - multiple layers deep
             const rightWallXStart = actualLength - wallThickness;
-            for (let col = 0; col < coursesInWall; col++) {
-              const xStart = rightWallXStart + col * (brickW + mortarGap);
+            for (let layerIndex = 0; layerIndex < layersInWall; layerIndex++) {
+              const xStart = rightWallXStart + layerIndex * (brickW + mortarGap);
               if (xStart + brickW > actualLength + 0.01) break;
-
-              const runningBondOffset = (col % 2) * (brickL / 2);
-
+              
+              const runningBondOffset = (layerIndex % 2) * (brickL / 2);
+              
               for (let row = 0; row < numBricksInnerLengthRotated; row++) {
                 let yStart = innerYStart + row * (brickL + mortarGap) - runningBondOffset;
                 if (yStart < innerYStart - brickL * 0.99) continue;
-
+                
                 const brickYStart = Math.max(innerYStart, yStart);
                 const brickYEnd = Math.min(innerYEnd, yStart + brickL);
                 const visibleLength = brickYEnd - brickYStart;
-
+                
                 if (visibleLength < brickL * 0.05) continue;
-
+                
                 ctx.fillRect(xStart * scale, brickYStart * scale, brickW * scale, visibleLength * scale);
               }
             }
-
+            
             // Fill hollow center with white
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(innerXStart * scale, innerYStart * scale, (innerXEnd - innerXStart) * scale, (innerYEnd - innerYStart) * scale);
@@ -383,7 +379,7 @@ export default function NewBrickStoneEstimate() {
           ctx.strokeRect(0, 0, actualLength * scale, actualWidth * scale);
 
           if (project.base_type === 'hollow_rectangular') {
-            const wallThickness = project.layers * selectedMaterial.width;
+            const wallThickness = project.layers * selectedMaterial.width + Math.max(0, project.layers - 1) * project.mortar_gap;
             ctx.strokeStyle = '#1e293b';
             ctx.lineWidth = 2;
             ctx.strokeRect(wallThickness * scale, wallThickness * scale,
@@ -791,7 +787,7 @@ export default function NewBrickStoneEstimate() {
                     {project.base_type === 'solid_rectangular'
                       ? 'Number of brick layers for the entire base'
                       : 'Number of brick layers for wall thickness'}
-                    {selectedMaterial && ` (${(project.layers * selectedMaterial.width).toFixed(1)}" thick)`}
+                    {selectedMaterial && ` (${(project.layers * selectedMaterial.width + Math.max(0, project.layers - 1) * project.mortar_gap).toFixed(1)}" thick)`}
                   </p>
                 </div>
 
