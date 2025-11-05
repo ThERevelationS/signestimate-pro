@@ -40,7 +40,7 @@ export default function NewBrickStoneEstimate() {
   const [calculations, setCalculations] = useState(null);
   const [settings, setSettings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = false);
+  const [isSaving, setIsSaving] = useState(false);
   const [showDimensions, setShowDimensions] = useState(true);
 
   useEffect(() => {
