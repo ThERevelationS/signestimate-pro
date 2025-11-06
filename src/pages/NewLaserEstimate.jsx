@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from "react";
 import { LaserProject, Settings, User } from "@/entities/all";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -53,7 +54,8 @@ export default function NewLaserEstimate() {
     labor_rate: 75,
     fixed_setup_hours: 0.5,
     fixed_material_setup_cost: 0,
-    notes: ""
+    notes: "",
+    total_supplies_cost: 0 // Initialize total supplies cost
   });
 
   const [globalSettings, setGlobalSettings] = useState({});
@@ -92,7 +94,8 @@ export default function NewLaserEstimate() {
           labor_rate: parseFloat(settingsObj.laser_labor_rate) || 75,
           fixed_setup_hours: parseFloat(settingsObj.min_laser_setup_hours) || 0.5,
           fixed_material_setup_cost: parseFloat(settingsObj.laser_fixed_material_setup_cost) || 0,
-          notes: settingsObj.default_notes_template || ""
+          notes: settingsObj.default_notes_template || "",
+          total_supplies_cost: 0 // Initialize for new project
         };
         setProject((prev) => ({ ...prev, ...newDefaults }));
       }
@@ -187,6 +190,7 @@ export default function NewLaserEstimate() {
 
     let totalMachineCost = 0;
     let totalLaborCost = 0;
+    let totalSuppliesCost = 0; // New: Initialize total supplies cost
 
     const updatedItems = project.items.map((item) => {
       // Calculate cut time
@@ -222,14 +226,15 @@ export default function NewLaserEstimate() {
     const fixedSetupLaborCost = project.fixed_setup_hours * project.labor_rate;
     totalLaborCost += fixedSetupLaborCost;
 
-    // Add fixed material setup cost
+    // Add fixed material setup cost to supplies cost
     const fixedMaterialSetupCost = project.fixed_material_setup_cost || 0;
-    totalMachineCost += fixedMaterialSetupCost;
+    totalSuppliesCost += fixedMaterialSetupCost; // Now goes to supplies cost
 
     return {
       items: updatedItems,
       total_machine_cost: totalMachineCost,
-      total_labor_cost: totalLaborCost
+      total_labor_cost: totalLaborCost,
+      total_supplies_cost: totalSuppliesCost // Return total supplies cost
     };
   }, [project.items, project.machine_rate_per_hour, project.labor_rate, project.fixed_setup_hours, project.fixed_material_setup_cost, globalSettings]);
 
@@ -240,7 +245,8 @@ export default function NewLaserEstimate() {
         ...prev,
         items: calculated.items,
         total_machine_cost: calculated.total_machine_cost,
-        total_labor_cost: calculated.total_labor_cost
+        total_labor_cost: calculated.total_labor_cost,
+        total_supplies_cost: calculated.total_supplies_cost // Update project state with supplies cost
       }));
     }
   }, [calculateTotals, isLoading, project.items.length]); // Added project.items.length to dependency array to trigger recalculation when items are added/removed
@@ -263,6 +269,7 @@ export default function NewLaserEstimate() {
         ...project,
         items: calculated.items,
         total_machine_cost: calculated.total_machine_cost,
+        total_supplies_cost: calculated.total_supplies_cost, // Add total_supplies_cost
         total_labor_cost: calculated.total_labor_cost,
         status: 'calculated'
       };
@@ -283,7 +290,7 @@ export default function NewLaserEstimate() {
   };
 
   const downloadEstimate = () => {
-    const totalCost = (project.total_machine_cost || 0) + (project.total_labor_cost || 0);
+    const totalCost = (project.total_machine_cost || 0) + (project.total_supplies_cost || 0) + (project.total_labor_cost || 0); // Include supplies cost
     
     const estimateContent = `
 LASER CUTTING ESTIMATE
@@ -313,6 +320,7 @@ TOTALS:
 Fixed Setup Hours: ${project.fixed_setup_hours} hrs
 Fixed Material Setup Cost: $${project.fixed_material_setup_cost.toFixed(2)}
 Total Machine Cost: $${(project.total_machine_cost || 0).toFixed(2)}
+Total Supplies Cost: $${(project.total_supplies_cost || 0).toFixed(2)}
 Total Labor Cost: $${(project.total_labor_cost || 0).toFixed(2)}
 TOTAL ESTIMATE: $${totalCost.toFixed(2)}
 
@@ -331,7 +339,7 @@ Notes: ${project.notes || 'None'}
   };
 
   const printEstimate = () => {
-    const totalCost = (project.total_machine_cost || 0) + (project.total_labor_cost || 0);
+    const totalCost = (project.total_machine_cost || 0) + (project.total_supplies_cost || 0) + (project.total_labor_cost || 0); // Include supplies cost
     
     const printContent = `
       <html>
@@ -379,6 +387,7 @@ Notes: ${project.notes || 'None'}
             <p><strong>Fixed Setup Hours:</strong> ${project.fixed_setup_hours} hrs</p>
             <p><strong>Fixed Material Setup Cost:</strong> $${project.fixed_material_setup_cost.toFixed(2)}</p>
             <p><strong>Total Machine Cost:</strong> $${(project.total_machine_cost || 0).toFixed(2)}</p>
+            <p><strong>Total Supplies Cost:</strong> $${(project.total_supplies_cost || 0).toFixed(2)}</p>
             <p><strong>Total Labor Cost:</strong> $${(project.total_labor_cost || 0).toFixed(2)}</p>
             <div class="final-total">
               <p>TOTAL ESTIMATE: $${totalCost.toFixed(2)}</p>
@@ -397,7 +406,7 @@ Notes: ${project.notes || 'None'}
   };
 
   const emailEstimate = () => {
-    const totalCost = (project.total_machine_cost || 0) + (project.total_labor_cost || 0);
+    const totalCost = (project.total_machine_cost || 0) + (project.total_supplies_cost || 0) + (project.total_labor_cost || 0); // Include supplies cost
     
     const emailBody = `Hello,
 
@@ -408,6 +417,7 @@ Reference Link: ${project.hyperlink}
 
 ESTIMATE SUMMARY:
 Total Machine Cost: $${(project.total_machine_cost || 0).toFixed(2)}
+Total Supplies Cost: $${(project.total_supplies_cost || 0).toFixed(2)}
 Total Labor Cost: $${(project.total_labor_cost || 0).toFixed(2)}
 TOTAL ESTIMATE: $${totalCost.toFixed(2)}
 
@@ -754,7 +764,7 @@ Best regards`;
                         onChange={(e) => setProject((prev) => ({ ...prev, fixed_material_setup_cost: parseFloat(e.target.value) || 0 }))}
                         className="mt-1" />
 
-                          <p className="text-xs text-slate-500 mt-1">One-time material/setup cost applied to the entire project</p>
+                          <p className="text-xs text-slate-500 mt-1">One-time material/setup cost applied to the entire project, added to supplies cost.</p>
                         </div>
                       </div>
                   }
@@ -779,12 +789,16 @@ Best regards`;
                     <span className="font-medium">${(project.total_machine_cost || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
+                    <span>Total Supplies Cost:</span> {/* Display total supplies cost */}
+                    <span className="font-medium">${(project.total_supplies_cost || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
                     <span>Total Labor Cost:</span>
                     <span className="font-medium">${(project.total_labor_cost || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold border-t pt-2">
                     <span>TOTAL:</span>
-                    <span className="text-green-600">${((project.total_machine_cost || 0) + (project.total_labor_cost || 0)).toFixed(2)}</span>
+                    <span className="text-green-600">${((project.total_machine_cost || 0) + (project.total_supplies_cost || 0) + (project.total_labor_cost || 0)).toFixed(2)}</span> {/* Update total calculation */}
                   </div>
                 </div>
 
