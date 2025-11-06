@@ -263,13 +263,6 @@ export default function LaserSettings() {
             </div>
             <Separator />
             <div className="space-y-4">
-              <h4 className="font-medium text-slate-800">Laser Specific Operating Costs</h4>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div><Label>Consumables ($/hr)</Label><Input type="number" value={settings.laser_consumables_cost_per_hour} onChange={e => updateSetting('laser_consumables_cost_per_hour', e.target.value)} disabled={isLocked} /></div>
-              </div>
-            </div>
-            <Separator />
-            <div className="space-y-4">
               <h4 className="font-medium text-slate-800">Operating Costs (Shared Across Modules)</h4>
               <div className="grid md:grid-cols-3 gap-4">
                 <div><Label>Electricity Cost ($/kWh)</Label><Input type="number" step="0.01" value={settings.electricity_cost_per_kwh} onChange={(e) => updateSetting('electricity_cost_per_kwh', e.target.value)} disabled={isLocked}/></div>
