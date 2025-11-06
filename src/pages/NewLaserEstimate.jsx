@@ -52,6 +52,7 @@ export default function NewLaserEstimate() {
     machine_rate_per_hour: 100,
     labor_rate: 75,
     fixed_setup_hours: 0.5,
+    fixed_material_setup_cost: 0,
     notes: ""
   });
 
@@ -90,6 +91,7 @@ export default function NewLaserEstimate() {
           machine_rate_per_hour: parseFloat(settingsObj.laser_machine_rate) || 100,
           labor_rate: parseFloat(settingsObj.laser_labor_rate) || 75,
           fixed_setup_hours: parseFloat(settingsObj.min_laser_setup_hours) || 0.5,
+          fixed_material_setup_cost: parseFloat(settingsObj.laser_fixed_material_setup_cost) || 0,
           notes: settingsObj.default_notes_template || ""
         };
         setProject(prev => ({ ...prev, ...newDefaults }));
@@ -220,12 +222,16 @@ export default function NewLaserEstimate() {
     const fixedSetupLaborCost = project.fixed_setup_hours * project.labor_rate;
     totalLaborCost += fixedSetupLaborCost;
     
+    // Add fixed material setup cost
+    const fixedMaterialSetupCost = project.fixed_material_setup_cost || 0;
+    totalMachineCost += fixedMaterialSetupCost;
+    
     return {
       items: updatedItems,
       total_machine_cost: totalMachineCost,
       total_labor_cost: totalLaborCost
     };
-  }, [project.items, project.machine_rate_per_hour, project.labor_rate, project.fixed_setup_hours, globalSettings]);
+  }, [project.items, project.machine_rate_per_hour, project.labor_rate, project.fixed_setup_hours, project.fixed_material_setup_cost, globalSettings]);
 
   useEffect(() => {
     if (!isLoading && project.items.length > 0) {
@@ -526,9 +532,10 @@ export default function NewLaserEstimate() {
                             <Label>Engraving Area (sq inches)</Label>
                             <Input 
                               type="number" 
-                              step="0.1" 
+                              step="0.1"
+                              min="0"
                               value={item.engrave_area_sqin} 
-                              onChange={(e) => updateItem(index, 'engrave_area_sqin', parseFloat(e.target.value) || 0)}
+                              onChange={(e) => updateItem(index, 'engrave_area_sqin', Math.max(0, parseFloat(e.target.value) || 0))}
                               placeholder="Enter engraving area"
                               className="mt-1"
                             />
@@ -578,17 +585,30 @@ export default function NewLaserEstimate() {
                     </Button>
                     
                     {showAdvancedSettings && (
-                      <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                      <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-4">
                         <div>
                           <Label>Fixed Setup Time (hours)</Label>
                           <Input 
                             type="number" 
                             step="0.1" 
+                            min="0"
                             value={project.fixed_setup_hours} 
                             onChange={(e) => setProject(prev => ({ ...prev, fixed_setup_hours: parseFloat(e.target.value) || 0 }))}
                             className="mt-1"
                           />
-                          <p className="text-xs text-slate-500 mt-1">One-time setup cost applied to the entire project</p>
+                          <p className="text-xs text-slate-500 mt-1">One-time setup labor cost applied to the entire project</p>
+                        </div>
+                        <div>
+                          <Label>Fixed Material Setup Cost ($)</Label>
+                          <Input 
+                            type="number" 
+                            step="1" 
+                            min="0"
+                            value={project.fixed_material_setup_cost} 
+                            onChange={(e) => setProject(prev => ({ ...prev, fixed_material_setup_cost: parseFloat(e.target.value) || 0 }))}
+                            className="mt-1"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">One-time material/setup cost applied to the entire project</p>
                         </div>
                       </div>
                     )}
@@ -624,7 +644,6 @@ export default function NewLaserEstimate() {
                       className="mt-1"
                     />
                   </div>
-                  {/* Fixed Setup Time (hrs) input removed from here and moved to advanced settings */}
                 </div>
 
                 <div className="border-t pt-6 space-y-3">

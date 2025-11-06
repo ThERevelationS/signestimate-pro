@@ -71,6 +71,7 @@ export default function LaserSettings() {
         leather_cut_multiplier: "0.8",
         min_laser_labor_hours: "0.25",
         min_laser_setup_hours: "0.5",
+        laser_fixed_material_setup_cost: "0",
         company_name: "Sign Company",
         default_notes_template: "",
 
@@ -152,6 +153,7 @@ export default function LaserSettings() {
       { name: "laser_engrave_speed_sqipm", type: "number", category: "laser_speed", description: "Engraving speed in square inches per minute" },
       { name: "min_laser_setup_hours", type: "number", category: "laser_labor", description: "Fixed setup time in hours per project" },
       { name: "min_laser_labor_hours", type: "number", category: "laser_labor", description: "Minimum laser labor hours per project" },
+      { name: "laser_fixed_material_setup_cost", type: "number", category: "laser_labor", description: "Fixed material setup cost per project" },
       { name: "company_name", type: "text", category: "general", description: "Company name" },
       { name: "default_notes_template", type: "text", category: "general", description: "Default project notes template" },
       { name: "laser_purchase_price", type: "number", category: "laser_calculator", description: "Laser purchase price" },
@@ -311,6 +313,11 @@ export default function LaserSettings() {
             <Label>Fixed Setup Time (hours)</Label>
             <Input type="number" min="0" step="0.1" value={settings.min_laser_setup_hours} onChange={(e) => updateSetting('min_laser_setup_hours', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
             <p className="text-xs text-slate-500 mt-1">A fixed setup time added to each project's labor cost.</p>
+          </div>
+          <div>
+            <Label>Fixed Material Setup Cost ($)</Label>
+            <Input type="number" min="0" step="1" value={settings.laser_fixed_material_setup_cost} onChange={(e) => updateSetting('laser_fixed_material_setup_cost', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
+            <p className="text-xs text-slate-500 mt-1">A fixed material/setup cost added to each project.</p>
           </div>
           <div>
             <Label>Minimum Labor (hours)</Label>
