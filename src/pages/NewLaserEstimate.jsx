@@ -222,10 +222,10 @@ export default function NewLaserEstimate() {
       total_machine_cost: totalMachineCost,
       total_labor_cost: totalLaborCost
     };
-  }, [project, globalSettings]);
+  }, [project.items, project.machine_rate_per_hour, project.labor_rate, project.fixed_setup_hours, globalSettings]);
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && project.items.length > 0) {
       const calculated = calculateTotals();
       setProject(prev => ({
         ...prev,
@@ -234,7 +234,7 @@ export default function NewLaserEstimate() {
         total_labor_cost: calculated.total_labor_cost
       }));
     }
-  }, [project.items.length, project.machine_rate_per_hour, project.labor_rate, project.fixed_setup_hours, isLoading]);
+  }, [calculateTotals, isLoading]);
 
   const saveProject = async () => {
     if (!project.project_name || !project.client_name || !project.estimate_number || !project.hyperlink) {
