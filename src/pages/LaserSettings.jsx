@@ -36,7 +36,7 @@ export default function LaserSettings() {
     const totalPowerKw = laserPower + chillerPower + blowerPower;
     
     const electricityCost = parseFloat(settings.electricity_cost_per_kwh) || 0;
-    const consumables = parseFloat(settings[`${prefix}_consumables_cost_per_hour`]) || 0;
+    const consumables = parseFloat(settings[`${prefix}_consumables_cost_per_hour`]) || 0; // This variable is no longer used in total calculation per outline.
     const overhead = parseFloat(settings.facility_overhead_per_hour) || 0;
 
     // CO2 Laser Tube Cost
@@ -51,10 +51,10 @@ export default function LaserSettings() {
     const maintenanceCost = totalMaintenance / annualHours;
     const powerCost = totalPowerKw * electricityCost;
 
-    const total = depreciation + maintenanceCost + powerCost + consumables + tubeCostPerHour + overhead;
+    const total = depreciation + maintenanceCost + powerCost + tubeCostPerHour + overhead; // 'consumables' removed from here
     return {
       total: total.toFixed(2),
-      parts: { depreciation, maintenanceCost, powerCost, consumables, tubeCostPerHour, overhead }
+      parts: { depreciation, maintenanceCost, powerCost, tubeCostPerHour, overhead } // 'consumables' removed from here
     };
   }, [settings]);
 
@@ -277,7 +277,7 @@ export default function LaserSettings() {
               <div className="flex justify-between"><span>Depreciation:</span><span className="font-mono">${(laserRate.parts.depreciation || 0).toFixed(2)}/hr</span></div>
               <div className="flex justify-between"><span>Maintenance:</span><span className="font-mono">${(laserRate.parts.maintenanceCost || 0).toFixed(2)}/hr</span></div>
               <div className="flex justify-between"><span>Power:</span><span className="font-mono">${(laserRate.parts.powerCost || 0).toFixed(2)}/hr</span></div>
-              <div className="flex justify-between"><span>Consumables:</span><span className="font-mono">${(laserRate.parts.consumables || 0).toFixed(2)}/hr</span></div>
+              {/* Removed Consumables as per outline */}
               <div className="flex justify-between border-l-2 border-red-400 pl-2"><span>CO2 Tube:</span><span className="font-mono">${(laserRate.parts.tubeCostPerHour || 0).toFixed(2)}/hr</span></div>
               <div className="flex justify-between"><span>Overhead:</span><span className="font-mono">${(laserRate.parts.overhead || 0).toFixed(2)}/hr</span></div>
             </div>
