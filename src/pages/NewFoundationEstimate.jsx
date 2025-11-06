@@ -508,26 +508,66 @@ export default function NewFoundationEstimate() {
                               <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
                                 <div className="flex items-start gap-4 mb-4">
                                   <div className="flex-shrink-0">
-                                    <svg className="w-16 h-16 text-blue-600" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                      <rect x="15" y="30" width="70" height="40" fill="#E5E7EB" stroke="#1E40AF" strokeWidth="2"/>
-                                      <line x1="25" y1="40" x2="25" y2="60" stroke="#1E40AF" strokeWidth="3" strokeLinecap="round"/>
-                                      <line x1="40" y1="40" x2="40" y2="60" stroke="#1E40AF" strokeWidth="3" strokeLinecap="round"/>
-                                      <line x1="55" y1="40" x2="55" y2="60" stroke="#1E40AF" strokeWidth="3" strokeLinecap="round"/>
-                                      <line x1="70" y1="40" x2="70" y2="60" stroke="#1E40AF" strokeWidth="3" strokeLinecap="round"/>
-                                      <circle cx="25" cy="40" r="2" fill="#DC2626"/>
-                                      <circle cx="40" cy="40" r="2" fill="#DC2626"/>
-                                      <circle cx="55" cy="40" r="2" fill="#DC2626"/>
-                                      <circle cx="70" cy="40" r="2" fill="#DC2626"/>
-                                      <circle cx="25" cy="60" r="2" fill="#DC2626"/>
-                                      <circle cx="40" cy="60" r="2" fill="#DC2626"/>
-                                      <circle cx="55" cy="60" r="2" fill="#DC2626"/>
-                                      <circle cx="70" cy="60" r="2" fill="#DC2626"/>
-                                      <text x="50" y="85" textAnchor="middle" className="text-xs font-medium" fill="#1E40AF">Rebar Grid</text>
+                                    <svg className="w-32 h-32 text-blue-600" viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      {/* 3D Foundation View with Rebar */}
+                                      
+                                      {/* Back face of foundation (darker) */}
+                                      <path d="M 30 30 L 170 30 L 170 70 L 30 70 Z" fill="#CCCCCC" stroke="#999999" strokeWidth="1"/>
+                                      
+                                      {/* Right side face */}
+                                      <path d="M 170 30 L 190 20 L 190 60 L 170 70 Z" fill="#B8B8B8" stroke="#999999" strokeWidth="1"/>
+                                      
+                                      {/* Top face */}
+                                      <path d="M 30 30 L 50 20 L 190 20 L 170 30 Z" fill="#E0E0E0" stroke="#999999" strokeWidth="1"/>
+                                      
+                                      {/* Front face (lighter) */}
+                                      <path d="M 30 30 L 50 20 L 50 60 L 30 70 Z" fill="#D4D4D4" stroke="#999999" strokeWidth="1"/>
+                                      
+                                      {/* Rebar grid - lengthwise bars */}
+                                      {/* First row of rebar (closer to viewer) */}
+                                      <line x1="40" y1="45" x2="160" y2="45" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round" opacity="0.9"/>
+                                      <line x1="40" y1="50" x2="160" y2="50" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round" opacity="0.9"/>
+                                      
+                                      {/* Second row of rebar (further from viewer) */}
+                                      <line x1="43" y1="37" x2="163" y2="37" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round" opacity="0.8"/>
+                                      <line x1="43" y1="42" x2="163" y2="42" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round" opacity="0.8"/>
+                                      
+                                      {/* Cross bars (perpendicular, for structure) */}
+                                      <line x1="60" y1="37" x2="58" y2="50" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
+                                      <line x1="90" y1="37" x2="88" y2="50" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
+                                      <line x1="120" y1="37" x2="118" y2="50" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
+                                      <line x1="150" y1="37" x2="148" y2="50" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
+                                      
+                                      {/* Rebar end points (circles) */}
+                                      <circle cx="40" cy="45" r="2" fill="#991B1B"/>
+                                      <circle cx="40" cy="50" r="2" fill="#991B1B"/>
+                                      <circle cx="43" cy="37" r="2" fill="#991B1B"/>
+                                      <circle cx="43" cy="42" r="2" fill="#991B1B"/>
+                                      
+                                      {/* Labels */}
+                                      <text x="100" y="95" textAnchor="middle" className="text-xs font-semibold" fill="#1E40AF">3D Foundation with Rebar Grid</text>
+                                      <text x="100" y="108" textAnchor="middle" className="text-[10px]" fill="#1E40AF">Lengthwise reinforcement bars</text>
+                                      
+                                      {/* Dimension arrows */}
+                                      <defs>
+                                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                          <polygon points="0 0, 10 3.5, 0 7" fill="#1E40AF" />
+                                        </marker>
+                                      </defs>
+                                      <line x1="25" y1="30" x2="25" y2="70" stroke="#1E40AF" strokeWidth="1" markerEnd="url(#arrowhead)" markerStart="url(#arrowhead)"/>
+                                      <text x="20" y="52" textAnchor="end" className="text-[9px]" fill="#1E40AF">Depth</text>
+                                      
+                                      <line x1="30" y1="75" x2="170" y2="75" stroke="#1E40AF" strokeWidth="1" markerEnd="url(#arrowhead)" markerStart="url(#arrowhead)"/>
+                                      <text x="100" y="88" textAnchor="middle" className="text-[9px]" fill="#1E40AF">Length</text>
                                     </svg>
                                   </div>
                                   <div className="flex-1">
                                     <p className="text-sm font-semibold text-blue-900 mb-1">Steel Reinforcement Grid</p>
-                                    <p className="text-xs text-blue-700">Rebar bars will be embedded in the concrete foundation for structural strength.</p>
+                                    <p className="text-xs text-blue-700 mb-2">Rebar bars run lengthwise through the foundation and are tied together with cross bars for structural integrity.</p>
+                                    <div className="bg-blue-100 p-2 rounded text-xs text-blue-800">
+                                      <p className="font-medium">Foundation Dimensions:</p>
+                                      <p>Length: {item.length}' × Width: {item.width}' × Depth: {item.depth}'</p>
+                                    </div>
                                   </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-4">
