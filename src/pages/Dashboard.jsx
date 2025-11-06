@@ -96,7 +96,7 @@ export default function Dashboard() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {renderModuleCard("painting", "Painting Estimator", "For dimensional letters & panels", Paintbrush, "blue", "NewPaintEstimate")}
-          {renderModuleCard("laser", "CO2 Laser Estimator", "For cutting & engraving", Zap, "purple", "NewLaserEstimate")}
+          {renderModuleCard("laser", "Laser Cutting & Engraving", "For cutting & engraving", Zap, "purple", "NewLaserEstimate")}
           {renderModuleCard("cnc", "CNC Router Estimator", "For routing & carving", Router, "green", "NewCNCEstimate")}
           {renderModuleCard("metal_fabrication", "Metal Fabrication Estimator", "For aluminum & steel signs", Wrench, "orange", "NewMetalEstimate")}
           {renderModuleCard("channel_letter_installation", "Channel Letter Install", "For raceway & mounted letters", Wrench, "purple", "NewChannelLetterInstallation")}

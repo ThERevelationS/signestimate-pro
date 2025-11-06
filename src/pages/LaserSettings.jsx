@@ -126,7 +126,7 @@ export default function LaserSettings() {
         setting_name: key,
         setting_value: String(value),
         setting_type: 'number',
-        category: 'laser_rates',
+        category: 'laser_rates', // This category might need to be dynamic if called for other types of settings.
         description: `Calculated value for ${key.replace(/_/g, ' ')}`
       };
       if (existing.length > 0) {
@@ -164,12 +164,12 @@ export default function LaserSettings() {
       { name: "laser_power_consumption_kw", type: "number", category: "laser_calculator", description: "Laser power consumption in kW" },
       { name: "laser_chiller_power_consumption_kw", type: "number", category: "laser_calculator", description: "Chiller power consumption in kW" },
       { name: "laser_blower_power_consumption_kw", type: "number", category: "laser_calculator", description: "Blower power consumption in kW" },
-      { name: "laser_consumables_cost_per_hour", type: "number", category: "laser_calculator", description: "Laser consumables cost per hour" },
       { name: "laser_tube_purchase_price", type: "number", category: "laser_calculator", description: "CO2 laser tube purchase price" },
       { name: "laser_tube_lifespan_hours", type: "number", category: "laser_calculator", description: "CO2 laser tube lifespan in hours" },
       { name: "electricity_cost_per_kwh", type: "number", category: "shared_calculator", description: "Electricity cost per kWh" },
       { name: "operator_cost_per_hour", type: "number", category: "shared_calculator", description: "Operator cost per hour" },
       { name: "facility_overhead_per_hour", type: "number", category: "shared_calculator", description: "Facility overhead cost per hour" },
+      { name: "laser_consumables_cost_per_hour", type: "number", category: "laser_calculator", description: "Laser consumables cost per hour" }, // Ensure this is explicitly defined here
     ];
     
     materials.forEach(mat => {
@@ -233,35 +233,50 @@ export default function LaserSettings() {
 
   const settingsContent = (
     <div className="space-y-8">
-      {/* Machine Rate Calculator */}
+      {/* Laser Calculator - Equipment & Operating Costs */}
       <Card className="bg-white border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Calculator /> Laser Machine Rate Calculator</CardTitle>
-          <p className="text-sm text-slate-500">Calculate your machine's hourly operational cost. Shared costs like operator and electricity are used by other calculators.</p>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Calculator />Laser Cost Calculator</CardTitle>
+        <p className="text-sm text-slate-500">Calculate your machine's hourly operational cost. Shared costs like operator and electricity are used by other calculators.</p>
         </CardHeader>
         <CardContent className="grid md:grid-cols-2 gap-x-8 gap-y-4 pt-6">
-          <div className="space-y-4">
-            <h4 className="font-medium text-slate-800 border-b pb-2">Machine & Maintenance</h4>
-            <div><Label>Purchase Price ($)</Label><Input type="number" value={settings.laser_purchase_price || ''} onChange={e => updateSetting('laser_purchase_price', e.target.value)} disabled={isLocked} /></div>
-            <div><Label>Lifespan (Years)</Label><Input type="number" value={settings.laser_lifespan_years || ''} onChange={e => updateSetting('laser_lifespan_years', e.target.value)} disabled={isLocked} /></div>
-            <div><Label>Usage (Hours/Week)</Label><Input type="number" value={settings.laser_usage_hours_per_week || ''} onChange={e => updateSetting('laser_usage_hours_per_week', e.target.value)} disabled={isLocked} /></div>
-            <div><Label>Laser Annual Maintenance ($)</Label><Input type="number" value={settings.laser_annual_maintenance_cost || ''} onChange={e => updateSetting('laser_annual_maintenance_cost', e.target.value)} disabled={isLocked} /></div>
-            <div><Label>Chiller Annual Upkeep ($)</Label><Input type="number" value={settings.laser_chiller_annual_maintenance_cost || ''} onChange={e => updateSetting('laser_chiller_annual_maintenance_cost', e.target.value)} disabled={isLocked} /></div>
-            
-            <h4 className="font-medium text-slate-800 border-b pb-2 pt-4">CO2 Laser Tube (Consumable)</h4>
-            <div><Label>Tube Purchase Price ($)</Label><Input type="number" value={settings.laser_tube_purchase_price || ''} onChange={e => updateSetting('laser_tube_purchase_price', e.target.value)} disabled={isLocked} /></div>
-            <div><Label>Tube Lifespan (Hours)</Label><Input type="number" value={settings.laser_tube_lifespan_hours || ''} onChange={e => updateSetting('laser_tube_lifespan_hours', e.target.value)} disabled={isLocked} /><p className="text-xs text-slate-500 mt-1">Typical range: 2,000-10,000 hours</p></div>
-            
-            <h4 className="font-medium text-slate-800 border-b pb-2 pt-4">Operational Costs</h4>
-            <div><Label>Laser Power Consumption (kW)</Label><Input type="number" value={settings.laser_power_consumption_kw || ''} onChange={e => updateSetting('laser_power_consumption_kw', e.target.value)} disabled={isLocked} /></div>
-            <div><Label>Chiller Power Consumption (kW)</Label><Input type="number" value={settings.laser_chiller_power_consumption_kw || ''} onChange={e => updateSetting('laser_chiller_power_consumption_kw', e.target.value)} disabled={isLocked} /></div>
-            <div><Label>Blower Power Consumption (kW)</Label><Input type="number" value={settings.laser_blower_power_consumption_kw || ''} onChange={e => updateSetting('laser_blower_power_consumption_kw', e.target.value)} disabled={isLocked} /></div>
-            <div><Label>Consumables ($/hr)</Label><Input type="number" value={settings.laser_consumables_cost_per_hour || ''} onChange={e => updateSetting('laser_consumables_cost_per_hour', e.target.value)} disabled={isLocked} /></div>
-
-            <h4 className="font-medium text-slate-800 border-b pb-2 pt-4">Shared Costs</h4>
-            <div><Label>Electricity Cost ($/kWh)</Label><Input type="number" value={settings.electricity_cost_per_kwh || ''} onChange={e => updateSetting('electricity_cost_per_kwh', e.target.value)} disabled={isLocked} /></div>
-            <div><Label>Operator Cost ($/hr)</Label><Input type="number" value={settings.operator_cost_per_hour || ''} onChange={e => updateSetting('operator_cost_per_hour', e.target.value)} disabled={isLocked} /></div>
-            <div><Label>Facility Overhead ($/hr)</Label><Input type="number" value={settings.facility_overhead_per_hour || ''} onChange={e => updateSetting('facility_overhead_per_hour', e.target.value)} disabled={isLocked} /></div>
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <h4 className="font-medium text-slate-800">Equipment Information</h4>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div><Label>Laser Purchase Price ($)</Label><Input type="number" value={settings.laser_purchase_price} onChange={(e) => updateSetting('laser_purchase_price', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Expected Lifespan (years)</Label><Input type="number" value={settings.laser_lifespan_years} onChange={(e) => updateSetting('laser_lifespan_years', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Usage Hours per Week</Label><Input type="number" value={settings.laser_usage_hours_per_week} onChange={(e) => updateSetting('laser_usage_hours_per_week', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>CO2 Tube Purchase Price ($)</Label><Input type="number" value={settings.laser_tube_purchase_price} onChange={(e) => updateSetting('laser_tube_purchase_price', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>CO2 Tube Lifespan (hours)</Label><Input type="number" value={settings.laser_tube_lifespan_hours} onChange={(e) => updateSetting('laser_tube_lifespan_hours', e.target.value)} disabled={isLocked}/></div>
+              </div>
+            </div>
+            <Separator />
+            <div className="space-y-4">
+              <h4 className="font-medium text-slate-800">Maintenance & Power</h4>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div><Label>Laser Annual Maintenance ($)</Label><Input type="number" value={settings.laser_annual_maintenance_cost} onChange={(e) => updateSetting('laser_annual_maintenance_cost', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Chiller Annual Maintenance ($)</Label><Input type="number" value={settings.laser_chiller_annual_maintenance_cost} onChange={(e) => updateSetting('laser_chiller_annual_maintenance_cost', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Laser Power Consumption (kW)</Label><Input type="number" value={settings.laser_power_consumption_kw} onChange={(e) => updateSetting('laser_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Chiller Power Consumption (kW)</Label><Input type="number" value={settings.laser_chiller_power_consumption_kw} onChange={(e) => updateSetting('laser_chiller_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Blower Power Consumption (kW)</Label><Input type="number" value={settings.laser_blower_power_consumption_kw} onChange={(e) => updateSetting('laser_blower_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
+              </div>
+            </div>
+            <Separator />
+            <div className="space-y-4">
+              <h4 className="font-medium text-slate-800">Laser Specific Operating Costs</h4>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div><Label>Consumables ($/hr)</Label><Input type="number" value={settings.laser_consumables_cost_per_hour} onChange={e => updateSetting('laser_consumables_cost_per_hour', e.target.value)} disabled={isLocked} /></div>
+              </div>
+            </div>
+            <Separator />
+            <div className="space-y-4">
+              <h4 className="font-medium text-slate-800">Operating Costs (Shared Across Modules)</h4>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div><Label>Electricity Cost ($/kWh)</Label><Input type="number" step="0.01" value={settings.electricity_cost_per_kwh} onChange={(e) => updateSetting('electricity_cost_per_kwh', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Operator Cost ($/hour)</Label><Input type="number" value={settings.operator_cost_per_hour} onChange={(e) => updateSetting('operator_cost_per_hour', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Facility Overhead ($/hour)</Label><Input type="number" value={settings.facility_overhead_per_hour} onChange={(e) => updateSetting('facility_overhead_per_hour', e.target.value)} disabled={isLocked}/></div>
+              </div>
+            </div>
           </div>
           <div className="bg-slate-50 p-6 rounded-lg space-y-3 self-start">
             <h3 className="font-semibold text-lg text-slate-900">Calculated Rate Breakdown</h3>

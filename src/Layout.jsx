@@ -91,7 +91,7 @@ export default function Layout({ children, currentPageName }) {
     },
     {
       id: 'laser',
-      name: 'Laser Cutting',
+      name: 'Laser Cutting & Engraving',
       icon: Zap,
       projectsPage: 'LaserProjects',
       newEstimatePage: 'NewLaserEstimate',
