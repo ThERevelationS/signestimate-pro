@@ -921,15 +921,7 @@ Return your response as a JSON object with the optimal block selection and quant
             </Card>
 
             <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Visual Editor</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => setShowDimensions(!showDimensions)}>
-                    {showDimensions ? <><EyeOff className="w-4 h-4 mr-2" />Hide Details</> : <><Eye className="w-4 h-4 mr-2" />Show Details</>}
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 md:p-6">
+              <CardContent className="p-4 md:p-6 pt-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
                   <div className="flex flex-col">
                     <h4 className="font-medium mb-3 text-center text-sm md:text-base">Top View</h4>
