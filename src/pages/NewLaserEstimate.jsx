@@ -58,6 +58,7 @@ export default function NewLaserEstimate() {
   const [globalSettings, setGlobalSettings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
   const loadProjectForEdit = useCallback(async (projectId) => {
     try {
@@ -150,15 +151,17 @@ export default function NewLaserEstimate() {
           
           const perimFactor = parseFloat(globalSettings.laser_letter_perimeter_factor) || 3.5;
           
-          if (updated.item_type === 'panel') {
+          // Reset total_cut_length_inches first to ensure correct recalculation
+          updated.total_cut_length_inches = 0;
+
+          if (updated.item_type === 'panel' || updated.item_type === 'engrave_and_cut') {
             const perimeterInches = 2 * (updated.length + updated.width);
             updated.total_cut_length_inches = perimeterInches * updated.quantity;
           } else if (updated.item_type === 'lettering') {
             const perimeterPerLetter = updated.letter_height * perimFactor;
             updated.total_cut_length_inches = perimeterPerLetter * updated.num_letters * updated.quantity;
-          } else if (updated.item_type === 'engraving') {
-            updated.total_cut_length_inches = 0; // No cutting for engraving
           }
+          // For 'engraving', total_cut_length_inches remains 0.
           
           // Get cut speed from settings based on thickness
           const thicknessKey = `cut_speed_${updated.material_thickness.replace('/', '_')}`;
@@ -234,7 +237,7 @@ export default function NewLaserEstimate() {
         total_labor_cost: calculated.total_labor_cost
       }));
     }
-  }, [calculateTotals, isLoading]);
+  }, [calculateTotals, isLoading, project.items.length]); // Added project.items.length to dependency array to trigger recalculation when items are added/removed
 
   const saveProject = async () => {
     if (!project.project_name || !project.client_name || !project.estimate_number || !project.hyperlink) {
@@ -413,6 +416,7 @@ export default function NewLaserEstimate() {
                               <SelectItem value="panel">Panel (Cut Perimeter)</SelectItem>
                               <SelectItem value="lettering">Lettering (Cut Letters)</SelectItem>
                               <SelectItem value="engraving">Engraving Only</SelectItem>
+                              <SelectItem value="engrave_and_cut">Engrave and Cut</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -456,7 +460,7 @@ export default function NewLaserEstimate() {
                           />
                         </div>
 
-                        {item.item_type === 'panel' && (
+                        {(item.item_type === 'panel' || item.item_type === 'engrave_and_cut') && (
                           <>
                             <div>
                               <Label>Length (inches)</Label>
@@ -506,7 +510,7 @@ export default function NewLaserEstimate() {
                           </>
                         )}
 
-                        {item.item_type !== 'engraving' && (
+                        {(item.item_type === 'panel' || item.item_type === 'lettering' || item.item_type === 'engrave_and_cut') && (
                           <div className="md:col-span-2 p-3 bg-blue-50 rounded-lg">
                             <p className="text-sm text-blue-800">
                               <strong>Total Cut Length:</strong> {item.total_cut_length_inches.toFixed(2)}" 
@@ -516,23 +520,25 @@ export default function NewLaserEstimate() {
                           </div>
                         )}
 
-                        {/* Engraving Section - Available for all types */}
-                        <div className="md:col-span-2 border-t pt-4">
-                          <Label>Engraving Area (sq inches) - Optional</Label>
-                          <Input 
-                            type="number" 
-                            step="0.1" 
-                            value={item.engrave_area_sqin} 
-                            onChange={(e) => updateItem(index, 'engrave_area_sqin', parseFloat(e.target.value) || 0)}
-                            placeholder="0 for no engraving"
-                            className="mt-1"
-                          />
-                          {item.engrave_area_sqin > 0 && (
-                            <p className="text-xs text-slate-500 mt-1">
-                              Engrave Speed: {item.engrave_speed_sqipm.toFixed(1)} sq in/min
-                            </p>
-                          )}
-                        </div>
+                        {/* Engraving Section - Only for engraving and engrave_and_cut types */}
+                        {(item.item_type === 'engraving' || item.item_type === 'engrave_and_cut') && (
+                          <div className="md:col-span-2 border-t pt-4">
+                            <Label>Engraving Area (sq inches)</Label>
+                            <Input 
+                              type="number" 
+                              step="0.1" 
+                              value={item.engrave_area_sqin} 
+                              onChange={(e) => updateItem(index, 'engrave_area_sqin', parseFloat(e.target.value) || 0)}
+                              placeholder="Enter engraving area"
+                              className="mt-1"
+                            />
+                            {item.engrave_area_sqin > 0 && (
+                              <p className="text-xs text-slate-500 mt-1">
+                                Engrave Speed: {item.engrave_speed_sqipm.toFixed(1)} sq in/min
+                              </p>
+                            )}
+                          </div>
+                        )}
 
                         <div className="md:col-span-2 p-4 bg-green-50 rounded-lg border border-green-200">
                           <div className="grid grid-cols-2 gap-4 text-sm">
@@ -557,6 +563,36 @@ export default function NewLaserEstimate() {
                       </div>
                     </div>
                   ))
+                )}
+
+                {/* Advanced Settings */}
+                {project.items.length > 0 && (
+                  <div className="border-t pt-6">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                      className="w-full"
+                    >
+                      {showAdvancedSettings ? 'Hide' : 'Show'} Advanced Settings
+                    </Button>
+                    
+                    {showAdvancedSettings && (
+                      <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        <div>
+                          <Label>Fixed Setup Time (hours)</Label>
+                          <Input 
+                            type="number" 
+                            step="0.1" 
+                            value={project.fixed_setup_hours} 
+                            onChange={(e) => setProject(prev => ({ ...prev, fixed_setup_hours: parseFloat(e.target.value) || 0 }))}
+                            className="mt-1"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">One-time setup cost applied to the entire project</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -588,16 +624,7 @@ export default function NewLaserEstimate() {
                       className="mt-1"
                     />
                   </div>
-                  <div>
-                    <Label>Fixed Setup Time (hrs)</Label>
-                    <Input 
-                      type="number" 
-                      step="0.1" 
-                      value={project.fixed_setup_hours} 
-                      onChange={(e) => setProject(prev => ({ ...prev, fixed_setup_hours: parseFloat(e.target.value) || 0 }))}
-                      className="mt-1"
-                    />
-                  </div>
+                  {/* Fixed Setup Time (hrs) input removed from here and moved to advanced settings */}
                 </div>
 
                 <div className="border-t pt-6 space-y-3">
