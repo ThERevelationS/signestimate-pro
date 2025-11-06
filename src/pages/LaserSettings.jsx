@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Save, DollarSign, Clock, Calculator, Zap, Percent, AlertCircle } from "lucide-react";
 import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
 
-const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/8", "1/2", "3/4", "1"];
+const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/8", "1/2", "3/4"];
 const materials = ["Acrylic", "Wood", "Leather"];
 
 export default function LaserSettings() {

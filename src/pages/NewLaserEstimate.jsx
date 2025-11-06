@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { LaserProject, Settings, User } from "@/entities/all";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -10,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Save, Plus, Trash2, ArrowLeft, Zap } from "lucide-react";
 
-const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/8", "1/2", "3/4", "1"];
+const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/8", "1/2", "3/4"]; // Updated: Removed "1"
 const materials = ["Acrylic", "Wood", "Leather"];
 
 const parseImperialFraction = (fractionString) => {
