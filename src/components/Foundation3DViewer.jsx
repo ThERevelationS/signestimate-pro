@@ -116,6 +116,9 @@ export default function Foundation3DViewer({ length, width, depth, rebarCount, r
       // Calculate how many layers fit
       const numLayers = Math.floor((depthInches - firstLayerOffset) / layerSpacing) + 1;
       
+      // Store layer Y positions for vertical connections
+      const layerYPositions = [];
+      
       // Create rebar at each layer
       for (let layer = 0; layer < numLayers; layer++) {
         // Calculate Y position for this layer (in feet, relative to foundation center)
@@ -123,6 +126,7 @@ export default function Foundation3DViewer({ length, width, depth, rebarCount, r
         const layerDepthFeet = layerDepthInches / 12;
         // Convert to position relative to foundation center (top of foundation is at +depth/2)
         const yPosition = (depth / 2) - layerDepthFeet;
+        layerYPositions.push(yPosition);
 
         // Create lengthwise rebar bars (running along the length of the foundation)
         const rebarGeometry = new THREE.CylinderGeometry(rebarRadius, rebarRadius, length * 0.9, 12);
@@ -151,6 +155,74 @@ export default function Foundation3DViewer({ length, width, depth, rebarCount, r
           crossBar.position.set(crossStartOffset + (i * crossSpacing), yPosition, 0);
           crossBar.castShadow = true;
           foundation.add(crossBar);
+        }
+      }
+
+      // Add vertical rebar bars connecting the layers (only if there are multiple layers)
+      if (numLayers > 1) {
+        // Calculate the height of vertical bars (distance from top layer to bottom layer)
+        const verticalBarHeight = layerYPositions[0] - layerYPositions[numLayers - 1];
+        const verticalBarGeometry = new THREE.CylinderGeometry(rebarRadius * 0.9, rebarRadius * 0.9, verticalBarHeight, 12);
+        
+        // Position vertical bars at the corners and along the perimeter
+        const lengthHalf = length * 0.45; // Slightly inside the edge
+        const widthHalf = width * 0.4;
+        
+        // Calculate the center Y position for vertical bars
+        const verticalBarYCenter = (layerYPositions[0] + layerYPositions[numLayers - 1]) / 2;
+        
+        // Corner positions for vertical bars
+        const cornerPositions = [
+          { x: lengthHalf, z: widthHalf },   // Front-right corner
+          { x: lengthHalf, z: -widthHalf },  // Front-left corner
+          { x: -lengthHalf, z: widthHalf },  // Back-right corner
+          { x: -lengthHalf, z: -widthHalf }, // Back-left corner
+        ];
+        
+        // Add vertical bars at corners
+        cornerPositions.forEach(pos => {
+          const verticalBar = new THREE.Mesh(verticalBarGeometry, rebarMaterial);
+          verticalBar.position.set(pos.x, verticalBarYCenter, pos.z);
+          verticalBar.castShadow = true;
+          foundation.add(verticalBar);
+        });
+        
+        // Add vertical bars along the length edges (evenly spaced)
+        const numVerticalBarsLength = Math.max(3, Math.floor(length / 3));
+        const verticalSpacingLength = (length * 0.9) / (numVerticalBarsLength - 1);
+        const verticalStartOffsetLength = -(length * 0.45);
+        
+        for (let i = 1; i < numVerticalBarsLength - 1; i++) { // Skip corners (already added)
+          // Along front edge (positive Z)
+          const verticalBarFront = new THREE.Mesh(verticalBarGeometry, rebarMaterial);
+          verticalBarFront.position.set(verticalStartOffsetLength + (i * verticalSpacingLength), verticalBarYCenter, widthHalf);
+          verticalBarFront.castShadow = true;
+          foundation.add(verticalBarFront);
+          
+          // Along back edge (negative Z)
+          const verticalBarBack = new THREE.Mesh(verticalBarGeometry, rebarMaterial);
+          verticalBarBack.position.set(verticalStartOffsetLength + (i * verticalSpacingLength), verticalBarYCenter, -widthHalf);
+          verticalBarBack.castShadow = true;
+          foundation.add(verticalBarBack);
+        }
+        
+        // Add vertical bars along the width edges (evenly spaced)
+        const numVerticalBarsWidth = Math.max(2, Math.floor(width / 3));
+        const verticalSpacingWidth = (width * 0.8) / (numVerticalBarsWidth - 1);
+        const verticalStartOffsetWidth = -(width * 0.4);
+        
+        for (let i = 1; i < numVerticalBarsWidth - 1; i++) { // Skip corners (already added)
+          // Along right edge (positive X)
+          const verticalBarRight = new THREE.Mesh(verticalBarGeometry, rebarMaterial);
+          verticalBarRight.position.set(lengthHalf, verticalBarYCenter, verticalStartOffsetWidth + (i * verticalSpacingWidth));
+          verticalBarRight.castShadow = true;
+          foundation.add(verticalBarRight);
+          
+          // Along left edge (negative X)
+          const verticalBarLeft = new THREE.Mesh(verticalBarGeometry, rebarMaterial);
+          verticalBarLeft.position.set(-lengthHalf, verticalBarYCenter, verticalStartOffsetWidth + (i * verticalSpacingWidth));
+          verticalBarLeft.castShadow = true;
+          foundation.add(verticalBarLeft);
         }
       }
     }
