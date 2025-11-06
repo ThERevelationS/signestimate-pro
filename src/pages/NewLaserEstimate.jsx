@@ -282,6 +282,154 @@ export default function NewLaserEstimate() {
     setIsSaving(false);
   };
 
+  const downloadEstimate = () => {
+    const totalCost = (project.total_machine_cost || 0) + (project.total_labor_cost || 0);
+    
+    const estimateContent = `
+LASER CUTTING ESTIMATE
+
+Project: ${project.project_name}
+Client: ${project.client_name}
+Estimate #: ${project.estimate_number}
+Link: ${project.hyperlink}
+Date: ${new Date().toLocaleDateString()}
+
+ITEMS:
+${project.items.map((item, i) => `
+Item ${i + 1}: ${item.description || `${item.item_type} item`}
+Type: ${item.item_type}
+Material: ${item.material_type} - ${item.material_thickness}"
+Quantity: ${item.quantity}
+${item.item_type === 'panel' || item.item_type === 'engrave_and_cut' ? `Dimensions: ${item.length}" × ${item.width}"` : ''}
+${item.item_type === 'lettering' ? `Letter Height: ${item.letter_height}", Count: ${item.num_letters}` : ''}
+${item.item_type === 'engraving' || item.item_type === 'engrave_and_cut' ? `Engrave Area: ${item.engrave_area_sqin} sq in` : ''}
+Machine Time: ${item.machine_time_hours.toFixed(3)} hrs
+Handling Time: ${item.handling_time_hours.toFixed(3)} hrs
+Machine Cost: $${item.machine_cost.toFixed(2)}
+Labor Cost: $${item.labor_cost.toFixed(2)}
+`).join('\n')}
+
+TOTALS:
+Fixed Setup Hours: ${project.fixed_setup_hours} hrs
+Fixed Material Setup Cost: $${project.fixed_material_setup_cost.toFixed(2)}
+Total Machine Cost: $${(project.total_machine_cost || 0).toFixed(2)}
+Total Labor Cost: $${(project.total_labor_cost || 0).toFixed(2)}
+TOTAL ESTIMATE: $${totalCost.toFixed(2)}
+
+Notes: ${project.notes || 'None'}
+`;
+    
+    const blob = new Blob([estimateContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.project_name.replace(/\s+/g, '_')}_Laser_Estimate.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const printEstimate = () => {
+    const totalCost = (project.total_machine_cost || 0) + (project.total_labor_cost || 0);
+    
+    const printContent = `
+      <html>
+        <head>
+          <title>Laser Estimate - ${project.project_name}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+            h1 { color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 20px; }
+            h2 { color: #475569; margin-top: 30px; margin-bottom: 15px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
+            .header { margin-bottom: 30px; }
+            .item { margin-bottom: 20px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 5px; background-color: #fdfdfd; }
+            .totals { margin-top: 30px; padding: 20px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 5px; }
+            .final-total { font-weight: bold; font-size: 20px; border-top: 2px solid #374151; padding-top: 15px; margin-top: 15px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Laser Cutting Estimate</h1>
+            <p><strong>Project:</strong> ${project.project_name}</p>
+            <p><strong>Client:</strong> ${project.client_name}</p>
+            <p><strong>Estimate #:</strong> ${project.estimate_number}</p>
+            <p><strong>Link:</strong> <a href="${project.hyperlink}" target="_blank">${project.hyperlink}</a></p>
+            <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+          </div>
+          
+          <h2>Items</h2>
+          ${project.items.map((item, i) => `
+            <div class="item">
+              <h3>Item ${i + 1}: ${item.description || `${item.item_type} item`}</h3>
+              <p><strong>Type:</strong> ${item.item_type}</p>
+              <p><strong>Material:</strong> ${item.material_type} - ${item.material_thickness}"</p>
+              <p><strong>Quantity:</strong> ${item.quantity}</p>
+              ${item.item_type === 'panel' || item.item_type === 'engrave_and_cut' ? `<p><strong>Dimensions:</strong> ${item.length}" × ${item.width}"</p>` : ''}
+              ${item.item_type === 'lettering' ? `<p><strong>Letter Height:</strong> ${item.letter_height}", <strong>Count:</strong> ${item.num_letters}</p>` : ''}
+              ${item.item_type === 'engraving' || item.item_type === 'engrave_and_cut' ? `<p><strong>Engrave Area:</strong> ${item.engrave_area_sqin} sq in</p>` : ''}
+              <p><strong>Machine Time:</strong> ${item.machine_time_hours.toFixed(3)} hrs</p>
+              <p><strong>Handling Time:</strong> ${item.handling_time_hours.toFixed(3)} hrs</p>
+              <p><strong>Machine Cost:</strong> $${item.machine_cost.toFixed(2)}</p>
+              <p><strong>Labor Cost:</strong> $${item.labor_cost.toFixed(2)}</p>
+            </div>
+          `).join('')}
+          
+          <div class="totals">
+            <h2>Summary</h2>
+            <p><strong>Fixed Setup Hours:</strong> ${project.fixed_setup_hours} hrs</p>
+            <p><strong>Fixed Material Setup Cost:</strong> $${project.fixed_material_setup_cost.toFixed(2)}</p>
+            <p><strong>Total Machine Cost:</strong> $${(project.total_machine_cost || 0).toFixed(2)}</p>
+            <p><strong>Total Labor Cost:</strong> $${(project.total_labor_cost || 0).toFixed(2)}</p>
+            <div class="final-total">
+              <p>TOTAL ESTIMATE: $${totalCost.toFixed(2)}</p>
+            </div>
+          </div>
+          
+          ${project.notes ? `<div style="margin-top: 30px;"><h2>Notes</h2><p>${project.notes}</p></div>` : ''}
+        </body>
+      </html>
+    `;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const emailEstimate = () => {
+    const totalCost = (project.total_machine_cost || 0) + (project.total_labor_cost || 0);
+    
+    const emailBody = `Hello,
+
+Please find the laser cutting estimate for ${project.project_name}:
+
+Estimate Number: ${project.estimate_number}
+Reference Link: ${project.hyperlink}
+
+ESTIMATE SUMMARY:
+Total Machine Cost: $${(project.total_machine_cost || 0).toFixed(2)}
+Total Labor Cost: $${(project.total_labor_cost || 0).toFixed(2)}
+TOTAL ESTIMATE: $${totalCost.toFixed(2)}
+
+ITEMS BREAKDOWN:
+${project.items.map((item, i) => `
+Item ${i + 1}: ${item.description || `${item.item_type} item`}
+- Type: ${item.item_type}
+- Material: ${item.material_type} - ${item.material_thickness}"
+- Quantity: ${item.quantity}
+${item.item_type === 'panel' || item.item_type === 'engrave_and_cut' ? `- Dimensions: ${item.length}" × ${item.width}"` : ''}
+${item.item_type === 'lettering' ? `- Letter Height: ${item.letter_height}", Count: ${item.num_letters}` : ''}
+- Item Total: $${(item.machine_cost + item.labor_cost).toFixed(2)}
+`).join('\n')}
+
+${project.notes ? `\nAdditional Notes:\n${project.notes}` : ''}
+
+Best regards`;
+    
+    const mailtoUrl = `mailto:?subject=${encodeURIComponent(`Laser Estimate - ${project.project_name}`)}&body=${encodeURIComponent(emailBody)}`;
+    window.location.href = mailtoUrl;
+  };
+
   if (isLoading) {
     return (
       <div className="p-6 md:p-8 bg-slate-50 min-h-screen flex items-center justify-center">
@@ -306,9 +454,7 @@ export default function NewLaserEstimate() {
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Projects
             </Button>
-            <Button onClick={saveProject} disabled={isSaving} className="bg-green-600 hover:bg-green-700">
-              {isSaving ? "Saving..." : <><Save className="w-4 h-4 mr-2" />Save Project</>}
-            </Button>
+            {/* Removed save button from header, moved to sidebar */}
           </div>
         </div>
 
@@ -641,6 +787,22 @@ export default function NewLaserEstimate() {
                     <span className="text-green-600">${((project.total_machine_cost || 0) + (project.total_labor_cost || 0)).toFixed(2)}</span>
                   </div>
                 </div>
+
+                <div className="space-y-2 pt-4 border-t">
+                  <Button onClick={downloadEstimate} variant="outline" className="w-full">
+                    Download Estimate
+                  </Button>
+                  <Button onClick={printEstimate} variant="outline" className="w-full">
+                    Print Estimate
+                  </Button>
+                  <Button onClick={emailEstimate} variant="outline" className="w-full">
+                    Email Estimate
+                  </Button>
+                </div>
+
+                <Button onClick={saveProject} disabled={isSaving} className="w-full bg-green-600 hover:bg-green-700 text-white py-3 mt-4">
+                  {isSaving ? 'Saving...' : <><Save className="w-4 h-4 mr-2" /> {isEditing ? 'Update Estimate' : 'Save Estimate'}</>}
+                </Button>
               </CardContent>
             </Card>
           </div>
