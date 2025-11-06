@@ -95,7 +95,8 @@ export default function NewFoundationEstimate() {
       width: 4,
       diameter: 24,
       depth: 3,
-      include_rebar: true, // Added this field
+      include_rebar: true,
+      rebar_size: "#4", // Added this field
       rebar_count: 4,
       rebar_length_ft: 10,
       concrete_volume_cy: 0,
@@ -127,11 +128,11 @@ export default function NewFoundationEstimate() {
       items: prev.items.map((item, i) => {
         if (i !== index) return item;
         const updated = { ...item, [field]: value };
-        
+
         // Auto-calculate volumes when dimensions change
-        if (field === 'foundation_type' || field === 'length' || field === 'width' || 
+        if (field === 'foundation_type' || field === 'length' || field === 'width' ||
             field === 'diameter' || field === 'depth' || field === 'quantity') {
-          
+
           if (updated.foundation_type === 'spread_foot') {
             // Spread foot: rectangular excavation
             const volumeCubicFeet = updated.length * updated.width * updated.depth;
@@ -150,7 +151,7 @@ export default function NewFoundationEstimate() {
             updated.excavation_volume_cy = updated.concrete_volume_cy;
           }
         }
-        
+
         return updated;
       })
     }));
@@ -160,22 +161,22 @@ export default function NewFoundationEstimate() {
     const formingHoursPerSqFt = parseFloat(globalSettings.foundation_forming_hours_per_sqft) || 0.15;
     const pouringHoursPerCy = parseFloat(globalSettings.foundation_pouring_hours_per_cy) || 0.5;
     const finishingHoursPerSqFt = parseFloat(globalSettings.foundation_finishing_hours_per_sqft) || 0.10;
-    
+
     let totalConcreteCost = 0;
     let totalRebarCost = 0;
     let totalExcavationCost = 0;
     let totalLaborCost = 0;
-    
+
     const updatedItems = project.items.map(item => {
       // Material costs
       const concreteCost = item.concrete_volume_cy * project.concrete_cost_per_cy * item.quantity;
       const rebarCost = item.include_rebar ? (item.rebar_count * item.rebar_length_ft * project.rebar_cost_per_ft * item.quantity) : 0;
       const excavationCost = item.excavation_volume_cy * project.excavation_cost_per_cy * item.quantity;
-      
+
       // Labor calculations
       let formingSqFt = 0;
       let finishingSqFt = 0;
-      
+
       if (item.foundation_type === 'spread_foot') {
         // Forming perimeter * depth
         const perimeter = 2 * (item.length + item.width);
@@ -190,22 +191,22 @@ export default function NewFoundationEstimate() {
         const radiusFeet = (item.diameter / 12) / 2;
         finishingSqFt = Math.PI * Math.pow(radiusFeet, 2);
       }
-      
+
       const formingHours = formingSqFt * formingHoursPerSqFt * item.quantity;
       const pouringHours = item.concrete_volume_cy * pouringHoursPerCy * item.quantity;
       const finishingHours = finishingSqFt * finishingHoursPerSqFt * item.quantity;
-      
+
       const formingCost = formingHours * project.forming_labor_rate;
       const pouringCost = pouringHours * project.pouring_labor_rate;
       const finishingCost = finishingHours * project.finishing_labor_rate;
-      
+
       const itemTotalCost = concreteCost + rebarCost + excavationCost + formingCost + pouringCost + finishingCost;
-      
+
       totalConcreteCost += concreteCost;
       totalRebarCost += rebarCost;
       totalExcavationCost += excavationCost;
       totalLaborCost += (formingCost + pouringCost + finishingCost);
-      
+
       return {
         ...item,
         concrete_cost: concreteCost,
@@ -220,7 +221,7 @@ export default function NewFoundationEstimate() {
         item_total_cost: itemTotalCost
       };
     });
-    
+
     return {
       items: updatedItems,
       total_concrete_cost: totalConcreteCost,
@@ -228,8 +229,8 @@ export default function NewFoundationEstimate() {
       total_excavation_cost: totalExcavationCost,
       total_labor_cost: totalLaborCost
     };
-  }, [project.items, project.concrete_cost_per_cy, project.rebar_cost_per_ft, 
-      project.excavation_cost_per_cy, project.forming_labor_rate, 
+  }, [project.items, project.concrete_cost_per_cy, project.rebar_cost_per_ft,
+      project.excavation_cost_per_cy, project.forming_labor_rate,
       project.pouring_labor_rate, project.finishing_labor_rate, globalSettings]);
 
   useEffect(() => {
@@ -244,7 +245,7 @@ export default function NewFoundationEstimate() {
         total_labor_cost: calculated.total_labor_cost
       }));
     }
-  }, [calculateTotals, isLoading, project.items.length]); // Added project.items.length to trigger recalculation when items are added/removed
+  }, [calculateTotals, isLoading, project.items.length]);
 
   const saveProject = async () => {
     if (!project.project_name || !project.client_name || !project.estimate_number || !project.hyperlink) {
@@ -324,55 +325,55 @@ export default function NewFoundationEstimate() {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="client_name">Client Name *</Label>
-                    <Input 
-                      id="client_name" 
-                      value={project.client_name} 
-                      onChange={(e) => setProject(prev => ({ ...prev, client_name: e.target.value }))} 
-                      placeholder="Enter client name" 
-                      className="mt-1" 
+                    <Input
+                      id="client_name"
+                      value={project.client_name}
+                      onChange={(e) => setProject(prev => ({ ...prev, client_name: e.target.value }))}
+                      placeholder="Enter client name"
+                      className="mt-1"
                     />
                   </div>
                   <div>
                     <Label htmlFor="project_name">Project Name *</Label>
-                    <Input 
-                      id="project_name" 
-                      value={project.project_name} 
-                      onChange={(e) => setProject(prev => ({ ...prev, project_name: e.target.value }))} 
-                      placeholder="Enter project name" 
-                      className="mt-1" 
+                    <Input
+                      id="project_name"
+                      value={project.project_name}
+                      onChange={(e) => setProject(prev => ({ ...prev, project_name: e.target.value }))}
+                      placeholder="Enter project name"
+                      className="mt-1"
                     />
                   </div>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="estimate_number">Estimate Number *</Label>
-                    <Input 
-                      id="estimate_number" 
-                      value={project.estimate_number} 
-                      onChange={(e) => setProject(prev => ({ ...prev, estimate_number: e.target.value }))} 
-                      placeholder="e.g., FOUND-2024-001" 
-                      className="mt-1" 
+                    <Input
+                      id="estimate_number"
+                      value={project.estimate_number}
+                      onChange={(e) => setProject(prev => ({ ...prev, estimate_number: e.target.value }))}
+                      placeholder="e.g., FOUND-2024-001"
+                      className="mt-1"
                     />
                   </div>
                   <div>
                     <Label htmlFor="hyperlink">Project Link *</Label>
-                    <Input 
-                      id="hyperlink" 
-                      value={project.hyperlink} 
-                      onChange={(e) => setProject(prev => ({ ...prev, hyperlink: e.target.value }))} 
-                      placeholder="https://..." 
-                      className="mt-1" 
+                    <Input
+                      id="hyperlink"
+                      value={project.hyperlink}
+                      onChange={(e) => setProject(prev => ({ ...prev, hyperlink: e.target.value }))}
+                      placeholder="https://..."
+                      className="mt-1"
                     />
                   </div>
                 </div>
                 <div>
                   <Label htmlFor="notes">Project Notes</Label>
-                  <Textarea 
-                    id="notes" 
-                    value={project.notes} 
-                    onChange={(e) => setProject(prev => ({ ...prev, notes: e.target.value }))} 
-                    placeholder="Any additional notes..." 
-                    className="mt-1 h-24" 
+                  <Textarea
+                    id="notes"
+                    value={project.notes}
+                    onChange={(e) => setProject(prev => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Any additional notes..."
+                    className="mt-1 h-24"
                   />
                 </div>
               </CardContent>
@@ -404,126 +405,170 @@ export default function NewFoundationEstimate() {
                         </Button>
                       </div>
 
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div className="md:col-span-2">
-                          <Label>Description</Label>
-                          <Input 
-                            value={item.description} 
-                            onChange={(e) => updateItem(index, 'description', e.target.value)}
-                            placeholder="Brief description" 
-                            className="mt-1"
-                          />
-                        </div>
-
-                        <div>
-                          <Label>Foundation Type</Label>
-                          <Select value={item.foundation_type} onValueChange={(value) => updateItem(index, 'foundation_type', value)}>
-                            <SelectTrigger className="mt-1">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="spread_foot">Spread Foot (Rectangular)</SelectItem>
-                              <SelectItem value="pillar">Pillar (Cylindrical)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label>Quantity</Label>
-                          <Input 
-                            type="number" 
-                            min="1" 
-                            value={item.quantity} 
-                            onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 1)}
-                            className="mt-1"
-                          />
-                        </div>
-
-                        {item.foundation_type === 'spread_foot' && (
-                          <>
-                            <div>
-                              <Label>Length (feet)</Label>
-                              <Input 
-                                type="number" 
-                                step="0.5" 
-                                value={item.length} 
-                                onChange={(e) => updateItem(index, 'length', parseFloat(e.target.value) || 0)}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label>Width (feet)</Label>
-                              <Input 
-                                type="number" 
-                                step="0.5" 
-                                value={item.width} 
-                                onChange={(e) => updateItem(index, 'width', parseFloat(e.target.value) || 0)}
-                                className="mt-1"
-                              />
-                            </div>
-                          </>
-                        )}
-
-                        {item.foundation_type === 'pillar' && (
-                          <div>
-                            <Label>Diameter (inches)</Label>
-                            <Input 
-                              type="number" 
-                              step="1" 
-                              value={item.diameter} 
-                              onChange={(e) => updateItem(index, 'diameter', parseFloat(e.target.value) || 0)}
+                      <div className="flex flex-col gap-4"> {/* Changed to flex-col with gap for better mobile spacing */}
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="md:col-span-2">
+                            <Label>Description</Label>
+                            <Input
+                              value={item.description}
+                              onChange={(e) => updateItem(index, 'description', e.target.value)}
+                              placeholder="Brief description"
                               className="mt-1"
                             />
                           </div>
-                        )}
 
-                        <div>
-                          <Label>Depth (feet)</Label>
-                          <Input 
-                            type="number" 
-                            step="0.5" 
-                            value={item.depth} 
-                            onChange={(e) => updateItem(index, 'depth', parseFloat(e.target.value) || 0)}
-                            className="mt-1"
-                          />
-                        </div>
+                          <div>
+                            <Label>Foundation Type</Label>
+                            <Select value={item.foundation_type} onValueChange={(value) => updateItem(index, 'foundation_type', value)}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="spread_foot">Spread Foot (Rectangular)</SelectItem>
+                                <SelectItem value="pillar">Pillar (Cylindrical)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
 
-                        <div className="md:col-span-2 border-t pt-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <Label htmlFor={`include-rebar-${index}`} className="font-medium text-slate-800">Include Rebar</Label>
-                            <input
-                              id={`include-rebar-${index}`}
-                              type="checkbox"
-                              checked={item.include_rebar || false}
-                              onChange={(e) => updateItem(index, 'include_rebar', e.target.checked)}
-                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                          <div>
+                            <Label>Quantity</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 1)}
+                              className="mt-1"
                             />
                           </div>
-                          {item.include_rebar && (
-                            <div className="grid grid-cols-2 gap-4 p-3 bg-blue-50 rounded-lg">
+
+                          {item.foundation_type === 'spread_foot' && (
+                            <>
                               <div>
-                                <Label>Number of Rebars</Label>
-                                <Input 
-                                  type="number" 
-                                  min="0" 
-                                  value={item.rebar_count} 
-                                  onChange={(e) => updateItem(index, 'rebar_count', parseFloat(e.target.value) || 0)}
+                                <Label>Length (feet)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.5"
+                                  value={item.length}
+                                  onChange={(e) => updateItem(index, 'length', parseFloat(e.target.value) || 0)}
                                   className="mt-1"
                                 />
                               </div>
                               <div>
-                                <Label>Rebar Length (feet)</Label>
-                                <Input 
-                                  type="number" 
-                                  step="0.5" 
-                                  value={item.rebar_length_ft} 
-                                  onChange={(e) => updateItem(index, 'rebar_length_ft', parseFloat(e.target.value) || 0)}
+                                <Label>Width (feet)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.5"
+                                  value={item.width}
+                                  onChange={(e) => updateItem(index, 'width', parseFloat(e.target.value) || 0)}
                                   className="mt-1"
                                 />
                               </div>
+                            </>
+                          )}
+
+                          {item.foundation_type === 'pillar' && (
+                            <div>
+                              <Label>Diameter (inches)</Label>
+                              <Input
+                                type="number"
+                                step="1"
+                                value={item.diameter}
+                                onChange={(e) => updateItem(index, 'diameter', parseFloat(e.target.value) || 0)}
+                                className="mt-1"
+                              />
                             </div>
                           )}
+
+                          <div>
+                            <Label>Depth (feet)</Label>
+                            <Input
+                              type="number"
+                              step="0.5"
+                              value={item.depth}
+                              onChange={(e) => updateItem(index, 'depth', parseFloat(e.target.value) || 0)}
+                              className="mt-1"
+                            />
+                          </div>
                         </div>
+
+
+                        {item.foundation_type === 'spread_foot' && (
+                          <div className="md:col-span-2 border-t pt-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <Label htmlFor={`include-rebar-${index}`} className="font-medium text-slate-800">Include Rebar Reinforcement</Label>
+                              <input
+                                id={`include-rebar-${index}`}
+                                type="checkbox"
+                                checked={item.include_rebar || false}
+                                onChange={(e) => updateItem(index, 'include_rebar', e.target.checked)}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                            </div>
+                            {item.include_rebar && (
+                              <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
+                                <div className="flex items-start gap-4 mb-4">
+                                  <div className="flex-shrink-0">
+                                    <svg className="w-16 h-16 text-blue-600" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <rect x="15" y="30" width="70" height="40" fill="#E5E7EB" stroke="#1E40AF" strokeWidth="2"/>
+                                      <line x1="25" y1="40" x2="25" y2="60" stroke="#1E40AF" strokeWidth="3" strokeLinecap="round"/>
+                                      <line x1="40" y1="40" x2="40" y2="60" stroke="#1E40AF" strokeWidth="3" strokeLinecap="round"/>
+                                      <line x1="55" y1="40" x2="55" y2="60" stroke="#1E40AF" strokeWidth="3" strokeLinecap="round"/>
+                                      <line x1="70" y1="40" x2="70" y2="60" stroke="#1E40AF" strokeWidth="3" strokeLinecap="round"/>
+                                      <circle cx="25" cy="40" r="2" fill="#DC2626"/>
+                                      <circle cx="40" cy="40" r="2" fill="#DC2626"/>
+                                      <circle cx="55" cy="40" r="2" fill="#DC2626"/>
+                                      <circle cx="70" cy="40" r="2" fill="#DC2626"/>
+                                      <circle cx="25" cy="60" r="2" fill="#DC2626"/>
+                                      <circle cx="40" cy="60" r="2" fill="#DC2626"/>
+                                      <circle cx="55" cy="60" r="2" fill="#DC2626"/>
+                                      <circle cx="70" cy="60" r="2" fill="#DC2626"/>
+                                      <text x="50" y="85" textAnchor="middle" className="text-xs font-medium" fill="#1E40AF">Rebar Grid</text>
+                                    </svg>
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="text-sm font-semibold text-blue-900 mb-1">Steel Reinforcement Grid</p>
+                                    <p className="text-xs text-blue-700">Rebar bars will be embedded in the concrete foundation for structural strength.</p>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                  <div>
+                                    <Label className="text-xs">Rebar Size</Label>
+                                    <select
+                                      value={item.rebar_size || "#4"}
+                                      onChange={(e) => updateItem(index, 'rebar_size', e.target.value)}
+                                      className="mt-1 w-full px-3 py-2 border border-blue-200 rounded-md bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    >
+                                      <option value="#3">#3 (3/8")</option>
+                                      <option value="#4">#4 (1/2")</option>
+                                      <option value="#5">#5 (5/8")</option>
+                                      <option value="#6">#6 (3/4")</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs">Number of Rebars</Label>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      value={item.rebar_count}
+                                      onChange={(e) => updateItem(index, 'rebar_count', parseFloat(e.target.value) || 0)}
+                                      className="mt-1 border-blue-200 focus:ring-blue-500"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs">Rebar Length (feet)</Label>
+                                    <Input
+                                      type="number"
+                                      step="0.5"
+                                      value={item.rebar_length_ft}
+                                      onChange={(e) => updateItem(index, 'rebar_length_ft', parseFloat(e.target.value) || 0)}
+                                      className="mt-1 border-blue-200 focus:ring-blue-500"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         <div className="md:col-span-2 p-3 bg-blue-50 rounded-lg">
                           <div className="grid grid-cols-2 gap-2 text-sm">
@@ -577,10 +622,10 @@ export default function NewFoundationEstimate() {
                 <div className="space-y-4">
                   <div>
                     <Label>Concrete Cost ($/cy)</Label>
-                    <Input 
-                      type="number" 
-                      step="1" 
-                      value={project.concrete_cost_per_cy} 
+                    <Input
+                      type="number"
+                      step="1"
+                      value={project.concrete_cost_per_cy}
                       onChange={(e) => setProject(prev => ({ ...prev, concrete_cost_per_cy: parseFloat(e.target.value) || 0 }))}
                       className="mt-1"
                     />
@@ -588,50 +633,50 @@ export default function NewFoundationEstimate() {
                   </div>
                   <div>
                     <Label>Rebar Cost ($/ft)</Label>
-                    <Input 
-                      type="number" 
-                      step="0.05" 
-                      value={project.rebar_cost_per_ft} 
+                    <Input
+                      type="number"
+                      step="0.05"
+                      value={project.rebar_cost_per_ft}
                       onChange={(e) => setProject(prev => ({ ...prev, rebar_cost_per_ft: parseFloat(e.target.value) || 0 }))}
                       className="mt-1"
                     />
                   </div>
                   <div>
                     <Label>Excavation Cost ($/cy)</Label>
-                    <Input 
-                      type="number" 
-                      step="1" 
-                      value={project.excavation_cost_per_cy} 
+                    <Input
+                      type="number"
+                      step="1"
+                      value={project.excavation_cost_per_cy}
                       onChange={(e) => setProject(prev => ({ ...prev, excavation_cost_per_cy: parseFloat(e.target.value) || 0 }))}
                       className="mt-1"
                     />
                   </div>
                   <div>
                     <Label>Forming Rate ($/hr)</Label>
-                    <Input 
-                      type="number" 
-                      step="1" 
-                      value={project.forming_labor_rate} 
+                    <Input
+                      type="number"
+                      step="1"
+                      value={project.forming_labor_rate}
                       onChange={(e) => setProject(prev => ({ ...prev, forming_labor_rate: parseFloat(e.target.value) || 0 }))}
                       className="mt-1"
                     />
                   </div>
                   <div>
                     <Label>Pouring Rate ($/hr)</Label>
-                    <Input 
-                      type="number" 
-                      step="1" 
-                      value={project.pouring_labor_rate} 
+                    <Input
+                      type="number"
+                      step="1"
+                      value={project.pouring_labor_rate}
                       onChange={(e) => setProject(prev => ({ ...prev, pouring_labor_rate: parseFloat(e.target.value) || 0 }))}
                       className="mt-1"
                     />
                   </div>
                   <div>
                     <Label>Finishing Rate ($/hr)</Label>
-                    <Input 
-                      type="number" 
-                      step="1" 
-                      value={project.finishing_labor_rate} 
+                    <Input
+                      type="number"
+                      step="1"
+                      value={project.finishing_labor_rate}
                       onChange={(e) => setProject(prev => ({ ...prev, finishing_labor_rate: parseFloat(e.target.value) || 0 }))}
                       className="mt-1"
                     />
