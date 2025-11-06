@@ -497,7 +497,7 @@ Return your response as a JSON object with the optimal block selection and quant
           ctx.fillStyle = '#f5f5f5';
           ctx.fillRect(innerXStart * scale, innerYStart * scale, innerLength * scale, innerWidth * scale);
 
-          // Draw core blocks filling ENTIRE hollow space with smart rotation
+          // Draw core blocks filling ENTIRE hollow space with smart rotation AND CENTERING
           if (project.core_materials && project.core_materials.length > 0) {
             const validCoreMaterials = project.core_materials.filter(item => {
               const mat = inventory.find(m => m.id === item.material_id);
@@ -522,16 +522,75 @@ Return your response as a JSON object with the optimal block selection and quant
                 }
               });
               
-              let blockIndex = 0;
-              let currentY = innerYStart;
+              // First pass: calculate total dimensions of blocks to center them
+              let simulateBlockIndex = 0;
+              let simulateY = 0;
+              let totalFilledHeight = 0;
+              let maxRowWidth = 0;
               
-              // Fill row by row with smart rotation
+              while (simulateY < innerWidth && simulateBlockIndex < blockQueue.length) {
+                let simulateX = 0;
+                const rowStartIndex = simulateBlockIndex;
+                let rowHeight = 0;
+                
+                while (simulateX < innerLength && simulateBlockIndex < blockQueue.length) {
+                  const block = blockQueue[simulateBlockIndex];
+                  const blockL = block.material.length;
+                  const blockW = block.material.width;
+                  
+                  const remainingWidth = innerLength - simulateX;
+                  const remainingHeight = innerWidth - simulateY;
+                  
+                  let useWidth = blockL;
+                  let useHeight = blockW;
+                  
+                  const normalFits = (simulateX + blockL <= innerLength + 0.01) && (simulateY + blockW <= innerWidth + 0.01);
+                  const rotatedFits = (simulateX + blockW <= innerLength + 0.01) && (simulateY + blockL <= innerWidth + 0.01);
+                  
+                  if (!normalFits && rotatedFits) {
+                    useWidth = blockW;
+                    useHeight = blockL;
+                  } else if (normalFits && rotatedFits) {
+                    const normalWaste = remainingWidth - blockL;
+                    const rotatedWaste = remainingWidth - blockW;
+                    
+                    if (rotatedWaste < normalWaste && rotatedWaste >= 0) {
+                      useWidth = blockW;
+                      useHeight = blockL;
+                    }
+                  } else if (!normalFits && !rotatedFits) {
+                    break;
+                  }
+                  
+                  if (simulateX + useWidth > innerLength + 0.01 || simulateY + useHeight > innerWidth + 0.01) {
+                    break;
+                  }
+                  
+                  rowHeight = Math.max(rowHeight, useHeight);
+                  simulateX += useWidth + mortarGap;
+                  simulateBlockIndex++;
+                }
+                
+                if (simulateBlockIndex === rowStartIndex) break;
+                
+                maxRowWidth = Math.max(maxRowWidth, simulateX - mortarGap);
+                totalFilledHeight = simulateY + rowHeight;
+                simulateY += rowHeight + mortarGap;
+              }
+              
+              // Calculate centering offsets
+              const xOffset = (innerLength - maxRowWidth) / 2;
+              const yOffset = (innerWidth - totalFilledHeight) / 2;
+              
+              // Second pass: actually draw the blocks with centering
+              let blockIndex = 0;
+              let currentY = innerYStart + yOffset;
+              
               while (currentY < innerYEnd && blockIndex < blockQueue.length) {
-                let currentX = innerXStart;
+                let currentX = innerXStart + xOffset;
                 const rowStartIndex = blockIndex;
                 let rowHeight = 0;
                 
-                // Fill current row
                 while (currentX < innerXEnd && blockIndex < blockQueue.length) {
                   const block = blockQueue[blockIndex];
                   const blockL = block.material.length;
@@ -540,26 +599,18 @@ Return your response as a JSON object with the optimal block selection and quant
                   const remainingWidth = innerXEnd - currentX;
                   const remainingHeight = innerYEnd - currentY;
                   
-                  // Try normal orientation first
                   let useWidth = blockL;
                   let useHeight = blockW;
                   let rotated = false;
                   
-                  // Check if normal orientation fits
                   const normalFits = (currentX + blockL <= innerXEnd + 0.01) && (currentY + blockW <= innerYEnd + 0.01);
-                  
-                  // Check if rotated orientation fits better
                   const rotatedFits = (currentX + blockW <= innerXEnd + 0.01) && (currentY + blockL <= innerYEnd + 0.01);
                   
-                  // Decide orientation based on what fits
                   if (!normalFits && rotatedFits) {
-                    // Only rotated fits
                     useWidth = blockW;
                     useHeight = blockL;
                     rotated = true;
                   } else if (normalFits && rotatedFits) {
-                    // Both fit, choose based on remaining space efficiency
-                    // Prefer the orientation that wastes less horizontal space
                     const normalWaste = remainingWidth - blockL;
                     const rotatedWaste = remainingWidth - blockW;
                     
@@ -569,11 +620,9 @@ Return your response as a JSON object with the optimal block selection and quant
                       rotated = true;
                     }
                   } else if (!normalFits && !rotatedFits) {
-                    // Neither fits in current position, move to next row
                     break;
                   }
                   
-                  // Final check if block fits
                   if (currentX + useWidth > innerXEnd + 0.01 || currentY + useHeight > innerYEnd + 0.01) {
                     break;
                   }
@@ -590,16 +639,70 @@ Return your response as a JSON object with the optimal block selection and quant
                   blockIndex++;
                 }
                 
-                // If no blocks were placed in this row, we're done
                 if (blockIndex === rowStartIndex) break;
                 
                 currentY += rowHeight + mortarGap;
               }
               
-              // Fill remaining space with gray if there are unused positions
-              if (currentY < innerYEnd - 1) {
+              // Fill remaining space with gray
+              if (xOffset > 0.5 || yOffset > 0.5 || (currentY < innerYEnd - 1)) {
                 ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';
-                ctx.fillRect(innerXStart * scale, currentY * scale, innerLength * scale, (innerYEnd - currentY) * scale);
+                ctx.fillRect(innerXStart * scale, innerYStart * scale, innerLength * scale, innerWidth * scale);
+                
+                // Re-draw the blocks on top
+                blockIndex = 0;
+                currentY = innerYStart + yOffset;
+                
+                while (currentY < innerYEnd && blockIndex < blockQueue.length) {
+                  let currentX = innerXStart + xOffset;
+                  const rowStartIndex = blockIndex;
+                  let rowHeight = 0;
+                  
+                  while (currentX < innerXEnd && blockIndex < blockQueue.length) {
+                    const block = blockQueue[blockIndex];
+                    const blockL = block.material.length;
+                    const blockW = block.material.width;
+                    
+                    let useWidth = blockL;
+                    let useHeight = blockW;
+                    
+                    const normalFits = (currentX + blockL <= innerXEnd + 0.01) && (currentY + blockW <= innerYEnd + 0.01);
+                    const rotatedFits = (currentX + blockW <= innerXEnd + 0.01) && (currentY + blockL <= innerYEnd + 0.01);
+                    
+                    if (!normalFits && rotatedFits) {
+                      useWidth = blockW;
+                      useHeight = blockL;
+                    } else if (normalFits && rotatedFits) {
+                      const remainingWidth = innerXEnd - currentX;
+                      const normalWaste = remainingWidth - blockL;
+                      const rotatedWaste = remainingWidth - blockW;
+                      
+                      if (rotatedWaste < normalWaste && rotatedWaste >= 0) {
+                        useWidth = blockW;
+                        useHeight = blockL;
+                      }
+                    } else if (!normalFits && !rotatedFits) {
+                      break;
+                    }
+                    
+                    if (currentX + useWidth > innerXEnd + 0.01 || currentY + useHeight > innerYEnd + 0.01) {
+                      break;
+                    }
+                    
+                    ctx.fillStyle = block.color;
+                    ctx.fillRect(currentX * scale, currentY * scale, useWidth * scale, useHeight * scale);
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(currentX * scale, currentY * scale, useWidth * scale, useHeight * scale);
+                    
+                    rowHeight = Math.max(rowHeight, useHeight);
+                    currentX += useWidth + mortarGap;
+                    blockIndex++;
+                  }
+                  
+                  if (blockIndex === rowStartIndex) break;
+                  currentY += rowHeight + mortarGap;
+                }
               }
             }
           }
@@ -724,7 +827,7 @@ Return your response as a JSON object with the optimal block selection and quant
         ctx.save();
         ctx.translate(-fontSize * 1.2, (actualHeight * scale) / 2);
         ctx.rotate(-Math.PI / 2);
-        ctx.fillText(calculations.actualHeight + '"', 0, 0);
+        ctx.fillText(actualHeight + '"', 0, 0);
         ctx.restore();
 
         const labelFontSize = Math.max(10, containerWidth * 0.035);
@@ -779,7 +882,7 @@ Return your response as a JSON object with the optimal block selection and quant
         if (validCoreMaterials.length > 0) {
           const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
           
-          // Create a queue of all blocks with their material info
+          // Create a queue of all blocks
           const blockQueue = [];
           validCoreMaterials.forEach((coreItem, matIndex) => {
             const material = inventory.find(m => m.id === coreItem.material_id);
@@ -794,16 +897,81 @@ Return your response as a JSON object with the optimal block selection and quant
             }
           });
           
-          let blockIndex = 0;
-          let currentY = 0;
+          // First pass: calculate dimensions for centering
+          let simulateBlockIndex = 0;
+          let simulateY = 0;
+          let totalFilledHeight = 0;
+          let maxRowWidth = 0;
           
-          // Fill row by row (vertically stacking) with smart rotation
+          while (simulateY < innerHeight && simulateBlockIndex < blockQueue.length) {
+            let simulateX = 0;
+            const rowStartIndex = simulateBlockIndex;
+            let rowHeight = 0;
+            
+            while (simulateX < innerLength && simulateBlockIndex < blockQueue.length) {
+              const block = blockQueue[simulateBlockIndex];
+              const blockL = block.material.length;
+              const blockH = block.material.height;
+              
+              const remainingWidth = innerLength - simulateX;
+              const remainingHeight = innerHeight - simulateY;
+              
+              let useWidth = blockL;
+              let useHeight = blockH;
+              
+              const normalFits = (simulateX + blockL <= innerLength + 0.01) && (simulateY + blockH <= innerHeight + 0.01);
+              const rotatedFits = (simulateX + blockH <= innerLength + 0.01) && (simulateY + blockL <= innerHeight + 0.01);
+              
+              if (!normalFits && rotatedFits) {
+                useWidth = blockH;
+                useHeight = blockL;
+              } else if (normalFits && rotatedFits) {
+                const normalWaste = remainingWidth - blockL;
+                const rotatedWaste = remainingWidth - blockH;
+                
+                if (rotatedWaste < normalWaste && rotatedWaste >= 0) {
+                  useWidth = blockH;
+                  useHeight = blockL;
+                }
+              } else if (!normalFits && !rotatedFits) {
+                break;
+              }
+              
+              if (simulateX + useWidth > innerLength + 0.01 || simulateY + useHeight > innerHeight + 0.01) {
+                break;
+              }
+              
+              rowHeight = Math.max(rowHeight, useHeight);
+              simulateX += useWidth + mortarGap;
+              simulateBlockIndex++;
+            }
+            
+            if (simulateBlockIndex === rowStartIndex) break;
+            
+            maxRowWidth = Math.max(maxRowWidth, simulateX - mortarGap);
+            totalFilledHeight = simulateY + rowHeight;
+            simulateY += rowHeight + mortarGap;
+          }
+          
+          // Calculate centering offsets
+          const xOffset = (innerLength - maxRowWidth) / 2;
+          const yOffset = (innerHeight - totalFilledHeight) / 2;
+          
+          // Draw gray background if there are gaps
+          if (xOffset > 0.5 || yOffset > 0.5 || totalFilledHeight < innerHeight - 1) {
+            ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';
+            ctx.fillRect(0, 0, innerLength * scale, innerHeight * scale);
+          }
+          
+          // Second pass: draw blocks centered
+          let blockIndex = 0;
+          let currentY = yOffset;
+          
           while (currentY < innerHeight && blockIndex < blockQueue.length) {
-            let currentX = 0;
+            let currentX = xOffset;
             const rowStartIndex = blockIndex;
             let rowHeight = 0;
             
-            // Fill current row
             while (currentX < innerLength && blockIndex < blockQueue.length) {
               const block = blockQueue[blockIndex];
               const blockL = block.material.length;
@@ -812,39 +980,27 @@ Return your response as a JSON object with the optimal block selection and quant
               const remainingWidth = innerLength - currentX;
               const remainingHeight = innerHeight - currentY;
               
-              // Try normal orientation first
               let useWidth = blockL;
               let useHeight = blockH;
-              let rotated = false;
               
-              // Check if normal orientation fits
               const normalFits = (currentX + blockL <= innerLength + 0.01) && (currentY + blockH <= innerHeight + 0.01);
-              
-              // Check if rotated orientation fits better
               const rotatedFits = (currentX + blockH <= innerLength + 0.01) && (currentY + blockL <= innerHeight + 0.01);
               
-              // Decide orientation based on what fits
               if (!normalFits && rotatedFits) {
-                // Only rotated fits
                 useWidth = blockH;
                 useHeight = blockL;
-                rotated = true;
               } else if (normalFits && rotatedFits) {
-                // Both fit, choose based on remaining space efficiency
                 const normalWaste = remainingWidth - blockL;
                 const rotatedWaste = remainingWidth - blockH;
                 
                 if (rotatedWaste < normalWaste && rotatedWaste >= 0) {
                   useWidth = blockH;
                   useHeight = blockL;
-                  rotated = true;
                 }
               } else if (!normalFits && !rotatedFits) {
-                // Neither fits in current position, move to next row
                 break;
               }
               
-              // Final check if block fits
               if (currentX + useWidth > innerLength + 0.01 || currentY + useHeight > innerHeight + 0.01) {
                 break;
               }
@@ -861,16 +1017,8 @@ Return your response as a JSON object with the optimal block selection and quant
               blockIndex++;
             }
             
-            // If no blocks were placed in this row, we're done
             if (blockIndex === rowStartIndex) break;
-            
             currentY += rowHeight + mortarGap;
-          }
-          
-          // Fill remaining space with gray if there are unused positions
-          if (currentY < innerHeight - 1) {
-            ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';
-            ctx.fillRect(0, currentY * scale, innerLength * scale, (innerHeight - currentY) * scale);
           }
         }
       }
