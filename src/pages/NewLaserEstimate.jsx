@@ -610,29 +610,6 @@ export default function NewLaserEstimate() {
 
                           <p className="text-xs text-slate-500 mt-1">One-time material/setup cost applied to the entire project</p>
                         </div>
-                        {/* New location for Machine Rate and Labor Rate if desired, otherwise they remain non-editable project defaults */}
-                        <div>
-                          <Label>Machine Rate ($/hr)</Label>
-                          <Input
-                        type="number"
-                        step="0.01"
-                        value={project.machine_rate_per_hour}
-                        onChange={(e) => setProject((prev) => ({ ...prev, machine_rate_per_hour: parseFloat(e.target.value) || 0 }))}
-                        className="mt-1" />
-
-                          <p className="text-xs text-slate-500 mt-1">Machine operating cost per hour</p>
-                        </div>
-                        <div>
-                          <Label>Labor Rate ($/hr)</Label>
-                          <Input
-                        type="number"
-                        step="0.01"
-                        value={project.labor_rate}
-                        onChange={(e) => setProject((prev) => ({ ...prev, labor_rate: parseFloat(e.target.value) || 0 }))}
-                        className="mt-1" />
-
-                          <p className="text-xs text-slate-500 mt-1">Labor cost per hour for handling/setup</p>
-                        </div>
                       </div>
                   }
                   </div>
