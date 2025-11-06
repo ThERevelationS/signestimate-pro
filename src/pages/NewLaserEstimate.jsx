@@ -19,10 +19,10 @@ const parseImperialFraction = (fractionString) => {
   let totalValue = 0;
   const wholeAndFraction = fractionString.split('-');
   if (wholeAndFraction.length === 2) {
-    totalValue += parseFloat(wholeAndAndFraction[0]);
-    fractionString = wholeAndAndFraction[1];
+    totalValue += parseFloat(wholeAndFraction[0]);
+    fractionString = wholeAndFraction[1];
   } else {
-    fractionString = wholeAndAndFraction[0];
+    fractionString = wholeAndFraction[0];
   }
   const parts = fractionString.split('/');
   if (parts.length === 2) {
@@ -293,7 +293,7 @@ export default function NewLaserEstimate() {
   return (
     <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
       <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
               <Zap className="w-8 h-8" />
@@ -312,13 +312,13 @@ export default function NewLaserEstimate() {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
             {/* Project Info */}
             <Card className="bg-white border-0 shadow-sm">
-              <CardHeader><CardTitle className="text-lg font-semibold text-slate-900">Project Information</CardTitle></CardHeader>
-              <CardContent className="px-2 space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
+              <CardHeader className="pb-3"><CardTitle className="text-lg font-semibold text-slate-900">Project Information</CardTitle></CardHeader>
+              <CardContent className="px-2 space-y-3">
+                <div className="grid md:grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor="client_name">Client Name *</Label>
                     <Input
@@ -340,7 +340,7 @@ export default function NewLaserEstimate() {
 
                   </div>
                 </div>
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid md:grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor="estimate_number">Estimate Number *</Label>
                     <Input
@@ -368,7 +368,7 @@ export default function NewLaserEstimate() {
                     id="notes"
                     value={project.notes}
                     onChange={(e) => setProject((prev) => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Any additional notes..." className="bg-transparent px-2 py-2 text-base rounded-md flex min-h-[60px] w-full border border-input shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm h-24" />
+                    placeholder="Any additional notes..." className="bg-transparent px-2 py-2 text-base rounded-md flex min-h-[60px] w-full border border-input shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm h-12" />
 
 
                 </div>
@@ -377,7 +377,7 @@ export default function NewLaserEstimate() {
 
             {/* Items */}
             <Card className="bg-white border-0 shadow-sm">
-              <CardHeader>
+              <CardHeader className="pb-3">
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-lg font-semibold text-slate-900">Items</CardTitle>
                   <Button onClick={addItem} size="sm" className="bg-blue-600 hover:bg-blue-700">
@@ -386,14 +386,14 @@ export default function NewLaserEstimate() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4">
                 {project.items.length === 0 ?
-                <div className="text-center py-12 text-slate-500">
+                <div className="text-center py-8 text-slate-500">
                     <p>No items added yet. Click "Add Item" to get started.</p>
                   </div> :
 
                 project.items.map((item, index) =>
-                <div key={index} className="p-6 bg-slate-50 rounded-lg border border-slate-200 space-y-4">
+                <div key={index} className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
                       <div className="flex justify-between items-start">
                         <h4 className="font-semibold text-slate-900">Item #{index + 1}</h4>
                         <Button variant="ghost" size="icon" onClick={() => removeItem(index)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
@@ -401,7 +401,7 @@ export default function NewLaserEstimate() {
                         </Button>
                       </div>
 
-                      <div className="grid md:grid-cols-2 gap-4">
+                      <div className="grid md:grid-cols-2 gap-3">
                         <div className="md:col-span-2">
                           <Label>Description</Label>
                           <Input
@@ -547,8 +547,8 @@ export default function NewLaserEstimate() {
                           </div>
                     }
 
-                        <div className="md:col-span-2 p-4 bg-green-50 rounded-lg border border-green-200">
-                          <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="md:col-span-2 p-3 bg-green-50 rounded-lg border border-green-200">
+                          <div className="grid grid-cols-2 gap-3 text-sm">
                             <div>
                               <p className="text-slate-600">Machine Time</p>
                               <p className="font-semibold text-slate-900">{item.machine_time_hours.toFixed(3)} hrs</p>
@@ -574,7 +574,7 @@ export default function NewLaserEstimate() {
 
                 {/* Advanced Settings */}
                 {project.items.length > 0 &&
-                <div className="border-t pt-6">
+                <div className="border-t pt-4">
                     <Button
                     type="button"
                     variant="outline"
@@ -585,7 +585,7 @@ export default function NewLaserEstimate() {
                     </Button>
                     
                     {showAdvancedSettings &&
-                  <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-4">
+                  <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
                         <div>
                           <Label>Fixed Setup Time (hours)</Label>
                           <Input
@@ -644,9 +644,9 @@ export default function NewLaserEstimate() {
           {/* Summary Sidebar */}
           <div>
             <Card className="bg-white border-0 shadow-sm sticky top-8">
-              <CardHeader><CardTitle>Project Summary</CardTitle></CardHeader>
-              <CardContent className="space-y-6 pt-6">
-                <div className="space-y-3">
+              <CardHeader className="pb-3"><CardTitle>Project Summary</CardTitle></CardHeader>
+              <CardContent className="space-y-4 pt-4">
+                <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Total Items:</span>
                     <span className="font-medium">{project.items.length}</span>
@@ -659,7 +659,7 @@ export default function NewLaserEstimate() {
                     <span>Total Labor Cost:</span>
                     <span className="font-medium">${(project.total_labor_cost || 0).toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-lg font-bold border-t pt-3">
+                  <div className="flex justify-between text-lg font-bold border-t pt-2">
                     <span>TOTAL:</span>
                     <span className="text-green-600">${((project.total_machine_cost || 0) + (project.total_labor_cost || 0)).toFixed(2)}</span>
                   </div>
