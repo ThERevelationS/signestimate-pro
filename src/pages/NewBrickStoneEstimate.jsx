@@ -483,11 +483,11 @@ Return your response as a JSON object with the optimal block selection and quant
             }
           }
           
-          // Calculate hollow center boundaries
+          // Calculate hollow center boundaries - USE WALLTHICKNESS DIRECTLY
           const innerXStart = wallThickness;
-          const innerYStart = frontWallEnd; // Correctly uses frontWallEnd which is wallThickness
+          const innerYStart = wallThickness;
           const innerXEnd = actualLength - wallThickness;
-          const innerYEnd = backWallStart; // Correctly uses backWallStart which is actualWidth - wallThickness
+          const innerYEnd = actualWidth - wallThickness;
           
           const innerLength = innerXEnd - innerXStart;
           const innerWidth = innerYEnd - innerYStart;
@@ -553,8 +553,8 @@ Return your response as a JSON object with the optimal block selection and quant
                     
                     ctx.fillStyle = fillColor;
                     ctx.fillRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
-                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)'; // Changed from 0.15
-                    ctx.lineWidth = 1; // Changed from 0.5
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                    ctx.lineWidth = 1;
                     ctx.strokeRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
                     
                     blockIndex++;
