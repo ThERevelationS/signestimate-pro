@@ -81,7 +81,7 @@ export default function NewLaserEstimate() {
     try {
       const settingsData = await Settings.list();
       const settingsObj = {};
-      settingsData.forEach(setting => {
+      settingsData.forEach((setting) => {
         settingsObj[setting.setting_name] = setting.setting_value;
       });
       setGlobalSettings(settingsObj);
@@ -94,7 +94,7 @@ export default function NewLaserEstimate() {
           fixed_material_setup_cost: parseFloat(settingsObj.laser_fixed_material_setup_cost) || 0,
           notes: settingsObj.default_notes_template || ""
         };
-        setProject(prev => ({ ...prev, ...newDefaults }));
+        setProject((prev) => ({ ...prev, ...newDefaults }));
       }
     } catch (error) {
       console.error('Error loading prerequisites:', error);
@@ -129,30 +129,30 @@ export default function NewLaserEstimate() {
       machine_cost: 0,
       labor_cost: 0
     };
-    setProject(prev => ({ ...prev, items: [...prev.items, newItem] }));
+    setProject((prev) => ({ ...prev, items: [...prev.items, newItem] }));
   };
 
   const removeItem = (index) => {
-    setProject(prev => ({
+    setProject((prev) => ({
       ...prev,
       items: prev.items.filter((_, i) => i !== index)
     }));
   };
 
   const updateItem = (index, field, value) => {
-    setProject(prev => ({
+    setProject((prev) => ({
       ...prev,
       items: prev.items.map((item, i) => {
         if (i !== index) return item;
         const updated = { ...item, [field]: value };
-        
+
         // Auto-calculate based on item type
-        if (field === 'item_type' || field === 'material_type' || field === 'material_thickness' || 
-            field === 'length' || field === 'width' || field === 'letter_height' || 
-            field === 'num_letters' || field === 'quantity' || field === 'engrave_area_sqin') {
-          
+        if (field === 'item_type' || field === 'material_type' || field === 'material_thickness' ||
+        field === 'length' || field === 'width' || field === 'letter_height' ||
+        field === 'num_letters' || field === 'quantity' || field === 'engrave_area_sqin') {
+
           const perimFactor = parseFloat(globalSettings.laser_letter_perimeter_factor) || 3.5;
-          
+
           // Reset total_cut_length_inches first to ensure correct recalculation
           updated.total_cut_length_inches = 0;
 
@@ -164,19 +164,19 @@ export default function NewLaserEstimate() {
             updated.total_cut_length_inches = perimeterPerLetter * updated.num_letters * updated.quantity;
           }
           // For 'engraving', total_cut_length_inches remains 0.
-          
+
           // Get cut speed from settings based on thickness
           const thicknessKey = `cut_speed_${updated.material_thickness.replace('/', '_')}`;
           const baseSpeed = parseFloat(globalSettings[thicknessKey]) || 20;
-          
+
           // Apply material multiplier
           const materialMultiplier = parseFloat(globalSettings[`${updated.material_type.toLowerCase()}_cut_multiplier`]) || 1.0;
           updated.cut_speed_ipm = baseSpeed * materialMultiplier;
-          
+
           // Get engraving speed from settings
           updated.engrave_speed_sqipm = parseFloat(globalSettings.laser_engrave_speed_sqipm) || 5;
         }
-        
+
         return updated;
       })
     }));
@@ -184,31 +184,31 @@ export default function NewLaserEstimate() {
 
   const calculateTotals = useCallback(() => {
     const handlingPercentage = parseFloat(globalSettings.handling_time_percentage) || 15;
-    
+
     let totalMachineCost = 0;
     let totalLaborCost = 0;
-    
-    const updatedItems = project.items.map(item => {
+
+    const updatedItems = project.items.map((item) => {
       // Calculate cut time
       const cutTimeMinutes = item.total_cut_length_inches / item.cut_speed_ipm;
-      
+
       // Calculate engrave time
       const engraveTimeMinutes = item.engrave_area_sqin / item.engrave_speed_sqipm;
-      
+
       // Total machine time
       const totalMachineTimeMinutes = cutTimeMinutes + engraveTimeMinutes;
       const machineTimeHours = totalMachineTimeMinutes / 60;
-      
+
       // Handling time
       const handlingTimeHours = machineTimeHours * (handlingPercentage / 100);
-      
+
       // Costs
       const machineCost = machineTimeHours * project.machine_rate_per_hour;
       const laborCost = handlingTimeHours * project.labor_rate;
-      
+
       totalMachineCost += machineCost;
       totalLaborCost += laborCost;
-      
+
       return {
         ...item,
         machine_time_hours: machineTimeHours,
@@ -217,15 +217,15 @@ export default function NewLaserEstimate() {
         labor_cost: laborCost
       };
     });
-    
+
     // Add fixed setup time labor cost
     const fixedSetupLaborCost = project.fixed_setup_hours * project.labor_rate;
     totalLaborCost += fixedSetupLaborCost;
-    
+
     // Add fixed material setup cost
     const fixedMaterialSetupCost = project.fixed_material_setup_cost || 0;
     totalMachineCost += fixedMaterialSetupCost;
-    
+
     return {
       items: updatedItems,
       total_machine_cost: totalMachineCost,
@@ -236,7 +236,7 @@ export default function NewLaserEstimate() {
   useEffect(() => {
     if (!isLoading && project.items.length > 0) {
       const calculated = calculateTotals();
-      setProject(prev => ({
+      setProject((prev) => ({
         ...prev,
         items: calculated.items,
         total_machine_cost: calculated.total_machine_cost,
@@ -286,8 +286,8 @@ export default function NewLaserEstimate() {
     return (
       <div className="p-6 md:p-8 bg-slate-50 min-h-screen flex items-center justify-center">
         <p className="text-slate-600">Loading...</p>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -317,60 +317,60 @@ export default function NewLaserEstimate() {
             {/* Project Info */}
             <Card className="bg-white border-0 shadow-sm">
               <CardHeader><CardTitle className="text-lg font-semibold text-slate-900">Project Information</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="px-2 space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="client_name">Client Name *</Label>
-                    <Input 
-                      id="client_name" 
-                      value={project.client_name} 
-                      onChange={(e) => setProject(prev => ({ ...prev, client_name: e.target.value }))} 
-                      placeholder="Enter client name" 
-                      className="mt-1" 
-                    />
+                    <Input
+                      id="client_name"
+                      value={project.client_name}
+                      onChange={(e) => setProject((prev) => ({ ...prev, client_name: e.target.value }))}
+                      placeholder="Enter client name"
+                      className="mt-1" />
+
                   </div>
                   <div>
                     <Label htmlFor="project_name">Project Name *</Label>
-                    <Input 
-                      id="project_name" 
-                      value={project.project_name} 
-                      onChange={(e) => setProject(prev => ({ ...prev, project_name: e.target.value }))} 
-                      placeholder="Enter project name" 
-                      className="mt-1" 
-                    />
+                    <Input
+                      id="project_name"
+                      value={project.project_name}
+                      onChange={(e) => setProject((prev) => ({ ...prev, project_name: e.target.value }))}
+                      placeholder="Enter project name"
+                      className="mt-1" />
+
                   </div>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="estimate_number">Estimate Number *</Label>
-                    <Input 
-                      id="estimate_number" 
-                      value={project.estimate_number} 
-                      onChange={(e) => setProject(prev => ({ ...prev, estimate_number: e.target.value }))} 
-                      placeholder="e.g., LASER-2024-001" 
-                      className="mt-1" 
-                    />
+                    <Input
+                      id="estimate_number"
+                      value={project.estimate_number}
+                      onChange={(e) => setProject((prev) => ({ ...prev, estimate_number: e.target.value }))}
+                      placeholder="e.g., LASER-2024-001"
+                      className="mt-1" />
+
                   </div>
                   <div>
                     <Label htmlFor="hyperlink">Project Link *</Label>
-                    <Input 
-                      id="hyperlink" 
-                      value={project.hyperlink} 
-                      onChange={(e) => setProject(prev => ({ ...prev, hyperlink: e.target.value }))} 
-                      placeholder="https://..." 
-                      className="mt-1" 
-                    />
+                    <Input
+                      id="hyperlink"
+                      value={project.hyperlink}
+                      onChange={(e) => setProject((prev) => ({ ...prev, hyperlink: e.target.value }))}
+                      placeholder="https://..."
+                      className="mt-1" />
+
                   </div>
                 </div>
                 <div>
                   <Label htmlFor="notes">Project Notes</Label>
-                  <Textarea 
-                    id="notes" 
-                    value={project.notes} 
-                    onChange={(e) => setProject(prev => ({ ...prev, notes: e.target.value }))} 
-                    placeholder="Any additional notes..." 
-                    className="mt-1 h-24" 
-                  />
+                  <Textarea
+                    id="notes"
+                    value={project.notes}
+                    onChange={(e) => setProject((prev) => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Any additional notes..." className="bg-transparent px-2 py-2 text-base rounded-md flex min-h-[60px] w-full border border-input shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm h-24" />
+
+
                 </div>
               </CardContent>
             </Card>
@@ -387,13 +387,13 @@ export default function NewLaserEstimate() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                {project.items.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500">
+                {project.items.length === 0 ?
+                <div className="text-center py-12 text-slate-500">
                     <p>No items added yet. Click "Add Item" to get started.</p>
-                  </div>
-                ) : (
-                  project.items.map((item, index) => (
-                    <div key={index} className="p-6 bg-slate-50 rounded-lg border border-slate-200 space-y-4">
+                  </div> :
+
+                project.items.map((item, index) =>
+                <div key={index} className="p-6 bg-slate-50 rounded-lg border border-slate-200 space-y-4">
                       <div className="flex justify-between items-start">
                         <h4 className="font-semibold text-slate-900">Item #{index + 1}</h4>
                         <Button variant="ghost" size="icon" onClick={() => removeItem(index)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
@@ -404,12 +404,12 @@ export default function NewLaserEstimate() {
                       <div className="grid md:grid-cols-2 gap-4">
                         <div className="md:col-span-2">
                           <Label>Description</Label>
-                          <Input 
-                            value={item.description} 
-                            onChange={(e) => updateItem(index, 'description', e.target.value)}
-                            placeholder="Brief description" 
-                            className="mt-1"
-                          />
+                          <Input
+                        value={item.description}
+                        onChange={(e) => updateItem(index, 'description', e.target.value)}
+                        placeholder="Brief description"
+                        className="mt-1" />
+
                         </div>
 
                         <div>
@@ -434,9 +434,9 @@ export default function NewLaserEstimate() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {materials.map(mat => (
-                                <SelectItem key={mat} value={mat}>{mat}</SelectItem>
-                              ))}
+                              {materials.map((mat) =>
+                          <SelectItem key={mat} value={mat}>{mat}</SelectItem>
+                          )}
                             </SelectContent>
                           </Select>
                         </div>
@@ -448,104 +448,104 @@ export default function NewLaserEstimate() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {imperialSizes.map(size => (
-                                <SelectItem key={size} value={size}>{size}"</SelectItem>
-                              ))}
+                              {imperialSizes.map((size) =>
+                          <SelectItem key={size} value={size}>{size}"</SelectItem>
+                          )}
                             </SelectContent>
                           </Select>
                         </div>
 
                         <div>
                           <Label>Quantity</Label>
-                          <Input 
-                            type="number" 
-                            min="1" 
-                            value={item.quantity} 
-                            onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 1)}
-                            className="mt-1"
-                          />
+                          <Input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 1)}
+                        className="mt-1" />
+
                         </div>
 
-                        {(item.item_type === 'panel' || item.item_type === 'engrave_and_cut') && (
-                          <>
+                        {(item.item_type === 'panel' || item.item_type === 'engrave_and_cut') &&
+                    <>
                             <div>
                               <Label>Length (inches)</Label>
-                              <Input 
-                                type="number" 
-                                step="0.125" 
-                                value={item.length} 
-                                onChange={(e) => updateItem(index, 'length', parseFloat(e.target.value) || 0)}
-                                className="mt-1"
-                              />
+                              <Input
+                          type="number"
+                          step="0.125"
+                          value={item.length}
+                          onChange={(e) => updateItem(index, 'length', parseFloat(e.target.value) || 0)}
+                          className="mt-1" />
+
                             </div>
                             <div>
                               <Label>Width (inches)</Label>
-                              <Input 
-                                type="number" 
-                                step="0.125" 
-                                value={item.width} 
-                                onChange={(e) => updateItem(index, 'width', parseFloat(e.target.value) || 0)}
-                                className="mt-1"
-                              />
+                              <Input
+                          type="number"
+                          step="0.125"
+                          value={item.width}
+                          onChange={(e) => updateItem(index, 'width', parseFloat(e.target.value) || 0)}
+                          className="mt-1" />
+
                             </div>
                           </>
-                        )}
+                    }
 
-                        {item.item_type === 'lettering' && (
-                          <>
+                        {item.item_type === 'lettering' &&
+                    <>
                             <div>
                               <Label>Letter Height (inches)</Label>
-                              <Input 
-                                type="number" 
-                                step="0.125" 
-                                value={item.letter_height} 
-                                onChange={(e) => updateItem(index, 'letter_height', parseFloat(e.target.value) || 0)}
-                                className="mt-1"
-                              />
+                              <Input
+                          type="number"
+                          step="0.125"
+                          value={item.letter_height}
+                          onChange={(e) => updateItem(index, 'letter_height', parseFloat(e.target.value) || 0)}
+                          className="mt-1" />
+
                             </div>
                             <div>
                               <Label>Number of Letters</Label>
-                              <Input 
-                                type="number" 
-                                min="1" 
-                                value={item.num_letters} 
-                                onChange={(e) => updateItem(index, 'num_letters', parseFloat(e.target.value) || 0)}
-                                className="mt-1"
-                              />
+                              <Input
+                          type="number"
+                          min="1"
+                          value={item.num_letters}
+                          onChange={(e) => updateItem(index, 'num_letters', parseFloat(e.target.value) || 0)}
+                          className="mt-1" />
+
                             </div>
                           </>
-                        )}
+                    }
 
-                        {(item.item_type === 'panel' || item.item_type === 'lettering' || item.item_type === 'engrave_and_cut') && (
-                          <div className="md:col-span-2 p-3 bg-blue-50 rounded-lg">
+                        {(item.item_type === 'panel' || item.item_type === 'lettering' || item.item_type === 'engrave_and_cut') &&
+                    <div className="md:col-span-2 p-3 bg-blue-50 rounded-lg">
                             <p className="text-sm text-blue-800">
                               <strong>Total Cut Length:</strong> {item.total_cut_length_inches.toFixed(2)}" 
                               <span className="mx-2">•</span>
                               <strong>Cut Speed:</strong> {item.cut_speed_ipm.toFixed(1)} in/min
                             </p>
                           </div>
-                        )}
+                    }
 
                         {/* Engraving Section - Only for engraving and engrave_and_cut types */}
-                        {(item.item_type === 'engraving' || item.item_type === 'engrave_and_cut') && (
-                          <div className="md:col-span-2 border-t pt-4">
+                        {(item.item_type === 'engraving' || item.item_type === 'engrave_and_cut') &&
+                    <div className="md:col-span-2 border-t pt-4">
                             <Label>Engraving Area (sq inches)</Label>
-                            <Input 
-                              type="number" 
-                              step="0.1"
-                              min="0"
-                              value={item.engrave_area_sqin} 
-                              onChange={(e) => updateItem(index, 'engrave_area_sqin', Math.max(0, parseFloat(e.target.value) || 0))}
-                              placeholder="Enter engraving area"
-                              className="mt-1"
-                            />
-                            {item.engrave_area_sqin > 0 && (
-                              <p className="text-xs text-slate-500 mt-1">
+                            <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={item.engrave_area_sqin}
+                        onChange={(e) => updateItem(index, 'engrave_area_sqin', Math.max(0, parseFloat(e.target.value) || 0))}
+                        placeholder="Enter engraving area"
+                        className="mt-1" />
+
+                            {item.engrave_area_sqin > 0 &&
+                      <p className="text-xs text-slate-500 mt-1">
                                 Engrave Speed: {item.engrave_speed_sqipm.toFixed(1)} sq in/min
                               </p>
-                            )}
+                      }
                           </div>
-                        )}
+                    }
 
                         <div className="md:col-span-2 p-4 bg-green-50 rounded-lg border border-green-200">
                           <div className="grid grid-cols-2 gap-4 text-sm">
@@ -569,74 +569,74 @@ export default function NewLaserEstimate() {
                         </div>
                       </div>
                     </div>
-                  ))
-                )}
+                )
+                }
 
                 {/* Advanced Settings */}
-                {project.items.length > 0 && (
-                  <div className="border-t pt-6">
+                {project.items.length > 0 &&
+                <div className="border-t pt-6">
                     <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                      className="w-full"
-                    >
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                    className="w-full">
+
                       {showAdvancedSettings ? 'Hide' : 'Show'} Advanced Settings
                     </Button>
                     
-                    {showAdvancedSettings && (
-                      <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-4">
+                    {showAdvancedSettings &&
+                  <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-4">
                         <div>
                           <Label>Fixed Setup Time (hours)</Label>
-                          <Input 
-                            type="number" 
-                            step="0.1" 
-                            min="0"
-                            value={project.fixed_setup_hours} 
-                            onChange={(e) => setProject(prev => ({ ...prev, fixed_setup_hours: parseFloat(e.target.value) || 0 }))}
-                            className="mt-1"
-                          />
+                          <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={project.fixed_setup_hours}
+                        onChange={(e) => setProject((prev) => ({ ...prev, fixed_setup_hours: parseFloat(e.target.value) || 0 }))}
+                        className="mt-1" />
+
                           <p className="text-xs text-slate-500 mt-1">One-time setup labor cost applied to the entire project</p>
                         </div>
                         <div>
                           <Label>Fixed Material Setup Cost ($)</Label>
-                          <Input 
-                            type="number" 
-                            step="1" 
-                            min="0"
-                            value={project.fixed_material_setup_cost} 
-                            onChange={(e) => setProject(prev => ({ ...prev, fixed_material_setup_cost: parseFloat(e.target.value) || 0 }))}
-                            className="mt-1"
-                          />
+                          <Input
+                        type="number"
+                        step="1"
+                        min="0"
+                        value={project.fixed_material_setup_cost}
+                        onChange={(e) => setProject((prev) => ({ ...prev, fixed_material_setup_cost: parseFloat(e.target.value) || 0 }))}
+                        className="mt-1" />
+
                           <p className="text-xs text-slate-500 mt-1">One-time material/setup cost applied to the entire project</p>
                         </div>
                         {/* New location for Machine Rate and Labor Rate if desired, otherwise they remain non-editable project defaults */}
                         <div>
                           <Label>Machine Rate ($/hr)</Label>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            value={project.machine_rate_per_hour} 
-                            onChange={(e) => setProject(prev => ({ ...prev, machine_rate_per_hour: parseFloat(e.target.value) || 0 }))}
-                            className="mt-1"
-                          />
+                          <Input
+                        type="number"
+                        step="0.01"
+                        value={project.machine_rate_per_hour}
+                        onChange={(e) => setProject((prev) => ({ ...prev, machine_rate_per_hour: parseFloat(e.target.value) || 0 }))}
+                        className="mt-1" />
+
                           <p className="text-xs text-slate-500 mt-1">Machine operating cost per hour</p>
                         </div>
                         <div>
                           <Label>Labor Rate ($/hr)</Label>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            value={project.labor_rate} 
-                            onChange={(e) => setProject(prev => ({ ...prev, labor_rate: parseFloat(e.target.value) || 0 }))}
-                            className="mt-1"
-                          />
+                          <Input
+                        type="number"
+                        step="0.01"
+                        value={project.labor_rate}
+                        onChange={(e) => setProject((prev) => ({ ...prev, labor_rate: parseFloat(e.target.value) || 0 }))}
+                        className="mt-1" />
+
                           <p className="text-xs text-slate-500 mt-1">Labor cost per hour for handling/setup</p>
                         </div>
                       </div>
-                    )}
+                  }
                   </div>
-                )}
+                }
               </CardContent>
             </Card>
           </div>
@@ -669,6 +669,6 @@ export default function NewLaserEstimate() {
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
