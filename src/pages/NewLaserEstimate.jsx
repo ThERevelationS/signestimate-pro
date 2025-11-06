@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback } from "react";
 import { LaserProject, Settings, User } from "@/entities/all";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -779,26 +778,38 @@ Best regards`;
             <Card className="bg-white border-0 shadow-sm sticky top-8">
               <CardHeader className="pb-3"><CardTitle>Project Summary</CardTitle></CardHeader>
               <CardContent className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-blue-800">Machine Cost:</span>
+                    <span className="text-lg font-bold text-blue-900">${(project.total_machine_cost || 0).toFixed(2)}</span>
+                  </div>
+                  <p className="text-xs text-blue-600">Laser machine operating time costs</p>
+                </div>
+
+                <div className="p-4 bg-purple-50 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-purple-800">Supplies Cost:</span>
+                    <span className="text-lg font-bold text-purple-900">${(project.total_supplies_cost || 0).toFixed(2)}</span>
+                  </div>
+                  <p className="text-xs text-purple-600">Materials and setup supplies</p>
+                </div>
+
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-green-800">Labor Cost:</span>
+                    <span className="text-lg font-bold text-green-900">${(project.total_labor_cost || 0).toFixed(2)}</span>
+                  </div>
+                  <p className="text-xs text-green-600">Handling, setup, and labor time</p>
+                </div>
+
+                <div className="border-t pt-4">
+                  <div className="flex justify-between text-sm text-slate-600">
                     <span>Total Items:</span>
                     <span className="font-medium">{project.items.length}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Total Machine Cost:</span>
-                    <span className="font-medium">${(project.total_machine_cost || 0).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Total Supplies Cost:</span> {/* Display total supplies cost */}
-                    <span className="font-medium">${(project.total_supplies_cost || 0).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Total Labor Cost:</span>
-                    <span className="font-medium">${(project.total_labor_cost || 0).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-bold border-t pt-2">
+                  <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
                     <span>TOTAL:</span>
-                    <span className="text-green-600">${((project.total_machine_cost || 0) + (project.total_supplies_cost || 0) + (project.total_labor_cost || 0)).toFixed(2)}</span> {/* Update total calculation */}
+                    <span className="text-green-600">${((project.total_machine_cost || 0) + (project.total_supplies_cost || 0) + (project.total_labor_cost || 0)).toFixed(2)}</span>
                   </div>
                 </div>
 
