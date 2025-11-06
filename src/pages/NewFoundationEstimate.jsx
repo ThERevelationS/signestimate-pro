@@ -522,6 +522,11 @@ export default function NewFoundationEstimate() {
                                   <p className="text-xs text-blue-700 mt-2 text-center">
                                     <strong>Foundation:</strong> {item.length}' L × {item.width}' W × {item.depth}' D |
                                     <strong> Rebar:</strong> {item.rebar_count}× {item.rebar_size} bars running lengthwise
+                                    {(() => {
+                                      const depthInches = item.depth * 12;
+                                      const numLayers = Math.floor((depthInches - 3) / 18) + 1;
+                                      return ` in ${numLayers} layer${numLayers !== 1 ? 's' : ''} (3" from top, 18" spacing)`;
+                                    })()}
                                   </p>
                                 </div>
 

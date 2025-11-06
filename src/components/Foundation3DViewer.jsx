@@ -90,7 +90,7 @@ export default function Foundation3DViewer({ length, width, depth, rebarCount, r
     const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
     foundation.add(edges);
 
-    // Rebar visualization
+    // Rebar visualization with layers
     if (includeRebar && rebarCount > 0) {
       const rebarMaterial = new THREE.MeshStandardMaterial({
         color: 0xdc2626,
@@ -107,33 +107,51 @@ export default function Foundation3DViewer({ length, width, depth, rebarCount, r
       };
       const rebarRadius = rebarDiameters[rebarSize] || 0.065;
 
-      // Create lengthwise rebar bars
-      const rebarGeometry = new THREE.CylinderGeometry(rebarRadius, rebarRadius, length * 0.9, 12);
+      // Calculate number of horizontal layers
+      // First layer at 3 inches from top, then every 18 inches
+      const depthInches = depth * 12; // Convert feet to inches
+      const firstLayerOffset = 3; // 3 inches from top
+      const layerSpacing = 18; // 18 inches between layers
       
-      // Calculate spacing for rebars across the width
-      const spacing = (width * 0.8) / (rebarCount - 1 || 1);
-      const startOffset = -(width * 0.4);
+      // Calculate how many layers fit
+      const numLayers = Math.floor((depthInches - firstLayerOffset) / layerSpacing) + 1;
+      
+      // Create rebar at each layer
+      for (let layer = 0; layer < numLayers; layer++) {
+        // Calculate Y position for this layer (in feet, relative to foundation center)
+        const layerDepthInches = firstLayerOffset + (layer * layerSpacing);
+        const layerDepthFeet = layerDepthInches / 12;
+        // Convert to position relative to foundation center (top of foundation is at +depth/2)
+        const yPosition = (depth / 2) - layerDepthFeet;
 
-      for (let i = 0; i < rebarCount; i++) {
-        const rebar = new THREE.Mesh(rebarGeometry, rebarMaterial);
-        rebar.rotation.z = Math.PI / 2;
-        rebar.position.set(0, -depth * 0.15, startOffset + (i * spacing));
-        rebar.castShadow = true;
-        foundation.add(rebar);
-      }
+        // Create lengthwise rebar bars (running along the length of the foundation)
+        const rebarGeometry = new THREE.CylinderGeometry(rebarRadius, rebarRadius, length * 0.9, 12);
+        
+        // Calculate spacing for rebars across the width
+        const spacing = (width * 0.8) / (rebarCount - 1 || 1);
+        const startOffset = -(width * 0.4);
 
-      // Add cross bars (perpendicular supports)
-      const crossBarGeometry = new THREE.CylinderGeometry(rebarRadius * 0.8, rebarRadius * 0.8, width * 0.8, 12);
-      const numCrossBars = Math.max(3, Math.floor(length / 2));
-      const crossSpacing = (length * 0.8) / (numCrossBars - 1 || 1);
-      const crossStartOffset = -(length * 0.4);
+        for (let i = 0; i < rebarCount; i++) {
+          const rebar = new THREE.Mesh(rebarGeometry, rebarMaterial);
+          rebar.rotation.z = Math.PI / 2; // Rotate to be horizontal along length
+          rebar.position.set(0, yPosition, startOffset + (i * spacing));
+          rebar.castShadow = true;
+          foundation.add(rebar);
+        }
 
-      for (let i = 0; i < numCrossBars; i++) {
-        const crossBar = new THREE.Mesh(crossBarGeometry, rebarMaterial);
-        crossBar.rotation.x = Math.PI / 2;
-        crossBar.position.set(crossStartOffset + (i * crossSpacing), -depth * 0.15, 0);
-        crossBar.castShadow = true;
-        foundation.add(crossBar);
+        // Add cross bars (perpendicular supports) at this layer
+        const crossBarGeometry = new THREE.CylinderGeometry(rebarRadius * 0.8, rebarRadius * 0.8, width * 0.8, 12);
+        const numCrossBars = Math.max(3, Math.floor(length / 2));
+        const crossSpacing = (length * 0.8) / (numCrossBars - 1 || 1);
+        const crossStartOffset = -(length * 0.4);
+
+        for (let i = 0; i < numCrossBars; i++) {
+          const crossBar = new THREE.Mesh(crossBarGeometry, rebarMaterial);
+          crossBar.rotation.x = Math.PI / 2; // Rotate to be horizontal along width
+          crossBar.position.set(crossStartOffset + (i * crossSpacing), yPosition, 0);
+          crossBar.castShadow = true;
+          foundation.add(crossBar);
+        }
       }
     }
 
