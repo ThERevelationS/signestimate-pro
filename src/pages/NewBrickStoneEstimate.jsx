@@ -46,6 +46,7 @@ export default function NewBrickStoneEstimate() {
   const [showDimensions, setShowDimensions] = useState(true);
   const [isAIFilling, setIsAIFilling] = useState(false);
   const [hasAutoFilledCore, setHasAutoFilledCore] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false); // New state variable
 
   useEffect(() => {
     // Inventory needs to be loaded first for loadProjectForEdit to convert old dimensions
@@ -1208,10 +1209,30 @@ Return your response as a JSON object with the optimal block selection and quant
                   <p className="text-xs text-blue-700 mt-2">These are the actual dimensions considering brick counts and mortar gaps.</p>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div><Label>Mortar Gap (inches)</Label><Input type="number" step="0.125" value={project.mortar_gap} onChange={(e) => setProject(prev => ({ ...prev, mortar_gap: parseFloat(e.target.value) || 0 }))} disabled={!selectedMaterial} /></div>
-                  <div><Label>Waste Factor</Label><Input type="number" step="0.05" value={project.waste_factor} onChange={(e) => setProject(prev => ({ ...prev, waste_factor: parseFloat(e.target.value) || 1 }))} disabled={!selectedMaterial} /></div>
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="w-full"
+                  >
+                    {showAdvanced ? 'Hide' : 'Show'} Advanced Settings
+                  </Button>
                 </div>
+
+                {showAdvanced && (
+                  <div className="grid md:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                    <div>
+                      <Label>Mortar Gap (inches)</Label>
+                      <Input type="number" step="0.125" value={project.mortar_gap} onChange={(e) => setProject(prev => ({ ...prev, mortar_gap: parseFloat(e.target.value) || 0 }))} disabled={!selectedMaterial} />
+                    </div>
+                    <div>
+                      <Label>Waste Factor</Label>
+                      <Input type="number" step="0.05" value={project.waste_factor} onChange={(e) => setProject(prev => ({ ...prev, waste_factor: parseFloat(e.target.value) || 1 }))} disabled={!selectedMaterial} />
+                    </div>
+                  </div>
+                )}
 
                 <div><Label>Notes</Label><Textarea value={project.notes} onChange={(e) => setProject(prev => ({ ...prev, notes: e.target.value }))} className="h-20" /></div>
               </CardContent>
@@ -1244,6 +1265,9 @@ Return your response as a JSON object with the optimal block selection and quant
                           <p className="text-sm font-medium text-amber-900">{coreMaterial.material_name}</p>
                           <p className="text-xs text-amber-600">
                             {coreMaterial.length}" × {coreMaterial.width}" × {coreMaterial.height}"
+                          </p>
+                          <p className="text-xs text-amber-600 mt-1">
+                            ${coreMaterial.cost_per_unit.toFixed(2)} per unit
                           </p>
                           <div className="flex justify-between mt-2 text-sm">
                             <span className="text-amber-700">Qty: {coreItem.quantity}</span>
