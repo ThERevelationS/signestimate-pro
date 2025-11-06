@@ -19,10 +19,10 @@ const parseImperialFraction = (fractionString) => {
   let totalValue = 0;
   const wholeAndFraction = fractionString.split('-');
   if (wholeAndFraction.length === 2) {
-    totalValue += parseFloat(wholeAndFraction[0]);
-    fractionString = wholeAndFraction[1];
+    totalValue += parseFloat(wholeAndAndFraction[0]);
+    fractionString = wholeAndAndFraction[1];
   } else {
-    fractionString = wholeAndFraction[0];
+    fractionString = wholeAndAndFraction[0];
   }
   const parts = fractionString.split('/');
   if (parts.length === 2) {
@@ -610,6 +610,29 @@ export default function NewLaserEstimate() {
                           />
                           <p className="text-xs text-slate-500 mt-1">One-time material/setup cost applied to the entire project</p>
                         </div>
+                        {/* New location for Machine Rate and Labor Rate if desired, otherwise they remain non-editable project defaults */}
+                        <div>
+                          <Label>Machine Rate ($/hr)</Label>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            value={project.machine_rate_per_hour} 
+                            onChange={(e) => setProject(prev => ({ ...prev, machine_rate_per_hour: parseFloat(e.target.value) || 0 }))}
+                            className="mt-1"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">Machine operating cost per hour</p>
+                        </div>
+                        <div>
+                          <Label>Labor Rate ($/hr)</Label>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            value={project.labor_rate} 
+                            onChange={(e) => setProject(prev => ({ ...prev, labor_rate: parseFloat(e.target.value) || 0 }))}
+                            className="mt-1"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">Labor cost per hour for handling/setup</p>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -623,30 +646,7 @@ export default function NewLaserEstimate() {
             <Card className="bg-white border-0 shadow-sm sticky top-8">
               <CardHeader><CardTitle>Project Summary</CardTitle></CardHeader>
               <CardContent className="space-y-6 pt-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label>Machine Rate ($/hr)</Label>
-                    <Input 
-                      type="number" 
-                      step="0.01" 
-                      value={project.machine_rate_per_hour} 
-                      onChange={(e) => setProject(prev => ({ ...prev, machine_rate_per_hour: parseFloat(e.target.value) || 0 }))}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label>Labor Rate ($/hr)</Label>
-                    <Input 
-                      type="number" 
-                      step="0.01" 
-                      value={project.labor_rate} 
-                      onChange={(e) => setProject(prev => ({ ...prev, labor_rate: parseFloat(e.target.value) || 0 }))}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-
-                <div className="border-t pt-6 space-y-3">
+                <div className="space-y-3">
                   <div className="flex justify-between text-sm">
                     <span>Total Items:</span>
                     <span className="font-medium">{project.items.length}</span>
