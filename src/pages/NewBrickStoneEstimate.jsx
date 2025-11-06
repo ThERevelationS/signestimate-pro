@@ -232,7 +232,7 @@ REQUIREMENTS:
 1. Fill the entire hollow space efficiently using a grid pattern.
 2. Blocks cannot overlap.
 3. Account for ${mortarGap}" mortar gaps between all blocks.
-4. For each block type, calculate how many blocks fit in each dimension using: floor((total_dimension) / (block_dimension + mortar_gap))
+4. For each block type, calculate how many blocks fit in each dimension using: floor((total_dimension + mortar_gap) / (block_dimension + mortar_gap))
 5. Total blocks = blocks_along_length × blocks_along_width × blocks_along_height
 6. Maximize space utilization (fill as much of the hollow space as possible).
 7. Minimize cost, considering the total volume filled.
@@ -484,7 +484,7 @@ Return your response as a JSON object with the optimal block selection and quant
             }
           }
           
-          // Calculate hollow center boundaries - USE WALLTHICKNESS DIRECTLY
+          // Calculate hollow center boundaries
           const innerXStart = wallThickness;
           const innerYStart = wallThickness;
           const innerXEnd = actualLength - wallThickness;
@@ -512,11 +512,12 @@ Return your response as a JSON object with the optimal block selection and quant
                 const blockL = firstCoreMaterial.length;
                 const blockW = firstCoreMaterial.width;
                 
-                // Calculate how many blocks fit in each orientation
-                const normalCols = Math.floor(innerLength / (blockL + mortarGap));
-                const normalRows = Math.floor(innerWidth / (blockW + mortarGap));
-                const rotatedCols = Math.floor(innerLength / (blockW + mortarGap));
-                const rotatedRows = Math.floor(innerWidth / (blockL + mortarGap));
+                // CORRECTED: Calculate how many blocks fit using proper formula
+                // Formula: N = floor((space + gap) / (block + gap))
+                const normalCols = Math.floor((innerLength + mortarGap) / (blockL + mortarGap));
+                const normalRows = Math.floor((innerWidth + mortarGap) / (blockW + mortarGap));
+                const rotatedCols = Math.floor((innerLength + mortarGap) / (blockW + mortarGap));
+                const rotatedRows = Math.floor((innerWidth + mortarGap) / (blockL + mortarGap));
                 
                 // Choose best orientation
                 const useRotated = (rotatedCols * rotatedRows) > (normalCols * normalRows);
@@ -534,6 +535,11 @@ Return your response as a JSON object with the optimal block selection and quant
                   for (let col = 0; col < cols; col++) {
                     const x = innerXStart + col * (blockDrawL + mortarGap);
                     const y = innerYStart + row * (blockDrawW + mortarGap);
+                    
+                    // Make sure block doesn't extend beyond the boundary
+                    if (x + blockDrawL > innerXEnd + 0.01 || y + blockDrawW > innerYEnd + 0.01) {
+                      continue;
+                    }
                     
                     // Determine color based on which material this block represents
                     let fillColor;
@@ -554,7 +560,7 @@ Return your response as a JSON object with the optimal block selection and quant
                     
                     ctx.fillStyle = fillColor;
                     ctx.fillRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
-                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
                     ctx.lineWidth = 1;
                     ctx.strokeRect(x * scale, y * scale, blockDrawL * scale, blockDrawW * scale);
                     
@@ -745,8 +751,9 @@ Return your response as a JSON object with the optimal block selection and quant
             const blockL = firstCoreMaterial.length;
             const blockH = firstCoreMaterial.height;
             
-            const cols = Math.floor((innerLength) / (blockL + mortarGap)); // Removed + mortarGap from numerator
-            const rows = Math.floor((innerHeight) / (blockH + mortarGap)); // Removed + mortarGap from numerator
+            // CORRECTED: Use proper formula for fitting blocks
+            const cols = Math.floor((innerLength + mortarGap) / (blockL + mortarGap));
+            const rows = Math.floor((innerHeight + mortarGap) / (blockH + mortarGap));
             
             const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
             const totalUserBlocks = validCoreMaterials.reduce((sum, item) => sum + item.quantity, 0);
@@ -757,8 +764,8 @@ Return your response as a JSON object with the optimal block selection and quant
                 const x = col * (blockL + mortarGap);
                 const y = row * (blockH + mortarGap);
                 
-                if (x + blockL * scale > innerLength * scale + 0.001 ||
-                    y + blockH * scale > innerHeight * scale + 0.001) {
+                // Make sure block doesn't extend beyond boundary
+                if (x + blockL > innerLength + 0.01 || y + blockH > innerHeight + 0.01) {
                     continue;
                 }
 
@@ -778,8 +785,8 @@ Return your response as a JSON object with the optimal block selection and quant
                 }
                 
                 ctx.fillRect(x * scale, y * scale, blockL * scale, blockH * scale);
-                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)'; // Changed from 0.15
-                ctx.lineWidth = 1; // Changed from 0.5
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.lineWidth = 1;
                 ctx.strokeRect(x * scale, y * scale, blockL * scale, blockH * scale);
                 
                 blockIndex++;
