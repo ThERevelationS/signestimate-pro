@@ -497,7 +497,7 @@ Return your response as a JSON object with the optimal block selection and quant
           ctx.fillStyle = '#f5f5f5';
           ctx.fillRect(innerXStart * scale, innerYStart * scale, innerLength * scale, innerWidth * scale);
 
-          // Draw core blocks filling ENTIRE hollow space
+          // Draw core blocks filling ENTIRE hollow space with smart rotation
           if (project.core_materials && project.core_materials.length > 0) {
             const validCoreMaterials = project.core_materials.filter(item => {
               const mat = inventory.find(m => m.id === item.material_id);
@@ -507,49 +507,87 @@ Return your response as a JSON object with the optimal block selection and quant
             if (validCoreMaterials.length > 0) {
               const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
               
-              // Draw each block individually with its actual dimensions
-              let currentY = innerYStart;
-              let blockIndex = 0;
-              let materialIndex = 0;
-              let blocksRemainingInCurrentMaterial = validCoreMaterials[0].quantity;
-              let currentMaterial = inventory.find(m => m.id === validCoreMaterials[0].material_id);
+              // Create a queue of all blocks with their material info
+              const blockQueue = [];
+              validCoreMaterials.forEach((coreItem, matIndex) => {
+                const material = inventory.find(m => m.id === coreItem.material_id);
+                if (material) {
+                  for (let i = 0; i < coreItem.quantity; i++) {
+                    blockQueue.push({
+                      material: material,
+                      color: colors[matIndex % colors.length],
+                      materialIndex: matIndex
+                    });
+                  }
+                }
+              });
               
-              // Stack blocks row by row
-              while (currentY < innerYEnd && blockIndex < validCoreMaterials.reduce((sum, item) => sum + item.quantity, 0)) {
+              let blockIndex = 0;
+              let currentY = innerYStart;
+              
+              // Fill row by row with smart rotation
+              while (currentY < innerYEnd && blockIndex < blockQueue.length) {
                 let currentX = innerXStart;
                 const rowStartIndex = blockIndex;
                 let rowHeight = 0;
                 
-                // Fill one row
-                while (currentX < innerXEnd && blockIndex < validCoreMaterials.reduce((sum, item) => sum + item.quantity, 0)) {
-                  // Switch to next material if current is exhausted or no current material
-                  if ((blocksRemainingInCurrentMaterial === 0 || !currentMaterial) && materialIndex < validCoreMaterials.length - 1) {
-                    materialIndex++;
-                    blocksRemainingInCurrentMaterial = validCoreMaterials[materialIndex].quantity;
-                    currentMaterial = inventory.find(m => m.id === validCoreMaterials[materialIndex].material_id);
-                  } else if (blocksRemainingInCurrentMaterial === 0 || !currentMaterial) {
-                      // No more materials or current material is exhausted and no next material
-                      break;
+                // Fill current row
+                while (currentX < innerXEnd && blockIndex < blockQueue.length) {
+                  const block = blockQueue[blockIndex];
+                  const blockL = block.material.length;
+                  const blockW = block.material.width;
+                  
+                  const remainingWidth = innerXEnd - currentX;
+                  const remainingHeight = innerYEnd - currentY;
+                  
+                  // Try normal orientation first
+                  let useWidth = blockL;
+                  let useHeight = blockW;
+                  let rotated = false;
+                  
+                  // Check if normal orientation fits
+                  const normalFits = (currentX + blockL <= innerXEnd + 0.01) && (currentY + blockW <= innerYEnd + 0.01);
+                  
+                  // Check if rotated orientation fits better
+                  const rotatedFits = (currentX + blockW <= innerXEnd + 0.01) && (currentY + blockL <= innerYEnd + 0.01);
+                  
+                  // Decide orientation based on what fits
+                  if (!normalFits && rotatedFits) {
+                    // Only rotated fits
+                    useWidth = blockW;
+                    useHeight = blockL;
+                    rotated = true;
+                  } else if (normalFits && rotatedFits) {
+                    // Both fit, choose based on remaining space efficiency
+                    // Prefer the orientation that wastes less horizontal space
+                    const normalWaste = remainingWidth - blockL;
+                    const rotatedWaste = remainingWidth - blockW;
+                    
+                    if (rotatedWaste < normalWaste && rotatedWaste >= 0) {
+                      useWidth = blockW;
+                      useHeight = blockL;
+                      rotated = true;
+                    }
+                  } else if (!normalFits && !rotatedFits) {
+                    // Neither fits in current position, move to next row
+                    break;
                   }
                   
-                  const blockL = currentMaterial.length;
-                  const blockW = currentMaterial.width;
-                  
-                  // Check if block fits in remaining space
-                  if (currentX + blockL > innerXEnd + 0.01) break;
-                  if (currentY + blockW > innerYEnd + 0.01) break;
+                  // Final check if block fits
+                  if (currentX + useWidth > innerXEnd + 0.01 || currentY + useHeight > innerYEnd + 0.01) {
+                    break;
+                  }
                   
                   // Draw the block
-                  ctx.fillStyle = colors[materialIndex % colors.length];
-                  ctx.fillRect(currentX * scale, currentY * scale, blockL * scale, blockW * scale);
+                  ctx.fillStyle = block.color;
+                  ctx.fillRect(currentX * scale, currentY * scale, useWidth * scale, useHeight * scale);
                   ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
                   ctx.lineWidth = 1;
-                  ctx.strokeRect(currentX * scale, currentY * scale, blockL * scale, blockW * scale);
+                  ctx.strokeRect(currentX * scale, currentY * scale, useWidth * scale, useHeight * scale);
                   
-                  rowHeight = Math.max(rowHeight, blockW);
-                  currentX += blockL + mortarGap;
+                  rowHeight = Math.max(rowHeight, useHeight);
+                  currentX += useWidth + mortarGap;
                   blockIndex++;
-                  blocksRemainingInCurrentMaterial--;
                 }
                 
                 // If no blocks were placed in this row, we're done
@@ -741,49 +779,86 @@ Return your response as a JSON object with the optimal block selection and quant
         if (validCoreMaterials.length > 0) {
           const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
           
-          // Draw each block individually with its actual dimensions (side view)
-          let currentY = 0;
-          let blockIndex = 0;
-          let materialIndex = 0;
-          let blocksRemainingInCurrentMaterial = validCoreMaterials[0].quantity;
-          let currentMaterial = inventory.find(m => m.id === validCoreMaterials[0].material_id);
+          // Create a queue of all blocks with their material info
+          const blockQueue = [];
+          validCoreMaterials.forEach((coreItem, matIndex) => {
+            const material = inventory.find(m => m.id === coreItem.material_id);
+            if (material) {
+              for (let i = 0; i < coreItem.quantity; i++) {
+                blockQueue.push({
+                  material: material,
+                  color: colors[matIndex % colors.length],
+                  materialIndex: matIndex
+                });
+              }
+            }
+          });
           
-          // Stack blocks row by row (vertical stacking for side view)
-          while (currentY < innerHeight && blockIndex < validCoreMaterials.reduce((sum, item) => sum + item.quantity, 0)) {
+          let blockIndex = 0;
+          let currentY = 0;
+          
+          // Fill row by row (vertically stacking) with smart rotation
+          while (currentY < innerHeight && blockIndex < blockQueue.length) {
             let currentX = 0;
             const rowStartIndex = blockIndex;
             let rowHeight = 0;
             
-            // Fill one row
-            while (currentX < innerLength && blockIndex < validCoreMaterials.reduce((sum, item) => sum + item.quantity, 0)) {
-              // Switch to next material if current is exhausted or no current material
-              if ((blocksRemainingInCurrentMaterial === 0 || !currentMaterial) && materialIndex < validCoreMaterials.length - 1) {
-                materialIndex++;
-                blocksRemainingInCurrentMaterial = validCoreMaterials[materialIndex].quantity;
-                currentMaterial = inventory.find(m => m.id === validCoreMaterials[materialIndex].material_id);
-              } else if (blocksRemainingInCurrentMaterial === 0 || !currentMaterial) {
-                  // No more materials or current material is exhausted and no next material
-                  break;
+            // Fill current row
+            while (currentX < innerLength && blockIndex < blockQueue.length) {
+              const block = blockQueue[blockIndex];
+              const blockL = block.material.length;
+              const blockH = block.material.height;
+              
+              const remainingWidth = innerLength - currentX;
+              const remainingHeight = innerHeight - currentY;
+              
+              // Try normal orientation first
+              let useWidth = blockL;
+              let useHeight = blockH;
+              let rotated = false;
+              
+              // Check if normal orientation fits
+              const normalFits = (currentX + blockL <= innerLength + 0.01) && (currentY + blockH <= innerHeight + 0.01);
+              
+              // Check if rotated orientation fits better
+              const rotatedFits = (currentX + blockH <= innerLength + 0.01) && (currentY + blockL <= innerHeight + 0.01);
+              
+              // Decide orientation based on what fits
+              if (!normalFits && rotatedFits) {
+                // Only rotated fits
+                useWidth = blockH;
+                useHeight = blockL;
+                rotated = true;
+              } else if (normalFits && rotatedFits) {
+                // Both fit, choose based on remaining space efficiency
+                const normalWaste = remainingWidth - blockL;
+                const rotatedWaste = remainingWidth - blockH;
+                
+                if (rotatedWaste < normalWaste && rotatedWaste >= 0) {
+                  useWidth = blockH;
+                  useHeight = blockL;
+                  rotated = true;
+                }
+              } else if (!normalFits && !rotatedFits) {
+                // Neither fits in current position, move to next row
+                break;
               }
               
-              const blockL = currentMaterial.length;
-              const blockH = currentMaterial.height;
-              
-              // Check if block fits in remaining space
-              if (currentX + blockL > innerLength + 0.01) break;
-              if (currentY + blockH > innerHeight + 0.01) break;
+              // Final check if block fits
+              if (currentX + useWidth > innerLength + 0.01 || currentY + useHeight > innerHeight + 0.01) {
+                break;
+              }
               
               // Draw the block
-              ctx.fillStyle = colors[materialIndex % colors.length];
-              ctx.fillRect(currentX * scale, currentY * scale, blockL * scale, blockH * scale);
+              ctx.fillStyle = block.color;
+              ctx.fillRect(currentX * scale, currentY * scale, useWidth * scale, useHeight * scale);
               ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
               ctx.lineWidth = 1;
-              ctx.strokeRect(currentX * scale, currentY * scale, blockL * scale, blockH * scale);
+              ctx.strokeRect(currentX * scale, currentY * scale, useWidth * scale, useHeight * scale);
               
-              rowHeight = Math.max(rowHeight, blockH);
-              currentX += blockL + mortarGap;
+              rowHeight = Math.max(rowHeight, useHeight);
+              currentX += useWidth + mortarGap;
               blockIndex++;
-              blocksRemainingInCurrentMaterial--;
             }
             
             // If no blocks were placed in this row, we're done
