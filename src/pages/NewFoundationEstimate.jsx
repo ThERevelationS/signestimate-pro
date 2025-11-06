@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { FoundationProject, Settings } from "@/entities/all";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -94,6 +95,7 @@ export default function NewFoundationEstimate() {
       width: 4,
       diameter: 24,
       depth: 3,
+      include_rebar: true, // Added this field
       rebar_count: 4,
       rebar_length_ft: 10,
       concrete_volume_cy: 0,
@@ -167,7 +169,7 @@ export default function NewFoundationEstimate() {
     const updatedItems = project.items.map(item => {
       // Material costs
       const concreteCost = item.concrete_volume_cy * project.concrete_cost_per_cy * item.quantity;
-      const rebarCost = item.rebar_count * item.rebar_length_ft * project.rebar_cost_per_ft * item.quantity;
+      const rebarCost = item.include_rebar ? (item.rebar_count * item.rebar_length_ft * project.rebar_cost_per_ft * item.quantity) : 0;
       const excavationCost = item.excavation_volume_cy * project.excavation_cost_per_cy * item.quantity;
       
       // Labor calculations
@@ -226,10 +228,12 @@ export default function NewFoundationEstimate() {
       total_excavation_cost: totalExcavationCost,
       total_labor_cost: totalLaborCost
     };
-  }, [project, globalSettings]);
+  }, [project.items, project.concrete_cost_per_cy, project.rebar_cost_per_ft, 
+      project.excavation_cost_per_cy, project.forming_labor_rate, 
+      project.pouring_labor_rate, project.finishing_labor_rate, globalSettings]);
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && project.items.length > 0) {
       const calculated = calculateTotals();
       setProject(prev => ({
         ...prev,
@@ -240,9 +244,7 @@ export default function NewFoundationEstimate() {
         total_labor_cost: calculated.total_labor_cost
       }));
     }
-  }, [project.items.length, project.concrete_cost_per_cy, project.rebar_cost_per_ft, 
-      project.excavation_cost_per_cy, project.forming_labor_rate, 
-      project.pouring_labor_rate, project.finishing_labor_rate, isLoading]);
+  }, [calculateTotals, isLoading, project.items.length]); // Added project.items.length to trigger recalculation when items are added/removed
 
   const saveProject = async () => {
     if (!project.project_name || !project.client_name || !project.estimate_number || !project.hyperlink) {
@@ -486,26 +488,41 @@ export default function NewFoundationEstimate() {
                           />
                         </div>
 
-                        <div>
-                          <Label>Number of Rebars</Label>
-                          <Input 
-                            type="number" 
-                            min="0" 
-                            value={item.rebar_count} 
-                            onChange={(e) => updateItem(index, 'rebar_count', parseFloat(e.target.value) || 0)}
-                            className="mt-1"
-                          />
-                        </div>
-
-                        <div>
-                          <Label>Rebar Length (feet)</Label>
-                          <Input 
-                            type="number" 
-                            step="0.5" 
-                            value={item.rebar_length_ft} 
-                            onChange={(e) => updateItem(index, 'rebar_length_ft', parseFloat(e.target.value) || 0)}
-                            className="mt-1"
-                          />
+                        <div className="md:col-span-2 border-t pt-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <Label htmlFor={`include-rebar-${index}`} className="font-medium text-slate-800">Include Rebar</Label>
+                            <input
+                              id={`include-rebar-${index}`}
+                              type="checkbox"
+                              checked={item.include_rebar || false}
+                              onChange={(e) => updateItem(index, 'include_rebar', e.target.checked)}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                          </div>
+                          {item.include_rebar && (
+                            <div className="grid grid-cols-2 gap-4 p-3 bg-blue-50 rounded-lg">
+                              <div>
+                                <Label>Number of Rebars</Label>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  value={item.rebar_count} 
+                                  onChange={(e) => updateItem(index, 'rebar_count', parseFloat(e.target.value) || 0)}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label>Rebar Length (feet)</Label>
+                                <Input 
+                                  type="number" 
+                                  step="0.5" 
+                                  value={item.rebar_length_ft} 
+                                  onChange={(e) => updateItem(index, 'rebar_length_ft', parseFloat(e.target.value) || 0)}
+                                  className="mt-1"
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         <div className="md:col-span-2 p-3 bg-blue-50 rounded-lg">
@@ -524,10 +541,12 @@ export default function NewFoundationEstimate() {
                               <p className="text-slate-600">Concrete Cost</p>
                               <p className="font-semibold text-green-700">${item.concrete_cost.toFixed(2)}</p>
                             </div>
-                            <div>
-                              <p className="text-slate-600">Rebar Cost</p>
-                              <p className="font-semibold text-green-700">${item.rebar_cost.toFixed(2)}</p>
-                            </div>
+                            {item.include_rebar && (
+                              <div>
+                                <p className="text-slate-600">Rebar Cost</p>
+                                <p className="font-semibold text-green-700">${item.rebar_cost.toFixed(2)}</p>
+                              </div>
+                            )}
                             <div>
                               <p className="text-slate-600">Excavation Cost</p>
                               <p className="font-semibold text-green-700">${item.excavation_cost.toFixed(2)}</p>
