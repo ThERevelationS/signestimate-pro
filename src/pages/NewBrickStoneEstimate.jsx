@@ -416,8 +416,8 @@ Return your response as a JSON object with the optimal block selection and quant
 
         if (selectedMaterial) {
           const wallThickness = calculations.wallThickness;
-          const innerX = wallThickness * scale;
-          const innerY = wallThickness * scale;
+          const innerX = innerXStart * scale;
+          const innerY = innerYStart * scale;
           const innerW = (actualLength - 2 * wallThickness) * scale;
           const innerH = (actualWidth - 2 * wallThickness) * scale;
           ctx.fillStyle = '#ffffff';
@@ -1058,7 +1058,7 @@ Return your response as a JSON object with the optimal block selection and quant
             </Card>
 
             <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-lg}>Base Configuration</CardTitle></CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="text-lg">Base Configuration</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div> 
                   <Label className="text-sm">Wall Material</Label>
