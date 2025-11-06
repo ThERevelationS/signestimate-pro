@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Save, Plus, Trash2, ArrowLeft, Anchor } from "lucide-react";
+import Foundation3DViewer from "@/components/Foundation3DViewer";
 
 export default function NewFoundationEstimate() {
   const navigate = useNavigate();
@@ -505,107 +506,67 @@ export default function NewFoundationEstimate() {
                               />
                             </div>
                             {item.include_rebar && (
-                              <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
-                                <div className="flex items-start gap-4 mb-4">
-                                  <div className="flex-shrink-0">
-                                    <svg className="w-32 h-32 text-blue-600" viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                      {/* 3D Foundation View with Rebar */}
-                                      
-                                      {/* Back face of foundation (darker) */}
-                                      <path d="M 30 30 L 170 30 L 170 70 L 30 70 Z" fill="#CCCCCC" stroke="#999999" strokeWidth="1"/>
-                                      
-                                      {/* Right side face */}
-                                      <path d="M 170 30 L 190 20 L 190 60 L 170 70 Z" fill="#B8B8B8" stroke="#999999" strokeWidth="1"/>
-                                      
-                                      {/* Top face */}
-                                      <path d="M 30 30 L 50 20 L 190 20 L 170 30 Z" fill="#E0E0E0" stroke="#999999" strokeWidth="1"/>
-                                      
-                                      {/* Front face (lighter) */}
-                                      <path d="M 30 30 L 50 20 L 50 60 L 30 70 Z" fill="#D4D4D4" stroke="#999999" strokeWidth="1"/>
-                                      
-                                      {/* Rebar grid - lengthwise bars */}
-                                      {/* First row of rebar (closer to viewer) */}
-                                      <line x1="40" y1="45" x2="160" y2="45" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round" opacity="0.9"/>
-                                      <line x1="40" y1="50" x2="160" y2="50" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round" opacity="0.9"/>
-                                      
-                                      {/* Second row of rebar (further from viewer) */}
-                                      <line x1="43" y1="37" x2="163" y2="37" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round" opacity="0.8"/>
-                                      <line x1="43" y1="42" x2="163" y2="42" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round" opacity="0.8"/>
-                                      
-                                      {/* Cross bars (perpendicular, for structure) */}
-                                      <line x1="60" y1="37" x2="58" y2="50" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
-                                      <line x1="90" y1="37" x2="88" y2="50" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
-                                      <line x1="120" y1="37" x2="118" y2="50" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
-                                      <line x1="150" y1="37" x2="148" y2="50" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
-                                      
-                                      {/* Rebar end points (circles) */}
-                                      <circle cx="40" cy="45" r="2" fill="#991B1B"/>
-                                      <circle cx="40" cy="50" r="2" fill="#991B1B"/>
-                                      <circle cx="43" cy="37" r="2" fill="#991B1B"/>
-                                      <circle cx="43" cy="42" r="2" fill="#991B1B"/>
-                                      
-                                      {/* Labels */}
-                                      <text x="100" y="95" textAnchor="middle" className="text-xs font-semibold" fill="#1E40AF">3D Foundation with Rebar Grid</text>
-                                      <text x="100" y="108" textAnchor="middle" className="text-[10px]" fill="#1E40AF">Lengthwise reinforcement bars</text>
-                                      
-                                      {/* Dimension arrows */}
-                                      <defs>
-                                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                                          <polygon points="0 0, 10 3.5, 0 7" fill="#1E40AF" />
-                                        </marker>
-                                      </defs>
-                                      <line x1="25" y1="30" x2="25" y2="70" stroke="#1E40AF" strokeWidth="1" markerEnd="url(#arrowhead)" markerStart="url(#arrowhead)"/>
-                                      <text x="20" y="52" textAnchor="end" className="text-[9px]" fill="#1E40AF">Depth</text>
-                                      
-                                      <line x1="30" y1="75" x2="170" y2="75" stroke="#1E40AF" strokeWidth="1" markerEnd="url(#arrowhead)" markerStart="url(#arrowhead)"/>
-                                      <text x="100" y="88" textAnchor="middle" className="text-[9px]" fill="#1E40AF">Length</text>
-                                    </svg>
+                              <>
+                                <div className="mb-4">
+                                  <Label className="text-sm font-medium text-blue-900 mb-2 block">3D Foundation Preview - Interactive (Click & Drag to Rotate)</Label>
+                                  <div className="h-96 rounded-lg overflow-hidden">
+                                    <Foundation3DViewer
+                                      length={item.length || 4}
+                                      width={item.width || 4}
+                                      depth={item.depth || 3}
+                                      rebarCount={item.rebar_count || 4}
+                                      rebarSize={item.rebar_size || "#4"}
+                                      includeRebar={item.include_rebar}
+                                    />
                                   </div>
-                                  <div className="flex-1">
+                                  <p className="text-xs text-blue-700 mt-2 text-center">
+                                    <strong>Foundation:</strong> {item.length}' L × {item.width}' W × {item.depth}' D |
+                                    <strong> Rebar:</strong> {item.rebar_count}× {item.rebar_size} bars running lengthwise
+                                  </p>
+                                </div>
+
+                                <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
+                                  <div className="mb-3">
                                     <p className="text-sm font-semibold text-blue-900 mb-1">Steel Reinforcement Grid</p>
-                                    <p className="text-xs text-blue-700 mb-2">Rebar bars run lengthwise through the foundation and are tied together with cross bars for structural integrity.</p>
-                                    <div className="bg-blue-100 p-2 rounded text-xs text-blue-800">
-                                      <p className="font-medium">Foundation Dimensions:</p>
-                                      <p>Length: {item.length}' × Width: {item.width}' × Depth: {item.depth}'</p>
+                                    <p className="text-xs text-blue-700">Rebar bars run lengthwise through the foundation and are tied together with cross bars for structural integrity.</p>
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-4">
+                                    <div>
+                                      <Label className="text-xs">Rebar Size</Label>
+                                      <select
+                                        value={item.rebar_size || "#4"}
+                                        onChange={(e) => updateItem(index, 'rebar_size', e.target.value)}
+                                        className="mt-1 w-full px-3 py-2 border border-blue-200 rounded-md bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                      >
+                                        <option value="#3">#3 (3/8")</option>
+                                        <option value="#4">#4 (1/2")</option>
+                                        <option value="#5">#5 (5/8")</option>
+                                        <option value="#6">#6 (3/4")</option>
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <Label className="text-xs">Number of Rebars</Label>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        value={item.rebar_count}
+                                        onChange={(e) => updateItem(index, 'rebar_count', parseFloat(e.target.value) || 0)}
+                                        className="mt-1 border-blue-200 focus:ring-blue-500"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label className="text-xs">Rebar Length (feet)</Label>
+                                      <Input
+                                        type="number"
+                                        step="0.5"
+                                        value={item.rebar_length_ft}
+                                        onChange={(e) => updateItem(index, 'rebar_length_ft', parseFloat(e.target.value) || 0)}
+                                        className="mt-1 border-blue-200 focus:ring-blue-500"
+                                      />
                                     </div>
                                   </div>
                                 </div>
-                                <div className="grid grid-cols-3 gap-4">
-                                  <div>
-                                    <Label className="text-xs">Rebar Size</Label>
-                                    <select
-                                      value={item.rebar_size || "#4"}
-                                      onChange={(e) => updateItem(index, 'rebar_size', e.target.value)}
-                                      className="mt-1 w-full px-3 py-2 border border-blue-200 rounded-md bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    >
-                                      <option value="#3">#3 (3/8")</option>
-                                      <option value="#4">#4 (1/2")</option>
-                                      <option value="#5">#5 (5/8")</option>
-                                      <option value="#6">#6 (3/4")</option>
-                                    </select>
-                                  </div>
-                                  <div>
-                                    <Label className="text-xs">Number of Rebars</Label>
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      value={item.rebar_count}
-                                      onChange={(e) => updateItem(index, 'rebar_count', parseFloat(e.target.value) || 0)}
-                                      className="mt-1 border-blue-200 focus:ring-blue-500"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label className="text-xs">Rebar Length (feet)</Label>
-                                    <Input
-                                      type="number"
-                                      step="0.5"
-                                      value={item.rebar_length_ft}
-                                      onChange={(e) => updateItem(index, 'rebar_length_ft', parseFloat(e.target.value) || 0)}
-                                      className="mt-1 border-blue-200 focus:ring-blue-500"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
+                              </>
                             )}
                           </div>
                         )}
