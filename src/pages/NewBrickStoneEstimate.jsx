@@ -416,8 +416,8 @@ Return your response as a JSON object with the optimal block selection and quant
 
         if (selectedMaterial) {
           const wallThickness = calculations.wallThickness;
-          const innerX = innerXStart * scale;
-          const innerY = innerYStart * scale;
+          const innerX = wallThickness * scale;
+          const innerY = wallThickness * scale;
           const innerW = (actualLength - 2 * wallThickness) * scale;
           const innerH = (actualWidth - 2 * wallThickness) * scale;
           ctx.fillStyle = '#ffffff';
@@ -1378,9 +1378,15 @@ Return your response as a JSON object with the optimal block selection and quant
                         <span>Surface Area:</span>
                         <span className="font-medium">{calculations.surfaceArea} sq ft</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Mortar Bags (60lb):</span>
-                        <span className="font-medium">{calculations.mortarBags}</span>
+                      <div className="bg-purple-50 p-3 rounded-lg border border-purple-200 mt-2">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-medium text-purple-900">Mortar Bags (60lb):</span>
+                          <span className="text-2xl font-bold text-purple-900">{calculations.mortarBags}</span>
+                        </div>
+                        <div className="flex justify-between text-xs text-purple-700">
+                          <span>Cost per bag: ${parseFloat(settings.brick_mortar_cost_per_bag || 12).toFixed(2)}</span>
+                          <span>Total: ${calculations.mortarCost.toFixed(2)}</span>
+                        </div>
                       </div>
                     </div>
 
@@ -1395,10 +1401,6 @@ Return your response as a JSON object with the optimal block selection and quant
                           <span className="font-medium">${calculations.coreMaterialCost.toFixed(2)}</span>
                         </div>
                       )}
-                      <div className="flex justify-between">
-                        <span>Mortar Cost:</span>
-                        <span className="font-medium">${calculations.mortarCost.toFixed(2)}</span>
-                      </div>
                       <div className="flex justify-between font-bold border-t pt-2">
                         <span>TOTAL:</span>
                         <span className="text-green-600">${calculations.totalCost.toFixed(2)}</span>
