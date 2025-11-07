@@ -357,15 +357,60 @@ export default function BrickStone3DViewer({
 
     const EPSILON = 0.001;
 
+    // FIRST: Calculate core fill height to determine brick wall height
+    let maxCoreHeight = 0; // This will track the actual height filled by inventory
+    
+    if (inventory && inventory.length > 0 && selectedMaterial) {
+      const brickW = selectedMaterial.width * scale;
+      // innerLength and innerWidth define the area for core materials, not strictly needed for height calc,
+      // but important for general context of internal space.
+      const innerLength = length - 2 * brickW; 
+      const innerWidth = width - 2 * brickW;   
+      const innerHeight = height;              
+      
+      const sortedInventory = [...inventory]
+        .filter(m => m.length && m.width && m.height)
+        .sort((a, b) => {
+          if (a.material_type === 'block' && b.material_type !== 'block') return -1;
+          if (a.material_type !== 'block' && b.material_type === 'block') return 1;
+          return a.height - b.height;
+        });
+      
+      let currentBaseY_calc = mortarGap;
+      let materialIndex_calc = 0;
+      
+      while (currentBaseY_calc < innerHeight - EPSILON && materialIndex_calc < sortedInventory.length) {
+        const material = sortedInventory[materialIndex_calc];
+        const blockH = material.height * scale;
+        
+        if (currentBaseY_calc + blockH > innerHeight + EPSILON) {
+          materialIndex_calc++;
+          continue;
+        }
+        
+        currentBaseY_calc += blockH + mortarGap;
+        maxCoreHeight = currentBaseY_calc;
+        materialIndex_calc++;
+      }
+    }
+
+    // SECOND: Build brick wall ONLY to the height of the core
     if (selectedMaterial) {
       const brickL = selectedMaterial.length * scale;
       const brickW = selectedMaterial.width * scale;
       const brickH = selectedMaterial.height * scale;
       
-      const coursesHigh = Math.ceil((height) / (brickH + mortarGap));
+      // If maxCoreHeight is 0 (no inventory or couldn't place any), the wall should still build to `height`.
+      // Otherwise, it builds to `maxCoreHeight`.
+      const effectiveWallRenderHeight = (maxCoreHeight > EPSILON) ? maxCoreHeight : height;
+      
+      const coursesHigh = Math.floor(effectiveWallRenderHeight / (brickH + mortarGap));
 
       for (let course = 0; course < coursesHigh; course++) {
         const y = course * (brickH + mortarGap) + brickH/2;
+        
+        if (y + brickH/2 > effectiveWallRenderHeight + EPSILON) continue; // Ensure brick top doesn't exceed effective height
+
         const isEvenCourse = (course % 2) === 0;
         
         if (isEvenCourse) {
@@ -475,6 +520,7 @@ export default function BrickStone3DViewer({
       }
     }
 
+    // THIRD: Fill core with inventory blocks
     if (inventory && inventory.length > 0 && selectedMaterial) {
       const cinderBlockColors = [
         0x9E9E9E,
@@ -488,7 +534,7 @@ export default function BrickStone3DViewer({
       const brickW = selectedMaterial.width * scale;
       const innerLength = length - 2 * brickW;
       const innerWidth = width - 2 * brickW;
-      const innerHeight = height;
+      const innerHeight = height; // This is the total desired height of the inner space
       
       const sortedInventory = [...inventory]
         .filter(m => m.length && m.width && m.height)
@@ -498,25 +544,25 @@ export default function BrickStone3DViewer({
           return a.height - b.height;
         });
       
-      let currentBaseY = mortarGap;
-      let materialIndex = 0;
+      let currentBaseY_place = mortarGap;
+      let materialIndex_place = 0;
       
-      while (currentBaseY < innerHeight - EPSILON && materialIndex < sortedInventory.length) {
-        const material = sortedInventory[materialIndex];
+      while (currentBaseY_place < innerHeight - EPSILON && materialIndex_place < sortedInventory.length) {
+        const material = sortedInventory[materialIndex_place];
         
         const blockL = material.length * scale;
         const blockW = material.width * scale;
         const blockH = material.height * scale;
         
         const isBlock = material.material_type === 'block';
-        const color = cinderBlockColors[materialIndex % cinderBlockColors.length];
+        const color = cinderBlockColors[materialIndex_place % cinderBlockColors.length];
         
-        if (currentBaseY + blockH > innerHeight + EPSILON) {
-          materialIndex++;
+        if (currentBaseY_place + blockH > innerHeight + EPSILON) {
+          materialIndex_place++;
           continue;
         }
         
-        const currentBlockCenterY = currentBaseY + blockH / 2;
+        const currentBlockCenterY = currentBaseY_place + blockH / 2;
         let layerPlaced = 0;
         
         let z = -innerWidth/2 + blockW/2 + mortarGap;
@@ -542,9 +588,9 @@ export default function BrickStone3DViewer({
         }
         
         if (layerPlaced > 0) {
-          currentBaseY += blockH + mortarGap;
+          currentBaseY_place += blockH + mortarGap;
         } else {
-          materialIndex++;
+          materialIndex_place++;
         }
       }
     }
