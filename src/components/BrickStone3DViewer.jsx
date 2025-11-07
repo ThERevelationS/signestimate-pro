@@ -122,59 +122,91 @@ export default function BrickStone3DViewer({
     rightWall.receiveShadow = true;
     scene.add(rightWall);
 
-    // Add core blocks if they exist
+    // Add core blocks if they exist - FIXED VERSION
     if (coreBreakdown && coreBreakdown.length > 0 && inventory) {
       const colors = [0x8B4513, 0xA0522D, 0xD2691E, 0xCD853F, 0xDEB887, 0xF4A460];
       
       const innerLength = length - 2 * thickness;
       const innerWidth = width - 2 * thickness;
-      const startX = -innerLength / 2;
-      const startZ = -innerWidth / 2;
-
-      let currentY = 0;
-      let globalBlockIndex = 0;
-
+      const innerHeight = height;
+      
+      // Create a queue of all blocks with their materials
+      const blockQueue = [];
       coreBreakdown.forEach((coreItem, matIndex) => {
         const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
         if (!coreMaterial || coreItem.quantity === 0) return;
 
-        const blockMaterial = new THREE.MeshPhongMaterial({ 
-          color: colors[matIndex % colors.length],
-          flatShading: false,
-          shininess: 20
-        });
-
-        const blockL = coreMaterial.length * scale;
-        const blockW = coreMaterial.width * scale;
-        const blockH = coreMaterial.height * scale;
-
         for (let i = 0; i < coreItem.quantity; i++) {
-          // Simple stacking from bottom up
-          const blockGeometry = new THREE.BoxGeometry(blockL, blockH, blockW);
-          const block = new THREE.Mesh(blockGeometry, blockMaterial);
-          
-          // Calculate position in a simple grid pattern
-          const blocksPerRow = Math.floor(innerLength / blockL);
-          const row = Math.floor(globalBlockIndex / blocksPerRow);
-          const col = globalBlockIndex % blocksPerRow;
-          
-          const x = startX + (col * blockL) + (blockL / 2);
-          const z = startZ + (row * blockW) + (blockW / 2);
-          const y = currentY + (blockH / 2);
-          
-          block.position.set(x, y, z);
-          block.castShadow = true;
-          block.receiveShadow = true;
-          scene.add(block);
-          
-          globalBlockIndex++;
-          
-          // Move up a layer if we've filled the current row
-          if (globalBlockIndex % blocksPerRow === 0) {
-            currentY += blockH;
-          }
+          blockQueue.push({
+            material: coreMaterial,
+            color: colors[matIndex % colors.length]
+          });
         }
       });
+
+      // Fill blocks in proper 3D grid from bottom to top
+      let blockIndex = 0;
+      let currentY = 0; // Start from bottom
+
+      while (currentY < innerHeight && blockIndex < blockQueue.length) {
+        let currentZ = 0; // Start from front
+
+        while (currentZ < innerWidth && blockIndex < blockQueue.length) {
+          let currentX = 0; // Start from left
+          
+          while (currentX < innerLength && blockIndex < blockQueue.length) {
+            const block = blockQueue[blockIndex];
+            const blockL = block.material.length * scale;
+            const blockW = block.material.width * scale;
+            const blockH = block.material.height * scale;
+
+            // Check if block fits in current position
+            if (currentX + blockL > innerLength + 0.01) {
+              break; // Move to next row
+            }
+            if (currentZ + blockW > innerWidth + 0.01) {
+              break; // Move to next layer in Z
+            }
+            if (currentY + blockH > innerHeight + 0.01) {
+              break; // No more room vertically
+            }
+
+            // Create and position the block
+            const blockGeometry = new THREE.BoxGeometry(blockL, blockH, blockW);
+            const blockMaterial = new THREE.MeshPhongMaterial({ 
+              color: block.color,
+              flatShading: false,
+              shininess: 20
+            });
+            const blockMesh = new THREE.Mesh(blockGeometry, blockMaterial);
+            
+            // Position relative to the inner space (centered at 0,0,0)
+            const x = -innerLength / 2 + currentX + blockL / 2;
+            const z = -innerWidth / 2 + currentZ + blockW / 2;
+            const y = currentY + blockH / 2;
+            
+            blockMesh.position.set(x, y, z);
+            blockMesh.castShadow = true;
+            blockMesh.receiveShadow = true;
+            scene.add(blockMesh);
+            
+            currentX += blockL; // Move to next position along X
+            blockIndex++;
+          }
+          
+          if (blockIndex === 0 || currentX === 0) break; // No blocks placed
+          
+          // Move to next row in Z direction
+          const lastBlock = blockQueue[blockIndex - 1];
+          currentZ += lastBlock.material.width * scale;
+        }
+        
+        if (currentZ === 0) break; // No rows placed
+        
+        // Move up to next layer
+        const lastBlock = blockQueue[Math.max(0, blockIndex - 1)];
+        currentY += lastBlock.material.height * scale;
+      }
     }
 
     // Add dimension labels
