@@ -398,7 +398,7 @@ export default function BrickStone3DViewer({
     const length = actualLength * scale;
     const width = actualWidth * scale;
     const height = actualHeight * scale;
-    const thickness = wallThickness * scale; // This variable is not used after definition
+    // const thickness = wallThickness * scale; // This variable is not used after definition - removed from original code
 
     // EPSILON constant for floating point comparisons
     const EPSILON = 0.001;
@@ -547,7 +547,7 @@ export default function BrickStone3DViewer({
       }
     }
 
-    // AUTO-GENERATE core wall using ALL inventory blocks - prioritize standard cinder blocks
+    // FILL THE CORE with blocks from inventory - prioritize standard cinder blocks
     if (inventory && inventory.length > 0 && selectedMaterial) {
       const cinderBlockColors = [
         0x9E9E9E, // Medium gray
@@ -580,7 +580,7 @@ export default function BrickStone3DViewer({
       let currentBaseY = mortarGap; // Starting Y position for the first course of core blocks
       let materialIndex = 0;       // Index to iterate through the sorted inventory
       
-      // Loop through materials and stack them vertically to fill the core space
+      // Fill the core from bottom to top
       while (currentBaseY < innerHeight - EPSILON && materialIndex < sortedInventory.length) {
         const material = sortedInventory[materialIndex];
         const blockL = material.length * scale;
@@ -595,155 +595,48 @@ export default function BrickStone3DViewer({
           continue;
         }
         
-        let courseNumber = 0;
-        let canPlaceMoreCoursesOfThisMaterial = true;
+        // Calculate the center Y for the current layer of blocks
+        const currentBlockCenterY = currentBaseY + blockH / 2;
+        let layerPlaced = 0; // Counter for blocks placed in this horizontal layer
         
-        // Place multiple courses of the current material until space runs out or we switch materials
-        while (canPlaceMoreCoursesOfThisMaterial && currentBaseY + blockH <= innerHeight + EPSILON) {
-          const currentBlockCenterY = currentBaseY + blockH / 2;
-          const isEvenCourse = (courseNumber % 2) === 0;
+        // Fill Z direction (rows)
+        // Start Z from the leftmost inner edge + half block width + mortar gap
+        let z = -innerWidth/2 + blockW/2 + mortarGap;
+        // End Z before the rightmost inner edge - half block width - mortar gap
+        const maxZ = innerWidth/2 - blockW/2 - mortarGap;
+        
+        // Loop to place blocks along the Z-axis (rows)
+        while (z <= maxZ + EPSILON) {
+          // Fill X direction (columns) for this row
+          // Start X from the frontmost inner edge + half block length + mortar gap
+          let x = -innerLength/2 + blockL/2 + mortarGap;
+          // End X before the backmost inner edge - half block length - mortar gap
+          const maxX = innerLength/2 - blockL/2 - mortarGap;
           
-          // `coreWallOffset` defines how far from the *inner edge of the outer wall* the *center* of the core block is.
-          const coreWallOffset = blockW / 2 + mortarGap; 
-          
-          let placedInThisCourse = 0; // Count blocks placed in this course
-          
-          // Minimal space check for core walls to prevent placing blocks that don't fit
-          // Requires at least enough space for two rotated (width-wise) blocks plus two length-wise blocks,
-          // accounting for mortar gaps in between and at ends.
-          const minCoreXSpace = 2 * (blockL + mortarGap) + 2 * (blockW + mortarGap);
-          const minCoreZSpace = 2 * (blockL + mortarGap) + 2 * (blockW + mortarGap);
-
-          // Only attempt to place core walls if there's sufficient space
-          if (innerLength > minCoreXSpace && innerWidth > minCoreZSpace) {
-            if (isEvenCourse) {
-              // EVEN COURSES: Core blocks length along X, width along Z
-              // FRONT CORE WALL (aligned with the front inner edge of the outer wall)
-              // Z position: -innerWidth/2 (front inner edge) + coreWallOffset (to center the current block's width)
-              let x = -innerLength/2 + blockL/2 + mortarGap; // Start X from left inner edge, plus block half-length and mortar
-              const maxX = innerLength/2 - blockL/2 - mortarGap; // End X before right inner edge
-              while (x <= maxX + EPSILON) {
-                const block = isBlock ? 
-                  createDetailedCinderBlock(blockL, blockH, blockW, color) :
-                  createDetailedBrick(blockL, blockH, blockW, color);
-                block.position.set(x, currentBlockCenterY, -innerWidth/2 + coreWallOffset);
-                scene.add(block);
-                placedInThisCourse++;
-                x += blockL + mortarGap;
-              }
-              
-              // BACK CORE WALL
-              x = -innerLength/2 + blockL/2 + mortarGap;
-              while (x <= maxX + EPSILON) {
-                const block = isBlock ? 
-                  createDetailedCinderBlock(blockL, blockH, blockW, color) :
-                  createDetailedBrick(blockL, blockH, blockW, color);
-                block.position.set(x, currentBlockCenterY, innerWidth/2 - coreWallOffset);
-                scene.add(block);
-                placedInThisCourse++;
-                x += blockL + mortarGap;
-              }
-              
-              // LEFT CORE WALL (rotated, length along Z, width along X)
-              // X position: -innerLength/2 (left inner edge) + coreWallOffset
-              // Effective Z range for placement: innerWidth - 2 * coreWallOffset
-              const effectiveZSpan = innerWidth - 2 * coreWallOffset - 2 * mortarGap; // Space between front/back core walls
-              let z = -effectiveZSpan/2 + blockL/2; // Using blockL because it's rotated
-              const maxZ = effectiveZSpan/2 - blockL/2;
-              while (z <= maxZ + EPSILON) {
-                const block = isBlock ? 
-                  createDetailedCinderBlock(blockW, blockH, blockL, color) : // Rotated: length=W, width=L
-                  createDetailedBrick(blockW, blockH, blockL, color);
-                block.position.set(-innerLength/2 + coreWallOffset, currentBlockCenterY, z);
-                scene.add(block);
-                placedInThisCourse++;
-                z += blockL + mortarGap;
-              }
-              
-              // RIGHT CORE WALL (rotated)
-              z = -effectiveZSpan/2 + blockL/2;
-              while (z <= maxZ + EPSILON) {
-                const block = isBlock ? 
-                  createDetailedCinderBlock(blockW, blockH, blockL, color) : // Rotated
-                  createDetailedBrick(blockW, blockH, blockL, color);
-                block.position.set(innerLength/2 - coreWallOffset, currentBlockCenterY, z);
-                scene.add(block);
-                placedInThisCourse++;
-                z += blockL + mortarGap;
-              }
-              
-            } else { // ODD COURSES: Core blocks length along Z, width along X (rotated)
-              // LEFT CORE WALL
-              let z = -innerWidth/2 + blockL/2 + mortarGap; // Using blockL because it's rotated
-              const maxZ = innerWidth/2 - blockL/2 - mortarGap;
-              while (z <= maxZ + EPSILON) {
-                const block = isBlock ? 
-                  createDetailedCinderBlock(blockW, blockH, blockL, color) : // Rotated
-                  createDetailedBrick(blockW, blockH, blockL, color);
-                block.position.set(-innerLength/2 + coreWallOffset, currentBlockCenterY, z);
-                scene.add(block);
-                placedInThisCourse++;
-                z += blockL + mortarGap;
-              }
-              
-              // RIGHT CORE WALL
-              z = -innerWidth/2 + blockL/2 + mortarGap;
-              while (z <= maxZ + EPSILON) {
-                const block = isBlock ? 
-                  createDetailedCinderBlock(blockW, blockH, blockL, color) : // Rotated
-                  createDetailedBrick(blockW, blockH, blockL, color);
-                block.position.set(innerLength/2 - coreWallOffset, currentBlockCenterY, z);
-                scene.add(block);
-                placedInThisCourse++;
-                z += blockL + mortarGap;
-              }
-              
-              // FRONT CORE WALL (connecting left to right)
-              const effectiveXSpan = innerLength - 2 * coreWallOffset - 2 * mortarGap; // Space between left/right core walls
-              let x = -effectiveXSpan/2 + blockL/2; // Using blockL because its length is now along X
-              const maxX = effectiveXSpan/2 - blockL/2;
-              while (x <= maxX + EPSILON) {
-                const block = isBlock ? 
-                  createDetailedCinderBlock(blockL, blockH, blockW, color) :
-                  createDetailedBrick(blockL, blockH, blockW, color);
-                block.position.set(x, currentBlockCenterY, -innerWidth/2 + coreWallOffset);
-                scene.add(block);
-                placedInThisCourse++;
-                x += blockL + mortarGap;
-              }
-              
-              // BACK CORE WALL (connecting left to right)
-              x = -effectiveXSpan/2 + blockL/2;
-              while (x <= maxX + EPSILON) {
-                const block = isBlock ? 
-                  createDetailedCinderBlock(blockL, blockH, blockW, color) :
-                  createDetailedBrick(blockL, blockH, blockW, color);
-                block.position.set(x, currentBlockCenterY, innerWidth/2 - coreWallOffset);
-                scene.add(block);
-                placedInThisCourse++;
-                x += blockL + mortarGap;
-              }
-            }
-          }
-          
-          if (placedInThisCourse > 0) {
-            currentBaseY += blockH + mortarGap; // Advance Y for the next course
-            courseNumber++;
+          // Loop to place blocks along the X-axis (columns)
+          while (x <= maxX + EPSILON) {
+            const block = isBlock ? 
+              createDetailedCinderBlock(blockL, blockH, blockW, color) :
+              createDetailedBrick(blockL, blockH, blockW, color);
             
-            // After placing 2-3 courses of this material, consider switching to the next material
-            // This creates a layered effect if other materials are available.
-            if (courseNumber >= 2 && materialIndex < sortedInventory.length - 1) {
-              canPlaceMoreCoursesOfThisMaterial = false; // Stop placing this material, move to next
-            }
-          } else {
-            // If no blocks were placed in this course (e.g., due to insufficient space),
-            // stop trying this material for this height.
-            canPlaceMoreCoursesOfThisMaterial = false;
+            block.position.set(x, currentBlockCenterY, z);
+            scene.add(block);
+            
+            layerPlaced++;
+            x += blockL + mortarGap; // Move to the next block position in X
           }
+          
+          z += blockW + mortarGap; // Move to the next row (Z)
         }
-        // Move to the next material in the inventory (either because current material ran out of vertical space,
-        // or we intentionally switched after a few courses)
-        materialIndex++;
+        
+        if (layerPlaced > 0) {
+          // If at least one block was placed in this layer, move up for the next layer
+          currentBaseY += blockH + mortarGap;
+        } else {
+          // If no blocks could fit in this layer (e.g., inner dimensions too small for this block size),
+          // try the next material in the sorted inventory.
+          materialIndex++;
+        }
       }
     }
 
