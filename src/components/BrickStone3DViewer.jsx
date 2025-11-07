@@ -16,50 +16,139 @@ export default function BrickStone3DViewer({
   const rendererRef = useRef(null);
   const controlsRef = useRef(null);
 
-  // Create realistic brick geometry with beveled edges and indentations
-  const createBrickGeometry = (length, height, width) => {
-    const brickGroup = new THREE.Group();
+  // Create high-detail brick with beveled edges and mortar joints
+  const createDetailedBrick = (length, height, width, color) => {
+    const group = new THREE.Group();
     
-    // Main brick body with slight bevel
-    const mainGeometry = new THREE.BoxGeometry(length * 0.98, height * 0.98, width * 0.98);
-    const edgesGeometry = new THREE.EdgesGeometry(mainGeometry);
+    // Main brick body (slightly smaller to show mortar)
+    const brickGeometry = new THREE.BoxGeometry(length * 0.97, height * 0.97, width * 0.97);
     
-    return mainGeometry;
-  };
-
-  // Create realistic cinder block geometry with hollow cores
-  const createCinderBlockGeometry = (length, height, width) => {
-    const blockGroup = new THREE.Group();
+    // Add beveled edges using smaller boxes at corners
+    const bevel = 0.02;
+    const positions = [
+      // Top edges
+      [0, height/2, 0, length * 0.97, bevel, width * 0.97],
+      // Bottom edges  
+      [0, -height/2, 0, length * 0.97, bevel, width * 0.97],
+      // Side edges
+      [length/2, 0, 0, bevel, height * 0.97, width * 0.97],
+      [-length/2, 0, 0, bevel, height * 0.97, width * 0.97],
+      [0, 0, width/2, length * 0.97, height * 0.97, bevel],
+      [0, 0, -width/2, length * 0.97, height * 0.97, bevel],
+    ];
     
-    // Main block shape
-    const outerGeometry = new THREE.BoxGeometry(length, height, width);
-    
-    // Create hollow cores (two cylindrical holes)
-    const coreRadius = Math.min(length, width) * 0.15;
-    const coreHeight = height * 1.1;
-    
-    // Use CSG-like approach with multiple boxes to simulate holes
-    return outerGeometry;
-  };
-
-  // Create realistic brick material with texture
-  const createBrickMaterial = (color) => {
-    return new THREE.MeshStandardMaterial({
+    // Create brick material with realistic properties
+    const brickMaterial = new THREE.MeshStandardMaterial({
       color: color,
       roughness: 0.9,
-      metalness: 0.1,
+      metalness: 0.0,
       flatShading: false,
     });
+    
+    const mainBrick = new THREE.Mesh(brickGeometry, brickMaterial);
+    group.add(mainBrick);
+    
+    // Add subtle surface detail lines (horizontal scoring)
+    const lineGeometry = new THREE.BoxGeometry(length * 0.95, 0.005, width * 0.95);
+    const lineMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(color).multiplyScalar(0.85),
+      roughness: 1.0,
+      metalness: 0.0,
+    });
+    
+    // Add 2-3 horizontal detail lines
+    for (let i = 0; i < 2; i++) {
+      const line = new THREE.Mesh(lineGeometry, lineMaterial);
+      line.position.y = (i - 0.5) * height * 0.3;
+      group.add(line);
+    }
+    
+    return group;
   };
 
-  // Create realistic block material
-  const createBlockMaterial = (color) => {
-    return new THREE.MeshStandardMaterial({
+  // Create high-detail cinder block with hollow cores
+  const createDetailedCinderBlock = (length, height, width, color) => {
+    const group = new THREE.Group();
+    
+    // Create the outer shell
+    const wallThickness = Math.min(length, width) * 0.12;
+    
+    // Main block material
+    const blockMaterial = new THREE.MeshStandardMaterial({
       color: color,
       roughness: 0.95,
-      metalness: 0.05,
+      metalness: 0.0,
       flatShading: false,
     });
+    
+    // Create the 6 faces that make up the hollow block
+    // Front and back faces
+    const frontBackGeo = new THREE.BoxGeometry(length * 0.97, height * 0.97, wallThickness);
+    const frontFace = new THREE.Mesh(frontBackGeo, blockMaterial);
+    frontFace.position.z = width/2 - wallThickness/2;
+    group.add(frontFace);
+    
+    const backFace = new THREE.Mesh(frontBackGeo, blockMaterial);
+    backFace.position.z = -width/2 + wallThickness/2;
+    group.add(backFace);
+    
+    // Left and right faces
+    const leftRightGeo = new THREE.BoxGeometry(wallThickness, height * 0.97, width * 0.97 - 2 * wallThickness);
+    const leftFace = new THREE.Mesh(leftRightGeo, blockMaterial);
+    leftFace.position.x = -length/2 + wallThickness/2;
+    group.add(leftFace);
+    
+    const rightFace = new THREE.Mesh(leftRightGeo, blockMaterial);
+    rightFace.position.x = length/2 - wallThickness/2;
+    group.add(rightFace);
+    
+    // Top and bottom faces
+    const topBottomGeo = new THREE.BoxGeometry(length * 0.97 - 2 * wallThickness, wallThickness, width * 0.97 - 2 * wallThickness);
+    const topFace = new THREE.Mesh(topBottomGeo, blockMaterial);
+    topFace.position.y = height/2 - wallThickness/2;
+    group.add(topFace);
+    
+    const bottomFace = new THREE.Mesh(topBottomGeo, blockMaterial);
+    bottomFace.position.y = -height/2 + wallThickness/2;
+    group.add(bottomFace);
+    
+    // Add center web (divider between cores)
+    const webThickness = wallThickness * 0.6;
+    const webGeo = new THREE.BoxGeometry(webThickness, height * 0.97 - 2 * wallThickness, width * 0.97 - 2 * wallThickness);
+    const web = new THREE.Mesh(webGeo, blockMaterial);
+    group.add(web);
+    
+    // Add texture detail - vertical lines on faces
+    const detailMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(color).multiplyScalar(0.9),
+      roughness: 1.0,
+      metalness: 0.0,
+    });
+    
+    const detailGeo = new THREE.BoxGeometry(length * 0.96, 0.01, width * 0.96);
+    const topDetail = new THREE.Mesh(detailGeo, detailMaterial);
+    topDetail.position.y = height/2 - wallThickness - 0.01;
+    group.add(topDetail);
+    
+    const bottomDetail = new THREE.Mesh(detailGeo, detailMaterial);
+    bottomDetail.position.y = -height/2 + wallThickness + 0.01;
+    group.add(bottomDetail);
+    
+    return group;
+  };
+
+  // Create mortar between bricks
+  const createMortar = (length, height, width) => {
+    const mortarMaterial = new THREE.MeshStandardMaterial({
+      color: 0xC0C0C0,
+      roughness: 1.0,
+      metalness: 0.0,
+    });
+    
+    const mortarGeometry = new THREE.BoxGeometry(length, height, width);
+    const mortar = new THREE.Mesh(mortarGeometry, mortarMaterial);
+    
+    return mortar;
   };
 
   useEffect(() => {
@@ -85,6 +174,7 @@ export default function BrickStone3DViewer({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -96,8 +186,8 @@ export default function BrickStone3DViewer({
     controls.maxDistance = 500;
     controlsRef.current = controls;
 
-    // Enhanced lighting for better material appearance
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    // Enhanced lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
 
     const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -111,10 +201,14 @@ export default function BrickStone3DViewer({
     directionalLight1.shadow.mapSize.height = 2048;
     scene.add(directionalLight1);
 
-    // Add second light for better depth
-    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
+    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
     directionalLight2.position.set(-50, 50, -50);
     scene.add(directionalLight2);
+
+    // Add subtle fill light from below
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.2);
+    fillLight.position.set(0, -30, 0);
+    scene.add(fillLight);
 
     // Grid helper
     const gridSize = Math.max(actualLength, actualWidth, actualHeight) * 3;
@@ -123,62 +217,124 @@ export default function BrickStone3DViewer({
 
     // Convert inches to scene units
     const scale = 0.5;
+    const mortarGap = 0.375 * scale; // 3/8" mortar gap
 
-    // Create realistic brick wall material with texture
-    const wallMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0xa8332e,
-      roughness: 0.85,
-      metalness: 0.05,
-      flatShading: false,
-    });
-
-    // Create outer walls
+    // Create outer brick walls with individual bricks and mortar
     const length = actualLength * scale;
     const width = actualWidth * scale;
     const height = actualHeight * scale;
     const thickness = wallThickness * scale;
 
-    // Front wall
-    const frontWall = new THREE.Mesh(
-      new THREE.BoxGeometry(length, height, thickness),
-      wallMaterial
-    );
-    frontWall.position.set(0, height / 2, -width / 2 + thickness / 2);
-    frontWall.castShadow = true;
-    frontWall.receiveShadow = true;
-    scene.add(frontWall);
+    if (selectedMaterial) {
+      const brickL = selectedMaterial.length * scale;
+      const brickW = selectedMaterial.width * scale;
+      const brickH = selectedMaterial.height * scale;
+      
+      // Calculate number of courses and bricks
+      const bricksAlongLength = Math.floor((length + mortarGap) / (brickL + mortarGap));
+      const bricksAlongWidth = Math.floor((width - 2 * thickness + mortarGap) / (brickL + mortarGap));
+      const coursesHigh = Math.floor((height + mortarGap) / (brickH + mortarGap));
 
-    // Back wall
-    const backWall = new THREE.Mesh(
-      new THREE.BoxGeometry(length, height, thickness),
-      wallMaterial
-    );
-    backWall.position.set(0, height / 2, width / 2 - thickness / 2);
-    backWall.castShadow = true;
-    backWall.receiveShadow = true;
-    scene.add(backWall);
+      // Build front wall (individual bricks)
+      for (let course = 0; course < coursesHigh; course++) {
+        const offset = (course % 2) * (brickL + mortarGap) / 2; // Running bond pattern
+        const y = course * (brickH + mortarGap) - height/2 + brickH/2;
+        
+        for (let i = 0; i < bricksAlongLength + 1; i++) {
+          const x = i * (brickL + mortarGap) - length/2 + brickL/2 - offset;
+          
+          // Check if brick is within bounds
+          if (x + brickL/2 > length/2 || x - brickL/2 < -length/2) continue;
+          
+          const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
+          brick.position.set(x, y, -width/2 + brickW/2);
+          brick.castShadow = true;
+          brick.receiveShadow = true;
+          scene.add(brick);
+          
+          // Add mortar joints
+          if (i < bricksAlongLength) {
+            const mortarV = createMortar(mortarGap, brickH, brickW);
+            mortarV.position.set(x + brickL/2 + mortarGap/2, y, -width/2 + brickW/2);
+            mortarV.receiveShadow = true;
+            scene.add(mortarV);
+          }
+          
+          if (course < coursesHigh - 1) {
+            const mortarH = createMortar(brickL, mortarGap, brickW);
+            mortarH.position.set(x, y + brickH/2 + mortarGap/2, -width/2 + brickW/2);
+            mortarH.receiveShadow = true;
+            scene.add(mortarH);
+          }
+        }
+      }
 
-    // Left wall
-    const leftWall = new THREE.Mesh(
-      new THREE.BoxGeometry(thickness, height, width - 2 * thickness),
-      wallMaterial
-    );
-    leftWall.position.set(-length / 2 + thickness / 2, height / 2, 0);
-    leftWall.castShadow = true;
-    leftWall.receiveShadow = true;
-    scene.add(leftWall);
+      // Build back wall
+      for (let course = 0; course < coursesHigh; course++) {
+        const offset = (course % 2) * (brickL + mortarGap) / 2;
+        const y = course * (brickH + mortarGap) - height/2 + brickH/2;
+        
+        for (let i = 0; i < bricksAlongLength + 1; i++) {
+          const x = i * (brickL + mortarGap) - length/2 + brickL/2 - offset;
+          
+          if (x + brickL/2 > length/2 || x - brickL/2 < -length/2) continue;
+          
+          const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
+          brick.position.set(x, y, width/2 - brickW/2);
+          brick.castShadow = true;
+          brick.receiveShadow = true;
+          scene.add(brick);
+          
+          if (i < bricksAlongLength) {
+            const mortarV = createMortar(mortarGap, brickH, brickW);
+            mortarV.position.set(x + brickL/2 + mortarGap/2, y, width/2 - brickW/2);
+            mortarV.receiveShadow = true;
+            scene.add(mortarV);
+          }
+          
+          if (course < coursesHigh - 1) {
+            const mortarH = createMortar(brickL, mortarGap, brickW);
+            mortarH.position.set(x, y + brickH/2 + mortarGap/2, width/2 - brickW/2);
+            mortarH.receiveShadow = true;
+            scene.add(mortarH);
+          }
+        }
+      }
 
-    // Right wall
-    const rightWall = new THREE.Mesh(
-      new THREE.BoxGeometry(thickness, height, width - 2 * thickness),
-      wallMaterial
-    );
-    rightWall.position.set(length / 2 - thickness / 2, height / 2, 0);
-    rightWall.castShadow = true;
-    rightWall.receiveShadow = true;
-    scene.add(rightWall);
+      // Build left and right walls
+      for (let course = 0; course < coursesHigh; course++) {
+        const offset = (course % 2) * (brickL + mortarGap) / 2;
+        const y = course * (brickH + mortarGap) - height/2 + brickH/2;
+        
+        // Left wall
+        for (let i = 0; i < bricksAlongWidth + 1; i++) {
+          const z = i * (brickL + mortarGap) - (width - 2*thickness)/2 + brickL/2 - offset;
+          
+          if (z + brickL/2 > (width - 2*thickness)/2 || z - brickL/2 < -(width - 2*thickness)/2) continue;
+          
+          const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
+          brick.position.set(-length/2 + brickW/2, y, z);
+          brick.castShadow = true;
+          brick.receiveShadow = true;
+          scene.add(brick);
+        }
+        
+        // Right wall
+        for (let i = 0; i < bricksAlongWidth + 1; i++) {
+          const z = i * (brickL + mortarGap) - (width - 2*thickness)/2 + brickL/2 - offset;
+          
+          if (z + brickL/2 > (width - 2*thickness)/2 || z - brickL/2 < -(width - 2*thickness)/2) continue;
+          
+          const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
+          brick.position.set(length/2 - brickW/2, y, z);
+          brick.castShadow = true;
+          brick.receiveShadow = true;
+          scene.add(brick);
+        }
+      }
+    }
 
-    // IMPROVED CORE FILLING ALGORITHM
+    // Add core blocks with individual block models
     if (coreBreakdown && coreBreakdown.length > 0 && inventory) {
       const colors = [0x8B4513, 0xA0522D, 0xD2691E, 0xCD853F, 0xDEB887, 0xF4A460];
       
@@ -186,276 +342,51 @@ export default function BrickStone3DViewer({
       const innerWidth = width - 2 * thickness;
       const innerHeight = height;
       
-      // Create a 3D occupancy grid to track filled spaces
-      const gridResolution = 0.5; // Resolution for checking occupancy
-      const gridLengthCells = Math.ceil(innerLength / gridResolution);
-      const gridWidthCells = Math.ceil(innerWidth / gridResolution);
-      const gridHeightCells = Math.ceil(innerHeight / gridResolution);
-      
-      const occupancyGrid = new Array(gridLengthCells)
-        .fill(null)
-        .map(() => new Array(gridWidthCells)
-          .fill(null)
-          .map(() => new Array(gridHeightCells).fill(false)));
-
-      // Check if a block position is available
-      const isSpaceAvailable = (x, y, z, blockL, blockH, blockW) => {
-        const startX = Math.floor((x + innerLength / 2) / gridResolution);
-        const startZ = Math.floor((z + innerWidth / 2) / gridResolution);
-        const startY = Math.floor(y / gridResolution);
-        const endX = Math.ceil((x + innerLength / 2 + blockL) / gridResolution);
-        const endZ = Math.ceil((z + innerWidth / 2 + blockW) / gridResolution);
-        const endY = Math.ceil((y + blockH) / gridResolution);
-
-        for (let i = startX; i < endX && i < gridLengthCells; i++) {
-          for (let j = startZ; j < endZ && j < gridWidthCells; j++) {
-            for (let k = startY; k < endY && k < gridHeightCells; k++) {
-              if (i >= 0 && j >= 0 && k >= 0 && i < gridLengthCells && j < gridWidthCells && k < gridHeightCells) {
-                if (occupancyGrid[i][j][k]) return false;
-              }
-            }
-          }
-        }
-        return true;
-      };
-
-      // Mark space as occupied
-      const markSpaceOccupied = (x, y, z, blockL, blockH, blockW) => {
-        const startX = Math.floor((x + innerLength / 2) / gridResolution);
-        const startZ = Math.floor((z + innerWidth / 2) / gridResolution);
-        const startY = Math.floor(y / gridResolution);
-        const endX = Math.ceil((x + innerLength / 2 + blockL) / gridResolution);
-        const endZ = Math.ceil((z + innerWidth / 2 + blockW) / gridResolution);
-        const endY = Math.ceil((y + blockH) / gridResolution);
-
-        for (let i = startX; i < endX && i < gridLengthCells; i++) {
-          for (let j = startZ; j < endZ && j < gridWidthCells; j++) {
-            for (let k = startY; k < endY && k < gridHeightCells; k++) {
-              if (i >= 0 && j >= 0 && k >= 0 && i < gridLengthCells && j < gridWidthCells && k < gridHeightCells) {
-                occupancyGrid[i][j][k] = true;
-              }
-            }
-          }
-        }
-      };
-
-      // Create block queue
-      const blockQueue = [];
       coreBreakdown.forEach((coreItem, matIndex) => {
         const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
         if (!coreMaterial || coreItem.quantity === 0) return;
 
-        for (let i = 0; i < coreItem.quantity; i++) {
-          blockQueue.push({
-            material: coreMaterial,
-            color: colors[matIndex % colors.length],
-            isBlock: coreMaterial.material_type === 'block'
-          });
-        }
-      });
-
-      // Sort blocks - larger blocks first, then smaller ones for gap filling
-      blockQueue.sort((a, b) => {
-        const volA = a.material.length * a.material.width * a.material.height;
-        const volB = b.material.length * b.material.width * b.material.height;
-        return volB - volA;
-      });
-
-      let blockIndex = 0;
-      let currentLayer = 0;
-      
-      // Circular perimeter filling pattern
-      while (blockIndex < blockQueue.length && currentLayer * 2 < Math.min(innerLength, innerWidth)) {
-        const block = blockQueue[blockIndex];
-        const blockL = block.material.length * scale;
-        const blockW = block.material.width * scale;
-        const blockH = block.material.height * scale;
-
-        let placed = false;
-
-        // Try to place along perimeter at current layer (circular pattern)
-        const margin = currentLayer * Math.max(blockL, blockW);
+        const blockL = coreMaterial.length * scale;
+        const blockW = coreMaterial.width * scale;
+        const blockH = coreMaterial.height * scale;
+        const isBlock = coreMaterial.material_type === 'block';
         
-        // Top edge (left to right)
-        for (let x = -innerLength / 2 + margin; x < innerLength / 2 - margin - blockL; x += blockL * 0.5) {
-          const z = -innerWidth / 2 + margin;
-          for (let y = 0; y < innerHeight - blockH; y += blockH * 0.25) {
-            // Try normal orientation
-            if (isSpaceAvailable(x, y, z, blockL, blockH, blockW)) {
-              const blockGeometry = block.isBlock ? 
-                createCinderBlockGeometry(blockL, blockH, blockW) : 
-                createBrickGeometry(blockL, blockH, blockW);
-              const blockMat = block.isBlock ?
-                createBlockMaterial(block.color) :
-                createBrickMaterial(block.color);
-              const blockMesh = new THREE.Mesh(blockGeometry, blockMat);
-              blockMesh.position.set(x + blockL / 2, y + blockH / 2, z + blockW / 2);
-              blockMesh.castShadow = true;
-              blockMesh.receiveShadow = true;
-              scene.add(blockMesh);
-              markSpaceOccupied(x, y, z, blockL, blockH, blockW);
-              placed = true;
-              break;
+        // Simple grid layout for core blocks
+        let placed = 0;
+        let currentY = -innerHeight/2 + blockH/2;
+        
+        while (currentY < innerHeight/2 && placed < coreItem.quantity) {
+          let currentZ = -innerWidth/2 + blockW/2;
+          
+          while (currentZ < innerWidth/2 && placed < coreItem.quantity) {
+            let currentX = -innerLength/2 + blockL/2;
+            
+            while (currentX < innerLength/2 && placed < coreItem.quantity) {
+              const block = isBlock ? 
+                createDetailedCinderBlock(blockL, blockH, blockW, colors[matIndex % colors.length]) :
+                createDetailedBrick(blockL, blockH, blockW, colors[matIndex % colors.length]);
+              
+              block.position.set(currentX, currentY, currentZ);
+              block.castShadow = true;
+              block.receiveShadow = true;
+              scene.add(block);
+              
+              // Add mortar between blocks
+              if (currentX + blockL/2 + mortarGap < innerLength/2) {
+                const mortarV = createMortar(mortarGap, blockH, blockW);
+                mortarV.position.set(currentX + blockL/2 + mortarGap/2, currentY, currentZ);
+                mortarV.receiveShadow = true;
+                scene.add(mortarV);
+              }
+              
+              placed++;
+              currentX += blockL + mortarGap;
             }
-            // Try rotated 90 degrees
-            else if (isSpaceAvailable(x, y, z, blockW, blockH, blockL)) {
-              const blockGeometry = block.isBlock ? 
-                createCinderBlockGeometry(blockW, blockH, blockL) : 
-                createBrickGeometry(blockW, blockH, blockL);
-              const blockMat = block.isBlock ?
-                createBlockMaterial(block.color) :
-                createBrickMaterial(block.color);
-              const blockMesh = new THREE.Mesh(blockGeometry, blockMat);
-              blockMesh.position.set(x + blockW / 2, y + blockH / 2, z + blockL / 2);
-              blockMesh.rotation.y = Math.PI / 2;
-              blockMesh.castShadow = true;
-              blockMesh.receiveShadow = true;
-              scene.add(blockMesh);
-              markSpaceOccupied(x, y, z, blockW, blockH, blockL);
-              placed = true;
-              break;
-            }
+            currentZ += blockW + mortarGap;
           }
-          if (placed) break;
+          currentY += blockH + mortarGap;
         }
-
-        if (!placed) {
-          // Try right edge
-          for (let z = -innerWidth / 2 + margin; z < innerWidth / 2 - margin - blockW; z += blockW * 0.5) {
-            const x = innerLength / 2 - margin - blockL;
-            for (let y = 0; y < innerHeight - blockH; y += blockH * 0.25) {
-              if (isSpaceAvailable(x, y, z, blockL, blockH, blockW)) {
-                const blockGeometry = block.isBlock ? 
-                  createCinderBlockGeometry(blockL, blockH, blockW) : 
-                  createBrickGeometry(blockL, blockH, blockW);
-                const blockMat = block.isBlock ?
-                  createBlockMaterial(block.color) :
-                  createBrickMaterial(block.color);
-                const blockMesh = new THREE.Mesh(blockGeometry, blockMat);
-                blockMesh.position.set(x + blockL / 2, y + blockH / 2, z + blockW / 2);
-                blockMesh.castShadow = true;
-                blockMesh.receiveShadow = true;
-                scene.add(blockMesh);
-                markSpaceOccupied(x, y, z, blockL, blockH, blockW);
-                placed = true;
-                break;
-              }
-              else if (isSpaceAvailable(x, y, z, blockW, blockH, blockL)) {
-                const blockGeometry = block.isBlock ? 
-                  createCinderBlockGeometry(blockW, blockH, blockL) : 
-                  createBrickGeometry(blockW, blockH, blockL);
-                const blockMat = block.isBlock ?
-                  createBlockMaterial(block.color) :
-                  createBrickMaterial(block.color);
-                const blockMesh = new THREE.Mesh(blockGeometry, blockMat);
-                blockMesh.position.set(x + blockW / 2, y + blockH / 2, z + blockL / 2);
-                blockMesh.rotation.y = Math.PI / 2;
-                blockMesh.castShadow = true;
-                blockMesh.receiveShadow = true;
-                scene.add(blockMesh);
-                markSpaceOccupied(x, y, z, blockW, blockH, blockL);
-                placed = true;
-                break;
-              }
-            }
-            if (placed) break;
-          }
-        }
-
-        if (!placed) {
-          // Try bottom edge
-          for (let x = innerLength / 2 - margin; x > -innerLength / 2 + margin + blockL; x -= blockL * 0.5) {
-            const z = innerWidth / 2 - margin - blockW;
-            for (let y = 0; y < innerHeight - blockH; y += blockH * 0.25) {
-              if (isSpaceAvailable(x - blockL, y, z, blockL, blockH, blockW)) {
-                const blockGeometry = block.isBlock ? 
-                  createCinderBlockGeometry(blockL, blockH, blockW) : 
-                  createBrickGeometry(blockL, blockH, blockW);
-                const blockMat = block.isBlock ?
-                  createBlockMaterial(block.color) :
-                  createBrickMaterial(block.color);
-                const blockMesh = new THREE.Mesh(blockGeometry, blockMat);
-                blockMesh.position.set(x - blockL / 2, y + blockH / 2, z + blockW / 2);
-                blockMesh.castShadow = true;
-                blockMesh.receiveShadow = true;
-                scene.add(blockMesh);
-                markSpaceOccupied(x - blockL, y, z, blockL, blockH, blockW);
-                placed = true;
-                break;
-              }
-              else if (isSpaceAvailable(x - blockW, y, z, blockW, blockH, blockL)) {
-                const blockGeometry = block.isBlock ? 
-                  createCinderBlockGeometry(blockW, blockH, blockL) : 
-                  createBrickGeometry(blockW, blockH, blockL);
-                const blockMat = block.isBlock ?
-                  createBlockMaterial(block.color) :
-                  createBrickMaterial(block.color);
-                const blockMesh = new THREE.Mesh(blockGeometry, blockMat);
-                blockMesh.position.set(x - blockW / 2, y + blockH / 2, z + blockL / 2);
-                blockMesh.rotation.y = Math.PI / 2;
-                blockMesh.castShadow = true;
-                blockMesh.receiveShadow = true;
-                scene.add(blockMesh);
-                markSpaceOccupied(x - blockW, y, z, blockW, blockH, blockL);
-                placed = true;
-                break;
-              }
-            }
-            if (placed) break;
-          }
-        }
-
-        if (!placed) {
-          // Try left edge
-          for (let z = innerWidth / 2 - margin; z > -innerWidth / 2 + margin + blockW; z -= blockW * 0.5) {
-            const x = -innerLength / 2 + margin;
-            for (let y = 0; y < innerHeight - blockH; y += blockH * 0.25) {
-              if (isSpaceAvailable(x, y, z - blockW, blockL, blockH, blockW)) {
-                const blockGeometry = block.isBlock ? 
-                  createCinderBlockGeometry(blockL, blockH, blockW) : 
-                  createBrickGeometry(blockL, blockH, blockW);
-                const blockMat = block.isBlock ?
-                  createBlockMaterial(block.color) :
-                  createBrickMaterial(block.color);
-                const blockMesh = new THREE.Mesh(blockGeometry, blockMat);
-                blockMesh.position.set(x + blockL / 2, y + blockH / 2, z - blockW / 2);
-                blockMesh.castShadow = true;
-                blockMesh.receiveShadow = true;
-                scene.add(blockMesh);
-                markSpaceOccupied(x, y, z - blockW, blockL, blockH, blockW);
-                placed = true;
-                break;
-              }
-              else if (isSpaceAvailable(x, y, z - blockL, blockW, blockH, blockL)) {
-                const blockGeometry = block.isBlock ? 
-                  createCinderBlockGeometry(blockW, blockH, blockL) : 
-                  createBrickGeometry(blockW, blockH, blockL);
-                const blockMat = block.isBlock ?
-                  createBlockMaterial(block.color) :
-                  createBrickMaterial(block.color);
-                const blockMesh = new THREE.Mesh(blockGeometry, blockMat);
-                blockMesh.position.set(x + blockW / 2, y + blockH / 2, z - blockL / 2);
-                blockMesh.rotation.y = Math.PI / 2;
-                blockMesh.castShadow = true;
-                blockMesh.receiveShadow = true;
-                scene.add(blockMesh);
-                markSpaceOccupied(x, y, z - blockL, blockW, blockH, blockL);
-                placed = true;
-                break;
-              }
-            }
-            if (placed) break;
-          }
-        }
-
-        if (placed) {
-          blockIndex++;
-        } else {
-          // Move to next layer inward
-          currentLayer++;
-          if (currentLayer * 2 >= Math.min(innerLength, innerWidth)) break;
-        }
-      }
+      });
     }
 
     // Add dimension labels
