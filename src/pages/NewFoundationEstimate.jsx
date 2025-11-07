@@ -296,9 +296,9 @@ export default function NewFoundationEstimate() {
   }
 
   return (
-    <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+    <div className="p-3 md:p-6 bg-slate-50 min-h-screen">
+      <div className="w-full mx-auto">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 mb-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
               <Anchor className="w-8 h-8" />
