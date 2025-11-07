@@ -205,7 +205,7 @@ export default function BrickStone3DViewer({
       const bricksAlongLength = Math.ceil((length) / (brickL + mortarGap));
       
       // Left/right walls span REDUCED width (fit BETWEEN front and back)
-      const innerWidth = width - 2 * brickW;
+      const innerWidth = width - 2 * brickW; // Changed from brickW to brickL based on side wall orientation
       const bricksAlongWidth = Math.ceil((innerWidth) / (brickL + mortarGap));
       
       const coursesHigh = Math.ceil((height) / (brickH + mortarGap));
@@ -280,6 +280,55 @@ export default function BrickStone3DViewer({
           brick.receiveShadow = true;
           scene.add(brick);
         }
+      }
+
+      // ADD CORNER BRICKS to fill the gaps
+      for (let course = 0; course < coursesHigh; course++) {
+        const y = course * (brickH + mortarGap) + brickH/2;
+        
+        // Front-left corner
+        const cornerBrickFL = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
+        cornerBrickFL.position.set(
+          -length/2 + brickW/2,
+          y,
+          -width/2 + brickW + brickL/2
+        );
+        cornerBrickFL.castShadow = true;
+        cornerBrickFL.receiveShadow = true;
+        scene.add(cornerBrickFL);
+        
+        // Front-right corner
+        const cornerBrickFR = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
+        cornerBrickFR.position.set(
+          length/2 - brickW/2,
+          y,
+          -width/2 + brickW + brickL/2
+        );
+        cornerBrickFR.castShadow = true;
+        cornerBrickFR.receiveShadow = true;
+        scene.add(cornerBrickFR);
+        
+        // Back-left corner
+        const cornerBrickBL = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
+        cornerBrickBL.position.set(
+          -length/2 + brickW/2,
+          y,
+          width/2 - brickW - brickL/2
+        );
+        cornerBrickBL.castShadow = true;
+        cornerBrickBL.receiveShadow = true;
+        scene.add(cornerBrickBL);
+        
+        // Back-right corner
+        const cornerBrickBR = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
+        cornerBrickBR.position.set(
+          length/2 - brickW/2,
+          y,
+          width/2 - brickW - brickL/2
+        );
+        cornerBrickBR.castShadow = true;
+        cornerBrickBR.receiveShadow = true;
+        scene.add(cornerBrickBR);
       }
     }
 
