@@ -201,25 +201,24 @@ export default function BrickStone3DViewer({
       const brickW = selectedMaterial.width * scale;
       const brickH = selectedMaterial.height * scale;
       
-      // Front/back walls span REDUCED length (leave room for side walls)
-      const innerLength = length - 2 * brickW;
-      const bricksAlongLength = Math.ceil((innerLength) / (brickL + mortarGap));
+      // Front/back walls span FULL length
+      const bricksAlongLength = Math.ceil((length) / (brickL + mortarGap));
       
-      // Left/right walls span REDUCED width (fit BETWEEN front and back walls)
+      // Left/right walls span (width - 2*brickW) to fit BETWEEN front and back
       const innerWidth = width - 2 * brickW;
       const bricksAlongWidth = Math.ceil((innerWidth) / (brickL + mortarGap));
       
       const coursesHigh = Math.ceil((height) / (brickH + mortarGap));
 
-      // Build front wall (reduced length, centered)
+      // Build front wall (FULL length)
       for (let course = 0; course < coursesHigh; course++) {
         const offset = (course % 2) * (brickL + mortarGap) / 2;
         const y = course * (brickH + mortarGap) + brickH/2;
         
         for (let i = 0; i <= bricksAlongLength; i++) {
-          const x = i * (brickL + mortarGap) - innerLength/2 + brickL/2 - offset;
+          const x = i * (brickL + mortarGap) - length/2 + brickL/2 - offset;
           
-          if (x - brickL/2 > innerLength/2 || x + brickL/2 < -innerLength/2) continue;
+          if (x - brickL/2 > length/2 || x + brickL/2 < -length/2) continue;
           
           const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
           brick.position.set(x, y, -width/2 + brickW/2);
@@ -229,15 +228,15 @@ export default function BrickStone3DViewer({
         }
       }
 
-      // Build back wall (reduced length, centered)
+      // Build back wall (FULL length)
       for (let course = 0; course < coursesHigh; course++) {
         const offset = (course % 2) * (brickL + mortarGap) / 2;
         const y = course * (brickH + mortarGap) + brickH/2;
         
         for (let i = 0; i <= bricksAlongLength; i++) {
-          const x = i * (brickL + mortarGap) - innerLength/2 + brickL/2 - offset;
+          const x = i * (brickL + mortarGap) - length/2 + brickL/2 - offset;
           
-          if (x - brickL/2 > innerLength/2 || x + brickL/2 < -innerLength/2) continue;
+          if (x - brickL/2 > length/2 || x + brickL/2 < -length/2) continue;
           
           const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
           brick.position.set(x, y, width/2 - brickW/2);
@@ -247,12 +246,12 @@ export default function BrickStone3DViewer({
         }
       }
 
-      // Build left and right walls (fit BETWEEN front and back, no overlap)
+      // Build left and right walls (fit BETWEEN front and back)
       for (let course = 0; course < coursesHigh; course++) {
         const offset = (course % 2) * (brickL + mortarGap) / 2;
         const y = course * (brickH + mortarGap) + brickH/2;
         
-        // Left wall - spans BETWEEN front and back walls
+        // Left wall - spans from front to back (minus their thickness)
         for (let i = 0; i <= bricksAlongWidth; i++) {
           const z = i * (brickL + mortarGap) - innerWidth/2 + brickL/2 - offset;
           
@@ -265,7 +264,7 @@ export default function BrickStone3DViewer({
           scene.add(brick);
         }
         
-        // Right wall - spans BETWEEN front and back walls
+        // Right wall - spans from front to back (minus their thickness)
         for (let i = 0; i <= bricksAlongWidth; i++) {
           const z = i * (brickL + mortarGap) - innerWidth/2 + brickL/2 - offset;
           
@@ -378,7 +377,7 @@ export default function BrickStone3DViewer({
 
     // Cleanup
     return () => {
-      window.removeEventListener('resize', handleResize); // Fix: changed handleResizing to handleResize
+      window.removeEventListener('resize', handleResize);
       if (containerRef.current && renderer.domElement) {
         containerRef.current.removeChild(renderer.domElement);
       }
