@@ -201,13 +201,17 @@ export default function BrickStone3DViewer({
       const brickW = selectedMaterial.width * scale;
       const brickH = selectedMaterial.height * scale;
       
-      // Front/back walls span REDUCED length to leave room for side walls
+      // Front/back walls span REDUCED length (leave room for side walls)
       const innerLength = length - 2 * brickW;
       const bricksAlongLength = Math.ceil((innerLength) / (brickL + mortarGap));
-      const bricksAlongWidth = Math.ceil((width) / (brickL + mortarGap));
+      
+      // Left/right walls span REDUCED width (fit BETWEEN front and back walls)
+      const innerWidth = width - 2 * brickW;
+      const bricksAlongWidth = Math.ceil((innerWidth) / (brickL + mortarGap));
+      
       const coursesHigh = Math.ceil((height) / (brickH + mortarGap));
 
-      // Build front wall (reduced to leave room for side walls)
+      // Build front wall (reduced length, centered)
       for (let course = 0; course < coursesHigh; course++) {
         const offset = (course % 2) * (brickL + mortarGap) / 2;
         const y = course * (brickH + mortarGap) + brickH/2;
@@ -225,7 +229,7 @@ export default function BrickStone3DViewer({
         }
       }
 
-      // Build back wall (reduced to leave room for side walls)
+      // Build back wall (reduced length, centered)
       for (let course = 0; course < coursesHigh; course++) {
         const offset = (course % 2) * (brickL + mortarGap) / 2;
         const y = course * (brickH + mortarGap) + brickH/2;
@@ -243,31 +247,31 @@ export default function BrickStone3DViewer({
         }
       }
 
-      // Build left and right walls (full width spanning from front to back)
+      // Build left and right walls (fit BETWEEN front and back, no overlap)
       for (let course = 0; course < coursesHigh; course++) {
         const offset = (course % 2) * (brickL + mortarGap) / 2;
         const y = course * (brickH + mortarGap) + brickH/2;
         
-        // Left wall - positioned at left edge, spans full width
+        // Left wall - spans BETWEEN front and back walls
         for (let i = 0; i <= bricksAlongWidth; i++) {
-          const z = i * (brickL + mortarGap) - width/2 + brickL/2 - offset;
+          const z = i * (brickL + mortarGap) - innerWidth/2 + brickL/2 - offset;
           
-          if (z - brickL/2 > width/2 || z + brickL/2 < -width/2) continue;
+          if (z - brickL/2 > innerWidth/2 || z + brickL/2 < -innerWidth/2) continue;
           
-          const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Dimensions: Depth, Height, Length
+          const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
           brick.position.set(-length/2 + brickW/2, y, z);
           brick.castShadow = true;
           brick.receiveShadow = true;
           scene.add(brick);
         }
         
-        // Right wall - positioned at right edge, spans full width
+        // Right wall - spans BETWEEN front and back walls
         for (let i = 0; i <= bricksAlongWidth; i++) {
-          const z = i * (brickL + mortarGap) - width/2 + brickL/2 - offset;
+          const z = i * (brickL + mortarGap) - innerWidth/2 + brickL/2 - offset;
           
-          if (z - brickL/2 > width/2 || z + brickL/2 < -width/2) continue;
+          if (z - brickL/2 > innerWidth/2 || z + brickL/2 < -innerWidth/2) continue;
           
-          const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Dimensions: Depth, Height, Length
+          const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
           brick.position.set(length/2 - brickW/2, y, z);
           brick.castShadow = true;
           brick.receiveShadow = true;
@@ -374,7 +378,7 @@ export default function BrickStone3DViewer({
 
     // Cleanup
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', handleResize); // Fix: changed handleResizing to handleResize
       if (containerRef.current && renderer.domElement) {
         containerRef.current.removeChild(renderer.domElement);
       }
