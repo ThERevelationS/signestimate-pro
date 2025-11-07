@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+
+import React, { useState, useEffect } from "react";
 import { BrickStoneProject2, BrickStoneInventory2, Settings } from "@/entities/all";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -9,15 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, ArrowLeft, Box, Eye, EyeOff, Plus, Trash2, Sparkles, Loader2 } from "lucide-react";
+import { Save, ArrowLeft, Box, Plus, Trash2, Sparkles, Loader2 } from "lucide-react";
+import BrickStone3DViewer from "@/components/BrickStone3DViewer"; // New import
 
 export default function NewBrickStoneEstimate2() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('edit');
-  const topViewRef = useRef(null);
-  const sideViewRef = useRef(null);
-  const coreSideViewRef = useRef(null);
 
   const [project, setProject] = useState({
     project_name: "",
@@ -42,7 +41,7 @@ export default function NewBrickStoneEstimate2() {
   const [settings, setSettings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [showDimensions, setShowDimensions] = useState(true);
+  // showDimensions state removed
   const [isAIFilling, setIsAIFilling] = useState(false);
   const [hasAutoFilledCore, setHasAutoFilledCore] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -83,14 +82,6 @@ export default function NewBrickStoneEstimate2() {
       performCalculations();
     }
   }, [selectedMaterial, project.core_materials, project.base_type, project.bricks_along_length, project.bricks_along_width, project.courses_high, project.mortar_gap, project.waste_factor]);
-
-  useEffect(() => {
-    drawVisualizations();
-    
-    const handleResize = () => drawVisualizations();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [project, selectedMaterial, showDimensions, calculations]);
 
   const loadProjectForEdit = async (projectId, inventoryData) => {
     try {
@@ -356,519 +347,6 @@ Return your response as a JSON object with the optimal block selection and quant
     });
   };
 
-  const drawVisualizations = () => {
-    if (!topViewRef.current || !sideViewRef.current || !coreSideViewRef.current || !project.bricks_along_length || !calculations || !selectedMaterial) {
-      return;
-    }
-
-    const actualLength = parseFloat(calculations.actualLength);
-    const actualWidth = parseFloat(calculations.actualWidth);
-    const actualHeight = parseFloat(calculations.actualHeight);
-    const mortarGap = project.mortar_gap;
-
-    const drawTopView = () => {
-      const canvas = topViewRef.current;
-      const container = canvas.parentElement;
-      const containerWidth = container.clientWidth;
-      const containerHeight = containerWidth;
-      
-      canvas.width = containerWidth;
-      canvas.height = containerHeight;
-      
-      const ctx = canvas.getContext('2d');
-      const padding = Math.max(40, containerWidth * 0.1);
-      const availableWidth = containerWidth - (padding * 2);
-      const availableHeight = containerHeight - (padding * 2);
-      const scale = Math.min(availableWidth / actualLength, availableHeight / actualWidth);
-
-      ctx.clearRect(0, 0, containerWidth, containerHeight);
-      ctx.save();
-      ctx.translate(padding, padding);
-
-      if (!showDimensions) {
-        ctx.fillStyle = selectedMaterial ? '#dc2626' : '#cbd5e1';
-        ctx.fillRect(0, 0, actualLength * scale, actualWidth * scale);
-
-        if (selectedMaterial) {
-          const wallThickness = calculations.wallThickness;
-          const innerX = wallThickness * scale;
-          const innerY = wallThickness * scale;
-          const innerW = (actualLength - 2 * wallThickness) * scale;
-          const innerH = (actualWidth - 2 * wallThickness) * scale;
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(innerX, innerY, innerW, innerH);
-        }
-
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(0, 0, actualLength * scale, actualWidth * scale);
-      } else {
-          ctx.fillStyle = '#e8ddd1';
-          ctx.fillRect(0, 0, actualLength * scale, actualWidth * scale);
-
-          const brickL = selectedMaterial.length;
-          const brickW = selectedMaterial.width;
-          
-          const numBricksLength = calculations.bricksAlongLength;
-          const numBricksWidth = calculations.bricksAlongWidth;
-          
-          const wallThickness = calculations.wallThickness;
-          
-          ctx.fillStyle = '#a8332e';
-
-          const yStartFront = 0;
-          for (let col = 0; col < numBricksLength; col++) {
-            let xStart = col * (brickL + mortarGap);
-            ctx.fillRect(xStart * scale, yStartFront * scale, brickL * scale, brickW * scale);
-          }
-          
-          const yStartBack = actualWidth - brickW;
-          for (let col = 0; col < numBricksLength; col++) {
-            let xStart = col * (brickL + mortarGap);
-            ctx.fillRect(xStart * scale, yStartBack * scale, brickL * scale, brickW * scale);
-          }
-          
-          const frontWallEnd = wallThickness;
-          const backWallStart = actualWidth - wallThickness;
-          
-          const xStartLeft = 0;
-          for (let row = 0; row < numBricksWidth; row++) {
-            let yStart = frontWallEnd + row * (brickL + mortarGap);
-            const brickYStart = Math.max(frontWallEnd, yStart);
-            const brickYEnd = Math.min(backWallStart, yStart + brickL);
-            const visibleLength = brickYEnd - brickYStart;
-            
-            if (visibleLength > 0.05) {
-              ctx.fillRect(xStartLeft * scale, brickYStart * scale, brickW * scale, visibleLength * scale);
-            }
-          }
-          
-          const xStartRight = actualLength - brickW;
-          for (let row = 0; row < numBricksWidth; row++) {
-            let yStart = frontWallEnd + row * (brickL + mortarGap);
-            const brickYStart = Math.max(frontWallEnd, yStart);
-            const brickYEnd = Math.min(backWallStart, yStart + brickL);
-            const visibleLength = brickYEnd - brickYStart;
-            
-            if (visibleLength > 0.05) {
-              ctx.fillRect(xStartRight * scale, brickYStart * scale, brickW * scale, visibleLength * scale);
-            }
-          }
-          
-          const innerXStart = wallThickness;
-          const innerYStart = wallThickness;
-          const innerXEnd = actualLength - wallThickness;
-          const innerYEnd = actualWidth - wallThickness;
-          
-          const innerLength = innerXEnd - innerXStart;
-          const innerWidth = innerYEnd - innerYStart;
-
-          ctx.fillStyle = '#f5f5f5';
-          ctx.fillRect(innerXStart * scale, innerYStart * scale, innerLength * scale, innerWidth * scale);
-
-          if (project.core_materials && project.core_materials.length > 0) {
-            const validCoreMaterials = project.core_materials.filter(item => {
-              const mat = inventory.find(m => m.id === item.material_id);
-              return mat && item.quantity > 0;
-            });
-            
-            if (validCoreMaterials.length > 0) {
-              const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
-              
-              const blockQueue = [];
-              validCoreMaterials.forEach((coreItem, matIndex) => {
-                const material = inventory.find(m => m.id === coreItem.material_id);
-                if (material) {
-                  for (let i = 0; i < coreItem.quantity; i++) {
-                    blockQueue.push({
-                      material: material,
-                      color: colors[matIndex % colors.length],
-                      materialIndex: matIndex
-                    });
-                  }
-                }
-              });
-              
-              let blockIndex = 0;
-              let currentY = innerYStart;
-              
-              while (currentY < innerYEnd && blockIndex < blockQueue.length) {
-                let currentX = innerXStart;
-                const rowStartIndex = blockIndex;
-                let rowHeight = 0;
-                
-                while (currentX < innerXEnd && blockIndex < blockQueue.length) {
-                  const block = blockQueue[blockIndex];
-                  const blockL = block.material.length;
-                  const blockW = block.material.width;
-                  
-                  const remainingWidth = innerXEnd - currentX;
-                  const remainingHeight = innerYEnd - currentY;
-                  
-                  let useWidth = blockL;
-                  let useHeight = blockW;
-                  
-                  const normalFits = (currentX + blockL <= innerXEnd + 0.01) && (currentY + blockW <= innerYEnd + 0.01);
-                  const rotatedFits = (currentX + blockW <= innerXEnd + 0.01) && (currentY + blockL <= innerYEnd + 0.01);
-                  
-                  if (!normalFits && rotatedFits) {
-                    useWidth = blockW;
-                    useHeight = blockL;
-                  } else if (normalFits && rotatedFits) {
-                    const normalWaste = remainingWidth - blockL;
-                    const rotatedWaste = remainingWidth - blockW;
-                    
-                    if (rotatedWaste < normalWaste && rotatedWaste >= 0) {
-                      useWidth = blockW;
-                      useHeight = blockL;
-                    }
-                  } else if (!normalFits && !rotatedFits) {
-                    break;
-                  }
-                  
-                  if (currentX + useWidth > innerXEnd + 0.01 || currentY + useHeight > innerYEnd + 0.01) {
-                    break;
-                  }
-                  
-                  ctx.fillStyle = block.color;
-                  ctx.fillRect(currentX * scale, currentY * scale, useWidth * scale, useHeight * scale);
-                  ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-                  ctx.lineWidth = 1;
-                  ctx.strokeRect(currentX * scale, currentY * scale, useWidth * scale, useHeight * scale);
-                  
-                  rowHeight = Math.max(rowHeight, useHeight);
-                  currentX += useWidth + mortarGap;
-                  blockIndex++;
-                }
-                
-                if (blockIndex === rowStartIndex) break;
-                currentY += rowHeight + mortarGap;
-              }
-              
-              if (currentY < innerYEnd - 0.5) {
-                ctx.fillStyle = 'rgba(220, 220, 220, 0.3)';
-                ctx.fillRect(innerXStart * scale, currentY * scale, innerLength * scale, (innerYEnd - currentY) * scale);
-              }
-            }
-          }
-
-          ctx.strokeStyle = '#1e293b';
-          ctx.lineWidth = 3;
-          ctx.strokeRect(0, 0, actualLength * scale, actualWidth * scale);
-          
-          ctx.strokeStyle = '#1e293b';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(innerXStart * scale, innerYStart * scale,
-                        innerLength * scale,
-                        innerWidth * scale);
-        }
-
-      if (showDimensions) {
-        const fontSize = Math.max(12, containerWidth * 0.04);
-        ctx.fillStyle = '#1e293b';
-        ctx.font = `bold ${fontSize}px sans-serif`;
-        ctx.textAlign = 'center';
-
-        ctx.fillText(calculations.actualLength + '"', (actualLength * scale) / 2, -fontSize * 1.2);
-
-        ctx.save();
-        ctx.translate(-fontSize * 1.2, (actualWidth * scale) / 2);
-        ctx.rotate(-Math.PI / 2);
-        ctx.fillText(calculations.actualWidth + '"', 0, 0);
-        ctx.restore();
-
-        const labelFontSize = Math.max(10, containerWidth * 0.035);
-        ctx.font = `${labelFontSize}px sans-serif`;
-        ctx.fillStyle = '#64748b';
-        ctx.fillText('TOP VIEW', (actualLength * scale) / 2, actualWidth * scale + fontSize * 2);
-
-        if (selectedMaterial) {
-          const detailFontSize = Math.max(8, containerWidth * 0.03);
-          ctx.font = `${detailFontSize}px sans-serif`;
-          ctx.fillText(`${calculations.bricksAlongLength} × ${calculations.bricksAlongWidth} bricks (1 layer)`,
-                      (actualLength * scale) / 2, actualWidth * scale + fontSize * 3);
-        }
-      }
-
-      ctx.restore();
-    };
-
-    const drawSideView = () => {
-      const canvas = sideViewRef.current;
-      const container = canvas.parentElement;
-      const containerWidth = container.clientWidth;
-      const containerHeight = containerWidth;
-      
-      canvas.width = containerWidth;
-      canvas.height = containerHeight;
-      
-      const ctx = canvas.getContext('2d');
-      const padding = Math.max(40, containerWidth * 0.1);
-      const availableWidth = containerWidth - (padding * 2);
-      const availableHeight = containerHeight - (padding * 2);
-      const scale = Math.min(availableWidth / actualLength, availableHeight / actualHeight);
-
-      ctx.clearRect(0, 0, containerWidth, containerHeight);
-      ctx.save();
-      ctx.translate(padding, padding);
-
-      ctx.fillStyle = selectedMaterial ? '#dc2626' : '#cbd5e1';
-      ctx.fillRect(0, 0, actualLength * scale, actualHeight * scale);
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(0, 0, actualLength * scale, actualHeight * scale);
-
-      if (selectedMaterial && showDimensions) {
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 0.8;
-        const brickH = selectedMaterial.height * scale;
-        const brickL = selectedMaterial.length * scale;
-        const mortarGapScaled = mortarGap * scale;
-
-        for (let courseIndex = 0; courseIndex < calculations.coursesHigh; courseIndex++) {
-          const y = courseIndex * (brickH + mortarGapScaled);
-          if (y + brickH > actualHeight * scale + 0.1) break;
-
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(actualLength * scale, y);
-          ctx.stroke();
-
-          const offset = (courseIndex % 2) * (brickL / 2);
-
-          for (let x = -offset; x < actualLength * scale; x += brickL + mortarGapScaled) {
-            const brickStart = x;
-            const brickEnd = x + brickL;
-            
-            if (brickStart < actualLength * scale - 0.1) {
-              if (brickStart >= -0.1) {
-                ctx.beginPath();
-                ctx.moveTo(brickStart, y);
-                ctx.lineTo(brickStart, y + brickH);
-                ctx.stroke();
-              }
-              
-              if (brickEnd > actualLength * scale + 0.1) {
-                ctx.beginPath();
-                ctx.moveTo(actualLength * scale, y);
-                ctx.lineTo(actualLength * scale, y + brickH);
-                ctx.stroke();
-                break;
-              }
-            }
-          }
-        }
-      }
-
-      if (showDimensions) {
-        const fontSize = Math.max(12, containerWidth * 0.04);
-        ctx.fillStyle = '#1e293b';
-        ctx.font = `bold ${fontSize}px sans-serif`;
-        ctx.textAlign = 'center';
-
-        ctx.fillText(calculations.actualLength + '"', (actualLength * scale) / 2, -fontSize * 1.2);
-
-        ctx.save();
-        ctx.translate(-fontSize * 1.2, (actualHeight * scale) / 2);
-        ctx.rotate(-Math.PI / 2);
-        ctx.fillText(actualHeight + '"', 0, 0);
-        ctx.restore();
-
-        const labelFontSize = Math.max(10, containerWidth * 0.035);
-        ctx.font = `${labelFontSize}px sans-serif`;
-        ctx.fillStyle = '#64748b';
-        ctx.fillText('SIDE VIEW - Wall Material', (actualLength * scale) / 2, actualHeight * scale + fontSize * 2);
-
-        if (selectedMaterial && calculations) {
-          const detailFontSize = Math.max(8, containerWidth * 0.03);
-          ctx.font = `${detailFontSize}px sans-serif`;
-          ctx.fillText(`${calculations.bricksAlongLength} × ${calculations.coursesHigh} courses`,
-                      (actualLength * scale) / 2, actualHeight * scale + fontSize * 3);
-        }
-      }
-
-      ctx.restore();
-    };
-
-    const drawCoreSideView = () => {
-      const canvas = coreSideViewRef.current;
-      const container = canvas.parentElement;
-      const containerWidth = container.clientWidth;
-      const containerHeight = containerWidth;
-      
-      canvas.width = containerWidth;
-      canvas.height = containerHeight;
-      
-      const ctx = canvas.getContext('2d');
-      const padding = Math.max(40, containerWidth * 0.1);
-      const availableWidth = containerWidth - (padding * 2);
-      const availableHeight = containerHeight - (padding * 2);
-      
-      const scale = Math.min(availableWidth / actualLength, availableHeight / actualHeight);
-
-      ctx.clearRect(0, 0, containerWidth, containerHeight);
-      ctx.save();
-      ctx.translate(padding, padding);
-
-      ctx.fillStyle = '#e8ddd1';
-      ctx.fillRect(0, 0, actualLength * scale, actualHeight * scale);
-
-      if (selectedMaterial) {
-        const brickL = selectedMaterial.length;
-        const brickH = selectedMaterial.height;
-        const brickW = selectedMaterial.width;
-        
-        const wallThickness = brickW;
-        const innerXStart = wallThickness;
-        const innerLength = actualLength - (2 * wallThickness);
-
-        ctx.strokeStyle = '#a8332e';
-        ctx.lineWidth = 1.5;
-        ctx.fillStyle = 'rgba(168, 51, 46, 0.15)';
-
-        for (let courseIndex = 0; courseIndex < calculations.coursesHigh; courseIndex++) {
-          const y = courseIndex * (brickH + mortarGap);
-          if (y + brickH > actualHeight + 0.1) break;
-
-          const offset = (courseIndex % 2) * (brickL / 2);
-
-          ctx.fillRect(0, y * scale, brickW * scale, brickH * scale);
-          ctx.strokeRect(0, y * scale, brickW * scale, brickH * scale);
-          
-          ctx.fillRect((actualLength - brickW) * scale, y * scale, brickW * scale, brickH * scale);
-          ctx.strokeRect((actualLength - brickW) * scale, y * scale, brickW * scale, brickH * scale);
-
-          ctx.strokeStyle = 'rgba(168, 51, 46, 0.5)';
-          ctx.lineWidth = 1;
-          for (let x_actual = -offset; x_actual < actualLength; x_actual += (brickL + mortarGap)) {
-            const brickStartActual = x_actual;
-            const brickEndActual = x_actual + brickL;
-            
-            if (brickStartActual >= innerXStart - 0.01 && brickEndActual <= innerXStart + innerLength + 0.01) {
-              ctx.strokeRect(brickStartActual * scale, y * scale, brickL * scale, brickH * scale);
-            }
-          }
-        }
-
-        if (project.core_materials && project.core_materials.length > 0) {
-          const validCoreMaterials = project.core_materials.filter(item => {
-            const mat = inventory.find(m => m.id === item.material_id);
-            return mat && item.quantity > 0;
-          });
-          
-          if (validCoreMaterials.length > 0) {
-            const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
-            
-            const blockQueue = [];
-            validCoreMaterials.forEach((coreItem, matIndex) => {
-              const material = inventory.find(m => m.id === coreItem.material_id);
-              if (material) {
-                for (let i = 0; i < coreItem.quantity; i++) {
-                  blockQueue.push({
-                    material: material,
-                    color: colors[matIndex % colors.length],
-                    materialIndex: matIndex
-                  });
-                }
-              }
-            });
-            
-            let blockIndex = 0;
-            let currentY = actualHeight;
-            
-            while (currentY > 0 && blockIndex < blockQueue.length) {
-              let currentX = innerXStart;
-              const rowStartIndex = blockIndex;
-              let rowHeight = 0;
-              
-              while (currentX < (innerXStart + innerLength) && blockIndex < blockQueue.length) {
-                const block = blockQueue[blockIndex];
-                const blockL = block.material.length;
-                const blockH = block.material.height;
-                
-                const remainingWidth = (innerXStart + innerLength) - currentX;
-                
-                let useWidth = blockL;
-                let useHeight = blockH;
-                
-                const normalFits = (currentX + blockL <= innerXStart + innerLength + 0.01) && (currentY - blockH >= -0.01);
-                const rotatedFits = (currentX + blockH <= innerXStart + innerLength + 0.01) && (currentY - blockL >= -0.01);
-                
-                if (!normalFits && rotatedFits) {
-                  useWidth = blockH;
-                  useHeight = blockL;
-                } else if (normalFits && rotatedFits) {
-                  const normalWaste = remainingWidth - blockL;
-                  const rotatedWaste = remainingWidth - blockH;
-                  
-                  if (rotatedWaste < normalWaste && rotatedWaste >= 0) {
-                    useWidth = blockH;
-                    useHeight = blockL;
-                  }
-                } else if (!normalFits && !rotatedFits) {
-                  break;
-                }
-                
-                if (currentX + useWidth > innerXStart + innerLength + 0.01 || currentY - useHeight < -0.01) {
-                  break;
-                }
-                
-                const blockY = currentY - useHeight;
-                ctx.fillStyle = block.color;
-                ctx.fillRect(currentX * scale, blockY * scale, useWidth * scale, useHeight * scale);
-                ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(currentX * scale, blockY * scale, useWidth * scale, useHeight * scale);
-                
-                rowHeight = Math.max(rowHeight, useHeight);
-                currentX += useWidth + mortarGap;
-                blockIndex++;
-              }
-              
-              if (blockIndex === rowStartIndex) break;
-              currentY -= rowHeight + mortarGap;
-            }
-            
-            if (currentY > 0.5) {
-              ctx.fillStyle = 'rgba(220, 220, 220, 0.4)';
-              ctx.fillRect(innerXStart * scale, 0, innerLength * scale, currentY * scale);
-            }
-          }
-        }
-      }
-
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(0, 0, actualLength * scale, actualHeight * scale);
-
-      if (showDimensions) {
-        const fontSize = Math.max(12, containerWidth * 0.04);
-        ctx.fillStyle = '#1e293b';
-        ctx.font = `bold ${fontSize}px sans-serif`;
-        ctx.textAlign = 'center';
-
-        ctx.fillText(actualLength.toFixed(2) + '"', (actualLength * scale) / 2, -fontSize * 1.2);
-
-        ctx.save();
-        ctx.translate(-fontSize * 1.2, (actualHeight * scale) / 2);
-        ctx.rotate(-Math.PI / 2);
-        ctx.fillText(actualHeight.toFixed(2) + '"', 0, 0);
-        ctx.restore();
-
-        const labelFontSize = Math.max(10, containerWidth * 0.035);
-        ctx.font = `${labelFontSize}px sans-serif`;
-        ctx.fillStyle = '#64748b';
-        ctx.fillText('SIDE VIEW - Wall with Core', (actualLength * scale) / 2, actualHeight * scale + fontSize * 2);
-      }
-
-      ctx.restore();
-    };
-
-    drawTopView();
-    drawSideView();
-    drawCoreSideView();
-  };
-
   const updateBrickCount = (dimension, delta) => {
     setProject(prev => ({
       ...prev,
@@ -965,42 +443,27 @@ Return your response as a JSON object with the optimal block selection and quant
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-3">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                  <div className="flex flex-col">
-                    <h4 className="font-medium mb-2 text-center text-sm">Top View</h4>
-                    <div className="relative w-full" style={{ paddingBottom: '100%' }}>
-                      <canvas 
-                        ref={topViewRef} 
-                        className="absolute inset-0 border border-slate-200 rounded-lg bg-white w-full h-full"
-                        style={{ width: '100%', height: '100%' }}
-                      ></canvas>
-                    </div>
+            {/* 3D Visualizer */}
+            {calculations && selectedMaterial && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">3D Preview</CardTitle>
+                </CardHeader>
+                <CardContent className="p-3">
+                  <div style={{ height: '500px' }}>
+                    <BrickStone3DViewer
+                      actualLength={parseFloat(calculations.actualLength)}
+                      actualWidth={parseFloat(calculations.actualWidth)}
+                      actualHeight={parseFloat(calculations.actualHeight)}
+                      wallThickness={calculations.wallThickness}
+                      selectedMaterial={selectedMaterial}
+                      coreBreakdown={calculations.coreBreakdown}
+                      inventory={inventory}
+                    />
                   </div>
-                  <div className="flex flex-col">
-                    <h4 className="font-medium mb-2 text-center text-sm">Side View - Walls</h4>
-                    <div className="relative w-full" style={{ paddingBottom: '100%' }}>
-                      <canvas 
-                        ref={sideViewRef} 
-                        className="absolute inset-0 border border-slate-200 rounded-lg bg-white w-full h-full"
-                        style={{ width: '100%', height: '100%' }}
-                      ></canvas>
-                    </div>
-                  </div>
-                  <div className="flex flex-col">
-                    <h4 className="font-medium mb-2 text-center text-sm">Side View - Core</h4>
-                    <div className="relative w-full" style={{ paddingBottom: '100%' }}>
-                      <canvas 
-                        ref={coreSideViewRef} 
-                        className="absolute inset-0 border border-slate-200 rounded-lg bg-white w-full h-full"
-                        style={{ width: '100%', height: '100%' }}
-                      ></canvas>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-lg">Base Configuration</CardTitle></CardHeader>
