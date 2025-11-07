@@ -215,10 +215,11 @@ export default function BrickStone3DViewer({
         const offset = (course % 2) * (brickL + mortarGap) / 2;
         const y = course * (brickH + mortarGap) + brickH/2;
         
-        for (let i = 0; i <= bricksAlongLength; i++) {
+        for (let i = 0; i < bricksAlongLength + 2; i++) { // Increased range to allow for proper filtering
           const x = i * (brickL + mortarGap) - length/2 + brickL/2 - offset;
           
-          if (x - brickL/2 > length/2 || x + brickL/2 < -length/2) continue;
+          // Strict boundary check - don't place if ANY part extends beyond wall
+          if (x + brickL/2 < -length/2 || x - brickL/2 > length/2) continue;
           
           const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
           brick.position.set(x, y, -width/2 + brickW/2);
@@ -233,10 +234,11 @@ export default function BrickStone3DViewer({
         const offset = (course % 2) * (brickL + mortarGap) / 2;
         const y = course * (brickH + mortarGap) + brickH/2;
         
-        for (let i = 0; i <= bricksAlongLength; i++) {
+        for (let i = 0; i < bricksAlongLength + 2; i++) { // Increased range
           const x = i * (brickL + mortarGap) - length/2 + brickL/2 - offset;
           
-          if (x - brickL/2 > length/2 || x + brickL/2 < -length/2) continue;
+          // Strict boundary check
+          if (x + brickL/2 < -length/2 || x - brickL/2 > length/2) continue;
           
           const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
           brick.position.set(x, y, width/2 - brickW/2);
@@ -252,10 +254,11 @@ export default function BrickStone3DViewer({
         const y = course * (brickH + mortarGap) + brickH/2;
         
         // Left wall - spans from front to back (minus their thickness)
-        for (let i = 0; i <= bricksAlongWidth; i++) {
+        for (let i = 0; i < bricksAlongWidth + 2; i++) { // Increased range
           const z = i * (brickL + mortarGap) - innerWidth/2 + brickL/2 - offset;
           
-          if (z - brickL/2 > innerWidth/2 || z + brickL/2 < -innerWidth/2) continue;
+          // Strict boundary check
+          if (z + brickL/2 < -innerWidth/2 || z - brickL/2 > innerWidth/2) continue;
           
           const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
           brick.position.set(-length/2 + brickW/2, y, z);
@@ -265,10 +268,11 @@ export default function BrickStone3DViewer({
         }
         
         // Right wall - spans from front to back (minus their thickness)
-        for (let i = 0; i <= bricksAlongWidth; i++) {
+        for (let i = 0; i < bricksAlongWidth + 2; i++) { // Increased range
           const z = i * (brickL + mortarGap) - innerWidth/2 + brickL/2 - offset;
           
-          if (z - brickL/2 > innerWidth/2 || z + brickL/2 < -innerWidth/2) continue;
+          // Strict boundary check
+          if (z + brickL/2 < -innerWidth/2 || z - brickL/2 > innerWidth/2) continue;
           
           const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
           brick.position.set(length/2 - brickW/2, y, z);
