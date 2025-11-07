@@ -547,7 +547,7 @@ export default function BrickStone3DViewer({
       }
     }
 
-    // Core block placement with proper gray cinder block colors
+    // CORRECTED: Core block placement - create inner perimeter wall for structural support
     if (coreBreakdown && coreBreakdown.length > 0 && inventory && selectedMaterial) {
       // Realistic cinder block gray colors (light to dark gray)
       const cinderBlockColors = [
@@ -593,45 +593,126 @@ export default function BrickStone3DViewer({
           const isBlock = material.material_type === 'block';
           const color = cinderBlockColors[colorIdx % cinderBlockColors.length];
           
-          let placedForThisMaterial = 0;
+          let placed = 0;
+          let courseNumber = 0;
           
-          // Fill this material's layer(s) from bottom up until quantity is met or inner height is reached
-          while (placedForThisMaterial < quantity && currentBaseY + blockH <= innerHeight) {
-            let layerPlacedCount = 0; // Blocks placed in the current horizontal layer
-            
-            // Position for the center of the block for the current layer
+          // Stack blocks vertically creating an inner perimeter wall
+          while (placed < quantity && currentBaseY + blockH <= innerHeight) {
             const currentBlockCenterY = currentBaseY + blockH / 2;
+            const isEvenCourse = (courseNumber % 2) === 0;
             
-            // For each horizontal layer, fill Z direction first, then X
-            let z = -innerWidth/2 + blockW/2 + mortarGap;
-            const maxZ = innerWidth/2 - blockW/2 - mortarGap;
+            // Calculate inner perimeter wall position (one block width plus mortar gap inside the outer brick wall)
+            const innerWallOffset = blockW / 2 + mortarGap; // half of blockW to center block, plus mortar gap
             
-            while (z <= maxZ + EPSILON && placedForThisMaterial < quantity) {
+            if (isEvenCourse) {
+              // Even courses: Front and back walls span full inner length
+              // FRONT WALL (at Z = -innerWidth/2 + innerWallOffset)
               let x = -innerLength/2 + blockL/2 + mortarGap;
               const maxX = innerLength/2 - blockL/2 - mortarGap;
-              
-              while (x <= maxX + EPSILON && placedForThisMaterial < quantity) {
+              while (x <= maxX + EPSILON && placed < quantity) {
                 const block = isBlock ? 
                   createDetailedCinderBlock(blockL, blockH, blockW, color) :
                   createDetailedBrick(blockL, blockH, blockW, color);
-                
-                block.position.set(x, currentBlockCenterY, z);
+                block.position.set(x, currentBlockCenterY, -innerWidth/2 + innerWallOffset);
                 scene.add(block);
-                
-                placedForThisMaterial++;
-                layerPlacedCount++;
+                placed++;
                 x += blockL + mortarGap;
               }
-              z += blockW + mortarGap;
+              
+              // BACK WALL (at Z = innerWidth/2 - innerWallOffset)
+              x = -innerLength/2 + blockL/2 + mortarGap;
+              while (x <= maxX + EPSILON && placed < quantity) {
+                const block = isBlock ? 
+                  createDetailedCinderBlock(blockL, blockH, blockW, color) :
+                  createDetailedBrick(blockL, blockH, blockW, color);
+                block.position.set(x, currentBlockCenterY, innerWidth/2 - innerWallOffset);
+                scene.add(block);
+                placed++;
+                x += blockL + mortarGap;
+              }
+              
+              // LEFT WALL (connecting front to back, rotated)
+              const innerPerimeterZ = innerWidth - 2 * innerWallOffset; // distance between inner Z walls
+              let z = -innerPerimeterZ/2 + blockL/2;
+              const maxZ = innerPerimeterZ/2 - blockL/2;
+              while (z <= maxZ + EPSILON && placed < quantity) {
+                const block = isBlock ? 
+                  createDetailedCinderBlock(blockW, blockH, blockL, color) : // Rotated block: length=W, width=L
+                  createDetailedBrick(blockW, blockH, blockL, color);
+                block.position.set(-innerLength/2 + innerWallOffset, currentBlockCenterY, z);
+                scene.add(block);
+                placed++;
+                z += blockL + mortarGap;
+              }
+              
+              // RIGHT WALL (connecting front to back, rotated)
+              z = -innerPerimeterZ/2 + blockL/2;
+              while (z <= maxZ + EPSILON && placed < quantity) {
+                const block = isBlock ? 
+                  createDetailedCinderBlock(blockW, blockH, blockL, color) : // Rotated block: length=W, width=L
+                  createDetailedBrick(blockW, blockH, blockL, color);
+                block.position.set(innerLength/2 - innerWallOffset, currentBlockCenterY, z);
+                scene.add(block);
+                placed++;
+                z += blockL + mortarGap;
+              }
+              
+            } else { // Odd courses
+              // Odd courses: Left and right walls span full inner width (rotated blocks)
+              // LEFT WALL (at X = -innerLength/2 + innerWallOffset)
+              let z = -innerWidth/2 + blockL/2 + mortarGap;
+              const maxZ = innerWidth/2 - blockL/2 - mortarGap;
+              while (z <= maxZ + EPSILON && placed < quantity) {
+                const block = isBlock ? 
+                  createDetailedCinderBlock(blockW, blockH, blockL, color) : // Rotated block: length=W, width=L
+                  createDetailedBrick(blockW, blockH, blockL, color);
+                block.position.set(-innerLength/2 + innerWallOffset, currentBlockCenterY, z);
+                scene.add(block);
+                placed++;
+                z += blockL + mortarGap;
+              }
+              
+              // RIGHT WALL (at X = innerLength/2 - innerWallOffset)
+              z = -innerWidth/2 + blockL/2 + mortarGap;
+              while (z <= maxZ + EPSILON && placed < quantity) {
+                const block = isBlock ? 
+                  createDetailedCinderBlock(blockW, blockH, blockL, color) : // Rotated block: length=W, width=L
+                  createDetailedBrick(blockW, blockH, blockL, color);
+                block.position.set(innerLength/2 - innerWallOffset, currentBlockCenterY, z);
+                scene.add(block);
+                placed++;
+                z += blockL + mortarGap;
+              }
+              
+              // FRONT WALL (connecting left to right)
+              const innerPerimeterX = innerLength - 2 * innerWallOffset; // distance between inner X walls
+              let x = -innerPerimeterX/2 + blockL/2;
+              const maxX = innerPerimeterX/2 - blockL/2;
+              while (x <= maxX + EPSILON && placed < quantity) {
+                const block = isBlock ? 
+                  createDetailedCinderBlock(blockL, blockH, blockW, color) :
+                  createDetailedBrick(blockL, blockH, blockW, color);
+                block.position.set(x, currentBlockCenterY, -innerWidth/2 + innerWallOffset);
+                scene.add(block);
+                placed++;
+                x += blockL + mortarGap;
+              }
+              
+              // BACK WALL (connecting left to right)
+              x = -innerPerimeterX/2 + blockL/2;
+              while (x <= maxX + EPSILON && placed < quantity) {
+                const block = isBlock ? 
+                  createDetailedCinderBlock(blockL, blockH, blockW, color) :
+                  createDetailedBrick(blockL, blockH, blockW, color);
+                block.position.set(x, currentBlockCenterY, innerWidth/2 - innerWallOffset);
+                scene.add(block);
+                placed++;
+                x += blockL + mortarGap;
+              }
             }
             
-            // Move to next course (layer) if we placed blocks in this horizontal layer
-            if (layerPlacedCount > 0) {
-              currentBaseY += blockH + mortarGap;
-            } else {
-              // If no blocks could be placed in this layer (e.g., no space), stop for this material
-              break; 
-            }
+            currentBaseY += blockH + mortarGap;
+            courseNumber++;
           }
         });
       }
