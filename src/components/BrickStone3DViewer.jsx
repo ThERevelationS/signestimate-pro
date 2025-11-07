@@ -547,7 +547,7 @@ export default function BrickStone3DViewer({
       }
     }
 
-    // FILL THE CORE with blocks from inventory - prioritize standard cinder blocks
+    // INTELLIGENT CORE FILL - Rotate blocks in any direction for maximum fill
     if (inventory && inventory.length > 0 && selectedMaterial) {
       const cinderBlockColors = [
         0x9E9E9E, // Medium gray
@@ -558,84 +558,141 @@ export default function BrickStone3DViewer({
         0xA0A0A0, // Light-medium gray
       ];
       
-      // `brickW` here refers to the width of the *outer* selectedMaterial brick
-      const outerBrickWidth = selectedMaterial.width * scale; 
-      
-      // Calculate the available inner space for the core wall
+      const outerBrickWidth = selectedMaterial.width * scale; // `brickW` here refers to the width of the *outer* selectedMaterial brick
       const innerLength = length - 2 * outerBrickWidth; // Total X-dimension available inside outer walls
       const innerWidth = width - 2 * outerBrickWidth;   // Total Z-dimension available inside outer walls
       const innerHeight = height;                       // Total Y-dimension (height) available
       
-      // Sort inventory: prioritize 'block' type materials first, then by height (smaller first for better stacking)
+      // Sort inventory: prioritize 'block' type first, then by volume (largest first for better packing)
       const sortedInventory = [...inventory]
         .filter(m => m.length && m.width && m.height) // Only consider valid materials with dimensions
         .sort((a, b) => {
           // Prioritize 'block' type over others
           if (a.material_type === 'block' && b.material_type !== 'block') return -1;
           if (a.material_type !== 'block' && b.material_type === 'block') return 1;
-          // Then sort by height (ascending)
-          return a.height - b.height;
+          // Then sort by volume (largest first)
+          const volA = a.length * a.width * a.height;
+          const volB = b.length * b.width * b.height;
+          return volB - volA;
         });
       
-      let currentBaseY = mortarGap; // Starting Y position for the first course of core blocks
-      let materialIndex = 0;       // Index to iterate through the sorted inventory
+      let currentBaseY = mortarGap;
       
-      // Fill the core from bottom to top
-      while (currentBaseY < innerHeight - EPSILON && materialIndex < sortedInventory.length) {
-        const material = sortedInventory[materialIndex];
-        const blockL = material.length * scale;
-        const blockW = material.width * scale;
-        const blockH = material.height * scale;
-        const isBlock = material.material_type === 'block';
-        const color = cinderBlockColors[materialIndex % cinderBlockColors.length]; // Assign a consistent color per material type
+      // Keep filling until we run out of height or blocks
+      while (currentBaseY < innerHeight - EPSILON) {
+        let layerPlaced = false;
         
-        // If the current material is too tall to fit in the remaining height, move to the next material
-        if (currentBaseY + blockH > innerHeight + EPSILON) {
-          materialIndex++;
-          continue;
-        }
-        
-        // Calculate the center Y for the current layer of blocks
-        const currentBlockCenterY = currentBaseY + blockH / 2;
-        let layerPlaced = 0; // Counter for blocks placed in this horizontal layer
-        
-        // Fill Z direction (rows)
-        // Start Z from the leftmost inner edge + half block width + mortar gap
-        let z = -innerWidth/2 + blockW/2 + mortarGap;
-        // End Z before the rightmost inner edge - half block width - mortar gap
-        const maxZ = innerWidth/2 - blockW/2 - mortarGap;
-        
-        // Loop to place blocks along the Z-axis (rows)
-        while (z <= maxZ + EPSILON) {
-          // Fill X direction (columns) for this row
-          // Start X from the frontmost inner edge + half block length + mortar gap
-          let x = -innerLength/2 + blockL/2 + mortarGap;
-          // End X before the backmost inner edge - half block length - mortar gap
-          const maxX = innerLength/2 - blockL/2 - mortarGap;
+        // Try each material type until we find one that fits
+        for (let matIdx = 0; matIdx < sortedInventory.length; matIdx++) {
+          const material = sortedInventory[matIdx];
+          const blockH = material.height * scale;
+          const isBlock = material.material_type === 'block';
+          const color = cinderBlockColors[matIdx % cinderBlockColors.length]; // Assign a consistent color per material type
           
-          // Loop to place blocks along the X-axis (columns)
-          while (x <= maxX + EPSILON) {
-            const block = isBlock ? 
-              createDetailedCinderBlock(blockL, blockH, blockW, color) :
-              createDetailedBrick(blockL, blockH, blockW, color);
-            
-            block.position.set(x, currentBlockCenterY, z);
-            scene.add(block);
-            
-            layerPlaced++;
-            x += blockL + mortarGap; // Move to the next block position in X
+          // Check if this material fits in remaining height
+          if (currentBaseY + blockH > innerHeight + EPSILON) {
+            continue; // Try next material in inventory
           }
           
-          z += blockW + mortarGap; // Move to the next row (Z)
+          const currentBlockCenterY = currentBaseY + blockH / 2;
+          
+          // Try all 3 main rotations for the current material to find the best fit for this layer
+          const rotations = [
+            // Normal orientation (length along X, width along Z)
+            { l: material.length * scale, w: material.width * scale, name: 'normal' },
+            // Rotated 90 deg around Y-axis (width along X, length along Z)
+            { l: material.width * scale, w: material.length * scale, name: 'rotated_90Y' },
+            // Rotated 90 deg around X-axis (height along X, width along Z - though typically we orient by length/width in 2D layout)
+            // For a 2D packing algorithm, we primarily care about the dimensions that fit into the XZ plane.
+            // A more comprehensive 3D packing would evaluate all 6 permutations (LWH, LHW, WLH, WHL, HLW, HWL).
+            // For simplicity and common masonry units, LWH and WLH are most common for layer-by-layer placement.
+            // Including (height, width) as (length, width) here allows for blocks to be placed on their side if that optimizes packing,
+            // but this is less common for actual masonry wall construction where height is typically fixed.
+            // Let's stick to the two most common for flat layers for now (LWH, WLH) unless explicitly needing to lay blocks on their sides.
+            // If the goal is "maximum fill" in a void, then this third rotation might be useful.
+            { l: material.height * scale, w: material.width * scale, name: 'rotated_90X' }, 
+            { l: material.length * scale, w: material.height * scale, name: 'rotated_90Z' },
+            { l: material.height * scale, w: material.length * scale, name: 'rotated_Y_on_X_face' },
+            { l: material.width * scale, w: material.height * scale, name: 'rotated_X_on_Y_face' }
+          ];
+
+          let bestRotation = null;
+          let maxCount = -1; // Initialize with -1 to indicate no valid rotation found yet
+          
+          // Find which rotation fits the most blocks in the current XZ plane available space
+          for (const rot of rotations) {
+            // Ensure block dimensions are positive
+            if (rot.l <= 0 || rot.w <= 0) continue;
+
+            // Calculate how many blocks of this rotated size can fit along X and Z
+            // We subtract a small EPSILON to account for potential floating point inaccuracies
+            const effectiveInnerLength = innerLength - mortarGap; // Space available for block + gap
+            const effectiveInnerWidth = innerWidth - mortarGap;
+            
+            const blocksX = Math.floor(effectiveInnerLength / (rot.l + mortarGap));
+            const blocksZ = Math.floor(effectiveInnerWidth / (rot.w + mortarGap));
+            
+            // Only consider valid counts (must fit at least one block fully)
+            if (blocksX > 0 && blocksZ > 0) {
+              const count = blocksX * blocksZ;
+              if (count > maxCount) {
+                maxCount = count;
+                bestRotation = rot;
+              }
+            }
+          }
+          
+          if (maxCount <= 0 || !bestRotation) { // If no blocks can be placed with any rotation, try next material
+            continue; 
+          }
+          
+          // Place blocks with the best rotation found for this material
+          const blockL = bestRotation.l;
+          const blockW = bestRotation.w;
+          let placed = 0;
+          
+          // Fill Z direction (rows)
+          // Start Z from the leftmost inner edge + half block width + mortar gap
+          let z = -innerWidth/2 + blockW/2 + mortarGap;
+          // End Z before the rightmost inner edge - half block width - mortar gap
+          const maxZ = innerWidth/2 - blockW/2 - mortarGap;
+          
+          // Loop to place blocks along the Z-axis (rows)
+          while (z <= maxZ + EPSILON) {
+            // Fill X direction (columns) for this row
+            // Start X from the frontmost inner edge + half block length + mortar gap
+            let x = -innerLength/2 + blockL/2 + mortarGap;
+            // End X before the backmost inner edge - half block length - mortar gap
+            const maxX = innerLength/2 - blockL/2 - mortarGap;
+            
+            // Loop to place blocks along the X-axis (columns)
+            while (x <= maxX + EPSILON) {
+              // Create block with the dimensions from best rotation
+              const block = isBlock ? 
+                createDetailedCinderBlock(blockL, blockH, blockW, color) :
+                createDetailedBrick(blockL, blockH, blockW, color);
+              
+              block.position.set(x, currentBlockCenterY, z);
+              scene.add(block);
+              
+              placed++;
+              x += blockL + mortarGap; // Move to the next block position in X
+            }
+            
+            z += blockW + mortarGap; // Move to the next row (Z)
+          }
+          
+          if (placed > 0) {
+            // Successfully placed a layer, move up for the next layer
+            currentBaseY += blockH + mortarGap;
+            layerPlaced = true;
+            break; // Exit material loop, proceed to fill the next layer with potentially a different material/rotation
+          }
         }
         
-        if (layerPlaced > 0) {
-          // If at least one block was placed in this layer, move up for the next layer
-          currentBaseY += blockH + mortarGap;
-        } else {
-          // If no blocks could fit in this layer (e.g., inner dimensions too small for this block size),
-          // try the next material in the sorted inventory.
-          materialIndex++;
+        // If no material could fit in the current layer, we can't fill higher, so stop.
+        if (!layerPlaced) {
+          break;
         }
       }
     }
