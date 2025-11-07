@@ -182,9 +182,8 @@ export default function BrickStone3DViewer({
     fillLight.position.set(0, -30, 0);
     scene.add(fillLight);
 
-    // Grid helper
-    const gridSize = Math.max(actualLength, actualWidth, actualHeight) * 3;
-    const gridHelper = new THREE.GridHelper(gridSize, 50, 0xcccccc, 0xe0e0e0);
+    // Smaller grid - 30ft x 30ft
+    const gridHelper = new THREE.GridHelper(180, 30, 0xcccccc, 0xe0e0e0); // 30ft = 360 inches. If scale 0.5 (1 unit = 2 inches), then 180 units.
     scene.add(gridHelper);
 
     // Convert inches to scene units
@@ -204,18 +203,18 @@ export default function BrickStone3DViewer({
       
       // Calculate number of courses and bricks
       // For front/back walls (length-wise)
-      const bricksAlongLength = Math.floor((length + mortarGap) / (brickL + mortarGap));
-      const coursesHigh = Math.floor((height + mortarGap) / (brickH + mortarGap));
+      const bricksAlongLength = Math.ceil((length) / (brickL + mortarGap));
+      const coursesHigh = Math.ceil((height) / (brickH + mortarGap));
 
       // Build front wall (spans full length)
       for (let course = 0; course < coursesHigh; course++) {
         const offset = (course % 2) * (brickL + mortarGap) / 2;
         const y = course * (brickH + mortarGap) + brickH/2; // Start from y=0 (floor)
         
-        for (let i = 0; i < bricksAlongLength + 1; i++) {
+        for (let i = 0; i <= bricksAlongLength; i++) {
           const x = i * (brickL + mortarGap) - length/2 + brickL/2 - offset;
-          const epsilon = 0.001;
-          if (x + brickL/2 > length/2 + epsilon || x - brickL/2 < -length/2 - epsilon) continue;
+          
+          if (x - brickL/2 > length/2 || x + brickL/2 < -length/2) continue; // Skip bricks entirely outside bounds
           
           const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
           brick.position.set(x, y, -width/2 + brickW/2);
@@ -230,10 +229,10 @@ export default function BrickStone3DViewer({
         const offset = (course % 2) * (brickL + mortarGap) / 2;
         const y = course * (brickH + mortarGap) + brickH/2; // Start from y=0
         
-        for (let i = 0; i < bricksAlongLength + 1; i++) {
+        for (let i = 0; i <= bricksAlongLength; i++) {
           const x = i * (brickL + mortarGap) - length/2 + brickL/2 - offset;
-          const epsilon = 0.001;
-          if (x + brickL/2 > length/2 + epsilon || x - brickL/2 < -length/2 - epsilon) continue;
+          
+          if (x - brickL/2 > length/2 || x + brickL/2 < -length/2) continue; // Skip bricks entirely outside bounds
           
           const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
           brick.position.set(x, y, width/2 - brickW/2);
@@ -247,17 +246,17 @@ export default function BrickStone3DViewer({
       // For these walls, brickW (selected material width) becomes the depth of the wall (along X-axis),
       // and brickL (selected material length) becomes the span along the Z-axis.
       const innerWidth = width - 2 * brickW; // Subtract front and back wall thickness
-      const bricksAlongWidth = Math.floor((innerWidth + mortarGap) / (brickL + mortarGap)); // Calculate based on innerWidth
+      const bricksAlongWidth = Math.ceil((innerWidth) / (brickL + mortarGap)); // Calculate based on innerWidth
       
       for (let course = 0; course < coursesHigh; course++) {
         const offset = (course % 2) * (brickL + mortarGap) / 2; // Running bond applies to Z-axis here
         const y = course * (brickH + mortarGap) + brickH/2; // Start from y=0
         
         // Left wall
-        for (let i = 0; i < bricksAlongWidth + 1; i++) {
+        for (let i = 0; i <= bricksAlongWidth; i++) {
           const z = i * (brickL + mortarGap) - innerWidth/2 + brickL/2 - offset;
-          const epsilon = 0.001;
-          if (z + brickL/2 > innerWidth/2 + epsilon || z - brickL/2 < -innerWidth/2 - epsilon) continue;
+          
+          if (z - brickL/2 > innerWidth/2 || z + brickL/2 < -innerWidth/2) continue; // Skip bricks entirely outside bounds
           
           const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Dimensions: Depth, Height, Length
           brick.position.set(-length/2 + brickW/2, y, z);
@@ -267,10 +266,10 @@ export default function BrickStone3DViewer({
         }
         
         // Right wall
-        for (let i = 0; i < bricksAlongWidth + 1; i++) {
+        for (let i = 0; i <= bricksAlongWidth; i++) {
           const z = i * (brickL + mortarGap) - innerWidth/2 + brickL/2 - offset;
-          const epsilon = 0.001;
-          if (z + brickL/2 > innerWidth/2 + epsilon || z - brickL/2 < -innerWidth/2 - epsilon) continue;
+          
+          if (z - brickL/2 > innerWidth/2 || z + brickL/2 < -innerWidth/2) continue; // Skip bricks entirely outside bounds
           
           const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Dimensions: Depth, Height, Length
           brick.position.set(length/2 - brickW/2, y, z);
