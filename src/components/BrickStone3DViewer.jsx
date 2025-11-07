@@ -219,8 +219,6 @@ export default function BrickStone3DViewer({
       // Calculate number of courses and bricks
       // For front/back walls (length-wise)
       const bricksAlongLength = Math.floor((length + mortarGap) / (brickL + mortarGap));
-      // For left/right walls (width-wise, considering wall thickness)
-      const bricksAlongWidth = Math.floor(((width - 2 * thickness) + mortarGap) / (brickL + mortarGap));
       const coursesHigh = Math.floor((height + mortarGap) / (brickH + mortarGap));
 
       // Build front wall (individual bricks)
@@ -293,8 +291,9 @@ export default function BrickStone3DViewer({
         }
       }
 
-      // Build left and right walls WITH MORTAR
+      // Build left and right walls - FIXED to span full width
       // For these walls, brickL (selected material length) becomes width, brickW becomes depth (along Z-axis), brickH remains height
+      const bricksAlongWidth = Math.floor((width + mortarGap) / (brickL + mortarGap));
       const effectiveWallDepth = brickW; // The depth of the bricks used for side walls
       const effectiveMortarGapZ = mortarGap; // Mortar gap along the Z-axis
       
@@ -302,12 +301,12 @@ export default function BrickStone3DViewer({
         const offset = (course % 2) * (brickL + mortarGap) / 2; // Running bond applies to Z-axis here
         const y = course * (brickH + mortarGap) - height/2 + brickH/2;
         
-        // Left wall
+        // Left wall - spans from front to back
         for (let i = 0; i < bricksAlongWidth + 1; i++) {
-          const z = i * (brickL + mortarGap) - (width - 2*thickness)/2 + brickL/2 - offset;
+          const z = i * (brickL + mortarGap) - width/2 + brickL/2 - offset;
           
           const epsilon = 0.001;
-          if (z + brickL/2 > (width - 2*thickness)/2 + epsilon || z - brickL/2 < -(width - 2*thickness)/2 - epsilon) continue;
+          if (z + brickL/2 > width/2 + epsilon || z - brickL/2 < -width/2 - epsilon) continue;
           
           const brick = createDetailedBrick(effectiveWallDepth, brickH, brickL, 0xa8332e); // Dimensions: Depth, Height, Length
           brick.position.set(-length/2 + effectiveWallDepth/2, y, z);
@@ -332,12 +331,12 @@ export default function BrickStone3DViewer({
           }
         }
         
-        // Right wall
+        // Right wall - spans from front to back
         for (let i = 0; i < bricksAlongWidth + 1; i++) {
-          const z = i * (brickL + mortarGap) - (width - 2*thickness)/2 + brickL/2 - offset;
+          const z = i * (brickL + mortarGap) - width/2 + brickL/2 - offset;
           
           const epsilon = 0.001;
-          if (z + brickL/2 > (width - 2*thickness)/2 + epsilon || z - brickL/2 < -(width - 2*thickness)/2 - epsilon) continue;
+          if (z + brickL/2 > width/2 + epsilon || z - brickL/2 < -width/2 - epsilon) continue;
           
           const brick = createDetailedBrick(effectiveWallDepth, brickH, brickL, 0xa8332e); // Dimensions: Depth, Height, Length
           brick.position.set(length/2 - effectiveWallDepth/2, y, z);
