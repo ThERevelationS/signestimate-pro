@@ -372,6 +372,9 @@ export default function BrickStone3DViewer({
     const height = actualHeight * scale;
     const thickness = wallThickness * scale;
 
+    // EPSILON constant for floating point comparisons
+    const EPSILON = 0.001;
+
     if (selectedMaterial) {
       const brickL = selectedMaterial.length * scale;
       const brickW = selectedMaterial.width * scale;
@@ -380,9 +383,6 @@ export default function BrickStone3DViewer({
       const coursesHigh = Math.ceil((height) / (brickH + mortarGap));
 
       // PROPER RUNNING BOND MASONRY LAYOUT
-      // A small epsilon for floating point comparison to handle boundary conditions
-      const EPSILON = 0.001; 
-
       for (let course = 0; course < coursesHigh; course++) {
         const y = course * (brickH + mortarGap) + brickH/2;
         const isEvenCourse = (course % 2) === 0;
