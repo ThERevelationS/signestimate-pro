@@ -168,57 +168,6 @@ export default function BrickStone3DViewer({
     mainBrick.receiveShadow = true;
     group.add(mainBrick);
     
-    // Add realistic mortar edges (light gray cement color)
-    const mortarColor = new THREE.Color(0xb8b8b0); // Slightly warm gray
-    const mortarMaterial = new THREE.MeshStandardMaterial({
-      color: mortarColor,
-      roughness: 0.95,
-      metalness: 0.0,
-    });
-    
-    const mortarThickness = Math.min(length, width, height) * 0.015;
-    const mortarOffset = 0.5 - (0.96 / 2) - (mortarThickness / 2);
-    
-    // Mortar edges on all six sides
-    const topBottomMortarGeo = new THREE.BoxGeometry(length, mortarThickness, width);
-    const topMortar = new THREE.Mesh(topBottomMortarGeo, mortarMaterial);
-    topMortar.position.y = height * mortarOffset;
-    topMortar.castShadow = true;
-    topMortar.receiveShadow = true;
-    group.add(topMortar);
-    
-    const bottomMortar = new THREE.Mesh(topBottomMortarGeo, mortarMaterial);
-    bottomMortar.position.y = -height * mortarOffset;
-    bottomMortar.castShadow = true;
-    bottomMortar.receiveShadow = true;
-    group.add(bottomMortar);
-    
-    const sideMortarXGeo = new THREE.BoxGeometry(mortarThickness, height, width);
-    const leftMortar = new THREE.Mesh(sideMortarXGeo, mortarMaterial);
-    leftMortar.position.x = -length * mortarOffset;
-    leftMortar.castShadow = true;
-    leftMortar.receiveShadow = true;
-    group.add(leftMortar);
-    
-    const rightMortar = new THREE.Mesh(sideMortarXGeo, mortarMaterial);
-    rightMortar.position.x = length * mortarOffset;
-    rightMortar.castShadow = true;
-    rightMortar.receiveShadow = true;
-    group.add(rightMortar);
-    
-    const sideMortarZGeo = new THREE.BoxGeometry(length, height, mortarThickness);
-    const frontMortar = new THREE.Mesh(sideMortarZGeo, mortarMaterial);
-    frontMortar.position.z = width * mortarOffset;
-    frontMortar.castShadow = true;
-    frontMortar.receiveShadow = true;
-    group.add(frontMortar);
-    
-    const backMortar = new THREE.Mesh(sideMortarZGeo, mortarMaterial);
-    backMortar.position.z = -width * mortarOffset;
-    backMortar.castShadow = true;
-    backMortar.receiveShadow = true;
-    group.add(backMortar);
-    
     return group;
   };
 
