@@ -17,85 +17,125 @@ export default function BrickStone3DViewer({
   const rendererRef = useRef(null);
   const controlsRef = useRef(null);
 
-  // Create realistic brick with texture and color variation
+  // Create realistic brick with authentic red clay texture
   const createDetailedBrick = (length, height, width, baseColor) => {
     const group = new THREE.Group();
     
-    // Add slight random variation to brick color for realism
-    const colorVariation = Math.random() * 0.15 - 0.075; // ±7.5% variation
-    const brickColor = new THREE.Color(baseColor).multiplyScalar(1 + colorVariation);
-    
-    // Main brick body with realistic dimensions (slight gap for mortar)
+    // Main brick body
     const brickGeometry = new THREE.BoxGeometry(length * 0.96, height * 0.96, width * 0.96);
     
-    // Create procedural brick texture using canvas
+    // Create realistic red clay brick texture
     const createBrickTexture = () => {
       const canvas = document.createElement('canvas');
       canvas.width = 512;
-      canvas.height = 512;
+      canvas.height = 256;
       const ctx = canvas.getContext('2d');
       
-      // Base brick color with variation
-      const baseR = Math.floor(brickColor.r * 255);
-      const baseG = Math.floor(brickColor.g * 255);
-      const baseB = Math.floor(brickColor.b * 255);
+      // Authentic red brick base colors with variation
+      const brickVariations = [
+        { r: 140, g: 45, b: 35 },   // Deep red
+        { r: 168, g: 51, b: 46 },   // Classic red
+        { r: 155, g: 60, b: 50 },   // Rustic red  
+        { r: 130, g: 40, b: 30 },   // Dark red
+      ];
       
-      ctx.fillStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
-      ctx.fillRect(0, 0, 512, 512);
+      const baseColor = brickVariations[Math.floor(Math.random() * brickVariations.length)];
       
-      // Add texture noise for realistic surface
-      const imageData = ctx.getImageData(0, 0, 512, 512);
+      // Create base with slight gradient
+      const gradient = ctx.createLinearGradient(0, 0, 0, 256);
+      gradient.addColorStop(0, `rgb(${baseColor.r + 10}, ${baseColor.g + 10}, ${baseColor.b + 10})`);
+      gradient.addColorStop(0.5, `rgb(${baseColor.r}, ${baseColor.g}, ${baseColor.b})`);
+      gradient.addColorStop(1, `rgb(${baseColor.r - 10}, ${baseColor.g - 10}, ${baseColor.b - 10})`);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 512, 256);
+      
+      // Add realistic brick texture with varied grain
+      const imageData = ctx.getImageData(0, 0, 512, 256);
       for (let i = 0; i < imageData.data.length; i += 4) {
-        const noise = Math.random() * 30 - 15;
+        // Fine grain texture
+        const noise = (Math.random() - 0.5) * 40;
         imageData.data[i] = Math.max(0, Math.min(255, imageData.data[i] + noise));
         imageData.data[i + 1] = Math.max(0, Math.min(255, imageData.data[i + 1] + noise));
         imageData.data[i + 2] = Math.max(0, Math.min(255, imageData.data[i + 2] + noise));
       }
       ctx.putImageData(imageData, 0, 0);
       
-      // Add darker spots for weathering
-      for (let i = 0; i < 15; i++) {
-        ctx.fillStyle = `rgba(${baseR * 0.7}, ${baseG * 0.7}, ${baseB * 0.7}, ${Math.random() * 0.3})`;
-        ctx.fillRect(
-          Math.random() * 512,
-          Math.random() * 512,
-          Math.random() * 80 + 20,
-          Math.random() * 80 + 20
-        );
+      // Add brick surface imperfections and pitting
+      for (let i = 0; i < 60; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 256;
+        const size = Math.random() * 4 + 1;
+        const darkness = Math.random() * 0.4 + 0.2;
+        
+        ctx.fillStyle = `rgba(${baseColor.r * (1 - darkness)}, ${baseColor.g * (1 - darkness)}, ${baseColor.b * (1 - darkness)}, ${Math.random() * 0.6 + 0.4})`;
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
       }
       
-      // Add subtle horizontal lines (texture lines)
-      ctx.strokeStyle = `rgba(${baseR * 0.8}, ${baseG * 0.8}, ${baseB * 0.8}, 0.3)`;
-      ctx.lineWidth = 2;
-      for (let i = 0; i < 8; i++) {
+      // Add weathering stains and discoloration
+      for (let i = 0; i < 25; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 256;
+        const width = Math.random() * 60 + 30;
+        const height = Math.random() * 40 + 20;
+        
+        const stainGradient = ctx.createRadialGradient(x, y, 0, x, y, width);
+        stainGradient.addColorStop(0, `rgba(${baseColor.r * 0.7}, ${baseColor.g * 0.6}, ${baseColor.b * 0.5}, 0.3)`);
+        stainGradient.addColorStop(1, `rgba(${baseColor.r * 0.8}, ${baseColor.g * 0.7}, ${baseColor.b * 0.6}, 0)`);
+        ctx.fillStyle = stainGradient;
+        ctx.fillRect(x - width/2, y - height/2, width, height);
+      }
+      
+      // Add subtle horizontal texture lines (brick manufacturing marks)
+      ctx.strokeStyle = `rgba(${baseColor.r * 0.7}, ${baseColor.g * 0.7}, ${baseColor.b * 0.7}, 0.15)`;
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 12; i++) {
+        const y = (256 / 12) * i + (Math.random() - 0.5) * 10;
         ctx.beginPath();
-        ctx.moveTo(0, (512 / 8) * i + Math.random() * 20);
-        ctx.lineTo(512, (512 / 8) * i + Math.random() * 20);
+        ctx.moveTo(0, y);
+        ctx.lineTo(512, y);
         ctx.stroke();
       }
+      
+      // Add edge darkening for depth
+      const edgeGradient = ctx.createLinearGradient(0, 0, 512, 0);
+      edgeGradient.addColorStop(0, `rgba(0, 0, 0, 0.15)`);
+      edgeGradient.addColorStop(0.1, `rgba(0, 0, 0, 0)`);
+      edgeGradient.addColorStop(0.9, `rgba(0, 0, 0, 0)`);
+      edgeGradient.addColorStop(1, `rgba(0, 0, 0, 0.15)`);
+      ctx.fillStyle = edgeGradient;
+      ctx.fillRect(0, 0, 512, 256);
       
       return new THREE.CanvasTexture(canvas);
     };
     
-    // Create normal map for surface detail
+    // Create enhanced normal map for surface detail
     const createNormalMap = () => {
       const canvas = document.createElement('canvas');
       canvas.width = 512;
-      canvas.height = 512;
+      canvas.height = 256;
       const ctx = canvas.getContext('2d');
       
-      // Base normal (neutral blue-purple)
+      // Base normal
       ctx.fillStyle = '#8080ff';
-      ctx.fillRect(0, 0, 512, 512);
+      ctx.fillRect(0, 0, 512, 256);
       
-      // Add random bumps
-      for (let i = 0; i < 200; i++) {
+      // Add realistic surface bumps and depressions
+      for (let i = 0; i < 400; i++) {
         const x = Math.random() * 512;
-        const y = Math.random() * 512;
-        const radius = Math.random() * 8 + 2;
+        const y = Math.random() * 256;
+        const radius = Math.random() * 6 + 2;
+        const intensity = Math.random() > 0.5 ? 1 : -1;
+        
         const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-        gradient.addColorStop(0, '#9090ff');
-        gradient.addColorStop(1, '#7070ff');
+        if (intensity > 0) {
+          gradient.addColorStop(0, '#a0a0ff');
+          gradient.addColorStop(1, '#7070ff');
+        } else {
+          gradient.addColorStop(0, '#6060ff');
+          gradient.addColorStop(1, '#9090ff');
+        }
         ctx.fillStyle = gradient;
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -117,9 +157,8 @@ export default function BrickStone3DViewer({
     const brickMaterial = new THREE.MeshStandardMaterial({
       map: brickTexture,
       normalMap: normalMap,
-      normalScale: new THREE.Vector2(0.3, 0.3),
-      color: brickColor, // This will apply the base color and then the texture on top
-      roughness: 0.85 + Math.random() * 0.1, // Slight variation
+      normalScale: new THREE.Vector2(0.5, 0.5),
+      roughness: 0.9,
       metalness: 0.0,
       flatShading: false,
     });
@@ -129,19 +168,18 @@ export default function BrickStone3DViewer({
     mainBrick.receiveShadow = true;
     group.add(mainBrick);
     
-    // Add mortar edges (light gray cement color)
-    const mortarColor = new THREE.Color(0xc0c0c0);
+    // Add realistic mortar edges (light gray cement color)
+    const mortarColor = new THREE.Color(0xb8b8b0); // Slightly warm gray
     const mortarMaterial = new THREE.MeshStandardMaterial({
       color: mortarColor,
       roughness: 0.95,
       metalness: 0.0,
     });
     
-    // Mortar gap definition (a small fraction of the brick dimensions)
-    const mortarThickness = Math.min(length, width, height) * 0.02; // Roughly 2% of smallest dimension
-    const mortarOffset = 0.5 - (0.96 / 2) - (mortarThickness / 2); // Position mortar at edge of brick body
+    const mortarThickness = Math.min(length, width, height) * 0.015;
+    const mortarOffset = 0.5 - (0.96 / 2) - (mortarThickness / 2);
     
-    // Top/bottom mortar edges
+    // Mortar edges on all six sides
     const topBottomMortarGeo = new THREE.BoxGeometry(length, mortarThickness, width);
     const topMortar = new THREE.Mesh(topBottomMortarGeo, mortarMaterial);
     topMortar.position.y = height * mortarOffset;
@@ -155,7 +193,6 @@ export default function BrickStone3DViewer({
     bottomMortar.receiveShadow = true;
     group.add(bottomMortar);
     
-    // Side mortar edges (left/right)
     const sideMortarXGeo = new THREE.BoxGeometry(mortarThickness, height, width);
     const leftMortar = new THREE.Mesh(sideMortarXGeo, mortarMaterial);
     leftMortar.position.x = -length * mortarOffset;
@@ -169,7 +206,6 @@ export default function BrickStone3DViewer({
     rightMortar.receiveShadow = true;
     group.add(rightMortar);
     
-    // Front/back mortar edges (front/back)
     const sideMortarZGeo = new THREE.BoxGeometry(length, height, mortarThickness);
     const frontMortar = new THREE.Mesh(sideMortarZGeo, mortarMaterial);
     frontMortar.position.z = width * mortarOffset;
