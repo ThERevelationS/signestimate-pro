@@ -23,20 +23,6 @@ export default function BrickStone3DViewer({
     // Main brick body (slightly smaller to show mortar)
     const brickGeometry = new THREE.BoxGeometry(length * 0.97, height * 0.97, width * 0.97);
     
-    // Add beveled edges using smaller boxes at corners
-    const bevel = 0.02;
-    const positions = [
-      // Top edges
-      [0, height/2, 0, length * 0.97, bevel, width * 0.97],
-      // Bottom edges  
-      [0, -height/2, 0, length * 0.97, bevel, width * 0.97],
-      // Side edges
-      [length/2, 0, 0, bevel, height * 0.97, width * 0.97],
-      [-length/2, 0, 0, bevel, height * 0.97, width * 0.97],
-      [0, 0, width/2, length * 0.97, height * 0.97, bevel],
-      [0, 0, -width/2, length * 0.97, height * 0.97, bevel],
-    ];
-    
     // Create brick material with realistic properties
     const brickMaterial = new THREE.MeshStandardMaterial({
       color: color,
@@ -174,7 +160,6 @@ export default function BrickStone3DViewer({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.outputEncoding = THREE.sRGBEncoding;
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
