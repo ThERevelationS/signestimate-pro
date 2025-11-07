@@ -27,6 +27,7 @@ import BrickStoneInventory from './pages/BrickStoneInventory';
 import BrickStoneSettings from './pages/BrickStoneSettings';
 import NewBrickStoneEstimate2 from './pages/NewBrickStoneEstimate2';
 import BrickStoneProjects2 from './pages/BrickStoneProjects2';
+import BrickStoneInventory2 from './pages/BrickStoneInventory2';
 import Layout from './Layout.jsx';
 
 
@@ -60,6 +61,7 @@ export const PAGES = {
     "BrickStoneSettings": BrickStoneSettings,
     "NewBrickStoneEstimate2": NewBrickStoneEstimate2,
     "BrickStoneProjects2": BrickStoneProjects2,
+    "BrickStoneInventory2": BrickStoneInventory2,
 }
 
 export const pagesConfig = {
