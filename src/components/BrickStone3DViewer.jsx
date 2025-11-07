@@ -338,7 +338,6 @@ export default function BrickStone3DViewer({
           brick.receiveShadow = true;
           scene.add(brick);
           
-          // Fill middle bricks for right wall
           z = -width/2 + brickL/2 + brickL + mortarGap;
           while (z <= endZ + EPSILON) {
             brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Swapped length/width
@@ -376,13 +375,23 @@ export default function BrickStone3DViewer({
       }
     }
 
-    // Add core blocks with individual block models
-    if (coreBreakdown && coreBreakdown.length > 0 && inventory) {
+    // FIXED CORE BLOCK PLACEMENT
+    if (coreBreakdown && coreBreakdown.length > 0 && inventory && selectedMaterial) {
       const colors = [0x8B4513, 0xA0522D, 0xD2691E, 0xCD853F, 0xDEB887, 0xF4A460];
       
-      const innerLength = length - 2 * thickness;
-      const innerWidth = width - 2 * thickness;
+      // Calculate actual inner dimensions based on brick wall thickness
+      const brickW = selectedMaterial.width * scale;
+      const innerLength = length - 2 * brickW;  // Inner cavity length
+      const innerWidth = width - 2 * brickW;    // Inner cavity width
       const innerHeight = height;
+      
+      // Start placing from floor, leaving small clearance from walls
+      const startX = -innerLength/2 + mortarGap;
+      const startZ = -innerWidth/2 + mortarGap;
+      const startY = mortarGap;  // Start just above floor
+      
+      const maxX = innerLength/2 - mortarGap;
+      const maxZ = innerWidth/2 - mortarGap;
       
       coreBreakdown.forEach((coreItem, matIndex) => {
         const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
@@ -393,17 +402,17 @@ export default function BrickStone3DViewer({
         const blockH = coreMaterial.height * scale;
         const isBlock = coreMaterial.material_type === 'block';
         
-        // Simple grid layout for core blocks
         let placed = 0;
-        let currentY = blockH/2; // Start from floor (y=0)
+        let currentY = startY + blockH/2;
         
+        // Stack blocks in neat courses
         while (currentY < innerHeight && placed < coreItem.quantity) {
-          let currentZ = -innerWidth/2 + blockW/2;
+          let currentZ = startZ + blockW/2;
           
-          while (currentZ < innerWidth/2 && placed < coreItem.quantity) {
-            let currentX = -innerLength/2 + blockL/2;
+          while (currentZ + blockW/2 <= maxZ && placed < coreItem.quantity) {
+            let currentX = startX + blockL/2;
             
-            while (currentX < innerLength/2 && placed < coreItem.quantity) {
+            while (currentX + blockL/2 <= maxX && placed < coreItem.quantity) {
               const block = isBlock ? 
                 createDetailedCinderBlock(blockL, blockH, blockW, colors[matIndex % colors.length]) :
                 createDetailedBrick(blockL, blockH, blockW, colors[matIndex % colors.length]);
