@@ -171,15 +171,15 @@ export default function BrickStone3DViewer({
     return group;
   };
 
-  // Create realistic hollow cinder block
+  // Create realistic hollow cinder block with proper gray concrete appearance
   const createDetailedCinderBlock = (length, height, width, baseColor) => {
     const group = new THREE.Group();
     
-    const colorVariation = Math.random() * 0.1 - 0.05;
+    const colorVariation = Math.random() * 0.08 - 0.04;
     const blockColor = new THREE.Color(baseColor).multiplyScalar(1 + colorVariation);
     
-    // Make walls thinner for more visible hollow cores
-    const blockWallThickness = Math.min(length, width) * 0.08;
+    // Very thin walls to clearly show hollow structure
+    const blockWallThickness = Math.min(length, width) * 0.06;
     
     const createConcreteTexture = () => {
       const canvas = document.createElement('canvas');
@@ -191,26 +191,50 @@ export default function BrickStone3DViewer({
       const baseG = Math.floor(blockColor.g * 255);
       const baseB = Math.floor(blockColor.b * 255);
 
+      // Base concrete color
       ctx.fillStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
       ctx.fillRect(0, 0, 512, 512);
       
+      // Add coarse aggregate texture (realistic concrete appearance)
       const imageData = ctx.getImageData(0, 0, 512, 512);
       for (let i = 0; i < imageData.data.length; i += 4) {
-        const noise = Math.random() * 40 - 20;
+        const noise = Math.random() * 50 - 25;
         imageData.data[i] = Math.max(0, Math.min(255, imageData.data[i] + noise));
         imageData.data[i + 1] = Math.max(0, Math.min(255, imageData.data[i + 1] + noise));
         imageData.data[i + 2] = Math.max(0, Math.min(255, imageData.data[i + 2] + noise));
       }
       ctx.putImageData(imageData, 0, 0);
       
+      // Add realistic aggregate stones (lighter spots)
+      for (let i = 0; i < 150; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        const size = Math.random() * 6 + 2;
+        ctx.fillStyle = `rgba(${baseR + 20 + Math.random() * 30}, ${baseG + 20 + Math.random() * 30}, ${baseB + 20 + Math.random() * 30}, ${Math.random() * 0.6 + 0.4})`;
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // Add darker aggregate (cement pockets)
       for (let i = 0; i < 100; i++) {
-        ctx.fillStyle = `rgba(${100 + Math.random() * 50}, ${100 + Math.random() * 50}, ${100 + Math.random() * 50}, 0.5)`;
-        ctx.fillRect(
-          Math.random() * 512,
-          Math.random() * 512,
-          Math.random() * 4 + 1,
-          Math.random() * 4 + 1
-        );
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        const size = Math.random() * 4 + 1;
+        ctx.fillStyle = `rgba(${Math.max(0, baseR - 20)}, ${Math.max(0, baseG - 20)}, ${Math.max(0, baseB - 20)}, ${Math.random() * 0.5 + 0.3})`;
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // Add surface imperfections and pitting
+      for (let i = 0; i < 80; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        const width = Math.random() * 15 + 5;
+        const height = Math.random() * 15 + 5;
+        ctx.fillStyle = `rgba(${Math.max(0, baseR - 30)}, ${Math.max(0, baseG - 30)}, ${Math.max(0, baseB - 30)}, ${Math.random() * 0.3 + 0.1})`;
+        ctx.fillRect(x, y, width, height);
       }
       
       return new THREE.CanvasTexture(canvas);
@@ -228,9 +252,9 @@ export default function BrickStone3DViewer({
       flatShading: false,
     });
     
-    // Create the 6 walls of the hollow block with better proportions
-    // Front and back faces
-    const frontBackGeo = new THREE.BoxGeometry(length * 0.95, height * 0.95, blockWallThickness);
+    // Create hollow cinder block structure
+    // Front and back faces (the wider faces)
+    const frontBackGeo = new THREE.BoxGeometry(length * 0.94, height * 0.94, blockWallThickness);
     const frontFace = new THREE.Mesh(frontBackGeo, blockMaterial);
     frontFace.position.z = (width/2) - (blockWallThickness/2);
     frontFace.castShadow = true;
@@ -243,8 +267,8 @@ export default function BrickStone3DViewer({
     backFace.receiveShadow = true;
     group.add(backFace);
     
-    // Left and right faces
-    const leftRightGeo = new THREE.BoxGeometry(blockWallThickness, height * 0.95, width * 0.95 - 2 * blockWallThickness);
+    // Left and right end walls
+    const leftRightGeo = new THREE.BoxGeometry(blockWallThickness, height * 0.94, width * 0.94 - 2 * blockWallThickness);
     const leftFace = new THREE.Mesh(leftRightGeo, blockMaterial);
     leftFace.position.x = -(length/2) + (blockWallThickness/2);
     leftFace.castShadow = true;
@@ -258,7 +282,7 @@ export default function BrickStone3DViewer({
     group.add(rightFace);
     
     // Top and bottom faces
-    const topBottomGeo = new THREE.BoxGeometry(length * 0.95 - 2 * blockWallThickness, blockWallThickness, width * 0.95 - 2 * blockWallThickness);
+    const topBottomGeo = new THREE.BoxGeometry(length * 0.94 - 2 * blockWallThickness, blockWallThickness, width * 0.94 - 2 * blockWallThickness);
     const topFace = new THREE.Mesh(topBottomGeo, blockMaterial);
     topFace.position.y = (height/2) - (blockWallThickness/2);
     topFace.castShadow = true;
@@ -271,20 +295,23 @@ export default function BrickStone3DViewer({
     bottomFace.receiveShadow = true;
     group.add(bottomFace);
     
-    // Add TWO vertical webs (dividers) to create THREE hollow cores
-    const webThickness = blockWallThickness * 0.5;
-    const webGeo = new THREE.BoxGeometry(webThickness, height * 0.95 - 2 * blockWallThickness, width * 0.95 - 2 * blockWallThickness);
+    // Add TWO vertical webs (dividers) to create THREE distinct hollow cores
+    const webThickness = blockWallThickness * 0.7;
+    const webGeo = new THREE.BoxGeometry(webThickness, height * 0.94 - 2 * blockWallThickness, width * 0.94 - 2 * blockWallThickness);
     
-    // First web (left of center)
+    // Position webs to create three equal sections
+    const sectionWidth = (length - 2 * blockWallThickness) / 3;
+    
+    // First web - one third from left
     const web1 = new THREE.Mesh(webGeo, blockMaterial);
-    web1.position.x = -(length * 0.25);
+    web1.position.x = -(length/2) + blockWallThickness + sectionWidth;
     web1.castShadow = true;
     web1.receiveShadow = true;
     group.add(web1);
     
-    // Second web (right of center)
+    // Second web - two thirds from left
     const web2 = new THREE.Mesh(webGeo, blockMaterial);
-    web2.position.x = (length * 0.25);
+    web2.position.x = -(length/2) + blockWallThickness + 2 * sectionWidth;
     web2.castShadow = true;
     web2.receiveShadow = true;
     group.add(web2);
@@ -365,7 +392,7 @@ export default function BrickStone3DViewer({
     const length = actualLength * scale;
     const width = actualWidth * scale;
     const height = actualHeight * scale;
-    // const thickness = wallThickness * scale; // This variable is not used after definition
+    const thickness = wallThickness * scale; // This variable is not used after definition
 
     // EPSILON constant for floating point comparisons
     const EPSILON = 0.001;
@@ -514,9 +541,17 @@ export default function BrickStone3DViewer({
       }
     }
 
-    // MASON-STYLE CORE BLOCK PLACEMENT - Fixed to handle missing materials
+    // Core block placement with proper gray cinder block colors
     if (coreBreakdown && coreBreakdown.length > 0 && inventory && selectedMaterial) {
-      const colors = [0x8B4513, 0xA0522D, 0xD2691E, 0xCD853F, 0xDEB887, 0xF4A460];
+      // Realistic cinder block gray colors (light to dark gray)
+      const cinderBlockColors = [
+        0x9E9E9E, // Medium gray
+        0xB0B0B0, // Light gray
+        0x808080, // Standard gray
+        0x909090, // Slightly lighter
+        0x707070, // Dark gray
+        0xA0A0A0, // Light-medium gray
+      ];
       
       const brickW = selectedMaterial.width * scale; // Width of the outer brick that forms the wall
       const innerLength = length - 2 * brickW;
@@ -540,9 +575,7 @@ export default function BrickStone3DViewer({
         .filter(item => item !== null) // Filter out the nulls
         .sort((a, b) => a.material.height - b.material.height);
       
-      if (validCoreMaterials.length === 0) {
-        // No valid core materials to place, skip this section
-      } else {
+      if (validCoreMaterials.length > 0) {
         // Place materials in vertical layers (first material on bottom, then stack upward)
         let currentBaseY = mortarGap; // Start placing slightly above the floor
         
@@ -552,7 +585,7 @@ export default function BrickStone3DViewer({
           const blockW = material.width * scale;
           const blockH = material.height * scale;
           const isBlock = material.material_type === 'block';
-          const color = colors[colorIdx % colors.length];
+          const color = cinderBlockColors[colorIdx % cinderBlockColors.length];
           
           let placedForThisMaterial = 0;
           
