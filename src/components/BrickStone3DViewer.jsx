@@ -327,9 +327,9 @@ export default function BrickStone3DViewer({
           // Frontmost brick (corner)
           brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
           brick.position.set(length/2 - brickW/2, y, -width/2 + brickL/2);
-            brick.castShadow = true;
-            brick.receiveShadow = true;
-            scene.add(brick);
+          brick.castShadow = true;
+          brick.receiveShadow = true;
+          scene.add(brick);
           
           // Backmost brick (corner)
           brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
@@ -375,75 +375,82 @@ export default function BrickStone3DViewer({
       }
     }
 
-    // MASON'S APPROACH TO CORE FILL - Stack materials in courses from bottom up
+    // MASON-STYLE CORE BLOCK PLACEMENT
     if (coreBreakdown && coreBreakdown.length > 0 && inventory && selectedMaterial) {
       const colors = [0x8B4513, 0xA0522D, 0xD2691E, 0xCD853F, 0xDEB887, 0xF4A460];
       
       // Calculate inner cavity dimensions
-      const brickW = selectedMaterial.width * scale;
+      const brickW = selectedMaterial.width * scale; // Width of the outer brick that forms the wall
       const innerLength = length - 2 * brickW;
       const innerWidth = width - 2 * brickW;
       const innerHeight = height;
       
-      // Define the available fill area with small clearance from walls
-      const clearance = mortarGap * 2;
-      const fillStartX = -innerLength/2 + clearance;
-      const fillEndX = innerLength/2 - clearance;
-      const fillStartZ = -innerWidth/2 + clearance;
-      const fillEndZ = innerWidth/2 - clearance;
+      // Calculate total quantity needed
+      const totalQuantity = coreBreakdown.reduce((sum, item) => sum + (item.quantity || 0), 0);
       
-      // Track current fill height as we stack materials
-      let currentFillHeight = 0;
+      if (totalQuantity === 0) return; // No core materials to place
       
-      // Place each core material in order, stacking vertically
-      coreBreakdown.forEach((coreItem, matIndex) => {
-        const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
-        if (!coreMaterial || coreItem.quantity === 0) return;
-
-        const blockL = coreMaterial.length * scale;
-        const blockW = coreMaterial.width * scale;
-        const blockH = coreMaterial.height * scale;
-        const isBlock = coreMaterial.material_type === 'block';
+      // Prepare and sort materials by height (place shorter blocks first for stable base)
+      const sortedMaterials = [...coreBreakdown]
+        .map((coreItem, idx) => {
+          const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
+          return { ...coreItem, material: coreMaterial, colorIdx: idx };
+        })
+        .filter(item => item.material && item.quantity > 0)
+        .sort((a, b) => a.material.height - b.material.height);
+      
+      // Place materials in vertical layers (first material on bottom, then stack upward)
+      let currentBaseY = mortarGap; // Start placing slightly above the floor
+      
+      sortedMaterials.forEach((materialData) => {
+        const { material, quantity, colorIdx } = materialData;
+        const blockL = material.length * scale;
+        const blockW = material.width * scale;
+        const blockH = material.height * scale;
+        const isBlock = material.material_type === 'block';
+        const color = colors[colorIdx % colors.length];
         
-        let placed = 0;
-        const targetQty = coreItem.quantity;
+        let placedForThisMaterial = 0;
         
-        // Start placing at the current fill height
-        let layerY = currentFillHeight + blockH/2;
-        
-        // Fill courses horizontally at each level
-        while (placed < targetQty && layerY < innerHeight) {
-          // Fill this course level
-          let z = fillStartZ + blockW/2;
+        // Fill this material's layer(s) from bottom up until quantity is met or inner height is reached
+        while (placedForThisMaterial < quantity && currentBaseY + blockH <= innerHeight) {
+          let layerPlacedCount = 0; // Blocks placed in the current horizontal layer
           
-          while (z + blockW/2 <= fillEndZ && placed < targetQty) {
-            let x = fillStartX + blockL/2;
+          // Position for the center of the block for the current layer
+          const currentBlockCenterY = currentBaseY + blockH / 2;
+          
+          // For each horizontal layer, fill Z direction first, then X
+          let z = -innerWidth/2 + blockW/2 + mortarGap;
+          const maxZ = innerWidth/2 - blockW/2 - mortarGap;
+          
+          while (z <= maxZ && placedForThisMaterial < quantity) {
+            let x = -innerLength/2 + blockL/2 + mortarGap;
+            const maxX = innerLength/2 - blockL/2 - mortarGap;
             
-            while (x + blockL/2 <= fillEndX && placed < targetQty) {
+            while (x <= maxX && placedForThisMaterial < quantity) {
               const block = isBlock ? 
-                createDetailedCinderBlock(blockL, blockH, blockW, colors[matIndex % colors.length]) :
-                createDetailedBrick(blockL, blockH, blockW, colors[matIndex % colors.length]);
+                createDetailedCinderBlock(blockL, blockH, blockW, color) :
+                createDetailedBrick(blockL, blockH, blockW, color);
               
-              block.position.set(x, layerY, z);
+              block.position.set(x, currentBlockCenterY, z);
               block.castShadow = true;
               block.receiveShadow = true;
               scene.add(block);
               
-              placed++;
+              placedForThisMaterial++;
+              layerPlacedCount++;
               x += blockL + mortarGap;
             }
             z += blockW + mortarGap;
           }
           
-          // Move up to next course
-          layerY += blockH + mortarGap;
-        }
-        
-        // Update the fill height for the next material
-        // This is the top of the last block placed for this material.
-        // We add mortarGap to account for the mortar on top of this course.
-        if (placed > 0) {
-          currentFillHeight = (layerY - (blockH + mortarGap)) + blockH + mortarGap;
+          // Move to next course (layer) if we placed blocks in this horizontal layer
+          if (layerPlacedCount > 0) {
+            currentBaseY += blockH + mortarGap;
+          } else {
+            // If no blocks could be placed in this layer (e.g., no space), stop for this material
+            break; 
+          }
         }
       });
     }
