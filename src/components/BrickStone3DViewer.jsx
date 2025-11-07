@@ -171,15 +171,15 @@ export default function BrickStone3DViewer({
     return group;
   };
 
-  // Create realistic hollow cinder block with proper gray concrete appearance
+  // Create realistic hollow cinder block - CORRECTED to match reference image
   const createDetailedCinderBlock = (length, height, width, baseColor) => {
     const group = new THREE.Group();
     
     const colorVariation = Math.random() * 0.08 - 0.04;
     const blockColor = new THREE.Color(baseColor).multiplyScalar(1 + colorVariation);
     
-    // Very thin walls to clearly show hollow structure
-    const blockWallThickness = Math.min(length, width) * 0.06;
+    // Wall thickness - realistic for cinder blocks
+    const blockWallThickness = Math.min(length, width) * 0.08;
     
     const createConcreteTexture = () => {
       const canvas = document.createElement('canvas');
@@ -191,11 +191,9 @@ export default function BrickStone3DViewer({
       const baseG = Math.floor(blockColor.g * 255);
       const baseB = Math.floor(blockColor.b * 255);
 
-      // Base concrete color
       ctx.fillStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
       ctx.fillRect(0, 0, 512, 512);
       
-      // Add coarse aggregate texture (realistic concrete appearance)
       const imageData = ctx.getImageData(0, 0, 512, 512);
       for (let i = 0; i < imageData.data.length; i += 4) {
         const noise = Math.random() * 50 - 25;
@@ -205,7 +203,6 @@ export default function BrickStone3DViewer({
       }
       ctx.putImageData(imageData, 0, 0);
       
-      // Add realistic aggregate stones (lighter spots)
       for (let i = 0; i < 150; i++) {
         const x = Math.random() * 512;
         const y = Math.random() * 512;
@@ -216,7 +213,6 @@ export default function BrickStone3DViewer({
         ctx.fill();
       }
       
-      // Add darker aggregate (cement pockets)
       for (let i = 0; i < 100; i++) {
         const x = Math.random() * 512;
         const y = Math.random() * 512;
@@ -227,7 +223,6 @@ export default function BrickStone3DViewer({
         ctx.fill();
       }
       
-      // Add surface imperfections and pitting
       for (let i = 0; i < 80; i++) {
         const x = Math.random() * 512;
         const y = Math.random() * 512;
@@ -252,8 +247,10 @@ export default function BrickStone3DViewer({
       flatShading: false,
     });
     
-    // Create hollow cinder block structure
-    // Front and back faces (the wider faces)
+    // CORRECTED STRUCTURE: Standard cinder block has 2 cores running along the LENGTH
+    // with 1 central web running along the WIDTH (perpendicular to length)
+    
+    // Front and back faces (the LENGTH x HEIGHT faces at -width/2 and +width/2)
     const frontBackGeo = new THREE.BoxGeometry(length * 0.94, height * 0.94, blockWallThickness);
     const frontFace = new THREE.Mesh(frontBackGeo, blockMaterial);
     frontFace.position.z = (width/2) - (blockWallThickness/2);
@@ -267,7 +264,7 @@ export default function BrickStone3DViewer({
     backFace.receiveShadow = true;
     group.add(backFace);
     
-    // Left and right end walls
+    // Left and right end walls (the WIDTH x HEIGHT faces at -length/2 and +length/2)
     const leftRightGeo = new THREE.BoxGeometry(blockWallThickness, height * 0.94, width * 0.94 - 2 * blockWallThickness);
     const leftFace = new THREE.Mesh(leftRightGeo, blockMaterial);
     leftFace.position.x = -(length/2) + (blockWallThickness/2);
@@ -295,26 +292,21 @@ export default function BrickStone3DViewer({
     bottomFace.receiveShadow = true;
     group.add(bottomFace);
     
-    // Add TWO vertical webs (dividers) to create THREE distinct hollow cores
-    const webThickness = blockWallThickness * 0.7;
-    const webGeo = new THREE.BoxGeometry(webThickness, height * 0.94 - 2 * blockWallThickness, width * 0.94 - 2 * blockWallThickness);
+    // CORRECTED: ONE central web running along the LENGTH (parallel to X-axis)
+    // This creates TWO hollow cores that run along the length of the block
+    const webThickness = blockWallThickness * 0.8; // Use 0.8 as in the prompt
+    const webGeo = new THREE.BoxGeometry(
+      length * 0.94 - 2 * blockWallThickness, // Spans the inner length (X)
+      height * 0.94 - 2 * blockWallThickness, // Spans the inner height (Y)
+      webThickness                            // Its own thickness (Z)
+    );
     
-    // Position webs to create three equal sections
-    const sectionWidth = (length - 2 * blockWallThickness) / 3;
-    
-    // First web - one third from left
-    const web1 = new THREE.Mesh(webGeo, blockMaterial);
-    web1.position.x = -(length/2) + blockWallThickness + sectionWidth;
-    web1.castShadow = true;
-    web1.receiveShadow = true;
-    group.add(web1);
-    
-    // Second web - two thirds from left
-    const web2 = new THREE.Mesh(webGeo, blockMaterial);
-    web2.position.x = -(length/2) + blockWallThickness + 2 * sectionWidth;
-    web2.castShadow = true;
-    web2.receiveShadow = true;
-    group.add(web2);
+    // Position the web at the center of the WIDTH (z=0)
+    const centralWeb = new THREE.Mesh(webGeo, blockMaterial);
+    centralWeb.position.z = 0; // Center along width
+    centralWeb.castShadow = true;
+    centralWeb.receiveShadow = true;
+    group.add(centralWeb);
     
     return group;
   };
