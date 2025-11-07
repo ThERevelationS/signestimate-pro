@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -216,8 +217,10 @@ export default function BrickStone3DViewer({
       const brickH = selectedMaterial.height * scale;
       
       // Calculate number of courses and bricks
+      // For front/back walls (length-wise)
       const bricksAlongLength = Math.floor((length + mortarGap) / (brickL + mortarGap));
-      const bricksAlongWidth = Math.floor((width - 2 * thickness + mortarGap) / (brickL + mortarGap));
+      // For left/right walls (width-wise, considering wall thickness)
+      const bricksAlongWidth = Math.floor(((width - 2 * thickness) + mortarGap) / (brickL + mortarGap));
       const coursesHigh = Math.floor((height + mortarGap) / (brickH + mortarGap));
 
       // Build front wall (individual bricks)
@@ -229,7 +232,9 @@ export default function BrickStone3DViewer({
           const x = i * (brickL + mortarGap) - length/2 + brickL/2 - offset;
           
           // Check if brick is within bounds
-          if (x + brickL/2 > length/2 || x - brickL/2 < -length/2) continue;
+          // Use a small epsilon to account for floating point inaccuracies near boundary
+          const epsilon = 0.001;
+          if (x + brickL/2 > length/2 + epsilon || x - brickL/2 < -length/2 - epsilon) continue;
           
           const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
           brick.position.set(x, y, -width/2 + brickW/2);
@@ -237,15 +242,16 @@ export default function BrickStone3DViewer({
           brick.receiveShadow = true;
           scene.add(brick);
           
-          // Add mortar joints
-          if (i < bricksAlongLength) {
+          // Add vertical mortar joints between bricks (along X-axis)
+          if (i < bricksAlongLength) { // Don't add mortar past the last brick
             const mortarV = createMortar(mortarGap, brickH, brickW);
             mortarV.position.set(x + brickL/2 + mortarGap/2, y, -width/2 + brickW/2);
             mortarV.receiveShadow = true;
             scene.add(mortarV);
           }
           
-          if (course < coursesHigh - 1) {
+          // Add horizontal mortar joints between courses (along Y-axis)
+          if (course < coursesHigh - 1) { // Don't add mortar above the top course
             const mortarH = createMortar(brickL, mortarGap, brickW);
             mortarH.position.set(x, y + brickH/2 + mortarGap/2, -width/2 + brickW/2);
             mortarH.receiveShadow = true;
@@ -262,7 +268,8 @@ export default function BrickStone3DViewer({
         for (let i = 0; i < bricksAlongLength + 1; i++) {
           const x = i * (brickL + mortarGap) - length/2 + brickL/2 - offset;
           
-          if (x + brickL/2 > length/2 || x - brickL/2 < -length/2) continue;
+          const epsilon = 0.001;
+          if (x + brickL/2 > length/2 + epsilon || x - brickL/2 < -length/2 - epsilon) continue;
           
           const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
           brick.position.set(x, y, width/2 - brickW/2);
@@ -286,35 +293,73 @@ export default function BrickStone3DViewer({
         }
       }
 
-      // Build left and right walls
+      // Build left and right walls WITH MORTAR
+      // For these walls, brickL (selected material length) becomes width, brickW becomes depth (along Z-axis), brickH remains height
+      const effectiveWallDepth = brickW; // The depth of the bricks used for side walls
+      const effectiveMortarGapZ = mortarGap; // Mortar gap along the Z-axis
+      
       for (let course = 0; course < coursesHigh; course++) {
-        const offset = (course % 2) * (brickL + mortarGap) / 2;
+        const offset = (course % 2) * (brickL + mortarGap) / 2; // Running bond applies to Z-axis here
         const y = course * (brickH + mortarGap) - height/2 + brickH/2;
         
         // Left wall
         for (let i = 0; i < bricksAlongWidth + 1; i++) {
           const z = i * (brickL + mortarGap) - (width - 2*thickness)/2 + brickL/2 - offset;
           
-          if (z + brickL/2 > (width - 2*thickness)/2 || z - brickL/2 < -(width - 2*thickness)/2) continue;
+          const epsilon = 0.001;
+          if (z + brickL/2 > (width - 2*thickness)/2 + epsilon || z - brickL/2 < -(width - 2*thickness)/2 - epsilon) continue;
           
-          const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
-          brick.position.set(-length/2 + brickW/2, y, z);
+          const brick = createDetailedBrick(effectiveWallDepth, brickH, brickL, 0xa8332e); // Dimensions: Depth, Height, Length
+          brick.position.set(-length/2 + effectiveWallDepth/2, y, z);
           brick.castShadow = true;
           brick.receiveShadow = true;
           scene.add(brick);
+          
+          // Add vertical mortar joints between bricks (along Z-axis)
+          if (i < bricksAlongWidth) {
+            const mortarV = createMortar(effectiveWallDepth, brickH, effectiveMortarGapZ); // Mortar between bricks (vertical from side view)
+            mortarV.position.set(-length/2 + effectiveWallDepth/2, y, z + brickL/2 + effectiveMortarGapZ/2);
+            mortarV.receiveShadow = true;
+            scene.add(mortarV);
+          }
+          
+          // Add horizontal mortar joints between courses (along Y-axis)
+          if (course < coursesHigh - 1) {
+            const mortarH = createMortar(effectiveWallDepth, mortarGap, brickL); // Mortar between courses
+            mortarH.position.set(-length/2 + effectiveWallDepth/2, y + brickH/2 + mortarGap/2, z);
+            mortarH.receiveShadow = true;
+            scene.add(mortarH);
+          }
         }
         
         // Right wall
         for (let i = 0; i < bricksAlongWidth + 1; i++) {
           const z = i * (brickL + mortarGap) - (width - 2*thickness)/2 + brickL/2 - offset;
           
-          if (z + brickL/2 > (width - 2*thickness)/2 || z - brickL/2 < -(width - 2*thickness)/2) continue;
+          const epsilon = 0.001;
+          if (z + brickL/2 > (width - 2*thickness)/2 + epsilon || z - brickL/2 < -(width - 2*thickness)/2 - epsilon) continue;
           
-          const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
-          brick.position.set(length/2 - brickW/2, y, z);
+          const brick = createDetailedBrick(effectiveWallDepth, brickH, brickL, 0xa8332e); // Dimensions: Depth, Height, Length
+          brick.position.set(length/2 - effectiveWallDepth/2, y, z);
           brick.castShadow = true;
           brick.receiveShadow = true;
           scene.add(brick);
+          
+          // Add vertical mortar joints between bricks (along Z-axis)
+          if (i < bricksAlongWidth) {
+            const mortarV = createMortar(effectiveWallDepth, brickH, effectiveMortarGapZ);
+            mortarV.position.set(length/2 - effectiveWallDepth/2, y, z + brickL/2 + effectiveMortarGapZ/2);
+            mortarV.receiveShadow = true;
+            scene.add(mortarV);
+          }
+          
+          // Add horizontal mortar joints between courses (along Y-axis)
+          if (course < coursesHigh - 1) {
+            const mortarH = createMortar(effectiveWallDepth, mortarGap, brickL);
+            mortarH.position.set(length/2 - effectiveWallDepth/2, y + brickH/2 + mortarGap/2, z);
+            mortarH.receiveShadow = true;
+            scene.add(mortarH);
+          }
         }
       }
     }
@@ -356,7 +401,7 @@ export default function BrickStone3DViewer({
               block.receiveShadow = true;
               scene.add(block);
               
-              // Add mortar between blocks
+              // Add mortar between blocks (only along X-axis for simplicity in core)
               if (currentX + blockL/2 + mortarGap < innerLength/2) {
                 const mortarV = createMortar(mortarGap, blockH, blockW);
                 mortarV.position.set(currentX + blockL/2 + mortarGap/2, currentY, currentZ);
