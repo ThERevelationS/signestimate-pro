@@ -189,7 +189,7 @@ export default function BrickStone3DViewer({
 
     // Convert inches to scene units
     const scale = 0.5;
-    const mortarGap = 0.375 * scale; // 3/8" gap (no visible mortar, just spacing)
+    const mortarGap = 0.375 * scale; // 3/8" gap
 
     // Create outer brick walls with individual bricks and mortar
     const length = actualLength * scale;
@@ -207,16 +207,13 @@ export default function BrickStone3DViewer({
       const bricksAlongLength = Math.floor((length + mortarGap) / (brickL + mortarGap));
       const coursesHigh = Math.floor((height + mortarGap) / (brickH + mortarGap));
 
-      // Build front wall (individual bricks)
+      // Build front wall (spans full length)
       for (let course = 0; course < coursesHigh; course++) {
-        const offset = (course % 2) * (brickL + mortarGap) / 2; // Running bond pattern
-        const y = course * (brickH + mortarGap) - height/2 + brickH/2;
+        const offset = (course % 2) * (brickL + mortarGap) / 2;
+        const y = course * (brickH + mortarGap) + brickH/2; // Start from y=0 (floor)
         
         for (let i = 0; i < bricksAlongLength + 1; i++) {
           const x = i * (brickL + mortarGap) - length/2 + brickL/2 - offset;
-          
-          // Check if brick is within bounds
-          // Use a small epsilon to account for floating point inaccuracies near boundary
           const epsilon = 0.001;
           if (x + brickL/2 > length/2 + epsilon || x - brickL/2 < -length/2 - epsilon) continue;
           
@@ -228,14 +225,13 @@ export default function BrickStone3DViewer({
         }
       }
 
-      // Build back wall
+      // Build back wall (spans full length)
       for (let course = 0; course < coursesHigh; course++) {
         const offset = (course % 2) * (brickL + mortarGap) / 2;
-        const y = course * (brickH + mortarGap) - height/2 + brickH/2;
+        const y = course * (brickH + mortarGap) + brickH/2; // Start from y=0
         
         for (let i = 0; i < bricksAlongLength + 1; i++) {
           const x = i * (brickL + mortarGap) - length/2 + brickL/2 - offset;
-          
           const epsilon = 0.001;
           if (x + brickL/2 > length/2 + epsilon || x - brickL/2 < -length/2 - epsilon) continue;
           
@@ -247,38 +243,37 @@ export default function BrickStone3DViewer({
         }
       }
 
-      // Build left and right walls - FIXED to span full width
-      // For these walls, brickL (selected material length) becomes width, brickW becomes depth (along Z-axis), brickH remains height
-      const bricksAlongWidth = Math.floor((width + mortarGap) / (brickL + mortarGap));
-      const effectiveWallDepth = brickW; // The depth of the bricks used for side walls
+      // Build left and right walls (fit between front and back, shorter span)
+      // For these walls, brickW (selected material width) becomes the depth of the wall (along X-axis),
+      // and brickL (selected material length) becomes the span along the Z-axis.
+      const innerWidth = width - 2 * brickW; // Subtract front and back wall thickness
+      const bricksAlongWidth = Math.floor((innerWidth + mortarGap) / (brickL + mortarGap)); // Calculate based on innerWidth
       
       for (let course = 0; course < coursesHigh; course++) {
         const offset = (course % 2) * (brickL + mortarGap) / 2; // Running bond applies to Z-axis here
-        const y = course * (brickH + mortarGap) - height/2 + brickH/2;
+        const y = course * (brickH + mortarGap) + brickH/2; // Start from y=0
         
-        // Left wall - spans from front to back
+        // Left wall
         for (let i = 0; i < bricksAlongWidth + 1; i++) {
-          const z = i * (brickL + mortarGap) - width/2 + brickL/2 - offset;
-          
+          const z = i * (brickL + mortarGap) - innerWidth/2 + brickL/2 - offset;
           const epsilon = 0.001;
-          if (z + brickL/2 > width/2 + epsilon || z - brickL/2 < -width/2 - epsilon) continue;
+          if (z + brickL/2 > innerWidth/2 + epsilon || z - brickL/2 < -innerWidth/2 - epsilon) continue;
           
-          const brick = createDetailedBrick(effectiveWallDepth, brickH, brickL, 0xa8332e); // Dimensions: Depth, Height, Length
-          brick.position.set(-length/2 + effectiveWallDepth/2, y, z);
+          const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Dimensions: Depth, Height, Length
+          brick.position.set(-length/2 + brickW/2, y, z);
           brick.castShadow = true;
           brick.receiveShadow = true;
           scene.add(brick);
         }
         
-        // Right wall - spans from front to back
+        // Right wall
         for (let i = 0; i < bricksAlongWidth + 1; i++) {
-          const z = i * (brickL + mortarGap) - width/2 + brickL/2 - offset;
-          
+          const z = i * (brickL + mortarGap) - innerWidth/2 + brickL/2 - offset;
           const epsilon = 0.001;
-          if (z + brickL/2 > width/2 + epsilon || z - brickL/2 < -width/2 - epsilon) continue;
+          if (z + brickL/2 > innerWidth/2 + epsilon || z - brickL/2 < -innerWidth/2 - epsilon) continue;
           
-          const brick = createDetailedBrick(effectiveWallDepth, brickH, brickL, 0xa8332e); // Dimensions: Depth, Height, Length
-          brick.position.set(length/2 - effectiveWallDepth/2, y, z);
+          const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Dimensions: Depth, Height, Length
+          brick.position.set(length/2 - brickW/2, y, z);
           brick.castShadow = true;
           brick.receiveShadow = true;
           scene.add(brick);
@@ -305,9 +300,9 @@ export default function BrickStone3DViewer({
         
         // Simple grid layout for core blocks
         let placed = 0;
-        let currentY = -innerHeight/2 + blockH/2;
+        let currentY = blockH/2; // Start from floor (y=0)
         
-        while (currentY < innerHeight/2 && placed < coreItem.quantity) {
+        while (currentY < innerHeight && placed < coreItem.quantity) {
           let currentZ = -innerWidth/2 + blockW/2;
           
           while (currentZ < innerWidth/2 && placed < coreItem.quantity) {
