@@ -3,15 +3,15 @@ import React, { useState, useEffect } from "react";
 import { BrickStoneProject2, BrickStoneInventory2, Settings } from "@/entities/all";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { base44 } from "@/api/base44Client";
+// Removed: import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, ArrowLeft, Box, Plus, Trash2, Sparkles, Loader2 } from "lucide-react";
-import BrickStone3DViewer from "@/components/BrickStone3DViewer"; // New import
+import { Save, ArrowLeft, Box, Plus, Trash2 } from "lucide-react"; // Removed Sparkles, Loader2
+import BrickStone3DViewer from "@/components/BrickStone3DViewer";
 
 export default function NewBrickStoneEstimate2() {
   const navigate = useNavigate();
@@ -42,8 +42,8 @@ export default function NewBrickStoneEstimate2() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   // showDimensions state removed
-  const [isAIFilling, setIsAIFilling] = useState(false);
-  const [hasAutoFilledCore, setHasAutoFilledCore] = useState(false);
+  // Removed: const [isAIFilling, setIsAIFilling] = useState(false);
+  // Removed: const [hasAutoFilledCore, setHasAutoFilledCore] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
@@ -139,125 +139,14 @@ export default function NewBrickStoneEstimate2() {
       } : null
     }));
 
-    if (material && !hasAutoFilledCore) {
-      setHasAutoFilledCore(true);
-      setTimeout(() => fillCoreWithAI(materialId), 100);
-    }
+    // Removed AI auto-fill logic
+    // if (material && !hasAutoFilledCore) {
+    //   setHasAutoFilledCore(true);
+    //   setTimeout(() => fillCoreWithAI(materialId), 100);
+    // }
   };
 
-  const fillCoreWithAI = async (wallMaterialId = null) => {
-    const currentWallMaterial = wallMaterialId ? 
-      inventory.find(m => m.id === wallMaterialId) : 
-      selectedMaterial;
-    
-    if (!currentWallMaterial) {
-      alert('Please select a wall material first');
-      return;
-    }
-
-    const wallMaterialForCalc = currentWallMaterial;
-    const bricksAlongLength = project.bricks_along_length;
-    const bricksAlongWidth = project.bricks_along_width;
-    const coursesHigh = project.courses_high;
-    const mortarGap = project.mortar_gap;
-    
-    const brickL = wallMaterialForCalc.length;
-    const brickW = wallMaterialForCalc.width;
-    const brickH = wallMaterialForCalc.height;
-    const wallThickness = brickW;
-    
-    const actualLength = bricksAlongLength * brickL + (bricksAlongLength - 1) * mortarGap;
-    const innerSideWallLength = bricksAlongWidth * brickL + (bricksAlongWidth - 1) * mortarGap;
-    const actualWidth = (wallThickness * 2) + innerSideWallLength;
-    const actualHeight = coursesHigh * brickH + (coursesHigh - 1) * mortarGap;
-    
-    const innerXStart = wallThickness;
-    const innerYStart = wallThickness;
-    const innerLength = actualLength - 2 * wallThickness;
-    const innerWidth = actualWidth - 2 * wallThickness;
-    const innerHeight = actualHeight;
-
-    const blockMaterials = inventory.filter(m => m.material_type === 'block');
-    
-    if (blockMaterials.length === 0) {
-      alert('No block materials found in inventory. Please add blocks to inventory first.');
-      return;
-    }
-
-    setIsAIFilling(true);
-    
-    try {
-      const prompt = `You are a construction materials calculator. Calculate the optimal way to fill a hollow rectangular space with concrete blocks.
-
-HOLLOW SPACE DIMENSIONS:
-- Inner Length: ${innerLength.toFixed(2)} inches
-- Inner Width: ${innerWidth.toFixed(2)} inches  
-- Inner Height: ${innerHeight.toFixed(2)} inches
-- Mortar Gap: ${mortarGap} inches (space between blocks)
-
-AVAILABLE BLOCK MATERIALS:
-${blockMaterials.map((block, i) => 
-  `${i + 1}. ${block.material_name} (ID: ${block.id})
-     - Dimensions: ${block.length}" × ${block.width}" × ${block.height}"
-     - Cost: $${block.cost_per_unit.toFixed(2)} per unit`
-).join('\n')}
-
-REQUIREMENTS:
-1. Fill the entire hollow space efficiently using a grid pattern.
-2. Blocks cannot overlap.
-3. Account for ${mortarGap}" mortar gaps between all blocks.
-4. For each block type, calculate how many blocks fit in each dimension using: floor((total_dimension + mortar_gap) / (block_dimension + mortar_gap))
-5. Total blocks = blocks_along_length × blocks_along_width × blocks_along_height
-6. Maximize space utilization (fill as much of the hollow space as possible).
-7. Minimize cost, considering the total volume filled.
-
-Return your response as a JSON object with the optimal block selection and quantities.`;
-
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt: prompt,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            core_materials: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  material_id: { type: "string", description: "ID of the block material" },
-                  quantity: { type: "integer", description: "Number of blocks needed" }
-                },
-                required: ["material_id", "quantity"]
-              }
-            },
-            total_coverage_percentage: { type: "number", description: "Percentage of space filled" },
-            calculation_notes: { type: "string", description: "Notes about the calculation, e.g., which blocks were chosen and why" }
-          },
-          required: ["core_materials"]
-        }
-      });
-
-      if (response && response.core_materials && response.core_materials.length > 0) {
-        const coreMaterials = response.core_materials.map(item => ({
-          material_id: item.material_id,
-          quantity: item.quantity || 0
-        }));
-
-        setProject(prev => ({
-          ...prev,
-          core_materials: coreMaterials
-        }));
-
-        alert(`AI filled core with ${response.core_materials.length} block type(s).\n\n${response.calculation_notes || 'Blocks calculated based on optimal fit.'}`);
-      } else {
-        alert('AI could not determine optimal block fill. Please add blocks manually.');
-      }
-    } catch (error) {
-      console.error('Error filling core with AI:', error);
-      alert('Error calculating core fill. Please check LLM integration or add blocks manually.');
-    }
-    
-    setIsAIFilling(false);
-  };
+  // Removed: const fillCoreWithAI = async (wallMaterialId = null) => { ... };
 
   const performCalculations = () => {
     if (!selectedMaterial) {
@@ -485,26 +374,7 @@ Return your response as a JSON object with the optimal block selection and quant
                 <div> 
                   <div className="flex justify-between items-center mb-2">
                     <Label className="text-sm">Core Materials (Optional)</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fillCoreWithAI()}
-                      disabled={!selectedMaterial || isAIFilling}
-                      className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 h-8 text-xs"
-                    >
-                      {isAIFilling ? (
-                        <>
-                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                          AI Filling...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-3 h-3 mr-1" />
-                          Fill with AI
-                        </>
-                      )}
-                    </Button>
+                    {/* Removed AI fill button */}
                   </div>
                   <p className="text-xs text-slate-500 mb-2">
                     Add blocks to fill the hollow core - blocks only
