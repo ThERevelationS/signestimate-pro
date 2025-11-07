@@ -203,24 +203,38 @@ export default function BrickStone3DViewer({
       
       const coursesHigh = Math.ceil((height) / (brickH + mortarGap));
 
-      // PROPER INTERLOCKING BRICK LAYOUT
+      // PROPER RUNNING BOND MASONRY LAYOUT
+      // A small epsilon for floating point comparison to handle boundary conditions
+      const EPSILON = 0.001; 
+
       for (let course = 0; course < coursesHigh; course++) {
         const y = course * (brickH + mortarGap) + brickH/2;
         const isEvenCourse = (course % 2) === 0;
         
         if (isEvenCourse) {
-          // EVEN COURSES: Front/back walls FULL length, left/right walls SHORTENED
+          // EVEN COURSES: Front/back walls span full length (brickL along X, brickW along Z)
+          // Left/Right walls fill between (brickW along X, brickL along Z)
+
+          // FRONT WALL (Z = -width/2 + brickW/2)
+          // Leftmost brick (corner)
+          let brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
+          brick.position.set(-length/2 + brickL/2, y, -width/2 + brickW/2);
+          brick.castShadow = true;
+          brick.receiveShadow = true;
+          scene.add(brick);
           
-          // Front wall - FULL LENGTH with running bond offset
-          const frontOffset = (brickL + mortarGap) / 2;
-          let x = -length/2 + brickL/2 - frontOffset;
-          while (x <= length/2 + brickL) {
-            // Check if the current brick (centered at x) is within the wall boundaries
-            if (x - brickL/2 < -length/2 - 0.001 || x + brickL/2 > length/2 + 0.001) { // Add small epsilon for floating point issues
-              x += brickL + mortarGap;
-              continue;
-            }
-            const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
+          // Rightmost brick (corner)
+          brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
+          brick.position.set(length/2 - brickL/2, y, -width/2 + brickW/2);
+          brick.castShadow = true;
+          brick.receiveShadow = true;
+          scene.add(brick);
+          
+          // Fill middle bricks for front wall (running bond offset)
+          let x = -length/2 + brickL/2 + brickL + mortarGap; // Center of second brick from left
+          const endX = length/2 - brickL/2 - (brickL + mortarGap); // Center of second to last brick from right
+          while (x <= endX + EPSILON) {
+            brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
             brick.position.set(x, y, -width/2 + brickW/2);
             brick.castShadow = true;
             brick.receiveShadow = true;
@@ -228,14 +242,25 @@ export default function BrickStone3DViewer({
             x += brickL + mortarGap;
           }
           
-          // Back wall - FULL LENGTH with running bond offset
-          x = -length/2 + brickL/2 - frontOffset;
-          while (x <= length/2 + brickL) {
-            if (x - brickL/2 < -length/2 - 0.001 || x + brickL/2 > length/2 + 0.001) {
-              x += brickL + mortarGap;
-              continue;
-            }
-            const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
+          // BACK WALL (Z = width/2 - brickW/2) - Same pattern
+          // Leftmost brick (corner)
+          brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
+          brick.position.set(-length/2 + brickL/2, y, width/2 - brickW/2);
+          brick.castShadow = true;
+          brick.receiveShadow = true;
+          scene.add(brick);
+          
+          // Rightmost brick (corner)
+          brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
+          brick.position.set(length/2 - brickL/2, y, width/2 - brickW/2);
+          brick.castShadow = true;
+          brick.receiveShadow = true;
+          scene.add(brick);
+          
+          // Fill middle bricks for back wall
+          x = -length/2 + brickL/2 + brickL + mortarGap;
+          while (x <= endX + EPSILON) {
+            brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
             brick.position.set(x, y, width/2 - brickW/2);
             brick.castShadow = true;
             brick.receiveShadow = true;
@@ -243,16 +268,12 @@ export default function BrickStone3DViewer({
             x += brickL + mortarGap;
           }
           
-          // Left wall - SHORTENED (between front and back)
-          const innerWallWidth = width - 2 * brickW; // Space between front and back bricks
-          const sideOffset = 0; // No offset on even courses for sides
-          let z = -innerWallWidth/2 + brickL/2 - sideOffset; // Bricks on side walls are laid with their length along the z-axis
-          while (z <= innerWallWidth/2 + brickL) {
-            if (z - brickL/2 < -innerWallWidth/2 - 0.001 || z + brickL/2 > innerWallWidth/2 + 0.001) {
-              z += brickL + mortarGap;
-              continue;
-            }
-            const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Swapped length/width
+          // LEFT WALL (X = -length/2 + brickW/2) - Fills between front and back (bricks are rotated)
+          const innerWallLengthZ = width - 2 * brickW; // Effective span for the side wall in Z
+          let z = -innerWallLengthZ/2 + brickL/2; // Center of first brick (whose length is brickL)
+          const sideWallMaxZ = innerWallLengthZ/2 - brickL/2;
+          while (z <= sideWallMaxZ + EPSILON) {
+            brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Swapped length/width
             brick.position.set(-length/2 + brickW/2, y, z);
             brick.castShadow = true;
             brick.receiveShadow = true;
@@ -260,14 +281,10 @@ export default function BrickStone3DViewer({
             z += brickL + mortarGap;
           }
           
-          // Right wall - SHORTENED (between front and back)
-          z = -innerWallWidth/2 + brickL/2 - sideOffset;
-          while (z <= innerWallWidth/2 + brickL) {
-            if (z - brickL/2 < -innerWallWidth/2 - 0.001 || z + brickL/2 > innerWallWidth/2 + 0.001) {
-              z += brickL + mortarGap;
-              continue;
-            }
-            const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Swapped length/width
+          // RIGHT WALL (X = length/2 - brickW/2) - Fills between front and back
+          z = -innerWallLengthZ/2 + brickL/2;
+          while (z <= sideWallMaxZ + EPSILON) {
+            brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Swapped length/width
             brick.position.set(length/2 - brickW/2, y, z);
             brick.castShadow = true;
             brick.receiveShadow = true;
@@ -276,17 +293,29 @@ export default function BrickStone3DViewer({
           }
           
         } else {
-          // ODD COURSES: Left/right walls FULL length, front/back walls SHORTENED
+          // ODD COURSES: Left/right walls span full width (brickL along Z, brickW along X)
+          // Front/Back walls fill between (brickL along X, brickW along Z)
+
+          // LEFT WALL (X = -length/2 + brickW/2)
+          // Frontmost brick (corner)
+          let brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
+          brick.position.set(-length/2 + brickW/2, y, -width/2 + brickL/2);
+          brick.castShadow = true;
+          brick.receiveShadow = true;
+          scene.add(brick);
           
-          // Left wall - FULL LENGTH with running bond offset
-          const sideOffset = (brickL + mortarGap) / 2;
-          let z = -width/2 + brickL/2 - sideOffset;
-          while (z <= width/2 + brickL) {
-            if (z - brickL/2 < -width/2 - 0.001 || z + brickL/2 > width/2 + 0.001) {
-              z += brickL + mortarGap;
-              continue;
-            }
-            const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Swapped length/width
+          // Backmost brick (corner)
+          brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
+          brick.position.set(-length/2 + brickW/2, y, width/2 - brickL/2);
+          brick.castShadow = true;
+          brick.receiveShadow = true;
+          scene.add(brick);
+          
+          // Fill middle bricks for left wall (running bond offset)
+          let z = -width/2 + brickL/2 + brickL + mortarGap;
+          const endZ = width/2 - brickL/2 - (brickL + mortarGap);
+          while (z <= endZ + EPSILON) {
+            brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Swapped length/width
             brick.position.set(-length/2 + brickW/2, y, z);
             brick.castShadow = true;
             brick.receiveShadow = true;
@@ -294,14 +323,25 @@ export default function BrickStone3DViewer({
             z += brickL + mortarGap;
           }
           
-          // Right wall - FULL LENGTH with running bond offset
-          z = -width/2 + brickL/2 - sideOffset;
-          while (z <= width/2 + brickL) {
-            if (z - brickL/2 < -width/2 - 0.001 || z + brickL/2 > width/2 + 0.001) {
-              z += brickL + mortarGap;
-              continue;
-            }
-            const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Swapped length/width
+          // RIGHT WALL (X = length/2 - brickW/2) - Same pattern
+          // Frontmost brick (corner)
+          brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
+          brick.position.set(length/2 - brickW/2, y, -width/2 + brickL/2);
+          brick.castShadow = true;
+          brick.receiveShadow = true;
+          scene.add(brick);
+          
+          // Backmost brick (corner)
+          brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
+          brick.position.set(length/2 - brickW/2, y, width/2 - brickL/2);
+          brick.castShadow = true;
+          brick.receiveShadow = true;
+          scene.add(brick);
+          
+          // Fill middle bricks for right wall
+          z = -width/2 + brickL/2 + brickL + mortarGap;
+          while (z <= endZ + EPSILON) {
+            brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Swapped length/width
             brick.position.set(length/2 - brickW/2, y, z);
             brick.castShadow = true;
             brick.receiveShadow = true;
@@ -309,16 +349,12 @@ export default function BrickStone3DViewer({
             z += brickL + mortarGap;
           }
           
-          // Front wall - SHORTENED (between left and right)
-          const innerWallLength = length - 2 * brickW; // Space between left and right bricks
-          const frontOffset = 0; // No offset on odd courses for front/back
-          let x = -innerWallLength/2 + brickL/2 - frontOffset;
-          while (x <= innerWallLength/2 + brickL) {
-            if (x - brickL/2 < -innerWallLength/2 - 0.001 || x + brickL/2 > innerWallLength/2 + 0.001) {
-              x += brickL + mortarGap;
-              continue;
-            }
-            const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
+          // FRONT WALL (Z = -width/2 + brickW/2) - Fills between left and right
+          const innerWallLengthX = length - 2 * brickW; // Effective span for the front/back wall in X
+          let x = -innerWallLengthX/2 + brickL/2; // Center of first brick (whose length is brickL)
+          const frontBackWallMaxX = innerWallLengthX/2 - brickL/2;
+          while (x <= frontBackWallMaxX + EPSILON) {
+            brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
             brick.position.set(x, y, -width/2 + brickW/2);
             brick.castShadow = true;
             brick.receiveShadow = true;
@@ -326,14 +362,10 @@ export default function BrickStone3DViewer({
             x += brickL + mortarGap;
           }
           
-          // Back wall - SHORTENED (between left and right)
-          x = -innerWallLength/2 + brickL/2 - frontOffset;
-          while (x <= innerWallLength/2 + brickL) {
-            if (x - brickL/2 < -innerWallLength/2 - 0.001 || x + brickL/2 > innerWallLength/2 + 0.001) {
-              x += brickL + mortarGap;
-              continue;
-            }
-            const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
+          // BACK WALL (Z = width/2 - brickW/2) - Fills between left and right
+          x = -innerWallLengthX/2 + brickL/2;
+          while (x <= frontBackWallMaxX + EPSILON) {
+            brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
             brick.position.set(x, y, width/2 - brickW/2);
             brick.castShadow = true;
             brick.receiveShadow = true;
