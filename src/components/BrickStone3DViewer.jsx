@@ -171,17 +171,16 @@ export default function BrickStone3DViewer({
     return group;
   };
 
-  // Create realistic cinder block with hollow cores
+  // Create realistic hollow cinder block
   const createDetailedCinderBlock = (length, height, width, baseColor) => {
     const group = new THREE.Group();
     
-    // Add color variation
     const colorVariation = Math.random() * 0.1 - 0.05;
     const blockColor = new THREE.Color(baseColor).multiplyScalar(1 + colorVariation);
     
-    const blockWallThickness = Math.min(length, width) * 0.12;
+    // Make walls thinner for more visible hollow cores
+    const blockWallThickness = Math.min(length, width) * 0.08;
     
-    // Create concrete texture
     const createConcreteTexture = () => {
       const canvas = document.createElement('canvas');
       canvas.width = 512;
@@ -192,11 +191,9 @@ export default function BrickStone3DViewer({
       const baseG = Math.floor(blockColor.g * 255);
       const baseB = Math.floor(blockColor.b * 255);
 
-      // Base concrete gray
       ctx.fillStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
       ctx.fillRect(0, 0, 512, 512);
       
-      // Add concrete aggregate texture
       const imageData = ctx.getImageData(0, 0, 512, 512);
       for (let i = 0; i < imageData.data.length; i += 4) {
         const noise = Math.random() * 40 - 20;
@@ -206,7 +203,6 @@ export default function BrickStone3DViewer({
       }
       ctx.putImageData(imageData, 0, 0);
       
-      // Add small aggregate stones
       for (let i = 0; i < 100; i++) {
         ctx.fillStyle = `rgba(${100 + Math.random() * 50}, ${100 + Math.random() * 50}, ${100 + Math.random() * 50}, 0.5)`;
         ctx.fillRect(
@@ -226,58 +222,72 @@ export default function BrickStone3DViewer({
     
     const blockMaterial = new THREE.MeshStandardMaterial({
       map: concreteTexture,
-      color: blockColor, // This will apply the base color and then the texture on top
+      color: blockColor,
       roughness: 0.95,
       metalness: 0.0,
       flatShading: false,
     });
     
-    // Create hollow block structure
-    const frontBackGeo = new THREE.BoxGeometry(length * 0.97, height * 0.97, blockWallThickness);
+    // Create the 6 walls of the hollow block with better proportions
+    // Front and back faces
+    const frontBackGeo = new THREE.BoxGeometry(length * 0.95, height * 0.95, blockWallThickness);
     const frontFace = new THREE.Mesh(frontBackGeo, blockMaterial);
-    frontFace.position.z = width/2 - blockWallThickness/2;
+    frontFace.position.z = (width/2) - (blockWallThickness/2);
     frontFace.castShadow = true;
     frontFace.receiveShadow = true;
     group.add(frontFace);
     
     const backFace = new THREE.Mesh(frontBackGeo, blockMaterial);
-    backFace.position.z = -width/2 + blockWallThickness/2;
+    backFace.position.z = -(width/2) + (blockWallThickness/2);
     backFace.castShadow = true;
     backFace.receiveShadow = true;
     group.add(backFace);
     
-    const leftRightGeo = new THREE.BoxGeometry(blockWallThickness, height * 0.97, width * 0.97 - 2 * blockWallThickness);
+    // Left and right faces
+    const leftRightGeo = new THREE.BoxGeometry(blockWallThickness, height * 0.95, width * 0.95 - 2 * blockWallThickness);
     const leftFace = new THREE.Mesh(leftRightGeo, blockMaterial);
-    leftFace.position.x = -length/2 + blockWallThickness/2;
+    leftFace.position.x = -(length/2) + (blockWallThickness/2);
     leftFace.castShadow = true;
     leftFace.receiveShadow = true;
     group.add(leftFace);
     
     const rightFace = new THREE.Mesh(leftRightGeo, blockMaterial);
-    rightFace.position.x = length/2 - blockWallThickness/2;
+    rightFace.position.x = (length/2) - (blockWallThickness/2);
     rightFace.castShadow = true;
     rightFace.receiveShadow = true;
     group.add(rightFace);
     
-    const topBottomGeo = new THREE.BoxGeometry(length * 0.97 - 2 * blockWallThickness, blockWallThickness, width * 0.97 - 2 * blockWallThickness);
+    // Top and bottom faces
+    const topBottomGeo = new THREE.BoxGeometry(length * 0.95 - 2 * blockWallThickness, blockWallThickness, width * 0.95 - 2 * blockWallThickness);
     const topFace = new THREE.Mesh(topBottomGeo, blockMaterial);
-    topFace.position.y = height/2 - blockWallThickness/2;
+    topFace.position.y = (height/2) - (blockWallThickness/2);
     topFace.castShadow = true;
     topFace.receiveShadow = true;
     group.add(topFace);
     
     const bottomFace = new THREE.Mesh(topBottomGeo, blockMaterial);
-    bottomFace.position.y = -height/2 + blockWallThickness/2;
+    bottomFace.position.y = -(height/2) + (blockWallThickness/2);
     bottomFace.castShadow = true;
     bottomFace.receiveShadow = true;
     group.add(bottomFace);
     
-    const webThickness = blockWallThickness * 0.6;
-    const webGeo = new THREE.BoxGeometry(webThickness, height * 0.97 - 2 * blockWallThickness, width * 0.97 - 2 * blockWallThickness);
-    const web = new THREE.Mesh(webGeo, blockMaterial);
-    web.castShadow = true;
-    web.receiveShadow = true;
-    group.add(web);
+    // Add TWO vertical webs (dividers) to create THREE hollow cores
+    const webThickness = blockWallThickness * 0.5;
+    const webGeo = new THREE.BoxGeometry(webThickness, height * 0.95 - 2 * blockWallThickness, width * 0.95 - 2 * blockWallThickness);
+    
+    // First web (left of center)
+    const web1 = new THREE.Mesh(webGeo, blockMaterial);
+    web1.position.x = -(length * 0.25);
+    web1.castShadow = true;
+    web1.receiveShadow = true;
+    group.add(web1);
+    
+    // Second web (right of center)
+    const web2 = new THREE.Mesh(webGeo, blockMaterial);
+    web2.position.x = (length * 0.25);
+    web2.castShadow = true;
+    web2.receiveShadow = true;
+    group.add(web2);
     
     return group;
   };
@@ -355,7 +365,7 @@ export default function BrickStone3DViewer({
     const length = actualLength * scale;
     const width = actualWidth * scale;
     const height = actualHeight * scale;
-    const thickness = wallThickness * scale;
+    // const thickness = wallThickness * scale; // This variable is not used after definition
 
     // EPSILON constant for floating point comparisons
     const EPSILON = 0.001;
@@ -607,8 +617,9 @@ export default function BrickStone3DViewer({
       scene.add(sprite);
     };
 
-    createLabel(`${actualLength.toFixed(1)}"`, new THREE.Vector3(0, -5, -width / 2 - 10));
-    createLabel(`${actualWidth.toFixed(1)}"`, new THREE.Vector3(-length / 2 - 10, -5, 0));
+    // Position labels well above the floor (y=10 instead of y=-5)
+    createLabel(`${actualLength.toFixed(1)}"`, new THREE.Vector3(0, 10, -width / 2 - 10));
+    createLabel(`${actualWidth.toFixed(1)}"`, new THREE.Vector3(-length / 2 - 10, 10, 0));
     createLabel(`${actualHeight.toFixed(1)}"`, new THREE.Vector3(length / 2 + 10, height / 2, -width / 2));
 
     // Position camera
