@@ -7,9 +7,9 @@ export default function BrickStone3DViewer({
   actualLength, 
   actualWidth, 
   actualHeight,
-  wallThickness,
+  wallThickness, // Note: This prop is not currently used in the 3D rendering logic within this file.
   selectedMaterial,
-  coreBreakdown,
+  coreBreakdown, // Note: This prop is not currently used in the 3D rendering logic within this file.
   inventory
 }) {
   const containerRef = useRef(null);
@@ -35,12 +35,12 @@ export default function BrickStone3DViewer({
         { r: 130, g: 40, b: 30 },
       ];
       
-      const baseColor = brickVariations[Math.floor(Math.random() * brickVariations.length)];
+      const chosenBaseColor = brickVariations[Math.floor(Math.random() * brickVariations.length)];
       
       const gradient = ctx.createLinearGradient(0, 0, 0, 256);
-      gradient.addColorStop(0, `rgb(${baseColor.r + 10}, ${baseColor.g + 10}, ${baseColor.b + 10})`);
-      gradient.addColorStop(0.5, `rgb(${baseColor.r}, ${baseColor.g}, ${baseColor.b})`);
-      gradient.addColorStop(1, `rgb(${baseColor.r - 10}, ${baseColor.g - 10}, ${baseColor.b - 10})`);
+      gradient.addColorStop(0, `rgb(${chosenBaseColor.r + 10}, ${chosenBaseColor.g + 10}, ${chosenBaseColor.b + 10})`);
+      gradient.addColorStop(0.5, `rgb(${chosenBaseColor.r}, ${chosenBaseColor.g}, ${chosenBaseColor.b})`);
+      gradient.addColorStop(1, `rgb(${chosenBaseColor.r - 10}, ${chosenBaseColor.g - 10}, ${chosenBaseColor.b - 10})`);
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, 512, 256);
       
@@ -59,7 +59,7 @@ export default function BrickStone3DViewer({
         const size = Math.random() * 4 + 1;
         const darkness = Math.random() * 0.4 + 0.2;
         
-        ctx.fillStyle = `rgba(${baseColor.r * (1 - darkness)}, ${baseColor.g * (1 - darkness)}, ${baseColor.b * (1 - darkness)}, ${Math.random() * 0.6 + 0.4})`;
+        ctx.fillStyle = `rgba(${chosenBaseColor.r * (1 - darkness)}, ${chosenBaseColor.g * (1 - darkness)}, ${chosenBaseColor.b * (1 - darkness)}, ${Math.random() * 0.6 + 0.4})`;
         ctx.beginPath();
         ctx.arc(x, y, size, 0, Math.PI * 2);
         ctx.fill();
@@ -68,17 +68,17 @@ export default function BrickStone3DViewer({
       for (let i = 0; i < 25; i++) {
         const x = Math.random() * 512;
         const y = Math.random() * 256;
-        const width = Math.random() * 60 + 30;
-        const height = Math.random() * 40 + 20;
+        const stainWidth = Math.random() * 60 + 30;
+        const stainHeight = Math.random() * 40 + 20;
         
-        const stainGradient = ctx.createRadialGradient(x, y, 0, x, y, width);
-        stainGradient.addColorStop(0, `rgba(${baseColor.r * 0.7}, ${baseColor.g * 0.6}, ${baseColor.b * 0.5}, 0.3)`);
-        stainGradient.addColorStop(1, `rgba(${baseColor.r * 0.8}, ${baseColor.g * 0.7}, ${baseColor.b * 0.6}, 0)`);
+        const stainGradient = ctx.createRadialGradient(x, y, 0, x, y, stainWidth);
+        stainGradient.addColorStop(0, `rgba(${chosenBaseColor.r * 0.7}, ${chosenBaseColor.g * 0.6}, ${chosenBaseColor.b * 0.5}, 0.3)`);
+        stainGradient.addColorStop(1, `rgba(${chosenBaseColor.r * 0.8}, ${chosenBaseColor.g * 0.7}, ${chosenBaseColor.b * 0.6}, 0)`);
         ctx.fillStyle = stainGradient;
-        ctx.fillRect(x - width/2, y - height/2, width, height);
+        ctx.fillRect(x - stainWidth/2, y - stainHeight/2, stainWidth, stainHeight);
       }
       
-      ctx.strokeStyle = `rgba(${baseColor.r * 0.7}, ${baseColor.g * 0.7}, ${baseColor.b * 0.7}, 0.15)`;
+      ctx.strokeStyle = `rgba(${chosenBaseColor.r * 0.7}, ${chosenBaseColor.g * 0.7}, ${chosenBaseColor.b * 0.7}, 0.15)`;
       ctx.lineWidth = 1;
       for (let i = 0; i < 12; i++) {
         const y = (256 / 12) * i + (Math.random() - 0.5) * 10;
@@ -162,7 +162,7 @@ export default function BrickStone3DViewer({
     const colorVariation = Math.random() * 0.08 - 0.04;
     const blockColor = new THREE.Color(baseColor).multiplyScalar(1 + colorVariation);
     
-    const wallThickness = Math.min(length, width, height) * 0.15;
+    const blockWallThickness = Math.min(length, width, height) * 0.15; // Renamed to avoid conflict with prop
     
     const createConcreteTexture = () => {
       const canvas = document.createElement('canvas');
@@ -209,10 +209,10 @@ export default function BrickStone3DViewer({
       for (let i = 0; i < 80; i++) {
         const x = Math.random() * 512;
         const y = Math.random() * 512;
-        const width = Math.random() * 15 + 5;
-        const height = Math.random() * 15 + 5;
+        const rectWidth = Math.random() * 15 + 5;
+        const rectHeight = Math.random() * 15 + 5;
         ctx.fillStyle = `rgba(${Math.max(0, baseR - 30)}, ${Math.max(0, baseG - 30)}, ${Math.max(0, baseB - 30)}, ${Math.random() * 0.3 + 0.1})`;
-        ctx.fillRect(x, y, width, height);
+        ctx.fillRect(x, y, rectWidth, rectHeight);
       }
       
       return new THREE.CanvasTexture(canvas);
@@ -234,51 +234,51 @@ export default function BrickStone3DViewer({
     const outerHeight = height * 0.96;
     const outerWidth = width * 0.96;
     
-    const frontWall = new THREE.BoxGeometry(outerLength, outerHeight, wallThickness);
+    const frontWall = new THREE.BoxGeometry(outerLength, outerHeight, blockWallThickness);
     const frontMesh = new THREE.Mesh(frontWall, blockMaterial);
-    frontMesh.position.z = outerWidth/2 - wallThickness/2;
+    frontMesh.position.z = outerWidth/2 - blockWallThickness/2;
     frontMesh.castShadow = true;
     frontMesh.receiveShadow = true;
     group.add(frontMesh);
     
-    const backWall = new THREE.BoxGeometry(outerLength, outerHeight, wallThickness);
+    const backWall = new THREE.BoxGeometry(outerLength, outerHeight, blockWallThickness);
     const backMesh = new THREE.Mesh(backWall, blockMaterial);
-    backMesh.position.z = -outerWidth/2 + wallThickness/2;
+    backMesh.position.z = -outerWidth/2 + blockWallThickness/2;
     backMesh.castShadow = true;
     backMesh.receiveShadow = true;
     group.add(backMesh);
     
-    const leftWall = new THREE.BoxGeometry(wallThickness, outerHeight, outerWidth - 2 * wallThickness);
+    const leftWall = new THREE.BoxGeometry(blockWallThickness, outerHeight, outerWidth - 2 * blockWallThickness);
     const leftMesh = new THREE.Mesh(leftWall, blockMaterial);
-    leftMesh.position.x = -outerLength/2 + wallThickness/2;
+    leftMesh.position.x = -outerLength/2 + blockWallThickness/2;
     leftMesh.castShadow = true;
     leftMesh.receiveShadow = true;
     group.add(leftMesh);
     
-    const rightWall = new THREE.BoxGeometry(wallThickness, outerHeight, outerWidth - 2 * wallThickness);
+    const rightWall = new THREE.BoxGeometry(blockWallThickness, outerHeight, outerWidth - 2 * blockWallThickness);
     const rightMesh = new THREE.Mesh(rightWall, blockMaterial);
-    rightMesh.position.x = outerLength/2 - wallThickness/2;
+    rightMesh.position.x = outerLength/2 - blockWallThickness/2;
     rightMesh.castShadow = true;
     rightMesh.receiveShadow = true;
     group.add(rightMesh);
     
-    const topBottomWall = new THREE.BoxGeometry(outerLength - 2 * wallThickness, wallThickness, outerWidth - 2 * wallThickness);
+    const topBottomWall = new THREE.BoxGeometry(outerLength - 2 * blockWallThickness, blockWallThickness, outerWidth - 2 * blockWallThickness);
     const topMesh = new THREE.Mesh(topBottomWall, blockMaterial);
-    topMesh.position.y = outerHeight/2 - wallThickness/2;
+    topMesh.position.y = outerHeight/2 - blockWallThickness/2;
     topMesh.castShadow = true;
     topMesh.receiveShadow = true;
     group.add(topMesh);
     
     const bottomMesh = new THREE.Mesh(topBottomWall, blockMaterial);
-    bottomMesh.position.y = -outerHeight/2 + wallThickness/2;
+    bottomMesh.position.y = -outerHeight/2 + blockWallThickness/2;
     bottomMesh.castShadow = true;
     bottomMesh.receiveShadow = true;
     group.add(bottomMesh);
     
-    const webThickness = wallThickness * 0.8;
+    const webThickness = blockWallThickness * 0.8;
     const centerWeb = new THREE.BoxGeometry(
-      outerLength - 2 * wallThickness, 
-      outerHeight - 2 * wallThickness, 
+      outerLength - 2 * blockWallThickness, 
+      outerHeight - 2 * blockWallThickness, 
       webThickness
     );
     const webMesh = new THREE.Mesh(centerWeb, blockMaterial);
@@ -357,16 +357,12 @@ export default function BrickStone3DViewer({
 
     const EPSILON = 0.001;
 
-    // FIRST: Calculate core fill height to determine brick wall height
-    let maxCoreHeight = 0; // This will track the actual height filled by inventory
+    // FIRST: Calculate ACTUAL core fill height (top of highest block placed)
+    let actualCoreTopHeight = 0;
     
     if (inventory && inventory.length > 0 && selectedMaterial) {
       const brickW = selectedMaterial.width * scale;
-      // innerLength and innerWidth define the area for core materials, not strictly needed for height calc,
-      // but important for general context of internal space.
-      const innerLength = length - 2 * brickW; 
-      const innerWidth = width - 2 * brickW;   
-      const innerHeight = height;              
+      const innerHeight = height; // This is the total desired height of the inner space
       
       const sortedInventory = [...inventory]
         .filter(m => m.length && m.width && m.height)
@@ -376,41 +372,44 @@ export default function BrickStone3DViewer({
           return a.height - b.height;
         });
       
-      let currentBaseY_calc = mortarGap;
+      let currentBaseY_calc = mortarGap; // Start placing blocks above the first mortar gap
       let materialIndex_calc = 0;
       
+      // Calculate the ACTUAL top of the highest core block placed
       while (currentBaseY_calc < innerHeight - EPSILON && materialIndex_calc < sortedInventory.length) {
         const material = sortedInventory[materialIndex_calc];
         const blockH = material.height * scale;
         
         if (currentBaseY_calc + blockH > innerHeight + EPSILON) {
-          materialIndex_calc++;
+          materialIndex_calc++; // This block is too tall to fit starting at currentBaseY_calc
           continue;
         }
         
+        // This block CAN be placed - track its TOP
+        actualCoreTopHeight = currentBaseY_calc + blockH; // Update to the top of this block
+        
         currentBaseY_calc += blockH + mortarGap;
-        maxCoreHeight = currentBaseY_calc;
         materialIndex_calc++;
       }
     }
 
-    // SECOND: Build brick wall ONLY to the height of the core
-    if (selectedMaterial) {
+    // SECOND: Build brick wall ONLY up to where core actually ends
+    if (selectedMaterial && actualCoreTopHeight > 0) { // Only build wall if core has been filled at all
       const brickL = selectedMaterial.length * scale;
       const brickW = selectedMaterial.width * scale;
       const brickH = selectedMaterial.height * scale;
       
-      // If maxCoreHeight is 0 (no inventory or couldn't place any), the wall should still build to `height`.
-      // Otherwise, it builds to `maxCoreHeight`.
-      const effectiveWallRenderHeight = (maxCoreHeight > EPSILON) ? maxCoreHeight : height;
-      
-      const coursesHigh = Math.floor(effectiveWallRenderHeight / (brickH + mortarGap));
-
-      for (let course = 0; course < coursesHigh; course++) {
-        const y = course * (brickH + mortarGap) + brickH/2;
+      // Only build courses where the BOTTOM of the brick is supported by core
+      for (let course = 0; course < 200; course++) { // Use a sufficiently large number, loop will break
+        const brickCenterY = course * (brickH + mortarGap) + brickH/2;
+        const brickBottomY = brickCenterY - brickH/2;
         
-        if (y + brickH/2 > effectiveWallRenderHeight + EPSILON) continue; // Ensure brick top doesn't exceed effective height
-
+        // Stop if the bottom of this brick course is above the actual filled core height
+        if (brickBottomY >= actualCoreTopHeight - EPSILON) { 
+          break; // Stop building wall layers
+        }
+        
+        const y = brickCenterY;
         const isEvenCourse = (course % 2) === 0;
         
         if (isEvenCourse) {
@@ -520,7 +519,7 @@ export default function BrickStone3DViewer({
       }
     }
 
-    // THIRD: Fill core with inventory blocks
+    // THIRD: Fill core with inventory blocks (same as before)
     if (inventory && inventory.length > 0 && selectedMaterial) {
       const cinderBlockColors = [
         0x9E9E9E,
