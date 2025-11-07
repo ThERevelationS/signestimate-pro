@@ -171,15 +171,15 @@ export default function BrickStone3DViewer({
     return group;
   };
 
-  // Create realistic hollow cinder block - CORRECTED to match reference image
+  // Create realistic hollow cinder block - TWO rectangular cavities like real cinder blocks
   const createDetailedCinderBlock = (length, height, width, baseColor) => {
     const group = new THREE.Group();
     
     const colorVariation = Math.random() * 0.08 - 0.04;
     const blockColor = new THREE.Color(baseColor).multiplyScalar(1 + colorVariation);
     
-    // Wall thickness - realistic for cinder blocks
-    const blockWallThickness = Math.min(length, width) * 0.08;
+    // Wall thickness - making it more substantial for realistic look
+    const wallThickness = Math.min(length, width, height) * 0.15;
     
     const createConcreteTexture = () => {
       const canvas = document.createElement('canvas');
@@ -191,9 +191,11 @@ export default function BrickStone3DViewer({
       const baseG = Math.floor(blockColor.g * 255);
       const baseB = Math.floor(blockColor.b * 255);
 
+      // Base concrete color
       ctx.fillStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
       ctx.fillRect(0, 0, 512, 512);
       
+      // Add coarse aggregate texture
       const imageData = ctx.getImageData(0, 0, 512, 512);
       for (let i = 0; i < imageData.data.length; i += 4) {
         const noise = Math.random() * 50 - 25;
@@ -203,6 +205,7 @@ export default function BrickStone3DViewer({
       }
       ctx.putImageData(imageData, 0, 0);
       
+      // Add aggregate stones
       for (let i = 0; i < 150; i++) {
         const x = Math.random() * 512;
         const y = Math.random() * 512;
@@ -213,6 +216,7 @@ export default function BrickStone3DViewer({
         ctx.fill();
       }
       
+      // Add darker aggregate
       for (let i = 0; i < 100; i++) {
         const x = Math.random() * 512;
         const y = Math.random() * 512;
@@ -223,6 +227,7 @@ export default function BrickStone3DViewer({
         ctx.fill();
       }
       
+      // Add surface imperfections
       for (let i = 0; i < 80; i++) {
         const x = Math.random() * 512;
         const y = Math.random() * 512;
@@ -247,66 +252,75 @@ export default function BrickStone3DViewer({
       flatShading: false,
     });
     
-    // CORRECTED STRUCTURE: Standard cinder block has 2 cores running along the LENGTH
-    // with 1 central web running along the WIDTH (perpendicular to length)
+    // PROPER CINDER BLOCK STRUCTURE
+    // A standard cinder block has TWO rectangular hollow cores with a center web
+    // The cores run the LENGTH of the block
     
-    // Front and back faces (the LENGTH x HEIGHT faces at -width/2 and +width/2)
-    const frontBackGeo = new THREE.BoxGeometry(length * 0.94, height * 0.94, blockWallThickness);
-    const frontFace = new THREE.Mesh(frontBackGeo, blockMaterial);
-    frontFace.position.z = (width/2) - (blockWallThickness/2);
-    frontFace.castShadow = true;
-    frontFace.receiveShadow = true;
-    group.add(frontFace);
+    // Outer shell dimensions
+    const outerLength = length * 0.96;
+    const outerHeight = height * 0.96;
+    const outerWidth = width * 0.96;
     
-    const backFace = new THREE.Mesh(frontBackGeo, blockMaterial);
-    backFace.position.z = -(width/2) + (blockWallThickness/2);
-    backFace.castShadow = true;
-    backFace.receiveShadow = true;
-    group.add(backFace);
+    // Create the 4 outer walls (front, back, left, right)
+    // Front wall (length x height, thin width)
+    const frontWall = new THREE.BoxGeometry(outerLength, outerHeight, wallThickness);
+    const frontMesh = new THREE.Mesh(frontWall, blockMaterial);
+    frontMesh.position.z = outerWidth/2 - wallThickness/2;
+    frontMesh.castShadow = true;
+    frontMesh.receiveShadow = true;
+    group.add(frontMesh);
     
-    // Left and right end walls (the WIDTH x HEIGHT faces at -length/2 and +length/2)
-    const leftRightGeo = new THREE.BoxGeometry(blockWallThickness, height * 0.94, width * 0.94 - 2 * blockWallThickness);
-    const leftFace = new THREE.Mesh(leftRightGeo, blockMaterial);
-    leftFace.position.x = -(length/2) + (blockWallThickness/2);
-    leftFace.castShadow = true;
-    leftFace.receiveShadow = true;
-    group.add(leftFace);
+    // Back wall
+    const backWall = new THREE.BoxGeometry(outerLength, outerHeight, wallThickness);
+    const backMesh = new THREE.Mesh(backWall, blockMaterial);
+    backMesh.position.z = -outerWidth/2 + wallThickness/2;
+    backMesh.castShadow = true;
+    backMesh.receiveShadow = true;
+    group.add(backMesh);
     
-    const rightFace = new THREE.Mesh(leftRightGeo, blockMaterial);
-    rightFace.position.x = (length/2) - (blockWallThickness/2);
-    rightFace.castShadow = true;
-    rightFace.receiveShadow = true;
-    group.add(rightFace);
+    // Left end wall (width x height, thin length)
+    const leftWall = new THREE.BoxGeometry(wallThickness, outerHeight, outerWidth - 2 * wallThickness);
+    const leftMesh = new THREE.Mesh(leftWall, blockMaterial);
+    leftMesh.position.x = -outerLength/2 + wallThickness/2;
+    leftMesh.castShadow = true;
+    leftMesh.receiveShadow = true;
+    group.add(leftMesh);
     
-    // Top and bottom faces
-    const topBottomGeo = new THREE.BoxGeometry(length * 0.94 - 2 * blockWallThickness, blockWallThickness, width * 0.94 - 2 * blockWallThickness);
-    const topFace = new THREE.Mesh(topBottomGeo, blockMaterial);
-    topFace.position.y = (height/2) - (blockWallThickness/2);
-    topFace.castShadow = true;
-    topFace.receiveShadow = true;
-    group.add(topFace);
+    // Right end wall
+    const rightWall = new THREE.BoxGeometry(wallThickness, outerHeight, outerWidth - 2 * wallThickness);
+    const rightMesh = new THREE.Mesh(rightWall, blockMaterial);
+    rightMesh.position.x = outerLength/2 - wallThickness/2;
+    rightMesh.castShadow = true;
+    rightMesh.receiveShadow = true;
+    group.add(rightMesh);
     
-    const bottomFace = new THREE.Mesh(topBottomGeo, blockMaterial);
-    bottomFace.position.y = -(height/2) + (blockWallThickness/2);
-    bottomFace.castShadow = true;
-    bottomFace.receiveShadow = true;
-    group.add(bottomFace);
+    // Top and bottom walls
+    const topBottomWall = new THREE.BoxGeometry(outerLength - 2 * wallThickness, wallThickness, outerWidth - 2 * wallThickness);
+    const topMesh = new THREE.Mesh(topBottomWall, blockMaterial);
+    topMesh.position.y = outerHeight/2 - wallThickness/2;
+    topMesh.castShadow = true;
+    topMesh.receiveShadow = true;
+    group.add(topMesh);
     
-    // CORRECTED: ONE central web running along the LENGTH (parallel to X-axis)
-    // This creates TWO hollow cores that run along the length of the block
-    const webThickness = blockWallThickness * 0.8; // Use 0.8 as in the prompt
-    const webGeo = new THREE.BoxGeometry(
-      length * 0.94 - 2 * blockWallThickness, // Spans the inner length (X)
-      height * 0.94 - 2 * blockWallThickness, // Spans the inner height (Y)
-      webThickness                            // Its own thickness (Z)
+    const bottomMesh = new THREE.Mesh(topBottomWall, blockMaterial);
+    bottomMesh.position.y = -outerHeight/2 + wallThickness/2;
+    bottomMesh.castShadow = true;
+    bottomMesh.receiveShadow = true;
+    group.add(bottomMesh);
+    
+    // CENTER WEB - This divides the block into TWO rectangular cavities
+    // The web runs along the LENGTH (X-axis) and divides the WIDTH (Z-axis)
+    const webThickness = wallThickness * 0.8;
+    const centerWeb = new THREE.BoxGeometry(
+      outerLength - 2 * wallThickness, 
+      outerHeight - 2 * wallThickness, 
+      webThickness
     );
-    
-    // Position the web at the center of the WIDTH (z=0)
-    const centralWeb = new THREE.Mesh(webGeo, blockMaterial);
-    centralWeb.position.z = 0; // Center along width
-    centralWeb.castShadow = true;
-    centralWeb.receiveShadow = true;
-    group.add(centralWeb);
+    const webMesh = new THREE.Mesh(centerWeb, blockMaterial);
+    webMesh.position.set(0, 0, 0); // Centered, creating two cavities on either side
+    webMesh.castShadow = true;
+    webMesh.receiveShadow = true;
+    group.add(webMesh);
     
     return group;
   };
