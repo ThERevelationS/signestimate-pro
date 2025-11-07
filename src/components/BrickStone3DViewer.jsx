@@ -201,134 +201,101 @@ export default function BrickStone3DViewer({
       const brickW = selectedMaterial.width * scale;
       const brickH = selectedMaterial.height * scale;
       
-      // Front/back walls span FULL length
-      const bricksAlongLength = Math.ceil((length) / (brickL + mortarGap));
-      
-      // Left/right walls span REDUCED width (fit BETWEEN front and back)
-      const innerWidth = width - 2 * brickW; // Changed from brickW to brickL based on side wall orientation
-      const bricksAlongWidth = Math.ceil((innerWidth) / (brickL + mortarGap));
-      
       const coursesHigh = Math.ceil((height) / (brickH + mortarGap));
 
-      // Build front wall (FULL length from -length/2 to +length/2)
+      // Build walls course by course, placing corners first
       for (let course = 0; course < coursesHigh; course++) {
+        const y = course * (brickH + mortarGap) + brickH/2;
         const offset = (course % 2) * (brickL + mortarGap) / 2;
-        const y = course * (brickH + mortarGap) + brickH/2;
         
-        for (let i = 0; i < bricksAlongLength + 2; i++) { // Increased range to allow for proper filtering
-          const x = i * (brickL + mortarGap) - length/2 + brickL/2 - offset;
-          
-          // Only place if brick fits entirely within wall
-          if (x - brickL/2 < -length/2 || x + brickL/2 > length/2) continue;
-          
-          const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
-          brick.position.set(x, y, -width/2 + brickW/2);
-          brick.castShadow = true;
-          brick.receiveShadow = true;
-          scene.add(brick);
-        }
-      }
-
-      // Build back wall (FULL length from -length/2 to +length/2)
-      for (let course = 0; course < coursesHigh; course++) {
-        const offset = (course % 2) * (brickL + mortarGap) / 2;
-        const y = course * (brickH + mortarGap) + brickH/2;
-        
-        for (let i = 0; i < bricksAlongLength + 2; i++) { // Increased range
-          const x = i * (brickL + mortarGap) - length/2 + brickL/2 - offset;
-          
-          // Only place if brick fits entirely within wall
-          if (x - brickL/2 < -length/2 || x + brickL/2 > length/2) continue;
-          
-          const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
-          brick.position.set(x, y, width/2 - brickW/2);
-          brick.castShadow = true;
-          brick.receiveShadow = true;
-          scene.add(brick);
-        }
-      }
-
-      // Build left and right walls (SHORTENED to fit BETWEEN front and back)
-      for (let course = 0; course < coursesHigh; course++) {
-        const offset = (course % 2) * (brickL + mortarGap) / 2;
-        const y = course * (brickH + mortarGap) + brickH/2;
-        
-        // Left wall - spans innerWidth (from -innerWidth/2 to +innerWidth/2)
-        for (let i = 0; i < bricksAlongWidth + 2; i++) { // Increased range
-          const z = i * (brickL + mortarGap) - innerWidth/2 + brickL/2 - offset;
-          
-          // Only place if brick fits entirely within the shortened span
-          if (z - brickL/2 < -innerWidth/2 || z + brickL/2 > innerWidth/2) continue;
-          
-          const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
-          brick.position.set(-length/2 + brickW/2, y, z);
-          brick.castShadow = true;
-          brick.receiveShadow = true;
-          scene.add(brick);
-        }
-        
-        // Right wall - spans innerWidth (from -innerWidth/2 to +innerWidth/2)
-        for (let i = 0; i < bricksAlongWidth + 2; i++) { // Increased range
-          const z = i * (brickL + mortarGap) - innerWidth/2 + brickL/2 - offset;
-          
-          // Only place if brick fits entirely within the shortened span
-          if (z - brickL/2 < -innerWidth/2 || z + brickL/2 > innerWidth/2) continue;
-          
-          const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
-          brick.position.set(length/2 - brickW/2, y, z);
-          brick.castShadow = true;
-          brick.receiveShadow = true;
-          scene.add(brick);
-        }
-      }
-
-      // ADD CORNER BRICKS to fill the gaps
-      for (let course = 0; course < coursesHigh; course++) {
-        const y = course * (brickH + mortarGap) + brickH/2;
-        
+        // STEP 1: Place 4 corner bricks on this course
         // Front-left corner
-        const cornerBrickFL = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
-        cornerBrickFL.position.set(
-          -length/2 + brickW/2,
-          y,
-          -width/2 + brickW + brickL/2
-        );
-        cornerBrickFL.castShadow = true;
-        cornerBrickFL.receiveShadow = true;
-        scene.add(cornerBrickFL);
+        const cornerFL = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
+        cornerFL.position.set(-length/2 + brickL/2, y, -width/2 + brickW/2);
+        cornerFL.castShadow = true;
+        cornerFL.receiveShadow = true;
+        scene.add(cornerFL);
         
         // Front-right corner
-        const cornerBrickFR = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
-        cornerBrickFR.position.set(
-          length/2 - brickW/2,
-          y,
-          -width/2 + brickW + brickL/2
-        );
-        cornerBrickFR.castShadow = true;
-        cornerBrickFR.receiveShadow = true;
-        scene.add(cornerBrickFR);
+        const cornerFR = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
+        cornerFR.position.set(length/2 - brickL/2, y, -width/2 + brickW/2);
+        cornerFR.castShadow = true;
+        cornerFR.receiveShadow = true;
+        scene.add(cornerFR);
         
         // Back-left corner
-        const cornerBrickBL = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
-        cornerBrickBL.position.set(
-          -length/2 + brickW/2,
-          y,
-          width/2 - brickW - brickL/2
-        );
-        cornerBrickBL.castShadow = true;
-        cornerBrickBL.receiveShadow = true;
-        scene.add(cornerBrickBL);
+        const cornerBL = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
+        cornerBL.position.set(-length/2 + brickL/2, y, width/2 - brickW/2);
+        cornerBL.castShadow = true;
+        cornerBL.receiveShadow = true;
+        scene.add(cornerBL);
         
         // Back-right corner
-        const cornerBrickBR = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
-        cornerBrickBR.position.set(
-          length/2 - brickW/2,
-          y,
-          width/2 - brickW - brickL/2
-        );
-        cornerBrickBR.castShadow = true;
-        cornerBrickBR.receiveShadow = true;
-        scene.add(cornerBrickBR);
+        const cornerBR = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
+        cornerBR.position.set(length/2 - brickL/2, y, width/2 - brickW/2);
+        cornerBR.castShadow = true;
+        cornerBR.receiveShadow = true;
+        scene.add(cornerBR);
+        
+        // STEP 2: Fill front wall between corners
+        const frontStartX = -length/2 + brickL + mortarGap + brickL/2;
+        const frontEndX = length/2 - brickL - mortarGap - brickL/2;
+        let currentX = frontStartX - offset;
+        while (currentX <= frontEndX) {
+          if (currentX - brickL/2 >= frontStartX - brickL/2 && currentX + brickL/2 <= frontEndX + brickL/2) {
+            const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
+            brick.position.set(currentX, y, -width/2 + brickW/2);
+            brick.castShadow = true;
+            brick.receiveShadow = true;
+            scene.add(brick);
+          }
+          currentX += brickL + mortarGap;
+        }
+        
+        // STEP 3: Fill back wall between corners
+        const backStartX = -length/2 + brickL + mortarGap + brickL/2;
+        const backEndX = length/2 - brickL - mortarGap - brickL/2;
+        currentX = backStartX - offset;
+        while (currentX <= backEndX) {
+          if (currentX - brickL/2 >= backStartX - brickL/2 && currentX + brickL/2 <= backEndX + brickL/2) {
+            const brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
+            brick.position.set(currentX, y, width/2 - brickW/2);
+            brick.castShadow = true;
+            brick.receiveShadow = true;
+            scene.add(brick);
+          }
+          currentX += brickL + mortarGap;
+        }
+        
+        // STEP 4: Fill left wall between corners (rotated bricks)
+        const leftStartZ = -width/2 + brickW + mortarGap + brickL/2;
+        const leftEndZ = width/2 - brickW - mortarGap - brickL/2;
+        let currentZ = leftStartZ - offset;
+        while (currentZ <= leftEndZ) {
+          if (currentZ - brickL/2 >= leftStartZ - brickL/2 && currentZ + brickL/2 <= leftEndZ + brickL/2) {
+            const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
+            brick.position.set(-length/2 + brickW/2, y, currentZ);
+            brick.castShadow = true;
+            brick.receiveShadow = true;
+            scene.add(brick);
+          }
+          currentZ += brickL + mortarGap;
+        }
+        
+        // STEP 5: Fill right wall between corners (rotated bricks)
+        const rightStartZ = -width/2 + brickW + mortarGap + brickL/2;
+        const rightEndZ = width/2 - brickW - mortarGap - brickL/2;
+        currentZ = rightStartZ - offset;
+        while (currentZ <= rightEndZ) {
+          if (currentZ - brickL/2 >= rightStartZ - brickL/2 && currentZ + brickL/2 <= rightEndZ + brickL/2) {
+            const brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
+            brick.position.set(length/2 - brickW/2, y, currentZ);
+            brick.castShadow = true;
+            brick.receiveShadow = true;
+            scene.add(brick);
+          }
+          currentZ += brickL + mortarGap;
+        }
       }
     }
 
