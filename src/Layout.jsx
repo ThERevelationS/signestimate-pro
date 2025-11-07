@@ -121,7 +121,7 @@ export default function Layout({ children, currentPageName }) {
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
       hoverColor: 'hover:bg-orange-100',
-      inventoryPage: 'Inventory' // Add inventoryPage for metal_fabrication
+      inventoryPage: 'Inventory'
     },
     {
       id: 'channel_letter_installation',
@@ -156,6 +156,18 @@ export default function Layout({ children, currentPageName }) {
       color: 'text-rose-600',
       bgColor: 'bg-rose-50',
       hoverColor: 'hover:bg-rose-100'
+    },
+    {
+      id: 'brick_stone_2',
+      name: 'Brick & Stone 2',
+      icon: Server,
+      projectsPage: 'BrickStoneProjects2',
+      newEstimatePage: 'NewBrickStoneEstimate2',
+      settingsPage: 'BrickStoneSettings2',
+      inventoryPage: 'BrickStoneInventory2',
+      color: 'text-pink-600',
+      bgColor: 'bg-pink-50',
+      hoverColor: 'hover:bg-pink-100'
     }
   ];
 
