@@ -124,20 +124,6 @@ export default function BrickStone3DViewer({
     return group;
   };
 
-  // Create mortar between bricks
-  const createMortar = (length, height, width) => {
-    const mortarMaterial = new THREE.MeshStandardMaterial({
-      color: 0xC0C0C0,
-      roughness: 1.0,
-      metalness: 0.0,
-    });
-    
-    const mortarGeometry = new THREE.BoxGeometry(length, height, width);
-    const mortar = new THREE.Mesh(mortarGeometry, mortarMaterial);
-    
-    return mortar;
-  };
-
   useEffect(() => {
     if (!containerRef.current || !actualLength || !actualWidth || !actualHeight) return;
 
@@ -203,7 +189,7 @@ export default function BrickStone3DViewer({
 
     // Convert inches to scene units
     const scale = 0.5;
-    const mortarGap = 0.375 * scale; // 3/8" mortar gap
+    const mortarGap = 0.375 * scale; // 3/8" gap (no visible mortar, just spacing)
 
     // Create outer brick walls with individual bricks and mortar
     const length = actualLength * scale;
@@ -239,22 +225,6 @@ export default function BrickStone3DViewer({
           brick.castShadow = true;
           brick.receiveShadow = true;
           scene.add(brick);
-          
-          // Add vertical mortar joints between bricks (along X-axis)
-          if (i < bricksAlongLength) { // Don't add mortar past the last brick
-            const mortarV = createMortar(mortarGap, brickH, brickW);
-            mortarV.position.set(x + brickL/2 + mortarGap/2, y, -width/2 + brickW/2);
-            mortarV.receiveShadow = true;
-            scene.add(mortarV);
-          }
-          
-          // Add horizontal mortar joints between courses (along Y-axis)
-          if (course < coursesHigh - 1) { // Don't add mortar above the top course
-            const mortarH = createMortar(brickL, mortarGap, brickW);
-            mortarH.position.set(x, y + brickH/2 + mortarGap/2, -width/2 + brickW/2);
-            mortarH.receiveShadow = true;
-            scene.add(mortarH);
-          }
         }
       }
 
@@ -274,20 +244,6 @@ export default function BrickStone3DViewer({
           brick.castShadow = true;
           brick.receiveShadow = true;
           scene.add(brick);
-          
-          if (i < bricksAlongLength) {
-            const mortarV = createMortar(mortarGap, brickH, brickW);
-            mortarV.position.set(x + brickL/2 + mortarGap/2, y, width/2 - brickW/2);
-            mortarV.receiveShadow = true;
-            scene.add(mortarV);
-          }
-          
-          if (course < coursesHigh - 1) {
-            const mortarH = createMortar(brickL, mortarGap, brickW);
-            mortarH.position.set(x, y + brickH/2 + mortarGap/2, width/2 - brickW/2);
-            mortarH.receiveShadow = true;
-            scene.add(mortarH);
-          }
         }
       }
 
@@ -295,7 +251,6 @@ export default function BrickStone3DViewer({
       // For these walls, brickL (selected material length) becomes width, brickW becomes depth (along Z-axis), brickH remains height
       const bricksAlongWidth = Math.floor((width + mortarGap) / (brickL + mortarGap));
       const effectiveWallDepth = brickW; // The depth of the bricks used for side walls
-      const effectiveMortarGapZ = mortarGap; // Mortar gap along the Z-axis
       
       for (let course = 0; course < coursesHigh; course++) {
         const offset = (course % 2) * (brickL + mortarGap) / 2; // Running bond applies to Z-axis here
@@ -313,22 +268,6 @@ export default function BrickStone3DViewer({
           brick.castShadow = true;
           brick.receiveShadow = true;
           scene.add(brick);
-          
-          // Add vertical mortar joints between bricks (along Z-axis)
-          if (i < bricksAlongWidth) {
-            const mortarV = createMortar(effectiveWallDepth, brickH, effectiveMortarGapZ); // Mortar between bricks (vertical from side view)
-            mortarV.position.set(-length/2 + effectiveWallDepth/2, y, z + brickL/2 + effectiveMortarGapZ/2);
-            mortarV.receiveShadow = true;
-            scene.add(mortarV);
-          }
-          
-          // Add horizontal mortar joints between courses (along Y-axis)
-          if (course < coursesHigh - 1) {
-            const mortarH = createMortar(effectiveWallDepth, mortarGap, brickL); // Mortar between courses
-            mortarH.position.set(-length/2 + effectiveWallDepth/2, y + brickH/2 + mortarGap/2, z);
-            mortarH.receiveShadow = true;
-            scene.add(mortarH);
-          }
         }
         
         // Right wall - spans from front to back
@@ -343,22 +282,6 @@ export default function BrickStone3DViewer({
           brick.castShadow = true;
           brick.receiveShadow = true;
           scene.add(brick);
-          
-          // Add vertical mortar joints between bricks (along Z-axis)
-          if (i < bricksAlongWidth) {
-            const mortarV = createMortar(effectiveWallDepth, brickH, effectiveMortarGapZ);
-            mortarV.position.set(length/2 - effectiveWallDepth/2, y, z + brickL/2 + effectiveMortarGapZ/2);
-            mortarV.receiveShadow = true;
-            scene.add(mortarV);
-          }
-          
-          // Add horizontal mortar joints between courses (along Y-axis)
-          if (course < coursesHigh - 1) {
-            const mortarH = createMortar(effectiveWallDepth, mortarGap, brickL);
-            mortarH.position.set(length/2 - effectiveWallDepth/2, y + brickH/2 + mortarGap/2, z);
-            mortarH.receiveShadow = true;
-            scene.add(mortarH);
-          }
         }
       }
     }
@@ -399,14 +322,6 @@ export default function BrickStone3DViewer({
               block.castShadow = true;
               block.receiveShadow = true;
               scene.add(block);
-              
-              // Add mortar between blocks (only along X-axis for simplicity in core)
-              if (currentX + blockL/2 + mortarGap < innerLength/2) {
-                const mortarV = createMortar(mortarGap, blockH, blockW);
-                mortarV.position.set(currentX + blockL/2 + mortarGap/2, currentY, currentZ);
-                mortarV.receiveShadow = true;
-                scene.add(mortarV);
-              }
               
               placed++;
               currentX += blockL + mortarGap;
