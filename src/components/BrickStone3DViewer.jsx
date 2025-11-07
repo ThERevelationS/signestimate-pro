@@ -519,7 +519,7 @@ export default function BrickStone3DViewer({
       }
     }
 
-    // THIRD: Fill core with inventory blocks (same as before)
+    // THIRD: Fill core with inventory blocks - ALWAYS USE createDetailedCinderBlock
     if (inventory && inventory.length > 0 && selectedMaterial) {
       const cinderBlockColors = [
         0x9E9E9E,
@@ -533,7 +533,7 @@ export default function BrickStone3DViewer({
       const brickW = selectedMaterial.width * scale;
       const innerLength = length - 2 * brickW;
       const innerWidth = width - 2 * brickW;
-      const innerHeight = height; // This is the total desired height of the inner space
+      const innerHeight = height;
       
       const sortedInventory = [...inventory]
         .filter(m => m.length && m.width && m.height)
@@ -553,7 +553,6 @@ export default function BrickStone3DViewer({
         const blockW = material.width * scale;
         const blockH = material.height * scale;
         
-        const isBlock = material.material_type === 'block';
         const color = cinderBlockColors[materialIndex_place % cinderBlockColors.length];
         
         if (currentBaseY_place + blockH > innerHeight + EPSILON) {
@@ -572,9 +571,8 @@ export default function BrickStone3DViewer({
           const maxX = innerLength/2 - blockL/2 - mortarGap;
           
           while (x <= maxX + EPSILON) {
-            const block = isBlock ? 
-              createDetailedCinderBlock(blockL, blockH, blockW, color) :
-              createDetailedBrick(blockL, blockH, blockW, color);
+            // ALWAYS use createDetailedCinderBlock for ALL core materials
+            const block = createDetailedCinderBlock(blockL, blockH, blockW, color);
             
             block.position.set(x, currentBlockCenterY, z);
             scene.add(block);
