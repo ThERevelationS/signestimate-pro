@@ -17,109 +17,282 @@ export default function BrickStone3DViewer({
   const rendererRef = useRef(null);
   const controlsRef = useRef(null);
 
-  // Create high-detail brick with beveled edges and mortar joints
-  const createDetailedBrick = (length, height, width, color) => {
+  // Create realistic brick with texture and color variation
+  const createDetailedBrick = (length, height, width, baseColor) => {
     const group = new THREE.Group();
     
-    // Main brick body (slightly smaller to show mortar)
-    const brickGeometry = new THREE.BoxGeometry(length * 0.97, height * 0.97, width * 0.97);
+    // Add slight random variation to brick color for realism
+    const colorVariation = Math.random() * 0.15 - 0.075; // ±7.5% variation
+    const brickColor = new THREE.Color(baseColor).multiplyScalar(1 + colorVariation);
     
-    // Create brick material with realistic properties
+    // Main brick body with realistic dimensions (slight gap for mortar)
+    const brickGeometry = new THREE.BoxGeometry(length * 0.96, height * 0.96, width * 0.96);
+    
+    // Create procedural brick texture using canvas
+    const createBrickTexture = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      
+      // Base brick color with variation
+      const baseR = Math.floor(brickColor.r * 255);
+      const baseG = Math.floor(brickColor.g * 255);
+      const baseB = Math.floor(brickColor.b * 255);
+      
+      ctx.fillStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
+      ctx.fillRect(0, 0, 512, 512);
+      
+      // Add texture noise for realistic surface
+      const imageData = ctx.getImageData(0, 0, 512, 512);
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        const noise = Math.random() * 30 - 15;
+        imageData.data[i] = Math.max(0, Math.min(255, imageData.data[i] + noise));
+        imageData.data[i + 1] = Math.max(0, Math.min(255, imageData.data[i + 1] + noise));
+        imageData.data[i + 2] = Math.max(0, Math.min(255, imageData.data[i + 2] + noise));
+      }
+      ctx.putImageData(imageData, 0, 0);
+      
+      // Add darker spots for weathering
+      for (let i = 0; i < 15; i++) {
+        ctx.fillStyle = `rgba(${baseR * 0.7}, ${baseG * 0.7}, ${baseB * 0.7}, ${Math.random() * 0.3})`;
+        ctx.fillRect(
+          Math.random() * 512,
+          Math.random() * 512,
+          Math.random() * 80 + 20,
+          Math.random() * 80 + 20
+        );
+      }
+      
+      // Add subtle horizontal lines (texture lines)
+      ctx.strokeStyle = `rgba(${baseR * 0.8}, ${baseG * 0.8}, ${baseB * 0.8}, 0.3)`;
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 8; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, (512 / 8) * i + Math.random() * 20);
+        ctx.lineTo(512, (512 / 8) * i + Math.random() * 20);
+        ctx.stroke();
+      }
+      
+      return new THREE.CanvasTexture(canvas);
+    };
+    
+    // Create normal map for surface detail
+    const createNormalMap = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      
+      // Base normal (neutral blue-purple)
+      ctx.fillStyle = '#8080ff';
+      ctx.fillRect(0, 0, 512, 512);
+      
+      // Add random bumps
+      for (let i = 0; i < 200; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        const radius = Math.random() * 8 + 2;
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        gradient.addColorStop(0, '#9090ff');
+        gradient.addColorStop(1, '#7070ff');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      return new THREE.CanvasTexture(canvas);
+    };
+    
+    const brickTexture = createBrickTexture();
+    brickTexture.wrapS = THREE.RepeatWrapping;
+    brickTexture.wrapT = THREE.RepeatWrapping;
+    
+    const normalMap = createNormalMap();
+    normalMap.wrapS = THREE.RepeatWrapping;
+    normalMap.wrapT = THREE.RepeatWrapping;
+    
+    // Enhanced brick material with realistic properties
     const brickMaterial = new THREE.MeshStandardMaterial({
-      color: color,
-      roughness: 0.9,
+      map: brickTexture,
+      normalMap: normalMap,
+      normalScale: new THREE.Vector2(0.3, 0.3),
+      color: brickColor, // This will apply the base color and then the texture on top
+      roughness: 0.85 + Math.random() * 0.1, // Slight variation
       metalness: 0.0,
       flatShading: false,
     });
     
     const mainBrick = new THREE.Mesh(brickGeometry, brickMaterial);
+    mainBrick.castShadow = true;
+    mainBrick.receiveShadow = true;
     group.add(mainBrick);
     
-    // Add subtle surface detail lines (horizontal scoring)
-    const lineGeometry = new THREE.BoxGeometry(length * 0.95, 0.005, width * 0.95);
-    const lineMaterial = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(color).multiplyScalar(0.85),
-      roughness: 1.0,
+    // Add mortar edges (light gray cement color)
+    const mortarColor = new THREE.Color(0xc0c0c0);
+    const mortarMaterial = new THREE.MeshStandardMaterial({
+      color: mortarColor,
+      roughness: 0.95,
       metalness: 0.0,
     });
     
-    // Add 2-3 horizontal detail lines
-    for (let i = 0; i < 2; i++) {
-      const line = new THREE.Mesh(lineGeometry, lineMaterial);
-      line.position.y = (i - 0.5) * height * 0.3;
-      group.add(line);
-    }
+    // Mortar gap definition (a small fraction of the brick dimensions)
+    const mortarThickness = Math.min(length, width, height) * 0.02; // Roughly 2% of smallest dimension
+    const mortarOffset = 0.5 - (0.96 / 2) - (mortarThickness / 2); // Position mortar at edge of brick body
+    
+    // Top/bottom mortar edges
+    const topBottomMortarGeo = new THREE.BoxGeometry(length, mortarThickness, width);
+    const topMortar = new THREE.Mesh(topBottomMortarGeo, mortarMaterial);
+    topMortar.position.y = height * mortarOffset;
+    topMortar.castShadow = true;
+    topMortar.receiveShadow = true;
+    group.add(topMortar);
+    
+    const bottomMortar = new THREE.Mesh(topBottomMortarGeo, mortarMaterial);
+    bottomMortar.position.y = -height * mortarOffset;
+    bottomMortar.castShadow = true;
+    bottomMortar.receiveShadow = true;
+    group.add(bottomMortar);
+    
+    // Side mortar edges (left/right)
+    const sideMortarXGeo = new THREE.BoxGeometry(mortarThickness, height, width);
+    const leftMortar = new THREE.Mesh(sideMortarXGeo, mortarMaterial);
+    leftMortar.position.x = -length * mortarOffset;
+    leftMortar.castShadow = true;
+    leftMortar.receiveShadow = true;
+    group.add(leftMortar);
+    
+    const rightMortar = new THREE.Mesh(sideMortarXGeo, mortarMaterial);
+    rightMortar.position.x = length * mortarOffset;
+    rightMortar.castShadow = true;
+    rightMortar.receiveShadow = true;
+    group.add(rightMortar);
+    
+    // Front/back mortar edges (front/back)
+    const sideMortarZGeo = new THREE.BoxGeometry(length, height, mortarThickness);
+    const frontMortar = new THREE.Mesh(sideMortarZGeo, mortarMaterial);
+    frontMortar.position.z = width * mortarOffset;
+    frontMortar.castShadow = true;
+    frontMortar.receiveShadow = true;
+    group.add(frontMortar);
+    
+    const backMortar = new THREE.Mesh(sideMortarZGeo, mortarMaterial);
+    backMortar.position.z = -width * mortarOffset;
+    backMortar.castShadow = true;
+    backMortar.receiveShadow = true;
+    group.add(backMortar);
     
     return group;
   };
 
-  // Create high-detail cinder block with hollow cores
-  const createDetailedCinderBlock = (length, height, width, color) => {
+  // Create realistic cinder block with hollow cores
+  const createDetailedCinderBlock = (length, height, width, baseColor) => {
     const group = new THREE.Group();
     
-    // Create the outer shell
-    const blockWallThickness = Math.min(length, width) * 0.12; // Renamed to avoid conflict with prop wallThickness
+    // Add color variation
+    const colorVariation = Math.random() * 0.1 - 0.05;
+    const blockColor = new THREE.Color(baseColor).multiplyScalar(1 + colorVariation);
     
-    // Main block material
+    const blockWallThickness = Math.min(length, width) * 0.12;
+    
+    // Create concrete texture
+    const createConcreteTexture = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      
+      const baseR = Math.floor(blockColor.r * 255);
+      const baseG = Math.floor(blockColor.g * 255);
+      const baseB = Math.floor(blockColor.b * 255);
+
+      // Base concrete gray
+      ctx.fillStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
+      ctx.fillRect(0, 0, 512, 512);
+      
+      // Add concrete aggregate texture
+      const imageData = ctx.getImageData(0, 0, 512, 512);
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        const noise = Math.random() * 40 - 20;
+        imageData.data[i] = Math.max(0, Math.min(255, imageData.data[i] + noise));
+        imageData.data[i + 1] = Math.max(0, Math.min(255, imageData.data[i + 1] + noise));
+        imageData.data[i + 2] = Math.max(0, Math.min(255, imageData.data[i + 2] + noise));
+      }
+      ctx.putImageData(imageData, 0, 0);
+      
+      // Add small aggregate stones
+      for (let i = 0; i < 100; i++) {
+        ctx.fillStyle = `rgba(${100 + Math.random() * 50}, ${100 + Math.random() * 50}, ${100 + Math.random() * 50}, 0.5)`;
+        ctx.fillRect(
+          Math.random() * 512,
+          Math.random() * 512,
+          Math.random() * 4 + 1,
+          Math.random() * 4 + 1
+        );
+      }
+      
+      return new THREE.CanvasTexture(canvas);
+    };
+    
+    const concreteTexture = createConcreteTexture();
+    concreteTexture.wrapS = THREE.RepeatWrapping;
+    concreteTexture.wrapT = THREE.RepeatWrapping;
+    
     const blockMaterial = new THREE.MeshStandardMaterial({
-      color: color,
+      map: concreteTexture,
+      color: blockColor, // This will apply the base color and then the texture on top
       roughness: 0.95,
       metalness: 0.0,
       flatShading: false,
     });
     
-    // Create the 6 faces that make up the hollow block
-    // Front and back faces
+    // Create hollow block structure
     const frontBackGeo = new THREE.BoxGeometry(length * 0.97, height * 0.97, blockWallThickness);
     const frontFace = new THREE.Mesh(frontBackGeo, blockMaterial);
     frontFace.position.z = width/2 - blockWallThickness/2;
+    frontFace.castShadow = true;
+    frontFace.receiveShadow = true;
     group.add(frontFace);
     
     const backFace = new THREE.Mesh(frontBackGeo, blockMaterial);
     backFace.position.z = -width/2 + blockWallThickness/2;
+    backFace.castShadow = true;
+    backFace.receiveShadow = true;
     group.add(backFace);
     
-    // Left and right faces
     const leftRightGeo = new THREE.BoxGeometry(blockWallThickness, height * 0.97, width * 0.97 - 2 * blockWallThickness);
     const leftFace = new THREE.Mesh(leftRightGeo, blockMaterial);
     leftFace.position.x = -length/2 + blockWallThickness/2;
+    leftFace.castShadow = true;
+    leftFace.receiveShadow = true;
     group.add(leftFace);
     
     const rightFace = new THREE.Mesh(leftRightGeo, blockMaterial);
     rightFace.position.x = length/2 - blockWallThickness/2;
+    rightFace.castShadow = true;
+    rightFace.receiveShadow = true;
     group.add(rightFace);
     
-    // Top and bottom faces
     const topBottomGeo = new THREE.BoxGeometry(length * 0.97 - 2 * blockWallThickness, blockWallThickness, width * 0.97 - 2 * blockWallThickness);
     const topFace = new THREE.Mesh(topBottomGeo, blockMaterial);
     topFace.position.y = height/2 - blockWallThickness/2;
+    topFace.castShadow = true;
+    topFace.receiveShadow = true;
     group.add(topFace);
     
     const bottomFace = new THREE.Mesh(topBottomGeo, blockMaterial);
     bottomFace.position.y = -height/2 + blockWallThickness/2;
+    bottomFace.castShadow = true;
+    bottomFace.receiveShadow = true;
     group.add(bottomFace);
     
-    // Add center web (divider between cores)
     const webThickness = blockWallThickness * 0.6;
     const webGeo = new THREE.BoxGeometry(webThickness, height * 0.97 - 2 * blockWallThickness, width * 0.97 - 2 * blockWallThickness);
     const web = new THREE.Mesh(webGeo, blockMaterial);
+    web.castShadow = true;
+    web.receiveShadow = true;
     group.add(web);
-    
-    // Add texture detail - vertical lines on faces
-    const detailMaterial = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(color).multiplyScalar(0.9),
-      roughness: 1.0,
-      metalness: 0.0,
-    });
-    
-    const detailGeo = new THREE.BoxGeometry(length * 0.96, 0.01, width * 0.96);
-    const topDetail = new THREE.Mesh(detailGeo, detailMaterial);
-    topDetail.position.y = height/2 - blockWallThickness - 0.01;
-    group.add(topDetail);
-    
-    const bottomDetail = new THREE.Mesh(detailGeo, detailMaterial);
-    bottomDetail.position.y = -height/2 + blockWallThickness + 0.01;
-    group.add(bottomDetail);
     
     return group;
   };
@@ -147,6 +320,8 @@ export default function BrickStone3DViewer({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -159,10 +334,10 @@ export default function BrickStone3DViewer({
     controlsRef.current = controls;
 
     // Enhanced lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Slightly reduced ambient
     scene.add(ambientLight);
 
-    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+    const directionalLight1 = new THREE.DirectionalLight(0xfff4e6, 1.0); // Warmer, brighter main light
     directionalLight1.position.set(50, 100, 50);
     directionalLight1.castShadow = true;
     directionalLight1.shadow.camera.left = -200;
@@ -171,14 +346,15 @@ export default function BrickStone3DViewer({
     directionalLight1.shadow.camera.bottom = -200;
     directionalLight1.shadow.mapSize.width = 2048;
     directionalLight1.shadow.mapSize.height = 2048;
+    directionalLight1.shadow.bias = -0.0001; // Reduce shadow acne
     scene.add(directionalLight1);
 
-    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+    const directionalLight2 = new THREE.DirectionalLight(0xe6f3ff, 0.5); // Cooler, softer fill light
     directionalLight2.position.set(-50, 50, -50);
     scene.add(directionalLight2);
 
     // Add subtle fill light from below
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.2);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.3); // Slightly brighter fill light
     fillLight.position.set(0, -30, 0);
     scene.add(fillLight);
 
@@ -219,15 +395,11 @@ export default function BrickStone3DViewer({
           // Leftmost brick (corner)
           let brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
           brick.position.set(-length/2 + brickL/2, y, -width/2 + brickW/2);
-          brick.castShadow = true;
-          brick.receiveShadow = true;
           scene.add(brick);
           
           // Rightmost brick (corner)
           brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
           brick.position.set(length/2 - brickL/2, y, -width/2 + brickW/2);
-          brick.castShadow = true;
-          brick.receiveShadow = true;
           scene.add(brick);
           
           // Fill middle bricks for front wall (running bond offset)
@@ -236,8 +408,6 @@ export default function BrickStone3DViewer({
           while (x <= endX + EPSILON) {
             brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
             brick.position.set(x, y, -width/2 + brickW/2);
-            brick.castShadow = true;
-            brick.receiveShadow = true;
             scene.add(brick);
             x += brickL + mortarGap;
           }
@@ -246,15 +416,11 @@ export default function BrickStone3DViewer({
           // Leftmost brick (corner)
           brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
           brick.position.set(-length/2 + brickL/2, y, width/2 - brickW/2);
-          brick.castShadow = true;
-          brick.receiveShadow = true;
           scene.add(brick);
           
           // Rightmost brick (corner)
           brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
           brick.position.set(length/2 - brickL/2, y, width/2 - brickW/2);
-          brick.castShadow = true;
-          brick.receiveShadow = true;
           scene.add(brick);
           
           // Fill middle bricks for back wall
@@ -262,8 +428,6 @@ export default function BrickStone3DViewer({
           while (x <= endX + EPSILON) {
             brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
             brick.position.set(x, y, width/2 - brickW/2);
-            brick.castShadow = true;
-            brick.receiveShadow = true;
             scene.add(brick);
             x += brickL + mortarGap;
           }
@@ -275,8 +439,6 @@ export default function BrickStone3DViewer({
           while (z <= sideWallMaxZ + EPSILON) {
             brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Swapped length/width
             brick.position.set(-length/2 + brickW/2, y, z);
-            brick.castShadow = true;
-            brick.receiveShadow = true;
             scene.add(brick);
             z += brickL + mortarGap;
           }
@@ -286,8 +448,6 @@ export default function BrickStone3DViewer({
           while (z <= sideWallMaxZ + EPSILON) {
             brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Swapped length/width
             brick.position.set(length/2 - brickW/2, y, z);
-            brick.castShadow = true;
-            brick.receiveShadow = true;
             scene.add(brick);
             z += brickL + mortarGap;
           }
@@ -300,15 +460,11 @@ export default function BrickStone3DViewer({
           // Frontmost brick (corner)
           let brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
           brick.position.set(-length/2 + brickW/2, y, -width/2 + brickL/2);
-          brick.castShadow = true;
-          brick.receiveShadow = true;
           scene.add(brick);
           
           // Backmost brick (corner)
           brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
           brick.position.set(-length/2 + brickW/2, y, width/2 - brickL/2);
-          brick.castShadow = true;
-          brick.receiveShadow = true;
           scene.add(brick);
           
           // Fill middle bricks for left wall (running bond offset)
@@ -317,8 +473,6 @@ export default function BrickStone3DViewer({
           while (z <= endZ + EPSILON) {
             brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Swapped length/width
             brick.position.set(-length/2 + brickW/2, y, z);
-            brick.castShadow = true;
-            brick.receiveShadow = true;
             scene.add(brick);
             z += brickL + mortarGap;
           }
@@ -327,23 +481,17 @@ export default function BrickStone3DViewer({
           // Frontmost brick (corner)
           brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
           brick.position.set(length/2 - brickW/2, y, -width/2 + brickL/2);
-          brick.castShadow = true;
-          brick.receiveShadow = true;
           scene.add(brick);
           
           // Backmost brick (corner)
           brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e);
           brick.position.set(length/2 - brickW/2, y, width/2 - brickL/2);
-          brick.castShadow = true;
-          brick.receiveShadow = true;
           scene.add(brick);
           
           z = -width/2 + brickL/2 + brickL + mortarGap;
           while (z <= endZ + EPSILON) {
             brick = createDetailedBrick(brickW, brickH, brickL, 0xa8332e); // Swapped length/width
             brick.position.set(length/2 - brickW/2, y, z);
-            brick.castShadow = true;
-            brick.receiveShadow = true;
             scene.add(brick);
             z += brickL + mortarGap;
           }
@@ -355,8 +503,6 @@ export default function BrickStone3DViewer({
           while (x <= frontBackWallMaxX + EPSILON) {
             brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
             brick.position.set(x, y, -width/2 + brickW/2);
-            brick.castShadow = true;
-            brick.receiveShadow = true;
             scene.add(brick);
             x += brickL + mortarGap;
           }
@@ -366,8 +512,6 @@ export default function BrickStone3DViewer({
           while (x <= frontBackWallMaxX + EPSILON) {
             brick = createDetailedBrick(brickL, brickH, brickW, 0xa8332e);
             brick.position.set(x, y, width/2 - brickW/2);
-            brick.castShadow = true;
-            brick.receiveShadow = true;
             scene.add(brick);
             x += brickL + mortarGap;
           }
@@ -428,18 +572,16 @@ export default function BrickStone3DViewer({
             let z = -innerWidth/2 + blockW/2 + mortarGap;
             const maxZ = innerWidth/2 - blockW/2 - mortarGap;
             
-            while (z <= maxZ && placedForThisMaterial < quantity) {
+            while (z <= maxZ + EPSILON && placedForThisMaterial < quantity) {
               let x = -innerLength/2 + blockL/2 + mortarGap;
               const maxX = innerLength/2 - blockL/2 - mortarGap;
               
-              while (x <= maxX && placedForThisMaterial < quantity) {
+              while (x <= maxX + EPSILON && placedForThisMaterial < quantity) {
                 const block = isBlock ? 
                   createDetailedCinderBlock(blockL, blockH, blockW, color) :
                   createDetailedBrick(blockL, blockH, blockW, color);
                 
                 block.position.set(x, currentBlockCenterY, z);
-                block.castShadow = true;
-                block.receiveShadow = true;
                 scene.add(block);
                 
                 placedForThisMaterial++;
