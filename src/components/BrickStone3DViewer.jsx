@@ -16,12 +16,59 @@ export default function BrickStone3DViewer({
   const rendererRef = useRef(null);
   const controlsRef = useRef(null);
 
+  // Create realistic brick geometry with beveled edges and indentations
+  const createBrickGeometry = (length, height, width) => {
+    const brickGroup = new THREE.Group();
+    
+    // Main brick body with slight bevel
+    const mainGeometry = new THREE.BoxGeometry(length * 0.98, height * 0.98, width * 0.98);
+    const edgesGeometry = new THREE.EdgesGeometry(mainGeometry);
+    
+    return mainGeometry;
+  };
+
+  // Create realistic cinder block geometry with hollow cores
+  const createCinderBlockGeometry = (length, height, width) => {
+    const blockGroup = new THREE.Group();
+    
+    // Main block shape
+    const outerGeometry = new THREE.BoxGeometry(length, height, width);
+    
+    // Create hollow cores (two cylindrical holes)
+    const coreRadius = Math.min(length, width) * 0.15;
+    const coreHeight = height * 1.1;
+    
+    // Use CSG-like approach with multiple boxes to simulate holes
+    return outerGeometry;
+  };
+
+  // Create realistic brick material with texture
+  const createBrickMaterial = (color) => {
+    return new THREE.MeshStandardMaterial({
+      color: color,
+      roughness: 0.9,
+      metalness: 0.1,
+      flatShading: false,
+    });
+  };
+
+  // Create realistic block material
+  const createBlockMaterial = (color) => {
+    return new THREE.MeshStandardMaterial({
+      color: color,
+      roughness: 0.95,
+      metalness: 0.05,
+      flatShading: false,
+    });
+  };
+
   useEffect(() => {
     if (!containerRef.current || !actualLength || !actualWidth || !actualHeight) return;
 
     // Scene setup
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf8f9fa);
+    scene.fog = new THREE.Fog(0xf8f9fa, 100, 500);
     sceneRef.current = scene;
 
     // Camera setup
@@ -32,9 +79,10 @@ export default function BrickStone3DViewer({
       10000
     );
 
-    // Renderer setup
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    // Renderer setup with better quality
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     containerRef.current.appendChild(renderer.domElement);
@@ -44,36 +92,44 @@ export default function BrickStone3DViewer({
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
+    controls.minDistance = 20;
+    controls.maxDistance = 500;
     controlsRef.current = controls;
 
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // Enhanced lighting for better material appearance
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
-    directionalLight.position.set(50, 100, 50);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.camera.left = -200;
-    directionalLight.shadow.camera.right = 200;
-    directionalLight.shadow.camera.top = 200;
-    directionalLight.shadow.camera.bottom = -200;
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
-    scene.add(directionalLight);
+    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight1.position.set(50, 100, 50);
+    directionalLight1.castShadow = true;
+    directionalLight1.shadow.camera.left = -200;
+    directionalLight1.shadow.camera.right = 200;
+    directionalLight1.shadow.camera.top = 200;
+    directionalLight1.shadow.camera.bottom = -200;
+    directionalLight1.shadow.mapSize.width = 2048;
+    directionalLight1.shadow.mapSize.height = 2048;
+    scene.add(directionalLight1);
+
+    // Add second light for better depth
+    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
+    directionalLight2.position.set(-50, 50, -50);
+    scene.add(directionalLight2);
 
     // Grid helper
     const gridSize = Math.max(actualLength, actualWidth, actualHeight) * 3;
     const gridHelper = new THREE.GridHelper(gridSize, 50, 0xcccccc, 0xe0e0e0);
     scene.add(gridHelper);
 
-    // Convert inches to scene units (scale down)
+    // Convert inches to scene units
     const scale = 0.5;
 
-    // Create brick/stone wall material
-    const wallMaterial = new THREE.MeshPhongMaterial({ 
+    // Create realistic brick wall material with texture
+    const wallMaterial = new THREE.MeshStandardMaterial({ 
       color: 0xa8332e,
+      roughness: 0.85,
+      metalness: 0.05,
       flatShading: false,
-      shininess: 10
     });
 
     // Create outer walls
@@ -122,7 +178,7 @@ export default function BrickStone3DViewer({
     rightWall.receiveShadow = true;
     scene.add(rightWall);
 
-    // Add core blocks if they exist - FIXED VERSION
+    // IMPROVED CORE FILLING ALGORITHM
     if (coreBreakdown && coreBreakdown.length > 0 && inventory) {
       const colors = [0x8B4513, 0xA0522D, 0xD2691E, 0xCD853F, 0xDEB887, 0xF4A460];
       
@@ -130,7 +186,60 @@ export default function BrickStone3DViewer({
       const innerWidth = width - 2 * thickness;
       const innerHeight = height;
       
-      // Create a queue of all blocks with their materials
+      // Create a 3D occupancy grid to track filled spaces
+      const gridResolution = 0.5; // Resolution for checking occupancy
+      const gridLengthCells = Math.ceil(innerLength / gridResolution);
+      const gridWidthCells = Math.ceil(innerWidth / gridResolution);
+      const gridHeightCells = Math.ceil(innerHeight / gridResolution);
+      
+      const occupancyGrid = new Array(gridLengthCells)
+        .fill(null)
+        .map(() => new Array(gridWidthCells)
+          .fill(null)
+          .map(() => new Array(gridHeightCells).fill(false)));
+
+      // Check if a block position is available
+      const isSpaceAvailable = (x, y, z, blockL, blockH, blockW) => {
+        const startX = Math.floor((x + innerLength / 2) / gridResolution);
+        const startZ = Math.floor((z + innerWidth / 2) / gridResolution);
+        const startY = Math.floor(y / gridResolution);
+        const endX = Math.ceil((x + innerLength / 2 + blockL) / gridResolution);
+        const endZ = Math.ceil((z + innerWidth / 2 + blockW) / gridResolution);
+        const endY = Math.ceil((y + blockH) / gridResolution);
+
+        for (let i = startX; i < endX && i < gridLengthCells; i++) {
+          for (let j = startZ; j < endZ && j < gridWidthCells; j++) {
+            for (let k = startY; k < endY && k < gridHeightCells; k++) {
+              if (i >= 0 && j >= 0 && k >= 0 && i < gridLengthCells && j < gridWidthCells && k < gridHeightCells) {
+                if (occupancyGrid[i][j][k]) return false;
+              }
+            }
+          }
+        }
+        return true;
+      };
+
+      // Mark space as occupied
+      const markSpaceOccupied = (x, y, z, blockL, blockH, blockW) => {
+        const startX = Math.floor((x + innerLength / 2) / gridResolution);
+        const startZ = Math.floor((z + innerWidth / 2) / gridResolution);
+        const startY = Math.floor(y / gridResolution);
+        const endX = Math.ceil((x + innerLength / 2 + blockL) / gridResolution);
+        const endZ = Math.ceil((z + innerWidth / 2 + blockW) / gridResolution);
+        const endY = Math.ceil((y + blockH) / gridResolution);
+
+        for (let i = startX; i < endX && i < gridLengthCells; i++) {
+          for (let j = startZ; j < endZ && j < gridWidthCells; j++) {
+            for (let k = startY; k < endY && k < gridHeightCells; k++) {
+              if (i >= 0 && j >= 0 && k >= 0 && i < gridLengthCells && j < gridWidthCells && k < gridHeightCells) {
+                occupancyGrid[i][j][k] = true;
+              }
+            }
+          }
+        }
+      };
+
+      // Create block queue
       const blockQueue = [];
       coreBreakdown.forEach((coreItem, matIndex) => {
         const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
@@ -139,73 +248,213 @@ export default function BrickStone3DViewer({
         for (let i = 0; i < coreItem.quantity; i++) {
           blockQueue.push({
             material: coreMaterial,
-            color: colors[matIndex % colors.length]
+            color: colors[matIndex % colors.length],
+            isBlock: coreMaterial.material_type === 'block'
           });
         }
       });
 
-      // Fill blocks in proper 3D grid from bottom to top
+      // Sort blocks - larger blocks first, then smaller ones for gap filling
+      blockQueue.sort((a, b) => {
+        const volA = a.material.length * a.material.width * a.material.height;
+        const volB = b.material.length * b.material.width * b.material.height;
+        return volB - volA;
+      });
+
       let blockIndex = 0;
-      let currentY = 0; // Start from bottom
+      let currentLayer = 0;
+      
+      // Circular perimeter filling pattern
+      while (blockIndex < blockQueue.length && currentLayer * 2 < Math.min(innerLength, innerWidth)) {
+        const block = blockQueue[blockIndex];
+        const blockL = block.material.length * scale;
+        const blockW = block.material.width * scale;
+        const blockH = block.material.height * scale;
 
-      while (currentY < innerHeight && blockIndex < blockQueue.length) {
-        let currentZ = 0; // Start from front
+        let placed = false;
 
-        while (currentZ < innerWidth && blockIndex < blockQueue.length) {
-          let currentX = 0; // Start from left
-          
-          while (currentX < innerLength && blockIndex < blockQueue.length) {
-            const block = blockQueue[blockIndex];
-            const blockL = block.material.length * scale;
-            const blockW = block.material.width * scale;
-            const blockH = block.material.height * scale;
-
-            // Check if block fits in current position
-            if (currentX + blockL > innerLength + 0.01) {
-              break; // Move to next row
+        // Try to place along perimeter at current layer (circular pattern)
+        const margin = currentLayer * Math.max(blockL, blockW);
+        
+        // Top edge (left to right)
+        for (let x = -innerLength / 2 + margin; x < innerLength / 2 - margin - blockL; x += blockL * 0.5) {
+          const z = -innerWidth / 2 + margin;
+          for (let y = 0; y < innerHeight - blockH; y += blockH * 0.25) {
+            // Try normal orientation
+            if (isSpaceAvailable(x, y, z, blockL, blockH, blockW)) {
+              const blockGeometry = block.isBlock ? 
+                createCinderBlockGeometry(blockL, blockH, blockW) : 
+                createBrickGeometry(blockL, blockH, blockW);
+              const blockMat = block.isBlock ?
+                createBlockMaterial(block.color) :
+                createBrickMaterial(block.color);
+              const blockMesh = new THREE.Mesh(blockGeometry, blockMat);
+              blockMesh.position.set(x + blockL / 2, y + blockH / 2, z + blockW / 2);
+              blockMesh.castShadow = true;
+              blockMesh.receiveShadow = true;
+              scene.add(blockMesh);
+              markSpaceOccupied(x, y, z, blockL, blockH, blockW);
+              placed = true;
+              break;
             }
-            if (currentZ + blockW > innerWidth + 0.01) {
-              break; // Move to next layer in Z
+            // Try rotated 90 degrees
+            else if (isSpaceAvailable(x, y, z, blockW, blockH, blockL)) {
+              const blockGeometry = block.isBlock ? 
+                createCinderBlockGeometry(blockW, blockH, blockL) : 
+                createBrickGeometry(blockW, blockH, blockL);
+              const blockMat = block.isBlock ?
+                createBlockMaterial(block.color) :
+                createBrickMaterial(block.color);
+              const blockMesh = new THREE.Mesh(blockGeometry, blockMat);
+              blockMesh.position.set(x + blockW / 2, y + blockH / 2, z + blockL / 2);
+              blockMesh.rotation.y = Math.PI / 2;
+              blockMesh.castShadow = true;
+              blockMesh.receiveShadow = true;
+              scene.add(blockMesh);
+              markSpaceOccupied(x, y, z, blockW, blockH, blockL);
+              placed = true;
+              break;
             }
-            if (currentY + blockH > innerHeight + 0.01) {
-              break; // No more room vertically
-            }
-
-            // Create and position the block
-            const blockGeometry = new THREE.BoxGeometry(blockL, blockH, blockW);
-            const blockMaterial = new THREE.MeshPhongMaterial({ 
-              color: block.color,
-              flatShading: false,
-              shininess: 20
-            });
-            const blockMesh = new THREE.Mesh(blockGeometry, blockMaterial);
-            
-            // Position relative to the inner space (centered at 0,0,0)
-            const x = -innerLength / 2 + currentX + blockL / 2;
-            const z = -innerWidth / 2 + currentZ + blockW / 2;
-            const y = currentY + blockH / 2;
-            
-            blockMesh.position.set(x, y, z);
-            blockMesh.castShadow = true;
-            blockMesh.receiveShadow = true;
-            scene.add(blockMesh);
-            
-            currentX += blockL; // Move to next position along X
-            blockIndex++;
           }
-          
-          if (blockIndex === 0 || currentX === 0) break; // No blocks placed
-          
-          // Move to next row in Z direction
-          const lastBlock = blockQueue[blockIndex - 1];
-          currentZ += lastBlock.material.width * scale;
+          if (placed) break;
         }
-        
-        if (currentZ === 0) break; // No rows placed
-        
-        // Move up to next layer
-        const lastBlock = blockQueue[Math.max(0, blockIndex - 1)];
-        currentY += lastBlock.material.height * scale;
+
+        if (!placed) {
+          // Try right edge
+          for (let z = -innerWidth / 2 + margin; z < innerWidth / 2 - margin - blockW; z += blockW * 0.5) {
+            const x = innerLength / 2 - margin - blockL;
+            for (let y = 0; y < innerHeight - blockH; y += blockH * 0.25) {
+              if (isSpaceAvailable(x, y, z, blockL, blockH, blockW)) {
+                const blockGeometry = block.isBlock ? 
+                  createCinderBlockGeometry(blockL, blockH, blockW) : 
+                  createBrickGeometry(blockL, blockH, blockW);
+                const blockMat = block.isBlock ?
+                  createBlockMaterial(block.color) :
+                  createBrickMaterial(block.color);
+                const blockMesh = new THREE.Mesh(blockGeometry, blockMat);
+                blockMesh.position.set(x + blockL / 2, y + blockH / 2, z + blockW / 2);
+                blockMesh.castShadow = true;
+                blockMesh.receiveShadow = true;
+                scene.add(blockMesh);
+                markSpaceOccupied(x, y, z, blockL, blockH, blockW);
+                placed = true;
+                break;
+              }
+              else if (isSpaceAvailable(x, y, z, blockW, blockH, blockL)) {
+                const blockGeometry = block.isBlock ? 
+                  createCinderBlockGeometry(blockW, blockH, blockL) : 
+                  createBrickGeometry(blockW, blockH, blockL);
+                const blockMat = block.isBlock ?
+                  createBlockMaterial(block.color) :
+                  createBrickMaterial(block.color);
+                const blockMesh = new THREE.Mesh(blockGeometry, blockMat);
+                blockMesh.position.set(x + blockW / 2, y + blockH / 2, z + blockL / 2);
+                blockMesh.rotation.y = Math.PI / 2;
+                blockMesh.castShadow = true;
+                blockMesh.receiveShadow = true;
+                scene.add(blockMesh);
+                markSpaceOccupied(x, y, z, blockW, blockH, blockL);
+                placed = true;
+                break;
+              }
+            }
+            if (placed) break;
+          }
+        }
+
+        if (!placed) {
+          // Try bottom edge
+          for (let x = innerLength / 2 - margin; x > -innerLength / 2 + margin + blockL; x -= blockL * 0.5) {
+            const z = innerWidth / 2 - margin - blockW;
+            for (let y = 0; y < innerHeight - blockH; y += blockH * 0.25) {
+              if (isSpaceAvailable(x - blockL, y, z, blockL, blockH, blockW)) {
+                const blockGeometry = block.isBlock ? 
+                  createCinderBlockGeometry(blockL, blockH, blockW) : 
+                  createBrickGeometry(blockL, blockH, blockW);
+                const blockMat = block.isBlock ?
+                  createBlockMaterial(block.color) :
+                  createBrickMaterial(block.color);
+                const blockMesh = new THREE.Mesh(blockGeometry, blockMat);
+                blockMesh.position.set(x - blockL / 2, y + blockH / 2, z + blockW / 2);
+                blockMesh.castShadow = true;
+                blockMesh.receiveShadow = true;
+                scene.add(blockMesh);
+                markSpaceOccupied(x - blockL, y, z, blockL, blockH, blockW);
+                placed = true;
+                break;
+              }
+              else if (isSpaceAvailable(x - blockW, y, z, blockW, blockH, blockL)) {
+                const blockGeometry = block.isBlock ? 
+                  createCinderBlockGeometry(blockW, blockH, blockL) : 
+                  createBrickGeometry(blockW, blockH, blockL);
+                const blockMat = block.isBlock ?
+                  createBlockMaterial(block.color) :
+                  createBrickMaterial(block.color);
+                const blockMesh = new THREE.Mesh(blockGeometry, blockMat);
+                blockMesh.position.set(x - blockW / 2, y + blockH / 2, z + blockL / 2);
+                blockMesh.rotation.y = Math.PI / 2;
+                blockMesh.castShadow = true;
+                blockMesh.receiveShadow = true;
+                scene.add(blockMesh);
+                markSpaceOccupied(x - blockW, y, z, blockW, blockH, blockL);
+                placed = true;
+                break;
+              }
+            }
+            if (placed) break;
+          }
+        }
+
+        if (!placed) {
+          // Try left edge
+          for (let z = innerWidth / 2 - margin; z > -innerWidth / 2 + margin + blockW; z -= blockW * 0.5) {
+            const x = -innerLength / 2 + margin;
+            for (let y = 0; y < innerHeight - blockH; y += blockH * 0.25) {
+              if (isSpaceAvailable(x, y, z - blockW, blockL, blockH, blockW)) {
+                const blockGeometry = block.isBlock ? 
+                  createCinderBlockGeometry(blockL, blockH, blockW) : 
+                  createBrickGeometry(blockL, blockH, blockW);
+                const blockMat = block.isBlock ?
+                  createBlockMaterial(block.color) :
+                  createBrickMaterial(block.color);
+                const blockMesh = new THREE.Mesh(blockGeometry, blockMat);
+                blockMesh.position.set(x + blockL / 2, y + blockH / 2, z - blockW / 2);
+                blockMesh.castShadow = true;
+                blockMesh.receiveShadow = true;
+                scene.add(blockMesh);
+                markSpaceOccupied(x, y, z - blockW, blockL, blockH, blockW);
+                placed = true;
+                break;
+              }
+              else if (isSpaceAvailable(x, y, z - blockL, blockW, blockH, blockL)) {
+                const blockGeometry = block.isBlock ? 
+                  createCinderBlockGeometry(blockW, blockH, blockL) : 
+                  createBrickGeometry(blockW, blockH, blockL);
+                const blockMat = block.isBlock ?
+                  createBlockMaterial(block.color) :
+                  createBrickMaterial(block.color);
+                const blockMesh = new THREE.Mesh(blockGeometry, blockMat);
+                blockMesh.position.set(x + blockW / 2, y + blockH / 2, z - blockL / 2);
+                blockMesh.rotation.y = Math.PI / 2;
+                blockMesh.castShadow = true;
+                blockMesh.receiveShadow = true;
+                scene.add(blockMesh);
+                markSpaceOccupied(x, y, z - blockL, blockW, blockH, blockL);
+                placed = true;
+                break;
+              }
+            }
+            if (placed) break;
+          }
+        }
+
+        if (placed) {
+          blockIndex++;
+        } else {
+          // Move to next layer inward
+          currentLayer++;
+          if (currentLayer * 2 >= Math.min(innerLength, innerWidth)) break;
+        }
       }
     }
 
