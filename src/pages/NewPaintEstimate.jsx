@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2, Save, Calculator, Palette, Edit, Mail, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Calculator, Palette, Edit, Mail, X, ChevronDown, ChevronUp } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
@@ -60,7 +60,6 @@ export default function NewPaintEstimate() {
     estimate_number: "",
     hyperlink: "",
     items: [],
-    base_supplies_cost: 50,
     paint_supplies_per_sqft: 1.25,
     notes: ""
   });
@@ -70,9 +69,18 @@ export default function NewPaintEstimate() {
   const [complexShapesTiers, setComplexShapesTiers] = useState([]);
   const [letteringTiers, setLetteringTiers] = useState([]);
   
+  const [expandedCostOverride, setExpandedCostOverride] = useState({});
+  
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const toggleCostOverride = (index) => {
+    setExpandedCostOverride(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
 
   const getLaborMultiplier = useCallback((itemType, quantity) => {
     let tiers = [];
@@ -95,7 +103,6 @@ export default function NewPaintEstimate() {
     return 1.0;
   }, [panelTiers, complexShapesTiers, letteringTiers]);
   
-  // NEW: Get items with discounts (multiplier < 1.0)
   const getItemsWithDiscounts = useCallback(() => {
     return project.items
       .map((item, index) => {
@@ -155,15 +162,15 @@ export default function NewPaintEstimate() {
           items: projectToEdit.items.map(item => ({
             ...item,
             paint_sides: item.paint_sides === 'none' ? 'one_side' : item.paint_sides,
-            approx_coverage_factor: item.approx_coverage_factor || "1/4"
+            approx_coverage_factor: item.approx_coverage_factor || "1/4",
+            base_supplies_cost: item.base_supplies_cost !== undefined ? item.base_supplies_cost : 0
           }))
         };
-        const { client_email, client_phone, estimate_number, hyperlink, supplies_rate_per_sqft, labor_rate, ...restOfProject } = cleanedProject;
+        const { client_email, client_phone, estimate_number, hyperlink, supplies_rate_per_sqft, labor_rate, base_supplies_cost, ...restOfProject } = cleanedProject;
         setProject({
           ...restOfProject,
           estimate_number: estimate_number || "",
-          hyperlink: hyperlink || "",
-          base_supplies_cost: supplies_rate_per_sqft || (parseFloat(globalSettings.base_supplies_per_job) || 50)
+          hyperlink: hyperlink || ""
         });
         setIsEditing(true);
       } else {
@@ -174,7 +181,7 @@ export default function NewPaintEstimate() {
       console.error('Error loading project for edit:', error);
       alert('Error loading project for edit. Please try again.');
     }
-  }, [navigate, globalSettings.base_supplies_per_job]);
+  }, [navigate]);
 
   const loadPrerequisites = useCallback(async () => {
     try {
@@ -213,7 +220,6 @@ export default function NewPaintEstimate() {
       
       if (!editId) {
         const newDefaults = {
-          base_supplies_cost: parseFloat(settingsObj.base_supplies_per_job) || 50,
           paint_supplies_per_sqft: parseFloat(settingsObj.default_paint_supplies_per_sqft) || 1.25,
           notes: settingsObj.default_notes_template || ""
         };
@@ -247,7 +253,8 @@ export default function NewPaintEstimate() {
         paint_sides: "one_side",
         paint_colors: [""],
         letter_size: "normal",
-        paint_mask_sqft: 0, 
+        paint_mask_sqft: 0,
+        base_supplies_cost: 0,
         supplies_cost: 0,
         paint_cost: 0,
         labor_hours: 0,
@@ -346,7 +353,7 @@ export default function NewPaintEstimate() {
         }
       }
       
-      liquidPaintAndSuppliesCost = paintApplicationSuppliesCost + liquidPaintCost;
+      liquidPaintAndSuppliesCost = paintApplicationSuppliesCost + liquidPaintCost + (item.base_supplies_cost || 0);
       
       const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
       const baseHoursPerSqFt = parseFloat(globalSettings.base_labor_hours_per_sqft) || 0.5;
@@ -448,8 +455,6 @@ export default function NewPaintEstimate() {
   const calculateTotals = () => {
     const totalPaintMask = project.items.reduce((sum, item) => sum + (item.supplies_cost || 0), 0);
     let totalLiquidPaintAndSupplies = project.items.reduce((sum, item) => sum + (item.paint_cost || 0), 0);
-    
-    totalLiquidPaintAndSupplies += project.base_supplies_cost || 0;
 
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
     let totalItemLaborCost = project.items.reduce((sum, item) => sum + (item.labor_cost || 0), 0);
@@ -601,7 +606,7 @@ Notes: ${project.notes || 'None'}
             .item-cost-details { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e2e8f0; }
             .item-cost-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
             .totals { margin-top: 30px; padding: 20px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 5px; }
-            .total-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+            .total-row { display: flex; justify-between; margin-bottom: 10px; }
             .final-total { font-weight: bold; font-size: 20px; border-top: 2px solid #374151; padding-top: 15px; margin-top: 15px; }
             .notes { margin-top: 30px; padding: 15px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 5px; }
           </style>
@@ -809,20 +814,6 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="base_supplies_cost">Base Supplies Cost (per Job)</Label>
-                  <Input 
-                    id="base_supplies_cost" 
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={project.base_supplies_cost || ""} 
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => setProject(prev => ({ ...prev, base_supplies_cost: parseFloat(e.target.value) || 0 }))} 
-                    placeholder="e.g., 50" 
-                    className="mt-1" 
-                  />
-                </div>
-                <div>
                   <Label htmlFor="notes">Project Notes</Label>
                   <Textarea 
                     id="notes" 
@@ -873,20 +864,21 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                               </SelectContent>
                             </Select>
                           </div>
+                          <div>
+                            <Label>Thickness</Label>
+                            <Select value={item.thickness} onValueChange={(value) => updateItem(index, 'thickness', value)}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {imperialSizes.map(size => (
+                                  <SelectItem key={size} value={size}>{size}"</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                            { item.item_type === 'panel' || item.item_type === 'complex_shapes' ? (
                             <>
-                              <div>
-                                <Label>Length (in)</Label>
-                                <Input 
-                                  type="number" 
-                                  min="0" 
-                                  step="0.25" 
-                                  value={item.length || ""}
-                                  onFocus={(e) => e.target.select()}
-                                  onChange={(e) => updateItem(index, 'length', parseFloat(e.target.value) || 0)} 
-                                  className="mt-1" 
-                                />
-                              </div>
                               <div>
                                 <Label>Quantity</Label>
                                 <Input 
@@ -910,6 +902,18 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                                   className="mt-1" 
                                 />
                               </div>
+                              <div>
+                                <Label>Length (in)</Label>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  step="0.25" 
+                                  value={item.length || ""}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => updateItem(index, 'length', parseFloat(e.target.value) || 0)} 
+                                  className="mt-1" 
+                                />
+                              </div>
                               {item.item_type === 'complex_shapes' && (
                                 <div>
                                   <Label>Edge Complexity Multiplier</Label>
@@ -929,6 +933,17 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                           ) : (
                             <>
                               <div>
+                                <Label>Quantity</Label>
+                                <Input 
+                                  type="number" 
+                                  min="1" 
+                                  value={item.quantity || ""}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)} 
+                                  className="mt-1" 
+                                />
+                              </div>
+                              <div>
                                 <Label>Letter Height (in)</Label>
                                 <Input 
                                   type="number" 
@@ -937,17 +952,6 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                                   value={item.width || ""}
                                   onFocus={(e) => e.target.select()}
                                   onChange={(e) => updateItem(index, 'width', parseFloat(e.target.value) || 0)} 
-                                  className="mt-1" 
-                                />
-                              </div>
-                              <div>
-                                <Label>Quantity</Label>
-                                <Input 
-                                  type="number" 
-                                  min="1" 
-                                  value={item.quantity || ""}
-                                  onFocus={(e) => e.target.select()}
-                                  onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)} 
                                   className="mt-1" 
                                 />
                               </div>
@@ -963,36 +967,21 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                                   className="mt-1" 
                                 />
                               </div>
-                            </>
-                          )}
-                          <div>
-                            <Label>Thickness</Label>
-                            <Select value={item.thickness} onValueChange={(value) => updateItem(index, 'thickness', value)}>
-                              <SelectTrigger className="mt-1">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {imperialSizes.map(size => (
-                                  <SelectItem key={size} value={size}>{size}"</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          {item.item_type === 'lettering' && (
-                            <div>
+                              <div>
                                 <Label>Letter Size</Label>
                                 <Select value={item.letter_size} onValueChange={(value) => updateItem(index, 'letter_size', value)}>
-                                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                                <SelectContent>
+                                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
                                     <SelectItem value="extra_small">Extra Small (≤4")</SelectItem>
                                     <SelectItem value="small">Small (4-8")</SelectItem>
                                     <SelectItem value="normal">Normal (8-12")</SelectItem>
                                     <SelectItem value="medium">Medium (12-20")</SelectItem>
                                     <SelectItem value="large">Large (20-30")</SelectItem>
                                     <SelectItem value="extra_large">Extra Large (30"+)</SelectItem>
-                                </SelectContent>
+                                  </SelectContent>
                                 </Select>
-                            </div>
+                              </div>
+                            </>
                           )}
                         </div>
 
@@ -1072,6 +1061,39 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                           )}
                         </div>
 
+                        <div className="mt-4">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toggleCostOverride(index)}
+                            className="w-full text-xs"
+                          >
+                            Cost Override
+                            {expandedCostOverride[index] ? <ChevronUp className="w-3 h-3 ml-2" /> : <ChevronDown className="w-3 h-3 ml-2" />}
+                          </Button>
+
+                          {expandedCostOverride[index] && (
+                            <div className="mt-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                              <div>
+                                <Label htmlFor={`base_supplies_${index}`} className="text-xs">Base Supplies Cost (for this item)</Label>
+                                <Input 
+                                  id={`base_supplies_${index}`}
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={item.base_supplies_cost || 0}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => updateItem(index, 'base_supplies_cost', parseFloat(e.target.value) || 0)}
+                                  placeholder="0.00"
+                                  className="mt-1"
+                                />
+                                <p className="text-xs text-amber-700 mt-1">Override base supplies for this item (e.g., special masking tape, cleaners)</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
                         <div className="mt-4 p-4 bg-white rounded-lg border border-slate-200">
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div><span className="text-slate-500">Paint Mask:</span><p className="font-medium">${(item.supplies_cost || 0).toFixed(2)}</p></div>
@@ -1104,7 +1126,7 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                     <span className="text-sm font-medium text-blue-800">Liquid Paint & Supplies:</span>
                     <span className="text-lg font-bold text-blue-900">${totalLiquidPaintAndSupplies.toFixed(2)}</span>
                   </div>
-                  <p className="text-xs text-blue-600">Includes liquid paint, base job supplies, application materials, and waste.</p>
+                  <p className="text-xs text-blue-600">Includes liquid paint, application materials, waste, and base supplies</p>
                 </div>
                 <div className="p-4 bg-green-50 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
