@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { FoundationInventory } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -20,6 +19,7 @@ export default function FoundationInventoryPage() {
     equipment_type: "N/A",
     unit: "per foot",
     cost_per_unit: 0,
+    cubic_yards_per_unit: 1,
     cost_per_day: 0,
     cost_per_week: 0,
     cost_per_month: 0,
@@ -67,6 +67,7 @@ export default function FoundationInventoryPage() {
       equipment_type: item.equipment_type || "N/A",
       unit: item.unit || "",
       cost_per_unit: item.cost_per_unit || 0,
+      cubic_yards_per_unit: item.cubic_yards_per_unit || 1,
       cost_per_day: item.cost_per_day || 0,
       cost_per_week: item.cost_per_week || 0,
       cost_per_month: item.cost_per_month || 0,
@@ -95,6 +96,7 @@ export default function FoundationInventoryPage() {
       equipment_type: "N/A",
       unit: "per foot",
       cost_per_unit: 0,
+      cubic_yards_per_unit: 1,
       cost_per_day: 0,
       cost_per_week: 0,
       cost_per_month: 0,
@@ -107,6 +109,17 @@ export default function FoundationInventoryPage() {
   };
 
   const isEquipment = formData.material_type === 'excavation_equipment';
+  const isConcreteMaterial = formData.material_type === 'concrete_service' || formData.material_type === 'bagged_concrete';
+
+  // Calculate cost per cubic yard for display
+  const calculateCostPerCubicYard = (item) => {
+    if (item.material_type === 'concrete_service' || item.material_type === 'bagged_concrete') {
+      if (item.cubic_yards_per_unit && item.cubic_yards_per_unit > 0) {
+        return (item.cost_per_unit / item.cubic_yards_per_unit).toFixed(2);
+      }
+    }
+    return null;
+  };
 
   // Separate concrete and equipment items
   const concreteItems = inventory.filter(item => 
@@ -153,55 +166,65 @@ export default function FoundationInventoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => (
-                  <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-25">
-                    <td className="p-3">{item.material_name}</td>
-                    <td className="p-3 capitalize">{item.material_type.replace(/_/g, ' ')}</td>
-                    <td className="p-3">
-                      {item.material_type === 'excavation_equipment' ? (
-                        <span className="text-sm">
-                          {item.equipment_type?.replace(/_/g, ' ').toUpperCase() || 'N/A'}
-                          {item.pickup_delivery_cost > 0 && ` • Delivery: $${item.pickup_delivery_cost.toFixed(2)}`}
-                        </span>
-                      ) : item.material_type === 'rebar' ? (
-                        <span className="text-sm">{item.rebar_size || 'N/A'}</span>
-                      ) : (
-                        <span className="text-sm">{item.unit || 'N/A'}</span>
-                      )}
-                    </td>
-                    <td className="p-3 text-right">
-                      {item.material_type === 'excavation_equipment' ? (
-                        <div className="text-sm">
-                          <div>Day: ${(item.cost_per_day || 0).toFixed(2)}</div>
-                          <div>Week: ${(item.cost_per_week || 0).toFixed(2)}</div>
-                          <div>Month: ${(item.cost_per_month || 0).toFixed(2)}</div>
+                {items.map((item) => {
+                  const costPerCY = calculateCostPerCubicYard(item);
+                  return (
+                    <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-25">
+                      <td className="p-3">{item.material_name}</td>
+                      <td className="p-3 capitalize">{item.material_type.replace(/_/g, ' ')}</td>
+                      <td className="p-3">
+                        {item.material_type === 'excavation_equipment' ? (
+                          <span className="text-sm">
+                            {item.equipment_type?.replace(/_/g, ' ').toUpperCase() || 'N/A'}
+                            {item.pickup_delivery_cost > 0 && ` • Delivery: $${item.pickup_delivery_cost.toFixed(2)}`}
+                          </span>
+                        ) : item.material_type === 'rebar' ? (
+                          <span className="text-sm">{item.rebar_size || 'N/A'}</span>
+                        ) : (
+                          <span className="text-sm">
+                            {item.cubic_yards_per_unit ? `${item.cubic_yards_per_unit} cy per ${item.unit}` : item.unit || 'N/A'}
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 text-right">
+                        {item.material_type === 'excavation_equipment' ? (
+                          <div className="text-sm">
+                            <div>Day: ${(item.cost_per_day || 0).toFixed(2)}</div>
+                            <div>Week: ${(item.cost_per_week || 0).toFixed(2)}</div>
+                            <div>Month: ${(item.cost_per_month || 0).toFixed(2)}</div>
+                          </div>
+                        ) : (
+                          <div className="text-sm">
+                            <div className="font-medium">${(item.cost_per_unit || 0).toFixed(2)} / {item.unit}</div>
+                            {costPerCY && (
+                              <div className="text-green-600 font-semibold">${costPerCY} / cy</div>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(item)}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(item.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                      ) : (
-                        <span className="font-medium">${(item.cost_per_unit || 0).toFixed(2)} / {item.unit}</span>
-                      )}
-                    </td>
-                    <td className="p-3 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(item)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(item.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -232,6 +255,7 @@ export default function FoundationInventoryPage() {
           {renderInventoryTable(equipmentItems, "Excavation Equipment", <Drill className="w-5 h-5" />)}
         </div>
 
+        {/* Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <Card className="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -299,12 +323,13 @@ export default function FoundationInventoryPage() {
 
                     {!isEquipment && (
                       <div>
-                        <Label htmlFor="unit">Unit of Measurement</Label>
+                        <Label htmlFor="unit">Unit of Measurement *</Label>
                         <Input
                           id="unit"
                           value={formData.unit}
                           onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
-                          placeholder="e.g., per foot, per cy, per bag"
+                          placeholder="e.g., per foot, per bag, per cy"
+                          required
                           className="mt-1"
                         />
                       </div>
@@ -312,19 +337,46 @@ export default function FoundationInventoryPage() {
                   </div>
 
                   {!isEquipment ? (
-                    <div>
-                      <Label htmlFor="cost_per_unit">Cost Per Unit *</Label>
-                      <Input
-                        id="cost_per_unit"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.cost_per_unit}
-                        onChange={(e) => setFormData(prev => ({ ...prev, cost_per_unit: parseFloat(e.target.value) || 0 }))}
-                        required
-                        className="mt-1"
-                      />
-                    </div>
+                    <>
+                      <div>
+                        <Label htmlFor="cost_per_unit">Cost Per Unit *</Label>
+                        <Input
+                          id="cost_per_unit"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.cost_per_unit}
+                          onChange={(e) => setFormData(prev => ({ ...prev, cost_per_unit: parseFloat(e.target.value) || 0 }))}
+                          required
+                          className="mt-1"
+                        />
+                      </div>
+                      
+                      {isConcreteMaterial && (
+                        <div>
+                          <Label htmlFor="cubic_yards_per_unit">Cubic Yards Per Unit *</Label>
+                          <Input
+                            id="cubic_yards_per_unit"
+                            type="number"
+                            step="0.001"
+                            min="0.001"
+                            value={formData.cubic_yards_per_unit}
+                            onChange={(e) => setFormData(prev => ({ ...prev, cubic_yards_per_unit: parseFloat(e.target.value) || 1 }))}
+                            required
+                            className="mt-1"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">
+                            For concrete service: typically 1.0 cy per unit<br/>
+                            For bagged concrete: e.g., 60lb bag = 0.0167 cy, 80lb bag = 0.022 cy
+                          </p>
+                          {formData.cost_per_unit > 0 && formData.cubic_yards_per_unit > 0 && (
+                            <p className="text-sm font-semibold text-green-600 mt-2">
+                              = ${(formData.cost_per_unit / formData.cubic_yards_per_unit).toFixed(2)} per cubic yard
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <>
                       <div className="grid md:grid-cols-3 gap-4">

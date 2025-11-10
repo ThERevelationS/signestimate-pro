@@ -295,20 +295,26 @@ export default function NewFoundationEstimate() {
   };
 
   const handleConcreteSelection = (concreteId) => {
-    const selectedConcrete = concreteOptions.find(c => c.id === concreteId);
-    if (selectedConcrete) {
-      setProject(prev => ({
-        ...prev,
-        selected_concrete_id: concreteId,
-        concrete_cost_per_cy: selectedConcrete.cost_per_unit || prev.concrete_cost_per_cy
-      }));
-    } else if (concreteId === "default") {
-      // If "Default" is selected, revert to the global setting default if available, or a hardcoded fallback
-      const defaultRate = parseFloat(globalSettings.foundation_concrete_cost_per_cy) || 135;
+    if (concreteId === "default") {
       setProject(prev => ({
         ...prev,
         selected_concrete_id: null,
-        concrete_cost_per_cy: defaultRate
+        concrete_cost_per_cy: parseFloat(globalSettings.foundation_concrete_cost_per_cy) || 135
+      }));
+      return;
+    }
+
+    const selectedConcrete = concreteOptions.find(c => c.id === concreteId);
+    if (selectedConcrete) {
+      // Calculate cost per cubic yard
+      const costPerCY = selectedConcrete.cubic_yards_per_unit > 0 
+        ? selectedConcrete.cost_per_unit / selectedConcrete.cubic_yards_per_unit
+        : selectedConcrete.cost_per_unit; // Assuming if cubic_yards_per_unit is 0 or not set, cost_per_unit is already per cy
+      
+      setProject(prev => ({
+        ...prev,
+        selected_concrete_id: concreteId,
+        concrete_cost_per_cy: costPerCY
       }));
     }
   };
@@ -428,7 +434,7 @@ export default function NewFoundationEstimate() {
     };
   }, [project.items, project.selected_equipment, project.concrete_cost_per_cy, project.rebar_cost_per_ft,
       project.excavation_cost_per_cy, project.forming_labor_rate,
-      project.pouring_labor_rate, project.finishing_labor_rate, globalSettings, equipment]);
+      project.pouring_labor_rate, project.finishing_labor_rate, globalSettings]);
 
   useEffect(() => {
     if (!isLoading && project.items.length >= 0) {
@@ -494,6 +500,9 @@ export default function NewFoundationEstimate() {
       </div>
     );
   }
+
+  // Get selected concrete for display
+  const selectedConcrete = concreteOptions.find(c => c.id === project.selected_concrete_id);
 
   return (
     <div className="p-2 md:p-4 bg-slate-50 min-h-screen">
@@ -563,20 +572,30 @@ export default function NewFoundationEstimate() {
                     <Label className="text-xs">Concrete Material</Label>
                     <Select 
                       value={project.selected_concrete_id || "default"} 
-                      onValueChange={(value) => handleConcreteSelection(value)}
+                      onValueChange={handleConcreteSelection}
                     >
                       <SelectTrigger className="mt-1 h-8 text-xs">
                         <SelectValue placeholder="Select concrete material" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="default">Default (${project.concrete_cost_per_cy}/cy)</SelectItem>
-                        {concreteOptions.map(concrete => (
-                          <SelectItem key={concrete.id} value={concrete.id}>
-                            {concrete.material_name} - ${concrete.cost_per_unit}/{concrete.unit}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="default">Default (${project.concrete_cost_per_cy.toFixed(2)}/cy)</SelectItem>
+                        {concreteOptions.map(concrete => {
+                          const costPerCY = concrete.cubic_yards_per_unit > 0 
+                            ? (concrete.cost_per_unit / concrete.cubic_yards_per_unit).toFixed(2)
+                            : concrete.cost_per_unit.toFixed(2);
+                          return (
+                            <SelectItem key={concrete.id} value={concrete.id}>
+                              {concrete.material_name} - ${costPerCY}/cy ({concrete.material_type.replace(/_/g, ' ')})
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
+                    {selectedConcrete && (
+                      <p className="text-xs text-green-600 mt-1 font-medium">
+                        Using: {selectedConcrete.material_name} @ ${project.concrete_cost_per_cy.toFixed(2)}/cy
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -913,7 +932,7 @@ export default function NewFoundationEstimate() {
                               onChange={(e) => updateEquipmentItem(index, 'include_delivery', e.target.checked)}
                               className="w-3 h-3 text-orange-600"
                             />
-                            <Label className="text-xs">Delivery {selectedEquip && `($${(selectedEquip.pickup_delivery_cost || 0).toFixed(2)})`}</Label>
+                            <Label className="text-xs">Delivery {selectedEquip && `(${(selectedEquip.pickup_delivery_cost || 0).toFixed(2)})`}</Label>
                           </div>
                           
                           {selectedEquip && (
