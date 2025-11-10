@@ -64,13 +64,22 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   const hasPermission = (moduleName) => {
-    if (!currentUser) {
-      return moduleStatuses[moduleName] !== undefined ? moduleStatuses[moduleName] : true;
+    // First check if module is globally disabled - if so, NOBODY can see it
+    const globalStatus = moduleStatuses[moduleName];
+    if (globalStatus === false) {
+      return false;
     }
+    
+    // If module is globally enabled (or not set), check user permissions
+    if (!currentUser) {
+      return globalStatus !== undefined ? globalStatus : true;
+    }
+    
     if (currentUser.module_permissions && currentUser.module_permissions[moduleName] !== undefined) {
       return currentUser.module_permissions[moduleName];
     }
-    return moduleStatuses[moduleName] !== undefined ? moduleStatuses[moduleName] : true;
+    
+    return globalStatus !== undefined ? globalStatus : true;
   };
 
   const modules = [
@@ -168,12 +177,6 @@ export default function Layout({ children, currentPageName }) {
     }
   ];
 
-  const handleNavigation = (e, pageName) => {
-    e.preventDefault();
-    e.stopPropagation();
-    navigate(createPageUrl(pageName));
-  };
-
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
@@ -198,6 +201,12 @@ export default function Layout({ children, currentPageName }) {
             <SidebarMenu className="space-y-1">
               {modules.map((module) => {
                 const isEnabled = hasPermission(module.id);
+                
+                // If module is disabled, don't render it at all
+                if (!isEnabled) {
+                  return null;
+                }
+                
                 const isExpanded = hoveredModule === module.id;
                 
                 return (
@@ -210,73 +219,61 @@ export default function Layout({ children, currentPageName }) {
                       <div className="flex items-center gap-2 mb-2">
                         <module.icon className={`w-5 h-5 ${module.color}`} />
                         <span className="font-semibold text-slate-900 text-sm">{module.name}</span>
-                        {!isEnabled && (
-                          <span className="ml-auto px-2 py-0.5 bg-red-100 text-red-600 text-xs rounded-full">
-                            Disabled
-                          </span>
-                        )}
                       </div>
                       
-                      {isEnabled ? (
-                        <div 
-                          className="grid grid-cols-1 gap-1 transition-all duration-300 ease-in-out"
-                          style={{
-                            maxHeight: isExpanded ? '400px' : '0px',
-                            opacity: isExpanded ? 1 : 0,
-                            overflow: isExpanded ? 'visible' : 'hidden'
-                          }}
+                      <div 
+                        className="grid grid-cols-1 gap-1 transition-all duration-300 ease-in-out"
+                        style={{
+                          maxHeight: isExpanded ? '400px' : '0px',
+                          opacity: isExpanded ? 1 : 0,
+                          overflow: isExpanded ? 'visible' : 'hidden'
+                        }}
+                      >
+                        <Link
+                          to={createPageUrl(module.projectsPage)}
+                          className={`text-xs px-2 py-1.5 rounded-lg transition-colors block ${
+                            location.pathname === createPageUrl(module.projectsPage)
+                              ? 'bg-white text-slate-900 font-medium shadow-sm'
+                              : 'text-slate-700 hover:bg-white/60'
+                          }`}
                         >
-                          <button
-                            onClick={(e) => handleNavigation(e, module.projectsPage)}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors block cursor-pointer text-left ${
-                              location.pathname === createPageUrl(module.projectsPage)
+                          View Projects
+                        </Link>
+                        <Link
+                          to={createPageUrl(module.newEstimatePage)}
+                          className={`text-xs px-2 py-1.5 rounded-lg transition-colors block ${
+                            location.pathname === createPageUrl(module.newEstimatePage)
+                              ? 'bg-white text-slate-900 font-medium shadow-sm'
+                              : 'text-slate-700 hover:bg-white/60'
+                          }`}
+                        >
+                          New Estimate
+                        </Link>
+                        {module.inventoryPage && (
+                          <Link
+                            to={createPageUrl(module.inventoryPage)}
+                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center ${
+                              location.pathname === createPageUrl(module.inventoryPage)
                                 ? 'bg-white text-slate-900 font-medium shadow-sm'
                                 : 'text-slate-700 hover:bg-white/60'
                             }`}
                           >
-                            View Projects
-                          </button>
-                          <button
-                            onClick={(e) => handleNavigation(e, module.newEstimatePage)}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors block cursor-pointer text-left ${
-                              location.pathname === createPageUrl(module.newEstimatePage)
-                                ? 'bg-white text-slate-900 font-medium shadow-sm'
-                                : 'text-slate-700 hover:bg-white/60'
-                            }`}
-                          >
-                            New Estimate
-                          </button>
-                          {module.inventoryPage && (
-                            <button
-                              onClick={(e) => handleNavigation(e, module.inventoryPage)}
-                              className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center cursor-pointer ${
-                                location.pathname === createPageUrl(module.inventoryPage)
-                                  ? 'bg-white text-slate-900 font-medium shadow-sm'
-                                  : 'text-slate-700 hover:bg-white/60'
-                              }`}
-                            >
-                              <Server className="w-3 h-3 inline mr-1" />
-                              Inventory
-                            </button>
-                          )}
-                          <button
-                            onClick={(e) => handleNavigation(e, module.settingsPage)}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center cursor-pointer ${
-                              location.pathname === createPageUrl(module.settingsPage)
-                                ? 'bg-white text-slate-900 font-medium shadow-sm'
-                                : 'text-slate-700 hover:bg-white/60'
-                            }`}
-                          >
-                            <Settings className="w-3 h-3 inline mr-1" />
-                            Settings
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="text-center py-2">
-                          <p className="text-xs text-slate-500 mb-1">Module Disabled</p>
-                          <p className="text-xs text-slate-400">Contact administrator</p>
-                        </div>
-                      )}
+                            <Server className="w-3 h-3 inline mr-1" />
+                            Inventory
+                          </Link>
+                        )}
+                        <Link
+                          to={createPageUrl(module.settingsPage)}
+                          className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center ${
+                            location.pathname === createPageUrl(module.settingsPage)
+                              ? 'bg-white text-slate-900 font-medium shadow-sm'
+                              : 'text-slate-700 hover:bg-white/60'
+                          }`}
+                        >
+                          <Settings className="w-3 h-3 inline mr-1" />
+                          Settings
+                        </Link>
+                      </div>
                     </div>
                   </SidebarMenuItem>
                 );
