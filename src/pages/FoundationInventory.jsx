@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { FoundationInventory } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, Edit2, Save, X, Anchor } from "lucide-react";
+import { Plus, Trash2, Edit2, Save, X, Anchor, Drill } from "lucide-react";
 
 export default function FoundationInventoryPage() {
   const [inventory, setInventory] = useState([]);
@@ -107,6 +108,17 @@ export default function FoundationInventoryPage() {
 
   const isEquipment = formData.material_type === 'excavation_equipment';
 
+  // Separate concrete and equipment items
+  const concreteItems = inventory.filter(item => 
+    item.material_type === 'concrete_service' || 
+    item.material_type === 'bagged_concrete' ||
+    item.material_type === 'rebar'
+  );
+  
+  const equipmentItems = inventory.filter(item => 
+    item.material_type === 'excavation_equipment'
+  );
+
   if (isLoading) {
     return (
       <div className="p-6 md:p-8 bg-slate-50 min-h-screen flex items-center justify-center">
@@ -114,6 +126,89 @@ export default function FoundationInventoryPage() {
       </div>
     );
   }
+
+  const renderInventoryTable = (items, title, icon) => (
+    <Card className="bg-white border-0 shadow-sm">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          {icon}
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {items.length === 0 ? (
+          <div className="text-center py-8 text-slate-500">
+            <p>No {title.toLowerCase()} in inventory.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="text-left p-3 font-semibold text-slate-700">Name</th>
+                  <th className="text-left p-3 font-semibold text-slate-700">Type</th>
+                  <th className="text-left p-3 font-semibold text-slate-700">Details</th>
+                  <th className="text-right p-3 font-semibold text-slate-700">Pricing</th>
+                  <th className="text-right p-3 font-semibold text-slate-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-25">
+                    <td className="p-3">{item.material_name}</td>
+                    <td className="p-3 capitalize">{item.material_type.replace(/_/g, ' ')}</td>
+                    <td className="p-3">
+                      {item.material_type === 'excavation_equipment' ? (
+                        <span className="text-sm">
+                          {item.equipment_type?.replace(/_/g, ' ').toUpperCase() || 'N/A'}
+                          {item.pickup_delivery_cost > 0 && ` • Delivery: $${item.pickup_delivery_cost.toFixed(2)}`}
+                        </span>
+                      ) : item.material_type === 'rebar' ? (
+                        <span className="text-sm">{item.rebar_size || 'N/A'}</span>
+                      ) : (
+                        <span className="text-sm">{item.unit || 'N/A'}</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-right">
+                      {item.material_type === 'excavation_equipment' ? (
+                        <div className="text-sm">
+                          <div>Day: ${(item.cost_per_day || 0).toFixed(2)}</div>
+                          <div>Week: ${(item.cost_per_week || 0).toFixed(2)}</div>
+                          <div>Month: ${(item.cost_per_month || 0).toFixed(2)}</div>
+                        </div>
+                      ) : (
+                        <span className="font-medium">${(item.cost_per_unit || 0).toFixed(2)} / {item.unit}</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(item)}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(item.id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
@@ -124,7 +219,7 @@ export default function FoundationInventoryPage() {
               <Anchor className="w-8 h-8" />
               Foundation Material Inventory
             </h1>
-            <p className="text-slate-600">Manage pricing for rebar, concrete, equipment, and other materials</p>
+            <p className="text-slate-600">Manage pricing for concrete, rebar, and excavation equipment</p>
           </div>
           <Button onClick={() => setShowModal(true)} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="w-4 h-4 mr-2" />
@@ -132,85 +227,11 @@ export default function FoundationInventoryPage() {
           </Button>
         </div>
 
-        <Card className="bg-white border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle>Material Pricing</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {inventory.length === 0 ? (
-              <div className="text-center py-12 text-slate-500">
-                <p>No materials in inventory. Click "Add Material" to get started.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-slate-50 border-b border-slate-200">
-                    <tr>
-                      <th className="text-left p-3 font-semibold text-slate-700">Name</th>
-                      <th className="text-left p-3 font-semibold text-slate-700">Type</th>
-                      <th className="text-left p-3 font-semibold text-slate-700">Details</th>
-                      <th className="text-right p-3 font-semibold text-slate-700">Pricing</th>
-                      <th className="text-right p-3 font-semibold text-slate-700">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {inventory.map((item) => (
-                      <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-25">
-                        <td className="p-3">{item.material_name}</td>
-                        <td className="p-3 capitalize">{item.material_type.replace(/_/g, ' ')}</td>
-                        <td className="p-3">
-                          {item.material_type === 'excavation_equipment' ? (
-                            <span className="text-sm">
-                              {item.equipment_type?.replace(/_/g, ' ').toUpperCase() || 'N/A'}
-                              {item.pickup_delivery_cost > 0 && ` • Delivery: $${item.pickup_delivery_cost.toFixed(2)}`}
-                            </span>
-                          ) : item.material_type === 'rebar' ? (
-                            <span className="text-sm">{item.rebar_size || 'N/A'}</span>
-                          ) : (
-                            <span className="text-sm">{item.unit || 'N/A'}</span>
-                          )}
-                        </td>
-                        <td className="p-3 text-right">
-                          {item.material_type === 'excavation_equipment' ? (
-                            <div className="text-sm">
-                              <div>Day: ${(item.cost_per_day || 0).toFixed(2)}</div>
-                              <div>Week: ${(item.cost_per_week || 0).toFixed(2)}</div>
-                              <div>Month: ${(item.cost_per_month || 0).toFixed(2)}</div>
-                            </div>
-                          ) : (
-                            <span className="font-medium">${(item.cost_per_unit || 0).toFixed(2)} / {item.unit}</span>
-                          )}
-                        </td>
-                        <td className="p-3 text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(item)}
-                              className="text-blue-600 hover:text-blue-800"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(item.id)}
-                              className="text-red-600 hover:text-red-800"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          {renderInventoryTable(concreteItems, "Concrete & Materials", <Anchor className="w-5 h-5" />)}
+          {renderInventoryTable(equipmentItems, "Excavation Equipment", <Drill className="w-5 h-5" />)}
+        </div>
 
-        {/* Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <Card className="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto">

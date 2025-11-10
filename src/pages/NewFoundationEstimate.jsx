@@ -32,11 +32,13 @@ export default function NewFoundationEstimate() {
     pouring_labor_rate: 60,
     finishing_labor_rate: 50,
     notes: "",
-    selected_equipment: []
+    selected_equipment: [],
+    selected_concrete_id: null
   });
 
   const [globalSettings, setGlobalSettings] = useState({});
   const [equipment, setEquipment] = useState([]);
+  const [concreteOptions, setConcreteOptions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -65,9 +67,10 @@ export default function NewFoundationEstimate() {
 
   const loadPrerequisites = useCallback(async () => {
     try {
-      const [settingsData, equipmentData] = await Promise.all([
+      const [settingsData, equipmentData, allInventory] = await Promise.all([
         Settings.list(),
-        FoundationInventory.filter({ material_type: 'excavation_equipment' })
+        FoundationInventory.filter({ material_type: 'excavation_equipment' }),
+        FoundationInventory.list()
       ]);
       
       const settingsObj = {};
@@ -76,6 +79,12 @@ export default function NewFoundationEstimate() {
       });
       setGlobalSettings(settingsObj);
       setEquipment(equipmentData);
+      
+      // Filter concrete materials only
+      const concreteItems = allInventory.filter(item => 
+        item.material_type === 'concrete_service' || item.material_type === 'bagged_concrete'
+      );
+      setConcreteOptions(concreteItems);
 
       if (!editId) {
         const newDefaults = {
@@ -86,7 +95,8 @@ export default function NewFoundationEstimate() {
           pouring_labor_rate: parseFloat(settingsObj.foundation_pouring_labor_rate) || 60,
           finishing_labor_rate: parseFloat(settingsObj.foundation_finishing_labor_rate) || 50,
           notes: settingsObj.default_notes_template || "",
-          selected_equipment: []
+          selected_equipment: [],
+          selected_concrete_id: null
         };
         setProject(prev => ({ ...prev, ...newDefaults }));
       }
@@ -282,6 +292,25 @@ export default function NewFoundationEstimate() {
         return updated;
       })
     }));
+  };
+
+  const handleConcreteSelection = (concreteId) => {
+    const selectedConcrete = concreteOptions.find(c => c.id === concreteId);
+    if (selectedConcrete) {
+      setProject(prev => ({
+        ...prev,
+        selected_concrete_id: concreteId,
+        concrete_cost_per_cy: selectedConcrete.cost_per_unit || prev.concrete_cost_per_cy
+      }));
+    } else if (concreteId === "default") {
+      // If "Default" is selected, revert to the global setting default if available, or a hardcoded fallback
+      const defaultRate = parseFloat(globalSettings.foundation_concrete_cost_per_cy) || 135;
+      setProject(prev => ({
+        ...prev,
+        selected_concrete_id: null,
+        concrete_cost_per_cy: defaultRate
+      }));
+    }
   };
 
   const calculateTotals = useCallback(() => {
@@ -529,6 +558,25 @@ export default function NewFoundationEstimate() {
                       placeholder="https://..."
                       className="mt-1 h-8 text-sm"
                     />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label className="text-xs">Concrete Material</Label>
+                    <Select 
+                      value={project.selected_concrete_id || "default"} 
+                      onValueChange={(value) => handleConcreteSelection(value)}
+                    >
+                      <SelectTrigger className="mt-1 h-8 text-xs">
+                        <SelectValue placeholder="Select concrete material" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default">Default (${project.concrete_cost_per_cy}/cy)</SelectItem>
+                        {concreteOptions.map(concrete => (
+                          <SelectItem key={concrete.id} value={concrete.id}>
+                            {concrete.material_name} - ${concrete.cost_per_unit}/{concrete.unit}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div>
