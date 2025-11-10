@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { ModuleStatus, User } from '@/entities/all';
 import {
@@ -14,7 +14,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { 
-  Home, 
   Paintbrush, 
   Zap, 
   Router, 
@@ -29,7 +28,6 @@ import {
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
-  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
   const [moduleStatuses, setModuleStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(true);
@@ -64,13 +62,11 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   const hasPermission = (moduleName) => {
-    // First check if module is globally disabled - if so, NOBODY can see it
     const globalStatus = moduleStatuses[moduleName];
     if (globalStatus === false) {
       return false;
     }
     
-    // If module is globally enabled (or not set), check user permissions
     if (!currentUser) {
       return globalStatus !== undefined ? globalStatus : true;
     }
@@ -202,7 +198,6 @@ export default function Layout({ children, currentPageName }) {
               {modules.map((module) => {
                 const isEnabled = hasPermission(module.id);
                 
-                // If module is disabled, don't render it at all
                 if (!isEnabled) {
                   return null;
                 }
@@ -222,57 +217,68 @@ export default function Layout({ children, currentPageName }) {
                       </div>
                       
                       <div 
-                        className="grid grid-cols-1 gap-1 transition-all duration-300 ease-in-out"
+                        className="space-y-1 transition-all duration-300 ease-in-out"
                         style={{
                           maxHeight: isExpanded ? '400px' : '0px',
                           opacity: isExpanded ? 1 : 0,
                           overflow: isExpanded ? 'visible' : 'hidden'
                         }}
                       >
-                        <Link
-                          to={createPageUrl(module.projectsPage)}
-                          className={`text-xs px-2 py-1.5 rounded-lg transition-colors block ${
-                            location.pathname === createPageUrl(module.projectsPage)
-                              ? 'bg-white text-slate-900 font-medium shadow-sm'
-                              : 'text-slate-700 hover:bg-white/60'
-                          }`}
-                        >
-                          View Projects
-                        </Link>
-                        <Link
-                          to={createPageUrl(module.newEstimatePage)}
-                          className={`text-xs px-2 py-1.5 rounded-lg transition-colors block ${
-                            location.pathname === createPageUrl(module.newEstimatePage)
-                              ? 'bg-white text-slate-900 font-medium shadow-sm'
-                              : 'text-slate-700 hover:bg-white/60'
-                          }`}
-                        >
-                          New Estimate
-                        </Link>
-                        {module.inventoryPage && (
+                        <SidebarMenuButton asChild>
                           <Link
-                            to={createPageUrl(module.inventoryPage)}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center ${
-                              location.pathname === createPageUrl(module.inventoryPage)
+                            to={createPageUrl(module.projectsPage)}
+                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
+                              location.pathname === createPageUrl(module.projectsPage)
                                 ? 'bg-white text-slate-900 font-medium shadow-sm'
                                 : 'text-slate-700 hover:bg-white/60'
                             }`}
                           >
-                            <Server className="w-3 h-3 inline mr-1" />
-                            Inventory
+                            View Projects
                           </Link>
+                        </SidebarMenuButton>
+                        
+                        <SidebarMenuButton asChild>
+                          <Link
+                            to={createPageUrl(module.newEstimatePage)}
+                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
+                              location.pathname === createPageUrl(module.newEstimatePage)
+                                ? 'bg-white text-slate-900 font-medium shadow-sm'
+                                : 'text-slate-700 hover:bg-white/60'
+                            }`}
+                          >
+                            New Estimate
+                          </Link>
+                        </SidebarMenuButton>
+                        
+                        {module.inventoryPage && (
+                          <SidebarMenuButton asChild>
+                            <Link
+                              to={createPageUrl(module.inventoryPage)}
+                              className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
+                                location.pathname === createPageUrl(module.inventoryPage)
+                                  ? 'bg-white text-slate-900 font-medium shadow-sm'
+                                  : 'text-slate-700 hover:bg-white/60'
+                              }`}
+                            >
+                              <Server className="w-3 h-3 mr-1" />
+                              Inventory
+                            </Link>
+                          </SidebarMenuButton>
                         )}
-                        <Link
-                          to={createPageUrl(module.settingsPage)}
-                          className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center ${
-                            location.pathname === createPageUrl(module.settingsPage)
-                              ? 'bg-white text-slate-900 font-medium shadow-sm'
-                              : 'text-slate-700 hover:bg-white/60'
-                          }`}
-                        >
-                          <Settings className="w-3 h-3 inline mr-1" />
-                          Settings
-                        </Link>
+                        
+                        <SidebarMenuButton asChild>
+                          <Link
+                            to={createPageUrl(module.settingsPage)}
+                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
+                              location.pathname === createPageUrl(module.settingsPage)
+                                ? 'bg-white text-slate-900 font-medium shadow-sm'
+                                : 'text-slate-700 hover:bg-white/60'
+                            }`}
+                          >
+                            <Settings className="w-3 h-3 mr-1" />
+                            Settings
+                          </Link>
+                        </SidebarMenuButton>
                       </div>
                     </div>
                   </SidebarMenuItem>
