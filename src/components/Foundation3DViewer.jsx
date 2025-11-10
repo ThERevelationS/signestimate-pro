@@ -12,9 +12,6 @@ export default function Foundation3DViewer({
   includeRebar 
 }) {
   const containerRef = useRef(null);
-  const sceneRef = useRef(null);
-  const rendererRef = useRef(null);
-  const controlsRef = useRef(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -27,7 +24,6 @@ export default function Foundation3DViewer({
     // Scene setup
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf0f4f8);
-    sceneRef.current = scene;
 
     // Camera setup
     const camera = new THREE.PerspectiveCamera(
@@ -45,7 +41,6 @@ export default function Foundation3DViewer({
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     containerRef.current.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
 
     // Orbit controls
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -53,7 +48,6 @@ export default function Foundation3DViewer({
     controls.dampingFactor = 0.05;
     controls.minDistance = 2;
     controls.maxDistance = 50;
-    controlsRef.current = controls;
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -103,7 +97,7 @@ export default function Foundation3DViewer({
     const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
     foundation.add(edges);
 
-    // Rebar visualization with spacing-based layout
+    // Rebar visualization - ONLY if includeRebar is true
     if (includeRebar) {
       const rebarMaterial = new THREE.MeshStandardMaterial({
         color: 0xdc2626,
@@ -111,7 +105,6 @@ export default function Foundation3DViewer({
         metalness: 0.8
       });
 
-      // Rebar diameter based on size
       const rebarDiameters = {
         '#3': 0.05,
         '#4': 0.065,
@@ -120,26 +113,21 @@ export default function Foundation3DViewer({
       };
       const rebarRadius = rebarDiameters[rebarSize] || 0.065;
 
-      // Calculate number of horizontal layers
-      const firstLayerOffset = 3; // 3 inches from top
-      const layerSpacing = 18; // 18 inches between layers
+      const firstLayerOffset = 3;
+      const layerSpacing = 18;
       const numLayers = Math.floor((depthInches - firstLayerOffset) / layerSpacing) + 1;
       
-      // Store layer Y positions for vertical connections
       const layerYPositions = [];
       
-      // Calculate number of rebars based on spacing
       const numRebarsLength = Math.floor(widthInches / rebarSpacingWidth) + 1;
       const numRebarsWidth = Math.floor(lengthInches / rebarSpacingLength) + 1;
       
-      // Create rebar at each layer
       for (let layer = 0; layer < numLayers; layer++) {
         const layerDepthInches = firstLayerOffset + (layer * layerSpacing);
         const layerDepthFeet = layerDepthInches / 12;
         const yPosition = (depth / 2) - layerDepthFeet;
         layerYPositions.push(yPosition);
 
-        // Create lengthwise rebar bars (running along the length)
         const rebarGeometry = new THREE.CylinderGeometry(rebarRadius, rebarRadius, length * 0.9, 12);
         
         const spacingFeet = rebarSpacingWidth / 12;
@@ -153,7 +141,6 @@ export default function Foundation3DViewer({
           foundation.add(rebar);
         }
 
-        // Add cross bars (perpendicular supports)
         const crossBarGeometry = new THREE.CylinderGeometry(rebarRadius * 0.8, rebarRadius * 0.8, width * 0.8, 12);
         const crossSpacingFeet = rebarSpacingLength / 12;
         const crossStartOffset = -(length * 0.4);
@@ -167,13 +154,11 @@ export default function Foundation3DViewer({
         }
       }
 
-      // Add vertical rebar bars connecting the layers (only if multiple layers)
       if (numLayers > 1) {
         const verticalBarHeight = layerYPositions[0] - layerYPositions[numLayers - 1];
         const verticalBarGeometry = new THREE.CylinderGeometry(rebarRadius * 0.9, rebarRadius * 0.9, verticalBarHeight, 12);
         const verticalBarYCenter = (layerYPositions[0] + layerYPositions[numLayers - 1]) / 2;
         
-        // Add vertical bars at intersections of lengthwise and width rebar
         const lengthSpacingFeet = rebarSpacingLength / 12;
         const widthSpacingFeet = rebarSpacingWidth / 12;
         const lengthStartOffset = -(length * 0.4);
