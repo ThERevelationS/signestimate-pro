@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Project, Settings } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -460,7 +459,7 @@ export default function NewPaintEstimate() {
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
     let totalItemLaborCost = project.items.reduce((sum, item) => sum + (item.labor_cost || 0), 0);
     
-    // Calculate total paintable area and gallons needed
+    // Calculate total paintable area and gallons needed for mixing
     let totalPaintableArea = 0;
     project.items.forEach(item => {
       const perimFactor = parseFloat(globalSettings.letter_perimeter_factor) || 3.5;
@@ -485,18 +484,16 @@ export default function NewPaintEstimate() {
       }
 
       const numColors = item.paint_colors?.length || 0;
-      if (item.quantity > 0 && numColors > 0) {
-        totalPaintableArea += paintableSqFt * numColors * item.quantity;
-      }
+      totalPaintableArea += paintableSqFt * numColors * item.quantity;
     });
 
     const paintWasteMultiplier = parseFloat(globalSettings.paint_waste_multiplier) || 1.25;
     const coverageSqFtPerGallon = parseFloat(globalSettings.mixed_paint_coverage_sqft_per_gallon) || 350;
-    const totalGallonsNeeded = totalPaintableArea > 0 && coverageSqFtPerGallon > 0 ? (totalPaintableArea * paintWasteMultiplier) / coverageSqFtPerGallon : 0;
+    const totalGallonsNeeded = (totalPaintableArea * paintWasteMultiplier) / coverageSqFtPerGallon;
     const numberOfMixes = Math.ceil(totalGallonsNeeded);
     
-    const mixingHoursPerMix = parseFloat(globalSettings.paint_mixing_labor_hours) || 0;
-    const mixingHours = numberOfMixes * mixingHoursPerMix;
+    const mixingHoursPerGallon = parseFloat(globalSettings.paint_mixing_labor_hours) || 0;
+    const mixingHours = numberOfMixes * mixingHoursPerGallon;
     const setupHours = parseFloat(globalSettings.setup_time_labor_hours) || 0;
     const fixedLaborCost = (mixingHours + setupHours) * laborRate;
 
@@ -583,7 +580,7 @@ export default function NewPaintEstimate() {
   };
 
   const downloadEstimate = () => {
-    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, numberOfMixes, mixingHours, setupHours } = calculateTotals();
+    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
     
@@ -613,9 +610,7 @@ Labor Cost: $${(item.labor_cost || 0).toFixed(2)}
 TOTALS:
 Paint Mask: $${totalPaintMask.toFixed(2)}
 Liquid Paint & Application Supplies: $${totalLiquidPaintAndSupplies.toFixed(2)}
-Fixed Labor:
-  - Mixing (${numberOfMixes} mix${numberOfMixes > 1 ? 'es' : ''}): ${mixingHours.toFixed(1)} hrs ($${(mixingHours * laborRate).toFixed(2)})
-  - Setup: ${setupHours.toFixed(1)} hrs ($${(setupHours * laborRate).toFixed(2)})
+Fixed Labor (Mixing/Setup): $${(((parseFloat(globalSettings.paint_mixing_labor_hours) || 0) + (parseFloat(globalSettings.setup_time_labor_hours) || 0)) * laborRate).toFixed(2)}
 Total Labor: $${totalLabor.toFixed(2)} (${totalLaborHours.toFixed(1)} hours)
 TOTAL ESTIMATE: $${totalCost.toFixed(2)}
 
@@ -634,7 +629,7 @@ Notes: ${project.notes || 'None'}
   };
 
   const printEstimate = () => {
-    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, numberOfMixes, mixingHours, setupHours } = calculateTotals();
+    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
     
@@ -654,8 +649,7 @@ Notes: ${project.notes || 'None'}
             .item-cost-details { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e2e8f0; }
             .item-cost-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
             .totals { margin-top: 30px; padding: 20px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 5px; }
-            .total-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
-            .fixed-labor-breakdown { padding-left: 15px; margin-top: -5px; margin-bottom: 5px; font-size: 0.9em; }
+            .total-row { display: flex; justify-between; margin-bottom: 10px; }
             .final-total { font-weight: bold; font-size: 20px; border-top: 2px solid #374151; padding-top: 15px; margin-top: 15px; }
             .notes { margin-top: 30px; padding: 15px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 5px; }
           </style>
@@ -702,11 +696,7 @@ Notes: ${project.notes || 'None'}
               <span>Liquid Paint & Application Supplies:</span><span>$${totalLiquidPaintAndSupplies.toFixed(2)}</span>
             </div>
             <div class="total-row">
-              <span>Fixed Labor:</span><span></span>
-            </div>
-            <div class="fixed-labor-breakdown">
-              <p>Mixing (${numberOfMixes} mix${numberOfMixes > 1 ? 'es' : ''}): ${mixingHours.toFixed(1)} hrs ($${(mixingHours * laborRate).toFixed(2)})</p>
-              <p>Setup: ${setupHours.toFixed(1)} hrs ($${(setupHours * laborRate).toFixed(2)})</p>
+              <span>Fixed Labor (Mixing/Setup):</span><span>$${(((parseFloat(globalSettings.paint_mixing_labor_hours) || 0) + (parseFloat(globalSettings.setup_time_labor_hours) || 0)) * laborRate).toFixed(2)}</span>
             </div>
             <div class="total-row">
               <span>Total Labor (${totalLaborHours.toFixed(1)} hrs):</span><span>$${totalLabor.toFixed(2)}</span>
@@ -728,7 +718,7 @@ Notes: ${project.notes || 'None'}
   };
 
   const sendEstimate = () => {
-    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, numberOfMixes, mixingHours, setupHours } = calculateTotals();
+    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
     
@@ -744,9 +734,7 @@ ${project.hyperlink ? `Reference Link: ${project.hyperlink}` : ''}
 ESTIMATE SUMMARY:
 Paint Mask: $${totalPaintMask.toFixed(2)}
 Liquid Paint & Application Supplies: $${totalLiquidPaintAndSupplies.toFixed(2)}
-Fixed Labor:
-  - Mixing (${numberOfMixes} mix${numberOfMixes > 1 ? 'es' : ''}): ${mixingHours.toFixed(1)} hrs ($${(mixingHours * laborRate).toFixed(2)})
-  - Setup: ${setupHours.toFixed(1)} hrs ($${(setupHours * laborRate).toFixed(2)})
+Fixed Labor (Mixing/Setup): $${(((parseFloat(globalSettings.paint_mixing_labor_hours) || 0) + (parseFloat(globalSettings.setup_time_labor_hours) || 0)) * laborRate).toFixed(2)}
 Total Labor: $${totalLabor.toFixed(2)} (${totalLaborHours.toFixed(1)} hours)
 TOTAL ESTIMATE: $${totalCost.toFixed(2)}
 
@@ -1116,13 +1104,13 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                           )}
                         </div>
 
-                        <div className="mt-4">
+                        <div className="mt-4 border-t pt-4">
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
                             onClick={() => toggleCostOverride(index)}
-                            className="w-full text-xs"
+                            className="w-full text-xs h-8"
                           >
                             Cost Override
                             {expandedCostOverride[index] ? <ChevronUp className="w-3 h-3 ml-2" /> : <ChevronDown className="w-3 h-3 ml-2" />}
@@ -1141,7 +1129,7 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                                   onFocus={(e) => e.target.select()}
                                   onChange={(e) => updateItem(index, 'base_supplies_cost', parseFloat(e.target.value) || 0)}
                                   placeholder="0.00"
-                                  className="mt-1"
+                                  className="mt-1 h-8 text-xs"
                                 />
                                 <p className="text-xs text-amber-700 mt-1">Override base supplies for this item (e.g., special masking tape, cleaners)</p>
                               </div>
@@ -1181,7 +1169,7 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                     <span className="text-sm font-medium text-blue-800">Liquid Paint & Supplies:</span>
                     <span className="text-lg font-bold text-blue-900">${totalLiquidPaintAndSupplies.toFixed(2)}</span>
                   </div>
-                  <p className="text-xs text-blue-600">Includes liquid paint, application materials, waste, and base supplies</p>
+                  <p className="text-xs text-blue-600">Liquid paint, application materials, waste, and base supplies</p>
                   {totalGallonsNeeded > 1 && (
                     <div className="mt-2 pt-2 border-t border-blue-200">
                       <p className="text-xs text-blue-700 font-medium">Paint Volume:</p>
