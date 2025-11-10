@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, ModuleStatus, DefaultModuleSettings } from '@/entities/all';
 import SettingsAuthWrapper from '@/components/SettingsAuthWrapper';
@@ -19,6 +18,7 @@ const moduleDetails = {
   channel_letter_installation: { label: "Channel Letter Installation Module", icon: Wrench },
   foundation: { label: "Foundation Module", icon: Anchor },
   brick_stone: { label: "Brick & Stone Module", icon: Server },
+  brick_stone_2: { label: "Brick & Stone 2 Module", icon: Server },
 };
 
 export default function UserManagement() {
