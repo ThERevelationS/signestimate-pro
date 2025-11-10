@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Project, Settings } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -14,20 +13,19 @@ import { createPageUrl } from "@/utils";
 const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/16", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8", "1", "1-1/8", "1-1/4", "1-3/8", "1-1/2", "1-5/8", "1-3/4", "1-7/8", "2", "2-1/4", "2-1/2", "2-3/4", "3", "3-1/4", "3-1/2", "3-3/4", "4"];
 const coverageFactors = ["1/8", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8", "1", "1-1/8", "1-1/4", "1-3/8", "1-1/2", "1-5/8", "1-3/4", "1-7/8", "2"];
 
-// Helper function to parse imperial fractions (e.g., "1/2", "1-1/4", "2")
 const parseImperialFraction = (fractionString) => {
   if (typeof fractionString !== 'string') {
-    return parseFloat(fractionString) || 0; // Handle initial numeric values or invalid inputs gracefully
+    return parseFloat(fractionString) || 0;
   }
 
   let totalValue = 0;
-  const wholeAndFraction = fractionString.split('-'); // Split for "whole-fraction" like "1-1/4"
+  const wholeAndFraction = fractionString.split('-');
 
   if (wholeAndFraction.length === 2) {
-    totalValue += parseFloat(wholeAndFraction[0]); // Add the whole number part
-    fractionString = wholeAndFraction[1]; // Now process the fraction part
+    totalValue += parseFloat(wholeAndFraction[0]);
+    fractionString = wholeAndFraction[1];
   } else {
-    fractionString = wholeAndFraction[0]; // No whole number, just a fraction or whole number string
+    fractionString = wholeAndFraction[0];
   }
 
   const parts = fractionString.split('/');
@@ -38,7 +36,7 @@ const parseImperialFraction = (fractionString) => {
       totalValue += numerator / denominator;
     }
   } else {
-    totalValue += parseFloat(fractionString) || 0; // Handle whole numbers or invalid fractions
+    totalValue += parseFloat(fractionString) || 0;
   }
   return totalValue;
 };
@@ -59,25 +57,23 @@ export default function NewPaintEstimate() {
   const [project, setProject] = useState({
     project_name: "",
     client_name: "",
-    estimate_number: "", // Added new field
-    hyperlink: "",       // Added new field
+    estimate_number: "",
+    hyperlink: "",
     items: [],
-    base_supplies_cost: 50, // Changed from supplies_rate_per_sqft
+    base_supplies_cost: 50,
     paint_supplies_per_sqft: 1.25,
     notes: ""
   });
   const [globalSettings, setGlobalSettings] = useState({});
   
-  // Quantity tier states
   const [panelTiers, setPanelTiers] = useState([]);
   const [complexShapesTiers, setComplexShapesTiers] = useState([]);
   const [letteringTiers, setLetteringTiers] = useState([]);
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false); // New state for deletion
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Helper function to get labor multiplier based on quantity and item type
   const getLaborMultiplier = useCallback((itemType, quantity) => {
     let tiers = [];
     if (itemType === 'panel') {
@@ -88,20 +84,38 @@ export default function NewPaintEstimate() {
       tiers = letteringTiers;
     }
     
-    if (!tiers || tiers.length === 0) return 1.0; // Default to no discount if no tiers are defined
+    if (!tiers || tiers.length === 0) return 1.0;
     
-    // Find the matching tier
     for (let tier of tiers) {
       if (quantity >= tier.min_quantity && quantity <= tier.max_quantity) {
         return tier.labor_multiplier;
       }
     }
     
-    // If no match found, return 1.0 (no discount)
     return 1.0;
   }, [panelTiers, complexShapesTiers, letteringTiers]);
+  
+  // NEW: Get items with discounts (multiplier < 1.0)
+  const getItemsWithDiscounts = useCallback(() => {
+    return project.items
+      .map((item, index) => {
+        const multiplier = getLaborMultiplier(item.item_type, item.quantity);
+        if (multiplier < 1.0) {
+          const discountPercent = ((1 - multiplier) * 100).toFixed(0);
+          return {
+            index,
+            description: item.description || `${item.item_type} item`,
+            itemType: item.item_type,
+            quantity: item.quantity,
+            multiplier,
+            discountPercent
+          };
+        }
+        return null;
+      })
+      .filter(item => item !== null);
+  }, [project.items, getLaborMultiplier]);
 
-  // Calculate liquidPaintRate here at the top so it's available for updateItem
   const getCostPerGallon = useCallback((cost, unit) => {
     const unitFactors = { oz: 128, pint: 8, quart: 4, liter: 3.78541, gallon: 1 };
     const parsedCost = parseFloat(cost);
@@ -110,11 +124,9 @@ export default function NewPaintEstimate() {
   }, []);
 
   const liquidPaintRate = useMemo(() => {
-    
     const paintCostPerGallon = getCostPerGallon(globalSettings.paint_cost_per_unit, globalSettings.paint_unit);
     const hardenerCostPerGallon = getCostPerGallon(globalSettings.hardener_cost_per_unit, globalSettings.hardener_unit);
     const reducerCostPerGallon = getCostPerGallon(globalSettings.reducer_cost_per_unit, globalSettings.reducer_unit);
-    
     
     const paintMixRatio = parseFloat(globalSettings.paint_mix_ratio) || 3;
     const hardenerMixRatio = parseFloat(globalSettings.hardener_mix_ratio) || 1;
@@ -131,36 +143,32 @@ export default function NewPaintEstimate() {
     const coverageSqFtPerGallon = parseFloat(globalSettings.mixed_paint_coverage_sqft_per_gallon) || 1;
     const finalRate = coverageSqFtPerGallon > 0 ? costOfMix / coverageSqFtPerGallon : 0;
     
-    
     return finalRate;
   }, [globalSettings, getCostPerGallon]);
 
   const loadProjectForEdit = useCallback(async (projectId) => {
     try {
-      const projectToEdit = await Project.get(projectId); // Use get() for a single record
+      const projectToEdit = await Project.get(projectId);
       if (projectToEdit) {
-        // Clean up 'none' paint_sides value if it exists from older data, default to 'one_side'
         const cleanedProject = {
           ...projectToEdit,
           items: projectToEdit.items.map(item => ({
             ...item,
-            paint_sides: item.paint_sides === 'none' ? 'one_side' : item.paint_sides, // Changed fallback to 'one_side'
-            approx_coverage_factor: item.approx_coverage_factor || "1/4" // Ensure field exists on load
+            paint_sides: item.paint_sides === 'none' ? 'one_side' : item.paint_sides,
+            approx_coverage_factor: item.approx_coverage_factor || "1/4"
           }))
         };
-        // Ensure client_email and client_phone are not set from old data, and add new fields if missing
-        // Also removed labor_rate as it's now global
         const { client_email, client_phone, estimate_number, hyperlink, supplies_rate_per_sqft, labor_rate, ...restOfProject } = cleanedProject;
         setProject({
           ...restOfProject,
-          estimate_number: estimate_number || "", // Ensure new fields are initialized if not present in old data
+          estimate_number: estimate_number || "",
           hyperlink: hyperlink || "",
-          base_supplies_cost: supplies_rate_per_sqft || (parseFloat(globalSettings.base_supplies_per_job) || 50) // Use old field if exists, otherwise new default
+          base_supplies_cost: supplies_rate_per_sqft || (parseFloat(globalSettings.base_supplies_per_job) || 50)
         });
         setIsEditing(true);
       } else {
         console.warn(`Project with ID ${projectId} not found.`);
-        navigate(createPageUrl("PaintProjects")); // Redirect if project not found
+        navigate(createPageUrl("PaintProjects"));
       }
     } catch (error) {
       console.error('Error loading project for edit:', error);
@@ -179,13 +187,11 @@ export default function NewPaintEstimate() {
       
       setGlobalSettings(settingsObj);
       
-      // Load quantity tiers for each item type
       if (settingsObj.panel_labor_tiers) {
         try {
           setPanelTiers(JSON.parse(settingsObj.panel_labor_tiers));
         } catch (e) {
           console.error('Error parsing panel tiers:', e);
-          setPanelTiers([]); // Fallback to empty array
         }
       }
       
@@ -194,7 +200,6 @@ export default function NewPaintEstimate() {
           setComplexShapesTiers(JSON.parse(settingsObj.complex_shapes_labor_tiers));
         } catch (e) {
           console.error('Error parsing complex shapes tiers:', e);
-          setComplexShapesTiers([]); // Fallback to empty array
         }
       }
       
@@ -203,14 +208,12 @@ export default function NewPaintEstimate() {
           setLetteringTiers(JSON.parse(settingsObj.lettering_labor_tiers));
         } catch (e) {
           console.error('Error parsing lettering tiers:', e);
-          setLetteringTiers([]); // Fallback to empty array
         }
       }
       
-      // Only set default project values if not editing an existing project
       if (!editId) {
         const newDefaults = {
-          base_supplies_cost: parseFloat(settingsObj.base_supplies_per_job) || 50, // Updated
+          base_supplies_cost: parseFloat(settingsObj.base_supplies_per_job) || 50,
           paint_supplies_per_sqft: parseFloat(settingsObj.default_paint_supplies_per_sqft) || 1.25,
           notes: settingsObj.default_notes_template || ""
         };
@@ -236,20 +239,20 @@ export default function NewPaintEstimate() {
       items: [...prev.items, {
         item_type: "panel",
         description: "",
-        thickness: "1/2", // Default to '1/2' inch
+        thickness: "1/2",
         length: 0,
         width: 0,
         quantity: 1,
-        edge_complexity_multiplier: 1.0, // Added for complex shapes
-        paint_sides: "one_side", // Changed default to one_side
-        paint_colors: [""], // Default with one empty color string
+        edge_complexity_multiplier: 1.0,
+        paint_sides: "one_side",
+        paint_colors: [""],
         letter_size: "normal",
         paint_mask_sqft: 0, 
-        supplies_cost: 0, // This will now represent Paint Mask Material + Machine Cost
-        paint_cost: 0,    // This will now represent Liquid Paint & Paint App Supplies Cost
+        supplies_cost: 0,
+        paint_cost: 0,
         labor_hours: 0,
         labor_cost: 0,
-        approx_coverage_factor: "1/4" // Add default for the new helper
+        approx_coverage_factor: "1/4"
       }]
     }));
   };
@@ -266,7 +269,6 @@ export default function NewPaintEstimate() {
       const newItems = [...prev.items];
       let item = { ...newItems[index], [field]: value };
       
-      // Auto-set letter size based on height
       if (field === 'width' && item.item_type === 'lettering') {
           const height = value;
           if (height <= 4) item.letter_size = 'extra_small';
@@ -277,13 +279,9 @@ export default function NewPaintEstimate() {
           else item.letter_size = 'extra_large';
       }
 
-      // Auto-set paint mask square footage when dimensions change (for face area)
-      // This calculation is based on item dimensions and paint_sides.
-      // The 'Approx. Coverage Helper' provides an alternative calculation if used.
       if (['length', 'width', 'item_type'].includes(field) && item.length > 0 && item.width > 0) {
         if (item.item_type === 'panel' || item.item_type === 'complex_shapes') {
           const faceArea = (item.length * item.width) / 144;
-          // For panels and complex shapes, paint mask sqft is typically just face area for color separation
           item.paint_mask_sqft = item.paint_sides === 'both_sides' ? faceArea * 2 : faceArea;
         } else if (item.item_type === 'lettering') {
           const letterHeight = item.width;
@@ -293,73 +291,64 @@ export default function NewPaintEstimate() {
         }
       }
 
-      
-      // --- Start Recalculation ---
       const perimFactor = parseFloat(globalSettings.letter_perimeter_factor) || 3.5;
-      let paintableSqFt = 0; // This will represent the paintable sqft for ONE unit of the item
+      let paintableSqFt = 0;
       const itemThicknessDecimal = parseImperialFraction(item.thickness);
 
       if (item.item_type === 'panel' && item.length > 0 && item.width > 0) {
         const faceArea = (item.length * item.width) / 144;
         paintableSqFt = item.paint_sides === 'both_sides' ? faceArea * 2 : faceArea;
       } else if (item.item_type === 'lettering' && item.width > 0 && item.length > 0 && itemThicknessDecimal > 0) {
-        const letterHeight = item.width; // Using width field for letter height
-        const numLetters = item.length; // Using length field for number of letters (e.g., in a set of letters making up one item unit)
+        const letterHeight = item.width;
+        const numLetters = item.length;
         
-        const faceAreaPerLetter = (Math.pow(letterHeight, 2) * 0.8) / 144;
-        const perimeterInchesPerLetter = letterHeight * perimFactor;
-        const edgeAreaPerLetter = (perimeterInchesPerLetter * itemThicknessDecimal) / 144;
+        const faceArea = (Math.pow(letterHeight, 2) * 0.8 * numLetters) / 144;
+        const perimeterInches = letterHeight * perimFactor * numLetters;
+        const edgeArea = (perimeterInches * itemThicknessDecimal) / 144;
         
-        const paintableSqFtPerLetter = item.paint_sides === 'both_sides' ? (faceAreaPerLetter * 2) + edgeAreaPerLetter : faceAreaPerLetter + edgeAreaPerLetter;
-        paintableSqFt = paintableSqFtPerLetter * numLetters; // Total for this "set" of letters, which is one item unit
+        paintableSqFt = item.paint_sides === 'both_sides' ? (faceArea * 2) + edgeArea : faceArea + edgeArea;
       } else if (item.item_type === 'complex_shapes' && item.length > 0 && item.width > 0 && itemThicknessDecimal > 0) {
         const faceArea = (item.length * item.width) / 144;
-        const perimeterInches = 2 * (item.length + item.width); // Perimeter of a rectangle
-        const edgeArea = (perimeterInches * itemThicknessDecimal * (item.edge_complexity_multiplier || 1.0)) / 144; // Apply multiplier
+        const perimeterInches = 2 * (item.length + item.width);
+        const edgeArea = (perimeterInches * itemThicknessDecimal * (item.edge_complexity_multiplier || 1.0)) / 144;
         
         if (item.paint_sides === 'both_sides') {
             paintableSqFt = (faceArea * 2) + edgeArea;
         } else if (item.paint_sides === 'one_side') {
             paintableSqFt = faceArea + edgeArea;
-        } else { // This branch should theoretically not be hit due to loadProjectForEdit cleanup, but provides a fallback
+        } else {
             paintableSqFt = 0;
         }
       }
       
-      // Calculate Costs per ITEM UNIT
       const paintSuppliesRate = prev.paint_supplies_per_sqft;
 
-      // Paint mask cost (material + machine cutting) per item unit
       const paintMaskMaterialRate = parseFloat(globalSettings.paint_mask_rate_per_sqft) || 0.75;
       const paintMaskMachineRate = parseFloat(globalSettings.paint_mask_machine_cutting_rate_per_sqft) || 0.10;
-      let paintMaskCostPerUnit = 0;
+      let paintMaskCost = 0;
       
       const numColors = item.paint_colors?.length || 0;
       if (numColors > 1 && item.paint_mask_sqft > 0) {
         const maskMaterialCost = item.paint_mask_sqft * paintMaskMaterialRate * (numColors - 1);
         const maskMachineCost = item.paint_mask_sqft * paintMaskMachineRate * (numColors - 1);
-        paintMaskCostPerUnit = maskMaterialCost + maskMachineCost;
+        paintMaskCost = maskMaterialCost + maskMachineCost;
       }
 
-      // Liquid paint and paint application supplies cost (combined) per item unit
-      let liquidPaintAndSuppliesCostPerUnit = 0;
-      
-      let liquidPaintCostPerUnit = 0;
-      let paintApplicationSuppliesCostPerUnit = 0;
+      let liquidPaintAndSuppliesCost = 0;
+      let liquidPaintCost = 0;
+      let paintApplicationSuppliesCost = 0;
       if (numColors > 0) { 
-        // Paint application supplies
-        paintApplicationSuppliesCostPerUnit = paintableSqFt * paintSuppliesRate * numColors;
+        paintApplicationSuppliesCost = paintableSqFt * paintSuppliesRate * numColors;
         
-        // Liquid paint cost
         const paintWasteMultiplier = parseFloat(globalSettings.paint_waste_multiplier) || 1.25;
         if (liquidPaintRate > 0) {
-            liquidPaintCostPerUnit = paintableSqFt * liquidPaintRate * paintWasteMultiplier * numColors;
+            liquidPaintCost = paintableSqFt * liquidPaintRate * paintWasteMultiplier * numColors;
         }
       }
-      liquidPaintAndSuppliesCostPerUnit = paintApplicationSuppliesCostPerUnit + liquidPaintCostPerUnit;
       
-      // Calculate Labor Cost per ITEM UNIT
-      const laborRate = parseFloat(globalSettings.default_labor_rate) || 60; // Get labor rate from global settings
+      liquidPaintAndSuppliesCost = paintApplicationSuppliesCost + liquidPaintCost;
+      
+      const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
       const baseHoursPerSqFt = parseFloat(globalSettings.base_labor_hours_per_sqft) || 0.5;
       const complexityMap = {
         extra_small: 'complex',
@@ -367,9 +356,8 @@ export default function NewPaintEstimate() {
         normal: 'moderate',
         medium: 'moderate',
         large: 'simple',
-        extra_large: 'simple', // Corrected to map to 'simple'
+        extra_large: 'simple',
       };
-      // item.complexity doesn't exist for panels/complex_shapes, use 'moderate' as a default if not lettering
       const itemComplexity = item.item_type === 'lettering' ? complexityMap[item.letter_size] || 'moderate' : 'moderate'; 
 
       const complexityMultipliers = {
@@ -383,36 +371,34 @@ export default function NewPaintEstimate() {
       };
       const additionalColorMultiplier = parseFloat(globalSettings.additional_color_multiplier) || 0.3;
       
-      let baseLaborHoursPerItemUnit = paintableSqFt * baseHoursPerSqFt * (complexityMultipliers[itemComplexity] || 1) * (paintMultipliers[item.paint_sides] || 1);
+      let baseHours = paintableSqFt * baseHoursPerSqFt * (complexityMultipliers[itemComplexity] || 1) * (paintMultipliers[item.paint_sides] || 1);
       if (numColors > 1) {
-        baseLaborHoursPerItemUnit *= (1 + (numColors - 1) * additionalColorMultiplier);
+        baseHours *= (1 + (numColors - 1) * additionalColorMultiplier);
       }
       
-      // Add paint mask application & cutting labor (per item unit, assuming item.paint_mask_sqft is per unit)
       const maskApplicationLaborRate = parseFloat(globalSettings.paint_mask_application_labor_rate_per_sqft) || 0.25;
       const maskCuttingLaborRate = parseFloat(globalSettings.paint_mask_cutting_labor_rate_per_sqft) || 0.15;
       if (numColors > 1 && item.paint_mask_sqft > 0) {
-        const maskApplicationLaborHoursPerItemUnit = (item.paint_mask_sqft * maskApplicationLaborRate * (numColors - 1)) / laborRate;
-        const maskCuttingLaborHoursPerItemUnit = (item.paint_mask_sqft * maskCuttingLaborRate * (numColors - 1)) / laborRate;
-        baseLaborHoursPerItemUnit += maskApplicationLaborHoursPerItemUnit + maskCuttingLaborHoursPerItemUnit;
+        const maskApplicationLaborHours = (item.paint_mask_sqft * maskApplicationLaborRate * (numColors - 1)) / laborRate;
+        const maskCuttingLaborHours = (item.paint_mask_sqft * maskCuttingLaborRate * (numColors - 1)) / laborRate;
+        baseHours += maskApplicationLaborHours + maskCuttingLaborHours;
       }
-
-      // APPLY QUANTITY DISCOUNT MULTIPLIER to the labor hours for a single unit of the item
-      const quantityDiscountMultiplier = getLaborMultiplier(item.item_type, item.quantity);
-      const discountedLaborHoursPerItemUnit = baseLaborHoursPerItemUnit * quantityDiscountMultiplier;
       
-      // Now calculate total costs for the line item (considering all quantities)
+      const quantityMultiplier = getLaborMultiplier(item.item_type, item.quantity);
+      const discountedLaborHours = baseHours * quantityMultiplier;
+      
+      const laborHours = discountedLaborHours;
+      const laborCost = laborHours * laborRate * item.quantity;
+
       item = {
         ...item,
-        supplies_cost: paintMaskCostPerUnit * item.quantity, // Now stores Paint Mask Material + Machine Cost for ALL units
-        paint_cost: liquidPaintAndSuppliesCostPerUnit * item.quantity, // Now stores Liquid Paint + Paint App Supplies Cost for ALL units
-        labor_hours: discountedLaborHoursPerItemUnit * item.quantity, // Storing total hours for the line item
-        labor_cost: discountedLaborHoursPerItemUnit * item.quantity * laborRate,
+        supplies_cost: paintMaskCost * item.quantity,
+        paint_cost: liquidPaintAndSuppliesCost * item.quantity,
+        labor_hours: laborHours * item.quantity,
+        labor_cost: laborCost,
       };
 
       newItems[index] = item;
-      // --- End Recalculation ---
-      
       return { ...prev, items: newItems };
     });
   };
@@ -426,13 +412,12 @@ export default function NewPaintEstimate() {
       faceArea = (item.length * item.width) / 144;
     } else if (item.item_type === 'lettering' && item.width > 0 && item.length > 0) {
       const letterHeight = item.width;
-      const numLetters = item.length; // Number of letters in one unit of the item
+      const numLetters = item.length;
       faceArea = (Math.pow(letterHeight, 2) * 0.8 * numLetters) / 144;
     }
 
     const calculatedMaskSqFt = faceArea * factor;
     
-    // Update both the factor and the calculated sqft
     setProject(prev => {
         const newItems = [...prev.items];
         newItems[index] = {
@@ -440,9 +425,6 @@ export default function NewPaintEstimate() {
             approx_coverage_factor: factorStr,
             paint_mask_sqft: calculatedMaskSqFt
         };
-        // Trigger a full item update to ensure costs are recalculated based on new paint_mask_sqft
-        // We pass a dummy 'field' and 'value' for the updateItem, as the main change is the paint_mask_sqft
-        // which updateItem will observe and trigger cost recalculations.
         return { ...prev, items: newItems };
     });
   };
@@ -467,16 +449,14 @@ export default function NewPaintEstimate() {
     const totalPaintMask = project.items.reduce((sum, item) => sum + (item.supplies_cost || 0), 0);
     let totalLiquidPaintAndSupplies = project.items.reduce((sum, item) => sum + (item.paint_cost || 0), 0);
     
-    // Add flat base supplies cost
-    totalLiquidPaintAndSupplies += project.base_supplies_cost || 0; // This now includes base supplies
+    totalLiquidPaintAndSupplies += project.base_supplies_cost || 0;
 
-    const laborRate = parseFloat(globalSettings.default_labor_rate) || 60; // Use global labor rate
+    const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
     let totalItemLaborCost = project.items.reduce((sum, item) => sum + (item.labor_cost || 0), 0);
     
-    // Add fixed labor hours (mixing, setup)
     const mixingHours = parseFloat(globalSettings.paint_mixing_labor_hours) || 0;
     const setupHours = parseFloat(globalSettings.setup_time_labor_hours) || 0;
-    const fixedLaborCost = (mixingHours + setupHours) * laborRate; // Use global labor rate
+    const fixedLaborCost = (mixingHours + setupHours) * laborRate;
 
     let totalLabor = totalItemLaborCost + fixedLaborCost;
     const totalLaborHours = project.items.reduce((sum, item) => sum + (item.labor_hours || 0), 0) + mixingHours + setupHours;
@@ -485,7 +465,7 @@ export default function NewPaintEstimate() {
     const minPaintCost = parseFloat(globalSettings.min_paint_cost) || 0;
     
     if (totalLaborHours > 0 && totalLaborHours < minLaborHours) {
-        totalLabor = minLaborHours * laborRate; // Use global labor rate
+        totalLabor = minLaborHours * laborRate;
     }
     
     if (totalLiquidPaintAndSupplies > 0 && totalLiquidPaintAndSupplies < minPaintCost) {
@@ -506,21 +486,20 @@ export default function NewPaintEstimate() {
       const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor } = calculateTotals();
       const finalProject = {
         ...project,
-        // Clean empty color strings from paint_colors array
         items: project.items.map(item => ({
           ...item, 
           paint_colors: item.paint_colors ? item.paint_colors.filter(c => c.trim() !== '') : []
         })),
-        total_paint_mask_cost: totalPaintMask,             // Updated field name
-        total_liquid_paint_and_supplies_cost: totalLiquidPaintAndSupplies, // Updated field name
+        total_paint_mask_cost: totalPaintMask,
+        total_liquid_paint_and_supplies_cost: totalLiquidPaintAndSupplies,
         total_labor_cost: totalLabor,
         status: 'calculated'
       };
       
       if (isEditing) {
-        await Project.update(editId, finalProject); // Update existing project
+        await Project.update(editId, finalProject);
       } else {
-        await Project.create(finalProject); // Create new project
+        await Project.create(finalProject);
       }
       
       navigate(createPageUrl("PaintProjects"));
@@ -555,9 +534,8 @@ export default function NewPaintEstimate() {
   const downloadEstimate = () => {
     const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
-    const laborRate = parseFloat(globalSettings.default_labor_rate) || 60; // Use global labor rate
+    const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
     
-    // Create estimate content
     const estimateContent = `
 PAINT ESTIMATE
 
@@ -591,7 +569,6 @@ TOTAL ESTIMATE: $${totalCost.toFixed(2)}
 Notes: ${project.notes || 'None'}
 `;
     
-    // Create and download file
     const blob = new Blob([estimateContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -606,7 +583,7 @@ Notes: ${project.notes || 'None'}
   const printEstimate = () => {
     const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
-    const laborRate = parseFloat(globalSettings.default_labor_rate) || 60; // Use global labor rate
+    const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
     
     const printContent = `
       <html>
@@ -695,7 +672,7 @@ Notes: ${project.notes || 'None'}
   const sendEstimate = () => {
     const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
-    const laborRate = parseFloat(globalSettings.default_labor_rate) || 60; // Use global labor rate
+    const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
     
     setEmailData({
       to: '',
@@ -743,6 +720,7 @@ ${globalSettings.company_name || 'Your Sign Company'}`
   };
 
   const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours } = calculateTotals();
+  const itemsWithDiscounts = getItemsWithDiscounts();
 
   if (isLoading) {
     return (
@@ -757,9 +735,8 @@ ${globalSettings.company_name || 'Your Sign Company'}`
   return (
     <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
       <div className="max-w-5xl mx-auto">
-        {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <Link to={createPageUrl("PaintProjects")}> {/* Changed link to PaintProjects */}
+          <Link to={createPageUrl("PaintProjects")}>
             <Button variant="outline" size="icon" className="hover:bg-slate-100"><ArrowLeft className="w-4 h-4" /></Button>
           </Link>
           <div>
@@ -769,7 +746,7 @@ ${globalSettings.company_name || 'Your Sign Company'}`
             </h1>
             <p className="text-slate-600">{isEditing ? 'Update your paint estimate' : 'Create a detailed estimate for painting dimensional letters and panels'}</p>
           </div>
-          {isEditing && ( // Delete button
+          {isEditing && (
             <Button 
               variant="outline" 
               size="sm" 
@@ -784,7 +761,6 @@ ${globalSettings.company_name || 'Your Sign Company'}`
 
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            {/* Project Info Card */}
             <Card className="bg-white border-0 shadow-sm">
               <CardHeader><CardTitle className="text-lg font-semibold text-slate-900">Project Information</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -832,7 +808,7 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                     />
                   </div>
                 </div>
-                <div> {/* Moved base_supplies_cost out of the grid and into its own div */}
+                <div>
                   <Label htmlFor="base_supplies_cost">Base Supplies Cost (per Job)</Label>
                   <Input 
                     id="base_supplies_cost" 
@@ -881,7 +857,6 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                           <Button variant="ghost" size="icon" onClick={() => removeItem(index)} className="text-red-500 hover:text-red-700 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
                         </div>
                         
-                        {/* Item Form */}
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                           <div>
                             <Label>Description</Label>
@@ -1021,7 +996,6 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                           )}
                         </div>
 
-                        {/* Paint Section */}
                         <div className="mt-4 pt-4 border-t border-slate-200">
                           <div className="grid md:grid-cols-2 gap-4">
                             <div>
@@ -1063,12 +1037,11 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                             </div>
                           </div>
                           
-                          {/* Paint Mask Section - Only show for multiple colors */}
                           {item.paint_colors && item.paint_colors.length > 1 && (
                             <div className="mt-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                                     <div>
-                                        <Label>Paint Mask Square Feet (per item unit)</Label>
+                                        <Label>Paint Mask Square Feet</Label>
                                         <Input
                                             type="number"
                                             min="0"
@@ -1099,7 +1072,6 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                           )}
                         </div>
 
-                        {/* Totals Section */}
                         <div className="mt-4 p-4 bg-white rounded-lg border border-slate-200">
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div><span className="text-slate-500">Paint Mask:</span><p className="font-medium">${(item.supplies_cost || 0).toFixed(2)}</p></div>
@@ -1115,7 +1087,7 @@ ${globalSettings.company_name || 'Your Sign Company'}`
               </CardContent>
             </Card>
           </div>
-          {/* Cost Summary Column */}
+          
           <div className="space-y-6">
             <Card className="bg-white border-0 shadow-sm sticky top-8">
               <CardHeader><CardTitle className="text-lg font-semibold text-slate-900">Cost Summary</CardTitle></CardHeader>
@@ -1127,7 +1099,6 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                   </div>
                   <p className="text-xs text-purple-600">Masking materials & machine cutting for multi-color jobs</p>
                 </div>
-                 {/* Combined Base Supplies into Liquid Paint & Supplies total */}
                  <div className="p-4 bg-blue-50 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-blue-800">Liquid Paint & Supplies:</span>
@@ -1141,7 +1112,19 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                     <span className="text-lg font-bold text-green-900">${totalLabor.toFixed(2)}</span>
                   </div>
                   <p className="text-xs text-green-600">{totalLaborHours.toFixed(1)} hours total (includes item labor, mixing, setup)</p>
-                  <p className="text-xs text-amber-600 mt-1 font-medium">✓ Quantity discounts applied</p>
+                  
+                  {itemsWithDiscounts.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-green-200">
+                      <p className="text-xs font-semibold text-amber-700 mb-1">✓ Discounts Applied:</p>
+                      <div className="space-y-0.5">
+                        {itemsWithDiscounts.map((discountedItem) => (
+                          <p key={discountedItem.index} className="text-xs text-amber-600">
+                            • Item #{discountedItem.index + 1}: {discountedItem.quantity} {discountedItem.itemType} → {discountedItem.discountPercent}% off
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="space-y-2 pt-4 border-t">
@@ -1164,7 +1147,6 @@ ${globalSettings.company_name || 'Your Sign Company'}`
           </div>
         </div>
 
-        {/* Email Modal */}
         {showEmailModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <Card className="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto">
