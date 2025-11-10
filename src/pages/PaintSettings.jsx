@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Settings as SettingsEntity, User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -5,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, DollarSign, Clock, Paintbrush, Calculator } from "lucide-react";
+import { Save, DollarSign, Clock, Paintbrush, Calculator, TrendingDown, Plus, Trash2 } from "lucide-react";
 import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
 
 const unitFactors = {
@@ -82,6 +83,14 @@ export default function PaintSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [liquidPaintRate, setLiquidPaintRate] = useState(0);
+  
+  // Quantity-based labor discount tiers
+  const [quantityTiers, setQuantityTiers] = useState([
+    { min_quantity: 1, max_quantity: 5, labor_multiplier: 1.0 },
+    { min_quantity: 6, max_quantity: 10, labor_multiplier: 0.95 },
+    { min_quantity: 11, max_quantity: 20, labor_multiplier: 0.90 },
+    { min_quantity: 21, max_quantity: 999, labor_multiplier: 0.85 }
+  ]);
 
   const initializeAndLoad = useCallback(async () => {
     setIsLoading(true);
@@ -103,6 +112,25 @@ export default function PaintSettings() {
       });
       
       setSettings(finalSettings);
+      
+      // Load quantity tiers from settings
+      if (settingsMap.quantity_labor_tiers) {
+        try {
+          const parsedTiers = JSON.parse(settingsMap.quantity_labor_tiers);
+          // Ensure tiers have valid structure before setting
+          if (Array.isArray(parsedTiers) && parsedTiers.every(t => 
+            typeof t.min_quantity === 'number' && 
+            typeof t.max_quantity === 'number' && 
+            typeof t.labor_multiplier === 'number'
+          )) {
+            setQuantityTiers(parsedTiers);
+          } else {
+            console.warn('Invalid structure for quantity_labor_tiers, using default.');
+          }
+        } catch (e) {
+          console.error('Error parsing quantity tiers from database, using default:', e);
+        }
+      }
     } catch (error) {
       console.error('Error loading settings, using all defaults:', error);
       const defaultSettings = {};
@@ -119,7 +147,6 @@ export default function PaintSettings() {
   }, [initializeAndLoad]);
 
   useEffect(() => {
-    // Recalculate rate whenever relevant settings change
     const paintCostPerGallon = getCostPerGallon(
       settings.paint_cost_per_unit,
       settings.paint_unit
@@ -150,13 +177,9 @@ export default function PaintSettings() {
       (reducerCostPerGallon * reducerMixRatio);
 
     const costPerGallonOfMixedPaint = costOfMixedBatchGallonEquivalent / totalRatioParts;
-
-
     const coverageSqFtPerGallon = parseFloat(settings.mixed_paint_coverage_sqft_per_gallon) || 1;
-    
     const finalRate = coverageSqFtPerGallon > 0 ? costPerGallonOfMixedPaint / coverageSqFtPerGallon : 0;
     setLiquidPaintRate(finalRate);
-
   }, [settings]);
 
   const saveSettings = async () => {
@@ -195,6 +218,24 @@ export default function PaintSettings() {
           creates.push(SettingsEntity.create(data));
         }
       }
+      
+      // Save quantity tiers
+      const tiersData = {
+        setting_name: 'quantity_labor_tiers',
+        setting_value: JSON.stringify(quantityTiers), // Serialize to JSON string
+        setting_type: 'text', // Use 'json' if the backend supports a specific JSON type, otherwise 'text'
+        category: 'painting_labor',
+        description: 'Quantity-based labor discount tiers'
+      };
+      
+      const existingTiers = existingSettingsMap.get('quantity_labor_tiers');
+      if (existingTiers) {
+        if (existingTiers.setting_value !== tiersData.setting_value) {
+            updates.push(SettingsEntity.update(existingTiers.id, tiersData));
+        }
+      } else {
+        creates.push(SettingsEntity.create(tiersData));
+      }
 
       if (updates.length > 0 || creates.length > 0) {
         await Promise.all([...updates, ...creates]);
@@ -213,6 +254,44 @@ export default function PaintSettings() {
 
   const updateSetting = (key, value) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+  };
+  
+  const addTier = () => {
+    const lastTier = quantityTiers.length > 0 ? quantityTiers[quantityTiers.length - 1] : null;
+    let newMin = 1;
+    if (lastTier && lastTier.max_quantity) {
+      newMin = Math.max(1, Math.round(lastTier.max_quantity + 1));
+    }
+    // Default multiplier is typically lower than the last or 1.0 if first
+    const newMultiplier = lastTier ? Math.max(0.05, lastTier.labor_multiplier - 0.05) : 1.0; 
+
+    setQuantityTiers(prev => [...prev, {
+      min_quantity: newMin,
+      max_quantity: newMin + 5, // Default range
+      labor_multiplier: parseFloat(newMultiplier.toFixed(2)) // Ensure float and reasonable precision
+    }]);
+  };
+  
+  const removeTier = (index) => {
+    if (quantityTiers.length > 1) { // Ensure at least one tier remains
+      setQuantityTiers(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+  
+  const updateTier = (index, field, value) => {
+    setQuantityTiers(prev => prev.map((tier, i) => {
+      if (i !== index) return tier;
+      let parsedValue = parseFloat(value);
+      if (isNaN(parsedValue)) parsedValue = 0; // Default to 0 if not a valid number
+
+      if (field === 'labor_multiplier') {
+        parsedValue = Math.max(0, Math.min(1, parsedValue)); // Ensure between 0 and 1
+      } else if (field === 'min_quantity' || field === 'max_quantity') {
+        parsedValue = Math.max(1, Math.round(parsedValue)); // Ensure integer >= 1
+      }
+      
+      return { ...tier, [field]: parsedValue };
+    }));
   };
 
   if (isLoading) {
@@ -312,6 +391,103 @@ export default function PaintSettings() {
       {renderCategory("Pricing & Minimums", "painting_pricing", DollarSign)}
       {renderCategory("Supplies & Materials", "painting_supplies", Paintbrush)}
       {renderCategory("Labor & Complexity", "painting_labor", Clock)}
+
+      {/* Quantity-Based Labor Discounts */}
+      <Card className="bg-white border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-3 text-lg font-semibold text-amber-900">
+            <TrendingDown className="w-6 h-6 text-amber-500" />
+            Quantity-Based Labor Discounts
+          </CardTitle>
+          <CardDescription>
+            Reduce labor costs as quantity increases. Labor becomes more efficient with repetition.
+            These multipliers only apply to labor costs - materials remain at full price.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            {quantityTiers.map((tier, index) => (
+              <div key={index} className="flex items-end gap-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                <div className="flex-1 grid grid-cols-3 gap-3">
+                  <div>
+                    <Label className="text-xs">Min Qty</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={tier.min_quantity}
+                      onChange={(e) => updateTier(index, 'min_quantity', e.target.value)}
+                      disabled={isLocked}
+                      className="mt-1 h-9"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Max Qty</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={tier.max_quantity}
+                      onChange={(e) => updateTier(index, 'max_quantity', e.target.value)}
+                      disabled={isLocked}
+                      className="mt-1 h-9"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Labor Multiplier</Label>
+                    <Input
+                      type="number"
+                      step="0.05"
+                      min="0"
+                      max="1"
+                      value={tier.labor_multiplier}
+                      onChange={(e) => updateTier(index, 'labor_multiplier', e.target.value)}
+                      disabled={isLocked}
+                      className="mt-1 h-9"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="text-xs font-medium text-amber-900 whitespace-nowrap">
+                    {tier.min_quantity}-{tier.max_quantity} items
+                  </div>
+                  <div className="text-xs text-amber-600">
+                    {((1 - tier.labor_multiplier) * 100).toFixed(0)}% off labor
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeTier(index)}
+                  disabled={isLocked || quantityTiers.length === 1}
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50 h-9 w-9"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          
+          <Button
+            onClick={addTier}
+            disabled={isLocked}
+            variant="outline"
+            size="sm"
+            className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Tier
+          </Button>
+          
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h4 className="font-medium text-blue-900 mb-2 text-sm">Example:</h4>
+            <ul className="text-xs text-blue-700 space-y-1">
+              <li>• 1-5 items: Full labor cost (1.0x multiplier)</li>
+              <li>• 6-10 items: 5% discount on labor (0.95x multiplier)</li>
+              <li>• 11-20 items: 10% discount on labor (0.90x multiplier)</li>
+              <li>• 21+ items: 15% discount on labor (0.85x multiplier)</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="bg-white border-0 shadow-sm">
         <CardHeader>
