@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Plus, Trash2, ArrowLeft, Anchor } from "lucide-react";
+import { Save, Plus, Trash2, ArrowLeft, Anchor, ChevronDown, ChevronUp } from "lucide-react";
 import Foundation3DViewer from "@/components/Foundation3DViewer";
 
 export default function NewFoundationEstimate() {
@@ -17,6 +17,7 @@ export default function NewFoundationEstimate() {
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('edit');
   const [isEditing, setIsEditing] = useState(false);
+  const [expandedAdvanced, setExpandedAdvanced] = useState({});
 
   const [project, setProject] = useState({
     project_name: "",
@@ -36,6 +37,13 @@ export default function NewFoundationEstimate() {
   const [globalSettings, setGlobalSettings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  const toggleAdvanced = (index) => {
+    setExpandedAdvanced(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
 
   const loadProjectForEdit = useCallback(async (projectId) => {
     try {
@@ -111,7 +119,9 @@ export default function NewFoundationEstimate() {
       pouring_cost: 0,
       finishing_hours: 0,
       finishing_cost: 0,
-      item_total_cost: 0
+      item_total_cost: 0,
+      custom_concrete_cost_per_cy: undefined, // Add new fields for overrides
+      custom_rebar_cost_per_ft: undefined,    // Add new fields for overrides
     };
     setProject(prev => ({ ...prev, items: [...prev.items, newItem] }));
   };
@@ -139,10 +149,10 @@ export default function NewFoundationEstimate() {
             const lengthFeet = updated.length_inches / 12;
             const widthFeet = updated.width_inches / 12;
             const depthFeet = updated.depth_inches / 12;
-            
+
             const volumeCubicFeet = lengthFeet * widthFeet * depthFeet;
             updated.concrete_volume_cy = (volumeCubicFeet / 27);
-            
+
             // Excavation is typically 1 foot larger on each side (total 2 feet additional length/width)
             const excavationLength = lengthFeet + 1;
             const excavationWidth = widthFeet + 1;
@@ -153,7 +163,7 @@ export default function NewFoundationEstimate() {
             const radiusFeet = (updated.diameter / 12) / 2;
             const volumeCubicFeet = Math.PI * Math.pow(radiusFeet, 2) * depthFeet;
             updated.concrete_volume_cy = (volumeCubicFeet / 27);
-            updated.excavation_volume_cy = updated.concrete_volume_cy;
+            updated.excavation_volume_cy = updated.concrete_volume_cy; // For pillar, assume excavation volume similar to concrete volume
           }
         }
 
@@ -173,34 +183,41 @@ export default function NewFoundationEstimate() {
     let totalLaborCost = 0;
 
     const updatedItems = project.items.map(item => {
+      // Determine rates, using item-specific override if present, otherwise project default
+      const concreteRate = (item.custom_concrete_cost_per_cy !== undefined && item.custom_concrete_cost_per_cy !== null)
+        ? item.custom_concrete_cost_per_cy
+        : project.concrete_cost_per_cy;
+
+      const rebarRate = (item.custom_rebar_cost_per_ft !== undefined && item.custom_rebar_cost_per_ft !== null)
+        ? item.custom_rebar_cost_per_ft
+        : project.rebar_cost_per_ft;
+
       // Material costs
-      const concreteCost = item.concrete_volume_cy * project.concrete_cost_per_cy * item.quantity;
-      
-      // Calculate rebar cost based on spacing
+      const concreteCost = item.concrete_volume_cy * concreteRate * item.quantity;
+
       let rebarCost = 0;
       if (item.include_rebar && item.foundation_type === 'spread_foot') {
         const lengthFeet = item.length_inches / 12;
         const widthFeet = item.width_inches / 12;
         const depthFeet = item.depth_inches / 12;
-        
-        // Calculate number of rebars based on 18" spacing
+
+        // Calculate number of rebars based on spacing
         const numRebarsLengthwise = Math.floor(widthFeet * 12 / item.rebar_spacing_width) + 1; // Bars running length-wise, based on width spacing
         const numRebarsWidthwise = Math.floor(lengthFeet * 12 / item.rebar_spacing_length) + 1; // Bars running width-wise, based on length spacing
-        
+
         // Calculate layers based on depth
         const firstLayerOffset = 3; // 3 inches from top
         const layerSpacing = 18; // 18 inches between layers
-        // If depth_inches <= firstLayerOffset, this will correctly result in 0 layers
         const numLayers = Math.max(0, Math.floor((item.depth_inches - firstLayerOffset) / layerSpacing) + 1);
-        
+
         // Total rebar: lengthwise bars + crosswise bars, multiplied by layers
         const totalLengthwiseRebarFeet = numRebarsLengthwise * lengthFeet * numLayers;
         const totalWidthwiseRebarFeet = numRebarsWidthwise * widthFeet * numLayers;
         const totalRebarFeet = (totalLengthwiseRebarFeet + totalWidthwiseRebarFeet) * item.quantity;
-        
-        rebarCost = totalRebarFeet * project.rebar_cost_per_ft;
+
+        rebarCost = totalRebarFeet * rebarRate;
       }
-      
+
       const excavationCost = item.excavation_volume_cy * project.excavation_cost_per_cy * item.quantity;
 
       // Labor calculations
@@ -211,7 +228,7 @@ export default function NewFoundationEstimate() {
         const lengthFeet = item.length_inches / 12;
         const widthFeet = item.width_inches / 12;
         const depthFeet = item.depth_inches / 12;
-        
+
         const perimeter = 2 * (lengthFeet + widthFeet);
         formingSqFt = perimeter * depthFeet;
         finishingSqFt = lengthFeet * widthFeet;
@@ -219,7 +236,7 @@ export default function NewFoundationEstimate() {
         const depthFeet = item.depth_inches / 12;
         const circumference = Math.PI * (item.diameter / 12);
         formingSqFt = circumference * depthFeet;
-        
+
         const radiusFeet = (item.diameter / 12) / 2;
         finishingSqFt = Math.PI * Math.pow(radiusFeet, 2);
       }
@@ -275,6 +292,14 @@ export default function NewFoundationEstimate() {
         total_rebar_cost: calculated.total_rebar_cost,
         total_excavation_cost: calculated.total_excavation_cost,
         total_labor_cost: calculated.total_labor_cost
+      }));
+    } else if (!isLoading && project.items.length === 0) { // Clear totals if no items
+      setProject(prev => ({
+        ...prev,
+        total_concrete_cost: 0,
+        total_rebar_cost: 0,
+        total_excavation_cost: 0,
+        total_labor_cost: 0
       }));
     }
   }, [calculateTotals, isLoading, project.items.length]);
@@ -523,8 +548,33 @@ export default function NewFoundationEstimate() {
                           </div>
                         </div>
 
+                        {/* 3D Viewer - Always shown for spread_foot */}
                         {item.foundation_type === 'spread_foot' && (
                           <div className="md:col-span-2 border-t pt-4">
+                            <div className="mb-4">
+                              <Label className="text-sm font-medium text-blue-900 mb-2 block">3D Foundation Preview - Interactive (Click & Drag to Rotate)</Label>
+                              <div className="h-96 rounded-lg overflow-hidden">
+                                <Foundation3DViewer
+                                  lengthInches={item.length_inches || 48}
+                                  widthInches={item.width_inches || 48}
+                                  depthInches={item.depth_inches || 36}
+                                  rebarSize={item.rebar_size || "#4"}
+                                  rebarSpacingLength={item.rebar_spacing_length || 18}
+                                  rebarSpacingWidth={item.rebar_spacing_width || 18}
+                                  includeRebar={item.include_rebar || false}
+                                />
+                              </div>
+                              <p className="text-xs text-blue-700 mt-2 text-center">
+                                <strong>Foundation:</strong> {item.length_inches}" L × {item.width_inches}" W × {item.depth_inches}" D
+                                {item.include_rebar && (() => {
+                                  const firstLayerOffset = 3;
+                                  const layerSpacing = 18;
+                                  const numLayers = Math.max(0, Math.floor((item.depth_inches - firstLayerOffset) / layerSpacing) + 1);
+                                  return ` | <strong>Rebar:</strong> ${item.rebar_size} @ ${item.rebar_spacing_length}" lengthwise & ${item.rebar_spacing_width}" width spacing in ${numLayers} layer${numLayers !== 1 ? 's' : ''} (3" from top, 18" spacing)`;
+                                })()}
+                              </p>
+                            </div>
+
                             <div className="flex items-center justify-between mb-3">
                               <Label htmlFor={`include-rebar-${index}`} className="font-medium text-slate-800">Include Rebar Reinforcement</Label>
                               <input
@@ -535,81 +585,99 @@ export default function NewFoundationEstimate() {
                                 className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                               />
                             </div>
+
                             {item.include_rebar && (
-                              <>
-                                <div className="mb-4">
-                                  <Label className="text-sm font-medium text-blue-900 mb-2 block">3D Foundation Preview - Interactive (Click & Drag to Rotate)</Label>
-                                  <div className="h-96 rounded-lg overflow-hidden">
-                                    <Foundation3DViewer
-                                      lengthInches={item.length_inches || 48}
-                                      widthInches={item.width_inches || 48}
-                                      depthInches={item.depth_inches || 36}
-                                      rebarSize={item.rebar_size || "#4"}
-                                      rebarSpacingLength={item.rebar_spacing_length || 18}
-                                      rebarSpacingWidth={item.rebar_spacing_width || 18}
-                                      includeRebar={item.include_rebar}
+                              <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
+                                <div className="mb-3">
+                                  <p className="text-sm font-semibold text-blue-900 mb-1">Steel Reinforcement Grid</p>
+                                  <p className="text-xs text-blue-700">Rebar bars are spaced evenly in both directions with layers at 3" from top, then every 18".</p>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                  <div>
+                                    <Label className="text-xs">Rebar Size</Label>
+                                    <select
+                                      value={item.rebar_size || "#4"}
+                                      onChange={(e) => updateItem(index, 'rebar_size', e.target.value)}
+                                      className="mt-1 w-full px-3 py-2 border border-blue-200 rounded-md bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    >
+                                      <option value="#3">#3 (3/8")</option>
+                                      <option value="#4">#4 (1/2")</option>
+                                      <option value="#5">#5 (5/8")</option>
+                                      <option value="#6">#6 (3/4")</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs">Lengthwise Spacing (inches)</Label>
+                                    <Input
+                                      type="number"
+                                      min="6"
+                                      step="1"
+                                      value={item.rebar_spacing_length || 18}
+                                      onChange={(e) => updateItem(index, 'rebar_spacing_length', parseFloat(e.target.value) || 18)}
+                                      className="mt-1 border-blue-200 focus:ring-blue-500"
                                     />
                                   </div>
-                                  <p className="text-xs text-blue-700 mt-2 text-center">
-                                    <strong>Foundation:</strong> {item.length_inches}" L × {item.width_inches}" W × {item.depth_inches}" D |
-                                    <strong> Rebar:</strong> {item.rebar_size} @ {item.rebar_spacing_length}" lengthwise & {item.rebar_spacing_width}" width spacing
-                                    {(() => {
-                                      const firstLayerOffset = 3;
-                                      const layerSpacing = 18;
-                                      const numLayers = Math.max(0, Math.floor((item.depth_inches - firstLayerOffset) / layerSpacing) + 1);
-                                      return ` in ${numLayers} layer${numLayers !== 1 ? 's' : ''} (3" from top, 18" spacing)`;
-                                    })()}
-                                  </p>
-                                </div>
-
-                                <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
-                                  <div className="mb-3">
-                                    <p className="text-sm font-semibold text-blue-900 mb-1">Steel Reinforcement Grid</p>
-                                    <p className="text-xs text-blue-700">Rebar bars are spaced evenly in both directions with layers at 3" from top, then every 18".</p>
-                                  </div>
-                                  <div className="grid grid-cols-3 gap-4">
-                                    <div>
-                                      <Label className="text-xs">Rebar Size</Label>
-                                      <select
-                                        value={item.rebar_size || "#4"}
-                                        onChange={(e) => updateItem(index, 'rebar_size', e.target.value)}
-                                        className="mt-1 w-full px-3 py-2 border border-blue-200 rounded-md bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                      >
-                                        <option value="#3">#3 (3/8")</option>
-                                        <option value="#4">#4 (1/2")</option>
-                                        <option value="#5">#5 (5/8")</option>
-                                        <option value="#6">#6 (3/4")</option>
-                                      </select>
-                                    </div>
-                                    <div>
-                                      <Label className="text-xs">Lengthwise Spacing (inches)</Label>
-                                      <Input
-                                        type="number"
-                                        min="6"
-                                        step="1"
-                                        value={item.rebar_spacing_length || 18}
-                                        onChange={(e) => updateItem(index, 'rebar_spacing_length', parseFloat(e.target.value) || 18)}
-                                        className="mt-1 border-blue-200 focus:ring-blue-500"
-                                      />
-                                    </div>
-                                    <div>
-                                      <Label className="text-xs">Width Spacing (inches)</Label>
-                                      <Input
-                                        type="number"
-                                        min="6"
-                                        step="1"
-                                        value={item.rebar_spacing_width || 18}
-                                        onChange={(e) => updateItem(index, 'rebar_spacing_width', parseFloat(e.target.value) || 18)}
-                                        className="mt-1 border-blue-200 focus:ring-blue-500"
-                                      />
-                                    </div>
+                                  <div>
+                                    <Label className="text-xs">Width Spacing (inches)</Label>
+                                    <Input
+                                      type="number"
+                                      min="6"
+                                      step="1"
+                                      value={item.rebar_spacing_width || 18}
+                                      onChange={(e) => updateItem(index, 'rebar_spacing_width', parseFloat(e.target.value) || 18)}
+                                      className="mt-1 border-blue-200 focus:ring-blue-500"
+                                    />
                                   </div>
                                 </div>
-                              </>
+                              </div>
                             )}
                           </div>
                         )}
 
+                        {/* Advanced Override Section - Collapsible */}
+                        <div className="md:col-span-2 border-t pt-4">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => toggleAdvanced(index)}
+                            className="w-full flex items-center justify-between"
+                          >
+                            <span>Advanced Cost Override</span>
+                            {expandedAdvanced[index] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </Button>
+
+                          {expandedAdvanced[index] && (
+                            <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200 space-y-4">
+                              <p className="text-xs text-amber-800 mb-2">Override default rates for this specific foundation (leave blank to use project default)</p>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label className="text-xs">Concrete Cost ($/cy)</Label>
+                                  <Input
+                                    type="number"
+                                    step="1"
+                                    value={item.custom_concrete_cost_per_cy !== undefined ? item.custom_concrete_cost_per_cy : ''}
+                                    onChange={(e) => updateItem(index, 'custom_concrete_cost_per_cy', e.target.value === '' ? undefined : parseFloat(e.target.value))}
+                                    className="mt-1"
+                                    placeholder={`Default: $${project.concrete_cost_per_cy}`}
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Rebar Cost ($/ft)</Label>
+                                  <Input
+                                    type="number"
+                                    step="0.05"
+                                    value={item.custom_rebar_cost_per_ft !== undefined ? item.custom_rebar_cost_per_ft : ''}
+                                    onChange={(e) => updateItem(index, 'custom_rebar_cost_per_ft', e.target.value === '' ? undefined : parseFloat(e.target.value))}
+                                    className="mt-1"
+                                    placeholder={`Default: $${project.rebar_cost_per_ft}`}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Summary info only - no costs */}
                         <div className="md:col-span-2 p-3 bg-blue-50 rounded-lg">
                           <div className="grid grid-cols-2 gap-2 text-sm">
                             <p><strong>Concrete:</strong> {item.concrete_volume_cy.toFixed(2)} cy</p>
@@ -660,27 +728,8 @@ export default function NewFoundationEstimate() {
               <CardHeader><CardTitle>Project Summary</CardTitle></CardHeader>
               <CardContent className="space-y-6 pt-6">
                 <div className="space-y-4">
-                  <div>
-                    <Label>Concrete Cost ($/cy)</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={project.concrete_cost_per_cy}
-                      onChange={(e) => setProject(prev => ({ ...prev, concrete_cost_per_cy: parseFloat(e.target.value) || 0 }))}
-                      className="mt-1"
-                    />
-                    <p className="text-xs text-slate-500 mt-1">Ernst Concrete pricing</p>
-                  </div>
-                  <div>
-                    <Label>Rebar Cost ($/ft)</Label>
-                    <Input
-                      type="number"
-                      step="0.05"
-                      value={project.rebar_cost_per_ft}
-                      onChange={(e) => setProject(prev => ({ ...prev, rebar_cost_per_ft: parseFloat(e.target.value) || 0 }))}
-                      className="mt-1"
-                    />
-                  </div>
+                  {/* Global Concrete and Rebar inputs are removed from here as per outline change,
+                      now managed per item or from global settings */}
                   <div>
                     <Label>Excavation Cost ($/cy)</Label>
                     <Input
