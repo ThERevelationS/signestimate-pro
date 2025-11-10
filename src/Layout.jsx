@@ -141,6 +141,7 @@ export default function Layout({ children, currentPageName }) {
       projectsPage: 'FoundationProjects',
       newEstimatePage: 'NewFoundationEstimate',
       settingsPage: 'FoundationSettings',
+      inventoryPage: 'FoundationInventory',
       color: 'text-amber-600',
       bgColor: 'bg-amber-50',
       hoverColor: 'hover:bg-amber-100'
