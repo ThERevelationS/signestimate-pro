@@ -92,14 +92,14 @@ export default function NewFoundationEstimate() {
       foundation_type: "spread_foot",
       description: "",
       quantity: 1,
-      length: 4,
-      width: 4,
+      length_inches: 48,
+      width_inches: 48,
       diameter: 24,
-      depth: 3,
+      depth_inches: 36,
       include_rebar: true,
-      rebar_size: "#4", // Added this field
-      rebar_count: 4,
-      rebar_length_ft: 10,
+      rebar_size: "#4",
+      rebar_spacing_length: 18,
+      rebar_spacing_width: 18,
       concrete_volume_cy: 0,
       excavation_volume_cy: 0,
       concrete_cost: 0,
@@ -131,24 +131,28 @@ export default function NewFoundationEstimate() {
         const updated = { ...item, [field]: value };
 
         // Auto-calculate volumes when dimensions change
-        if (field === 'foundation_type' || field === 'length' || field === 'width' ||
-            field === 'diameter' || field === 'depth' || field === 'quantity') {
+        if (field === 'foundation_type' || field === 'length_inches' || field === 'width_inches' ||
+            field === 'diameter' || field === 'depth_inches' || field === 'quantity') {
 
           if (updated.foundation_type === 'spread_foot') {
-            // Spread foot: rectangular excavation
-            const volumeCubicFeet = updated.length * updated.width * updated.depth;
+            // Convert inches to feet for volume calculation
+            const lengthFeet = updated.length_inches / 12;
+            const widthFeet = updated.width_inches / 12;
+            const depthFeet = updated.depth_inches / 12;
+            
+            const volumeCubicFeet = lengthFeet * widthFeet * depthFeet;
             updated.concrete_volume_cy = (volumeCubicFeet / 27);
-            // Excavation is typically 6" larger on each side
-            const excavationLength = updated.length + 1;
-            const excavationWidth = updated.width + 1;
-            const excavationVolume = excavationLength * excavationWidth * updated.depth;
+            
+            // Excavation is typically 1 foot larger on each side (total 2 feet additional length/width)
+            const excavationLength = lengthFeet + 1;
+            const excavationWidth = widthFeet + 1;
+            const excavationVolume = excavationLength * excavationWidth * depthFeet;
             updated.excavation_volume_cy = (excavationVolume / 27);
           } else if (updated.foundation_type === 'pillar') {
-            // Pillar: cylindrical excavation
+            const depthFeet = updated.depth_inches / 12;
             const radiusFeet = (updated.diameter / 12) / 2;
-            const volumeCubicFeet = Math.PI * Math.pow(radiusFeet, 2) * updated.depth;
+            const volumeCubicFeet = Math.PI * Math.pow(radiusFeet, 2) * depthFeet;
             updated.concrete_volume_cy = (volumeCubicFeet / 27);
-            // Excavation is same as concrete for pillars
             updated.excavation_volume_cy = updated.concrete_volume_cy;
           }
         }
@@ -171,7 +175,32 @@ export default function NewFoundationEstimate() {
     const updatedItems = project.items.map(item => {
       // Material costs
       const concreteCost = item.concrete_volume_cy * project.concrete_cost_per_cy * item.quantity;
-      const rebarCost = item.include_rebar ? (item.rebar_count * item.rebar_length_ft * project.rebar_cost_per_ft * item.quantity) : 0;
+      
+      // Calculate rebar cost based on spacing
+      let rebarCost = 0;
+      if (item.include_rebar && item.foundation_type === 'spread_foot') {
+        const lengthFeet = item.length_inches / 12;
+        const widthFeet = item.width_inches / 12;
+        const depthFeet = item.depth_inches / 12;
+        
+        // Calculate number of rebars based on 18" spacing
+        const numRebarsLengthwise = Math.floor(widthFeet * 12 / item.rebar_spacing_width) + 1; // Bars running length-wise, based on width spacing
+        const numRebarsWidthwise = Math.floor(lengthFeet * 12 / item.rebar_spacing_length) + 1; // Bars running width-wise, based on length spacing
+        
+        // Calculate layers based on depth
+        const firstLayerOffset = 3; // 3 inches from top
+        const layerSpacing = 18; // 18 inches between layers
+        // If depth_inches <= firstLayerOffset, this will correctly result in 0 layers
+        const numLayers = Math.max(0, Math.floor((item.depth_inches - firstLayerOffset) / layerSpacing) + 1);
+        
+        // Total rebar: lengthwise bars + crosswise bars, multiplied by layers
+        const totalLengthwiseRebarFeet = numRebarsLengthwise * lengthFeet * numLayers;
+        const totalWidthwiseRebarFeet = numRebarsWidthwise * widthFeet * numLayers;
+        const totalRebarFeet = (totalLengthwiseRebarFeet + totalWidthwiseRebarFeet) * item.quantity;
+        
+        rebarCost = totalRebarFeet * project.rebar_cost_per_ft;
+      }
+      
       const excavationCost = item.excavation_volume_cy * project.excavation_cost_per_cy * item.quantity;
 
       // Labor calculations
@@ -179,16 +208,18 @@ export default function NewFoundationEstimate() {
       let finishingSqFt = 0;
 
       if (item.foundation_type === 'spread_foot') {
-        // Forming perimeter * depth
-        const perimeter = 2 * (item.length + item.width);
-        formingSqFt = perimeter * item.depth;
-        // Finishing is top surface
-        finishingSqFt = item.length * item.width;
+        const lengthFeet = item.length_inches / 12;
+        const widthFeet = item.width_inches / 12;
+        const depthFeet = item.depth_inches / 12;
+        
+        const perimeter = 2 * (lengthFeet + widthFeet);
+        formingSqFt = perimeter * depthFeet;
+        finishingSqFt = lengthFeet * widthFeet;
       } else if (item.foundation_type === 'pillar') {
-        // Forming circumference * depth (using sonotube)
+        const depthFeet = item.depth_inches / 12;
         const circumference = Math.PI * (item.diameter / 12);
-        formingSqFt = circumference * item.depth;
-        // Finishing is top surface
+        formingSqFt = circumference * depthFeet;
+        
         const radiusFeet = (item.diameter / 12) / 2;
         finishingSqFt = Math.PI * Math.pow(radiusFeet, 2);
       }
@@ -406,7 +437,7 @@ export default function NewFoundationEstimate() {
                         </Button>
                       </div>
 
-                      <div className="flex flex-col gap-4"> {/* Changed to flex-col with gap for better mobile spacing */}
+                      <div className="flex flex-col gap-4">
                         <div className="grid md:grid-cols-2 gap-4">
                           <div className="md:col-span-2">
                             <Label>Description</Label>
@@ -445,22 +476,22 @@ export default function NewFoundationEstimate() {
                           {item.foundation_type === 'spread_foot' && (
                             <>
                               <div>
-                                <Label>Length (feet)</Label>
+                                <Label>Length (inches)</Label>
                                 <Input
                                   type="number"
-                                  step="0.5"
-                                  value={item.length}
-                                  onChange={(e) => updateItem(index, 'length', parseFloat(e.target.value) || 0)}
+                                  step="1"
+                                  value={item.length_inches}
+                                  onChange={(e) => updateItem(index, 'length_inches', parseFloat(e.target.value) || 0)}
                                   className="mt-1"
                                 />
                               </div>
                               <div>
-                                <Label>Width (feet)</Label>
+                                <Label>Width (inches)</Label>
                                 <Input
                                   type="number"
-                                  step="0.5"
-                                  value={item.width}
-                                  onChange={(e) => updateItem(index, 'width', parseFloat(e.target.value) || 0)}
+                                  step="1"
+                                  value={item.width_inches}
+                                  onChange={(e) => updateItem(index, 'width_inches', parseFloat(e.target.value) || 0)}
                                   className="mt-1"
                                 />
                               </div>
@@ -481,17 +512,16 @@ export default function NewFoundationEstimate() {
                           )}
 
                           <div>
-                            <Label>Depth (feet)</Label>
+                            <Label>Depth (inches)</Label>
                             <Input
                               type="number"
-                              step="0.5"
-                              value={item.depth}
-                              onChange={(e) => updateItem(index, 'depth', parseFloat(e.target.value) || 0)}
+                              step="1"
+                              value={item.depth_inches}
+                              onChange={(e) => updateItem(index, 'depth_inches', parseFloat(e.target.value) || 0)}
                               className="mt-1"
                             />
                           </div>
                         </div>
-
 
                         {item.foundation_type === 'spread_foot' && (
                           <div className="md:col-span-2 border-t pt-4">
@@ -511,20 +541,22 @@ export default function NewFoundationEstimate() {
                                   <Label className="text-sm font-medium text-blue-900 mb-2 block">3D Foundation Preview - Interactive (Click & Drag to Rotate)</Label>
                                   <div className="h-96 rounded-lg overflow-hidden">
                                     <Foundation3DViewer
-                                      length={item.length || 4}
-                                      width={item.width || 4}
-                                      depth={item.depth || 3}
-                                      rebarCount={item.rebar_count || 4}
+                                      lengthInches={item.length_inches || 48}
+                                      widthInches={item.width_inches || 48}
+                                      depthInches={item.depth_inches || 36}
                                       rebarSize={item.rebar_size || "#4"}
+                                      rebarSpacingLength={item.rebar_spacing_length || 18}
+                                      rebarSpacingWidth={item.rebar_spacing_width || 18}
                                       includeRebar={item.include_rebar}
                                     />
                                   </div>
                                   <p className="text-xs text-blue-700 mt-2 text-center">
-                                    <strong>Foundation:</strong> {item.length}' L × {item.width}' W × {item.depth}' D |
-                                    <strong> Rebar:</strong> {item.rebar_count}× {item.rebar_size} bars running lengthwise
+                                    <strong>Foundation:</strong> {item.length_inches}" L × {item.width_inches}" W × {item.depth_inches}" D |
+                                    <strong> Rebar:</strong> {item.rebar_size} @ {item.rebar_spacing_length}" lengthwise & {item.rebar_spacing_width}" width spacing
                                     {(() => {
-                                      const depthInches = item.depth * 12;
-                                      const numLayers = Math.floor((depthInches - 3) / 18) + 1;
+                                      const firstLayerOffset = 3;
+                                      const layerSpacing = 18;
+                                      const numLayers = Math.max(0, Math.floor((item.depth_inches - firstLayerOffset) / layerSpacing) + 1);
                                       return ` in ${numLayers} layer${numLayers !== 1 ? 's' : ''} (3" from top, 18" spacing)`;
                                     })()}
                                   </p>
@@ -533,7 +565,7 @@ export default function NewFoundationEstimate() {
                                 <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
                                   <div className="mb-3">
                                     <p className="text-sm font-semibold text-blue-900 mb-1">Steel Reinforcement Grid</p>
-                                    <p className="text-xs text-blue-700">Rebar bars run lengthwise through the foundation and are tied together with cross bars for structural integrity.</p>
+                                    <p className="text-xs text-blue-700">Rebar bars are spaced evenly in both directions with layers at 3" from top, then every 18".</p>
                                   </div>
                                   <div className="grid grid-cols-3 gap-4">
                                     <div>
@@ -550,22 +582,24 @@ export default function NewFoundationEstimate() {
                                       </select>
                                     </div>
                                     <div>
-                                      <Label className="text-xs">Number of Rebars</Label>
+                                      <Label className="text-xs">Lengthwise Spacing (inches)</Label>
                                       <Input
                                         type="number"
-                                        min="0"
-                                        value={item.rebar_count}
-                                        onChange={(e) => updateItem(index, 'rebar_count', parseFloat(e.target.value) || 0)}
+                                        min="6"
+                                        step="1"
+                                        value={item.rebar_spacing_length || 18}
+                                        onChange={(e) => updateItem(index, 'rebar_spacing_length', parseFloat(e.target.value) || 18)}
                                         className="mt-1 border-blue-200 focus:ring-blue-500"
                                       />
                                     </div>
                                     <div>
-                                      <Label className="text-xs">Rebar Length (feet)</Label>
+                                      <Label className="text-xs">Width Spacing (inches)</Label>
                                       <Input
                                         type="number"
-                                        step="0.5"
-                                        value={item.rebar_length_ft}
-                                        onChange={(e) => updateItem(index, 'rebar_length_ft', parseFloat(e.target.value) || 0)}
+                                        min="6"
+                                        step="1"
+                                        value={item.rebar_spacing_width || 18}
+                                        onChange={(e) => updateItem(index, 'rebar_spacing_width', parseFloat(e.target.value) || 18)}
                                         className="mt-1 border-blue-200 focus:ring-blue-500"
                                       />
                                     </div>
