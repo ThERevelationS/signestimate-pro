@@ -67,9 +67,39 @@ export default function NewPaintEstimate() {
     notes: ""
   });
   const [globalSettings, setGlobalSettings] = useState({});
+  
+  // Quantity tier states
+  const [panelTiers, setPanelTiers] = useState([]);
+  const [complexShapesTiers, setComplexShapesTiers] = useState([]);
+  const [letteringTiers, setLetteringTiers] = useState([]);
+  
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false); // New state for deletion
+
+  // Helper function to get labor multiplier based on quantity and item type
+  const getLaborMultiplier = useCallback((itemType, quantity) => {
+    let tiers = [];
+    if (itemType === 'panel') {
+      tiers = panelTiers;
+    } else if (itemType === 'complex_shapes') {
+      tiers = complexShapesTiers;
+    } else if (itemType === 'lettering') {
+      tiers = letteringTiers;
+    }
+    
+    if (!tiers || tiers.length === 0) return 1.0; // Default to no discount if no tiers are defined
+    
+    // Find the matching tier
+    for (let tier of tiers) {
+      if (quantity >= tier.min_quantity && quantity <= tier.max_quantity) {
+        return tier.labor_multiplier;
+      }
+    }
+    
+    // If no match found, return 1.0 (no discount)
+    return 1.0;
+  }, [panelTiers, complexShapesTiers, letteringTiers]);
 
   // Calculate liquidPaintRate here at the top so it's available for updateItem
   const getCostPerGallon = useCallback((cost, unit) => {
@@ -148,6 +178,34 @@ export default function NewPaintEstimate() {
       });
       
       setGlobalSettings(settingsObj);
+      
+      // Load quantity tiers for each item type
+      if (settingsObj.panel_labor_tiers) {
+        try {
+          setPanelTiers(JSON.parse(settingsObj.panel_labor_tiers));
+        } catch (e) {
+          console.error('Error parsing panel tiers:', e);
+          setPanelTiers([]); // Fallback to empty array
+        }
+      }
+      
+      if (settingsObj.complex_shapes_labor_tiers) {
+        try {
+          setComplexShapesTiers(JSON.parse(settingsObj.complex_shapes_labor_tiers));
+        } catch (e) {
+          console.error('Error parsing complex shapes tiers:', e);
+          setComplexShapesTiers([]); // Fallback to empty array
+        }
+      }
+      
+      if (settingsObj.lettering_labor_tiers) {
+        try {
+          setLetteringTiers(JSON.parse(settingsObj.lettering_labor_tiers));
+        } catch (e) {
+          console.error('Error parsing lettering tiers:', e);
+          setLetteringTiers([]); // Fallback to empty array
+        }
+      }
       
       // Only set default project values if not editing an existing project
       if (!editId) {
@@ -238,7 +296,7 @@ export default function NewPaintEstimate() {
       
       // --- Start Recalculation ---
       const perimFactor = parseFloat(globalSettings.letter_perimeter_factor) || 3.5;
-      let paintableSqFt = 0;
+      let paintableSqFt = 0; // This will represent the paintable sqft for ONE unit of the item
       const itemThicknessDecimal = parseImperialFraction(item.thickness);
 
       if (item.item_type === 'panel' && item.length > 0 && item.width > 0) {
@@ -246,13 +304,14 @@ export default function NewPaintEstimate() {
         paintableSqFt = item.paint_sides === 'both_sides' ? faceArea * 2 : faceArea;
       } else if (item.item_type === 'lettering' && item.width > 0 && item.length > 0 && itemThicknessDecimal > 0) {
         const letterHeight = item.width; // Using width field for letter height
-        const numLetters = item.length; // Using length field for number of letters
+        const numLetters = item.length; // Using length field for number of letters (e.g., in a set of letters making up one item unit)
         
-        const faceArea = (Math.pow(letterHeight, 2) * 0.8 * numLetters) / 144;
-        const perimeterInches = letterHeight * perimFactor * numLetters;
-        const edgeArea = (perimeterInches * itemThicknessDecimal) / 144;
+        const faceAreaPerLetter = (Math.pow(letterHeight, 2) * 0.8) / 144;
+        const perimeterInchesPerLetter = letterHeight * perimFactor;
+        const edgeAreaPerLetter = (perimeterInchesPerLetter * itemThicknessDecimal) / 144;
         
-        paintableSqFt = item.paint_sides === 'both_sides' ? (faceArea * 2) + edgeArea : faceArea + edgeArea;
+        const paintableSqFtPerLetter = item.paint_sides === 'both_sides' ? (faceAreaPerLetter * 2) + edgeAreaPerLetter : faceAreaPerLetter + edgeAreaPerLetter;
+        paintableSqFt = paintableSqFtPerLetter * numLetters; // Total for this "set" of letters, which is one item unit
       } else if (item.item_type === 'complex_shapes' && item.length > 0 && item.width > 0 && itemThicknessDecimal > 0) {
         const faceArea = (item.length * item.width) / 144;
         const perimeterInches = 2 * (item.length + item.width); // Perimeter of a rectangle
@@ -267,40 +326,39 @@ export default function NewPaintEstimate() {
         }
       }
       
-      // Calculate Costs - REORGANIZED
+      // Calculate Costs per ITEM UNIT
       const paintSuppliesRate = prev.paint_supplies_per_sqft;
 
-      // Paint mask cost (material + machine cutting)
+      // Paint mask cost (material + machine cutting) per item unit
       const paintMaskMaterialRate = parseFloat(globalSettings.paint_mask_rate_per_sqft) || 0.75;
       const paintMaskMachineRate = parseFloat(globalSettings.paint_mask_machine_cutting_rate_per_sqft) || 0.10;
-      let paintMaskCost = 0;
+      let paintMaskCostPerUnit = 0;
       
       const numColors = item.paint_colors?.length || 0;
       if (numColors > 1 && item.paint_mask_sqft > 0) {
         const maskMaterialCost = item.paint_mask_sqft * paintMaskMaterialRate * (numColors - 1);
         const maskMachineCost = item.paint_mask_sqft * paintMaskMachineRate * (numColors - 1);
-        paintMaskCost = maskMaterialCost + maskMachineCost;
+        paintMaskCostPerUnit = maskMaterialCost + maskMachineCost;
       }
 
-      // Liquid paint and paint application supplies cost (combined)
-      let liquidPaintAndSuppliesCost = 0;
+      // Liquid paint and paint application supplies cost (combined) per item unit
+      let liquidPaintAndSuppliesCostPerUnit = 0;
       
-      let liquidPaintCost = 0;
-      let paintApplicationSuppliesCost = 0;
+      let liquidPaintCostPerUnit = 0;
+      let paintApplicationSuppliesCostPerUnit = 0;
       if (numColors > 0) { 
         // Paint application supplies
-        paintApplicationSuppliesCost = paintableSqFt * paintSuppliesRate * numColors;
+        paintApplicationSuppliesCostPerUnit = paintableSqFt * paintSuppliesRate * numColors;
         
         // Liquid paint cost
         const paintWasteMultiplier = parseFloat(globalSettings.paint_waste_multiplier) || 1.25;
         if (liquidPaintRate > 0) {
-            liquidPaintCost = paintableSqFt * liquidPaintRate * paintWasteMultiplier * numColors;
+            liquidPaintCostPerUnit = paintableSqFt * liquidPaintRate * paintWasteMultiplier * numColors;
         }
       }
+      liquidPaintAndSuppliesCostPerUnit = paintApplicationSuppliesCostPerUnit + liquidPaintCostPerUnit;
       
-      liquidPaintAndSuppliesCost = paintApplicationSuppliesCost + liquidPaintCost;
-      
-      // Calculate Labor Cost
+      // Calculate Labor Cost per ITEM UNIT
       const laborRate = parseFloat(globalSettings.default_labor_rate) || 60; // Get labor rate from global settings
       const baseHoursPerSqFt = parseFloat(globalSettings.base_labor_hours_per_sqft) || 0.5;
       const complexityMap = {
@@ -309,7 +367,7 @@ export default function NewPaintEstimate() {
         normal: 'moderate',
         medium: 'moderate',
         large: 'simple',
-        extra_large: 'extra_large', // Should be 'simple' like large
+        extra_large: 'simple', // Corrected to map to 'simple'
       };
       // item.complexity doesn't exist for panels/complex_shapes, use 'moderate' as a default if not lettering
       const itemComplexity = item.item_type === 'lettering' ? complexityMap[item.letter_size] || 'moderate' : 'moderate'; 
@@ -325,29 +383,31 @@ export default function NewPaintEstimate() {
       };
       const additionalColorMultiplier = parseFloat(globalSettings.additional_color_multiplier) || 0.3;
       
-      let baseHours = paintableSqFt * baseHoursPerSqFt * (complexityMultipliers[itemComplexity] || 1) * (paintMultipliers[item.paint_sides] || 1);
+      let baseLaborHoursPerItemUnit = paintableSqFt * baseHoursPerSqFt * (complexityMultipliers[itemComplexity] || 1) * (paintMultipliers[item.paint_sides] || 1);
       if (numColors > 1) {
-        baseHours *= (1 + (numColors - 1) * additionalColorMultiplier);
+        baseLaborHoursPerItemUnit *= (1 + (numColors - 1) * additionalColorMultiplier);
       }
       
-      // Add paint mask application & cutting labor
+      // Add paint mask application & cutting labor (per item unit, assuming item.paint_mask_sqft is per unit)
       const maskApplicationLaborRate = parseFloat(globalSettings.paint_mask_application_labor_rate_per_sqft) || 0.25;
       const maskCuttingLaborRate = parseFloat(globalSettings.paint_mask_cutting_labor_rate_per_sqft) || 0.15;
       if (numColors > 1 && item.paint_mask_sqft > 0) {
-        const maskApplicationLaborHours = (item.paint_mask_sqft * maskApplicationLaborRate * (numColors - 1)) / laborRate;
-        const maskCuttingLaborHours = (item.paint_mask_sqft * maskCuttingLaborRate * (numColors - 1)) / laborRate;
-        baseHours += maskApplicationLaborHours + maskCuttingLaborHours;
+        const maskApplicationLaborHoursPerItemUnit = (item.paint_mask_sqft * maskApplicationLaborRate * (numColors - 1)) / laborRate;
+        const maskCuttingLaborHoursPerItemUnit = (item.paint_mask_sqft * maskCuttingLaborRate * (numColors - 1)) / laborRate;
+        baseLaborHoursPerItemUnit += maskApplicationLaborHoursPerItemUnit + maskCuttingLaborHoursPerItemUnit;
       }
-      
-      const laborHours = baseHours; // Labor hours are now per-item (for one unit), not multiplied by quantity yet
-      const laborCost = laborHours * laborRate * item.quantity; // Use the derived laborRate
 
+      // APPLY QUANTITY DISCOUNT MULTIPLIER to the labor hours for a single unit of the item
+      const quantityDiscountMultiplier = getLaborMultiplier(item.item_type, item.quantity);
+      const discountedLaborHoursPerItemUnit = baseLaborHoursPerItemUnit * quantityDiscountMultiplier;
+      
+      // Now calculate total costs for the line item (considering all quantities)
       item = {
         ...item,
-        supplies_cost: paintMaskCost * item.quantity, // Now stores Paint Mask Material + Machine Cost
-        paint_cost: liquidPaintAndSuppliesCost * item.quantity, // Now stores Liquid Paint + Paint App Supplies Cost
-        labor_hours: laborHours * item.quantity, // Storing total hours for the line item
-        labor_cost: laborCost,
+        supplies_cost: paintMaskCostPerUnit * item.quantity, // Now stores Paint Mask Material + Machine Cost for ALL units
+        paint_cost: liquidPaintAndSuppliesCostPerUnit * item.quantity, // Now stores Liquid Paint + Paint App Supplies Cost for ALL units
+        labor_hours: discountedLaborHoursPerItemUnit * item.quantity, // Storing total hours for the line item
+        labor_cost: discountedLaborHoursPerItemUnit * item.quantity * laborRate,
       };
 
       newItems[index] = item;
@@ -366,7 +426,7 @@ export default function NewPaintEstimate() {
       faceArea = (item.length * item.width) / 144;
     } else if (item.item_type === 'lettering' && item.width > 0 && item.length > 0) {
       const letterHeight = item.width;
-      const numLetters = item.length;
+      const numLetters = item.length; // Number of letters in one unit of the item
       faceArea = (Math.pow(letterHeight, 2) * 0.8 * numLetters) / 144;
     }
 
@@ -1008,7 +1068,7 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                             <div className="mt-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                                     <div>
-                                        <Label>Paint Mask Square Feet</Label>
+                                        <Label>Paint Mask Square Feet (per item unit)</Label>
                                         <Input
                                             type="number"
                                             min="0"
@@ -1081,6 +1141,7 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                     <span className="text-lg font-bold text-green-900">${totalLabor.toFixed(2)}</span>
                   </div>
                   <p className="text-xs text-green-600">{totalLaborHours.toFixed(1)} hours total (includes item labor, mixing, setup)</p>
+                  <p className="text-xs text-amber-600 mt-1 font-medium">✓ Quantity discounts applied</p>
                 </div>
                 
                 <div className="space-y-2 pt-4 border-t">
