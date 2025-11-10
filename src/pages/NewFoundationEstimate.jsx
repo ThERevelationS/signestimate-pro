@@ -367,9 +367,7 @@ export default function NewFoundationEstimate() {
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Projects
             </Button>
-            <Button onClick={saveProject} disabled={isSaving} className="bg-green-600 hover:bg-green-700">
-              {isSaving ? "Saving..." : <><Save className="w-4 h-4 mr-2" />Save Project</>}
-            </Button>
+            {/* The save button is now inside the summary card as per outline */}
           </div>
         </div>
 
@@ -722,82 +720,60 @@ export default function NewFoundationEstimate() {
             </Card>
           </div>
 
-          {/* Summary Sidebar */}
+          {/* Summary Sidebar - Redesigned like painting estimator */}
           <div>
             <Card className="bg-white border-0 shadow-sm sticky top-8">
-              <CardHeader><CardTitle>Project Summary</CardTitle></CardHeader>
-              <CardContent className="space-y-6 pt-6">
-                <div className="space-y-4">
-                  {/* Global Concrete and Rebar inputs are removed from here as per outline change,
-                      now managed per item or from global settings */}
-                  <div>
-                    <Label>Excavation Cost ($/cy)</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={project.excavation_cost_per_cy}
-                      onChange={(e) => setProject(prev => ({ ...prev, excavation_cost_per_cy: parseFloat(e.target.value) || 0 }))}
-                      className="mt-1"
-                    />
+              <CardHeader><CardTitle>Cost Summary</CardTitle></CardHeader>
+              <CardContent className="space-y-4 pt-4">
+                {/* Materials Section */}
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-blue-800">Concrete:</span>
+                    <span className="text-lg font-bold text-blue-900">${(project.total_concrete_cost || 0).toFixed(2)}</span>
                   </div>
-                  <div>
-                    <Label>Forming Rate ($/hr)</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={project.forming_labor_rate}
-                      onChange={(e) => setProject(prev => ({ ...prev, forming_labor_rate: parseFloat(e.target.value) || 0 }))}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label>Pouring Rate ($/hr)</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={project.pouring_labor_rate}
-                      onChange={(e) => setProject(prev => ({ ...prev, pouring_labor_rate: parseFloat(e.target.value) || 0 }))}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label>Finishing Rate ($/hr)</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={project.finishing_labor_rate}
-                      onChange={(e) => setProject(prev => ({ ...prev, finishing_labor_rate: parseFloat(e.target.value) || 0 }))}
-                      className="mt-1"
-                    />
-                  </div>
+                  <p className="text-xs text-blue-600">Based on Ernst Concrete pricing</p>
                 </div>
 
-                <div className="border-t pt-6 space-y-3">
-                  <div className="flex justify-between text-sm">
+                <div className="p-4 bg-purple-50 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-purple-800">Rebar:</span>
+                    <span className="text-lg font-bold text-purple-900">${(project.total_rebar_cost || 0).toFixed(2)}</span>
+                  </div>
+                  <p className="text-xs text-purple-600">Steel reinforcement materials</p>
+                </div>
+
+                <div className="p-4 bg-amber-50 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-amber-800">Excavation:</span>
+                    <span className="text-lg font-bold text-amber-900">${(project.total_excavation_cost || 0).toFixed(2)}</span>
+                  </div>
+                  <p className="text-xs text-amber-600">Site preparation and digging</p>
+                </div>
+
+                {/* Labor Section */}
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-green-800">Total Labor:</span>
+                    <span className="text-lg font-bold text-green-900">${(project.total_labor_cost || 0).toFixed(2)}</span>
+                  </div>
+                  <p className="text-xs text-green-600">Forming, pouring, and finishing labor</p>
+                </div>
+
+                {/* Summary */}
+                <div className="border-t pt-4">
+                  <div className="flex justify-between text-sm text-slate-600 mb-2">
                     <span>Total Items:</span>
                     <span className="font-medium">{project.items.length}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Total Concrete:</span>
-                    <span className="font-medium">${(project.total_concrete_cost || 0).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Total Rebar:</span>
-                    <span className="font-medium">${(project.total_rebar_cost || 0).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Total Excavation:</span>
-                    <span className="font-medium">${(project.total_excavation_cost || 0).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Total Labor:</span>
-                    <span className="font-medium">${(project.total_labor_cost || 0).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-bold border-t pt-3">
+                  <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
                     <span>TOTAL:</span>
                     <span className="text-green-600">${((project.total_concrete_cost || 0) + (project.total_rebar_cost || 0) + (project.total_excavation_cost || 0) + (project.total_labor_cost || 0)).toFixed(2)}</span>
                   </div>
                 </div>
+
+                <Button onClick={saveProject} disabled={isSaving} className="w-full bg-green-600 hover:bg-green-700 text-white py-3 mt-4">
+                  {isSaving ? 'Saving...' : <><Save className="w-4 h-4 mr-2" /> {isEditing ? 'Update Estimate' : 'Save Estimate'}</>}
+                </Button>
               </CardContent>
             </Card>
           </div>
