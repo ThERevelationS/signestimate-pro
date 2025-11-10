@@ -3,9 +3,11 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 export default function Foundation3DViewer({ 
+  foundationType = 'spread_foot',
   lengthInches, 
   widthInches, 
-  depthInches, 
+  depthInches,
+  diameter = 24,
   rebarSize, 
   rebarSpacingLength,
   rebarSpacingWidth,
@@ -16,10 +18,15 @@ export default function Foundation3DViewer({
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // Handle different foundation types
+    const isSpreadFoot = foundationType === 'spread_foot';
+    const isPillar = foundationType === 'pillar';
+
     // Convert inches to feet for 3D visualization
     const length = lengthInches / 12;
     const width = widthInches / 12;
     const depth = depthInches / 12;
+    const diameterFeet = diameter / 12;
 
     // Scene setup
     const scene = new THREE.Scene();
@@ -32,7 +39,9 @@ export default function Foundation3DViewer({
       0.1,
       1000
     );
-    camera.position.set(length * 1.5, depth * 2, width * 1.5);
+    
+    const maxDim = Math.max(isSpreadFoot ? length : diameterFeet, isSpreadFoot ? width : diameterFeet, depth);
+    camera.position.set(maxDim * 1.5, depth * 2, maxDim * 1.5);
     camera.lookAt(0, 0, 0);
 
     // Renderer setup
@@ -65,7 +74,8 @@ export default function Foundation3DViewer({
     scene.add(directionalLight2);
 
     // Ground plane
-    const groundGeometry = new THREE.PlaneGeometry(length * 4, width * 4);
+    const groundSize = maxDim * 4;
+    const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize);
     const groundMaterial = new THREE.MeshStandardMaterial({ 
       color: 0xe8ebe8,
       roughness: 0.8,
@@ -77,8 +87,14 @@ export default function Foundation3DViewer({
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // Foundation (concrete box)
-    const foundationGeometry = new THREE.BoxGeometry(length, depth, width);
+    // Foundation geometry based on type
+    let foundationGeometry;
+    if (isSpreadFoot) {
+      foundationGeometry = new THREE.BoxGeometry(length, depth, width);
+    } else if (isPillar) {
+      foundationGeometry = new THREE.CylinderGeometry(diameterFeet / 2, diameterFeet / 2, depth, 32);
+    }
+
     const foundationMaterial = new THREE.MeshStandardMaterial({
       color: 0xcccccc,
       roughness: 0.7,
@@ -97,8 +113,8 @@ export default function Foundation3DViewer({
     const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
     foundation.add(edges);
 
-    // Rebar visualization - ONLY if includeRebar is true
-    if (includeRebar) {
+    // Rebar visualization - ONLY for spread_foot and if includeRebar is true
+    if (includeRebar && isSpreadFoot) {
       const rebarMaterial = new THREE.MeshStandardMaterial({
         color: 0xdc2626,
         roughness: 0.4,
@@ -200,14 +216,22 @@ export default function Foundation3DViewer({
       return sprite;
     };
 
-    const lengthLabel = createTextSprite(`${lengthInches}"`, new THREE.Vector3(0, depth / 2 + 1, width / 2 + 1));
-    scene.add(lengthLabel);
+    if (isSpreadFoot) {
+      const lengthLabel = createTextSprite(`${lengthInches}"`, new THREE.Vector3(0, depth / 2 + 1, width / 2 + 1));
+      scene.add(lengthLabel);
 
-    const widthLabel = createTextSprite(`${widthInches}"`, new THREE.Vector3(length / 2 + 1, depth / 2 + 1, 0));
-    scene.add(widthLabel);
+      const widthLabel = createTextSprite(`${widthInches}"`, new THREE.Vector3(length / 2 + 1, depth / 2 + 1, 0));
+      scene.add(widthLabel);
 
-    const depthLabel = createTextSprite(`${depthInches}"`, new THREE.Vector3(length / 2 + 1, 0, width / 2 + 1));
-    scene.add(depthLabel);
+      const depthLabel = createTextSprite(`${depthInches}"`, new THREE.Vector3(length / 2 + 1, 0, width / 2 + 1));
+      scene.add(depthLabel);
+    } else if (isPillar) {
+      const diameterLabel = createTextSprite(`Ø ${diameter}"`, new THREE.Vector3(diameterFeet / 2 + 1, depth / 2 + 1, 0));
+      scene.add(diameterLabel);
+
+      const depthLabel = createTextSprite(`${depthInches}"`, new THREE.Vector3(diameterFeet / 2 + 1, 0, 0));
+      scene.add(depthLabel);
+    }
 
     // Animation loop
     const animate = () => {
@@ -237,7 +261,7 @@ export default function Foundation3DViewer({
       renderer.dispose();
       controls.dispose();
     };
-  }, [lengthInches, widthInches, depthInches, rebarSize, rebarSpacingLength, rebarSpacingWidth, includeRebar]);
+  }, [foundationType, lengthInches, widthInches, depthInches, diameter, rebarSize, rebarSpacingLength, rebarSpacingWidth, includeRebar]);
 
   return (
     <div 

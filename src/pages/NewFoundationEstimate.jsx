@@ -103,16 +103,53 @@ export default function NewFoundationEstimate() {
     }
   }, [editId, loadPrerequisites, loadProjectForEdit]);
 
+  const checkAndAddEquipment = useCallback((items) => {
+    // Check if any foundation needs equipment (>= 0.5 cy excavation OR > 36" deep)
+    const needsEquipment = items.some(item => 
+      item.excavation_volume_cy >= 0.5 || item.depth_inches > 36
+    );
+
+    setProject(prev => {
+      const currentEquipment = prev.selected_equipment || [];
+      
+      // If needs equipment but none added, add default equipment
+      if (needsEquipment && currentEquipment.length === 0 && equipment.length > 0) {
+        const defaultEquip = equipment[0]; // Use first available equipment
+        // Calculate initial cost for the default equipment
+        let initialCost = (defaultEquip.cost_per_day || 0); // Assuming 'day' is default rental_period for auto-added
+        if (true) { // If include_delivery is true
+          initialCost += (defaultEquip.pickup_delivery_cost || 0);
+        }
+
+        return {
+          ...prev,
+          selected_equipment: [{
+            equipment_id: defaultEquip.id,
+            rental_period: 'day',
+            rental_duration: 1,
+            include_delivery: true,
+            equipment_cost: initialCost
+          }]
+        };
+      }
+      
+      // As per instructions, if it doesn't need equipment, we don't auto-remove it here.
+      // User might have added it manually or for future expansion.
+      return prev;
+    });
+  }, [equipment]);
+
+
   const addItem = () => {
     const newItem = {
       foundation_type: "spread_foot",
       description: "",
       quantity: 1,
-      length_inches: 48,
-      width_inches: 48,
+      length_inches: 12, // Changed from 48
+      width_inches: 12,  // Changed from 48
       diameter: 24,
-      depth_inches: 36,
-      include_rebar: true,
+      depth_inches: 24,  // Changed from 36
+      include_rebar: false, // Changed from true
       rebar_size: "#4",
       rebar_spacing_length: 18,
       rebar_spacing_width: 18,
@@ -131,20 +168,27 @@ export default function NewFoundationEstimate() {
       custom_concrete_cost_per_cy: undefined,
       custom_rebar_cost_per_ft: undefined,
     };
-    setProject(prev => ({ ...prev, items: [...prev.items, newItem] }));
+    setProject(prev => {
+      const updatedItems = [...prev.items, newItem];
+      setTimeout(() => checkAndAddEquipment(updatedItems), 0); // Defer check after potential state update
+      return { ...prev, items: updatedItems };
+    });
   };
 
   const removeItem = (index) => {
-    setProject(prev => ({
-      ...prev,
-      items: prev.items.filter((_, i) => i !== index)
-    }));
+    setProject(prev => {
+      const updatedItems = prev.items.filter((_, i) => i !== index);
+      setTimeout(() => checkAndAddEquipment(updatedItems), 0); // Defer check after potential state update
+      return {
+        ...prev,
+        items: updatedItems
+      };
+    });
   };
 
   const updateItem = (index, field, value) => {
-    setProject(prev => ({
-      ...prev,
-      items: prev.items.map((item, i) => {
+    setProject(prev => {
+      const updatedItems = prev.items.map((item, i) => {
         if (i !== index) return item;
         const updated = { ...item, [field]: value };
 
@@ -176,8 +220,13 @@ export default function NewFoundationEstimate() {
         }
 
         return updated;
-      })
-    }));
+      });
+      
+      // Check if equipment should be auto-added after updating items
+      setTimeout(() => checkAndAddEquipment(updatedItems), 0);
+      
+      return { ...prev, items: updatedItems };
+    });
   };
 
   const addEquipment = () => {
@@ -225,9 +274,9 @@ export default function NewFoundationEstimate() {
             
             const deliveryCost = updated.include_delivery ? (selectedEquip.pickup_delivery_cost || 0) : 0;
             updated.equipment_cost = rentalCost + deliveryCost;
-          } else {
-            updated.equipment_cost = 0; // If no equipment selected or found, cost is 0
           }
+          // The else branch `updated.equipment_cost = 0;` is removed as per instructions,
+          // it will naturally be 0 if selectedEquip is not found or costs are 0.
         }
         
         return updated;
@@ -262,7 +311,7 @@ export default function NewFoundationEstimate() {
       if (item.include_rebar && item.foundation_type === 'spread_foot') {
         const lengthFeet = item.length_inches / 12;
         const widthFeet = item.width_inches / 12;
-        const depthFeet = item.depth_inches / 12;
+        // const depthFeet = item.depth_inches / 12; // depth is not used directly for rebar length calc in this section
 
         // Calculate number of rebars based on spacing
         const numRebarsLengthwise = Math.floor(widthFeet * 12 / item.rebar_spacing_width) + 1; // Bars running length-wise, based on width spacing
@@ -364,16 +413,9 @@ export default function NewFoundationEstimate() {
         total_labor_cost: calculated.total_labor_cost,
         total_equipment_cost: calculated.total_equipment_cost
       }));
-    } else if (!isLoading && project.items.length === 0 && (!project.selected_equipment || project.selected_equipment.length === 0)) { // Clear totals if no items or equipment
-      setProject(prev => ({
-        ...prev,
-        total_concrete_cost: 0,
-        total_rebar_cost: 0,
-        total_excavation_cost: 0,
-        total_labor_cost: 0,
-        total_equipment_cost: 0
-      }));
     }
+    // Removed the else if block that cleared totals, as they will naturally be 0
+    // if there are no items or selected equipment, based on calculateTotals() logic.
   }, [calculateTotals, isLoading, project.items.length, project.selected_equipment?.length]);
 
   const saveProject = async () => {
@@ -382,8 +424,8 @@ export default function NewFoundationEstimate() {
       return;
     }
 
-    if (project.items.length === 0 && (!project.selected_equipment || project.selected_equipment.length === 0)) {
-      alert('Please add at least one foundation item or one equipment item to the project');
+    if (project.items.length === 0) { // Removed the condition for selected_equipment
+      alert('Please add at least one foundation item');
       return;
     }
 
@@ -618,91 +660,97 @@ export default function NewFoundationEstimate() {
                           </div>
                         </div>
 
-                        {/* 3D Viewer - Always shown for spread_foot */}
-                        {item.foundation_type === 'spread_foot' && (
-                          <div className="md:col-span-2 border-t pt-4">
-                            <div className="mb-4">
-                              <Label className="text-sm font-medium text-blue-900 mb-2 block">3D Foundation Preview - Interactive (Click & Drag to Rotate)</Label>
-                              <div className="h-96 rounded-lg overflow-hidden">
-                                <Foundation3DViewer
-                                  lengthInches={item.length_inches || 48}
-                                  widthInches={item.width_inches || 48}
-                                  depthInches={item.depth_inches || 36}
-                                  rebarSize={item.rebar_size || "#4"}
-                                  rebarSpacingLength={item.rebar_spacing_length || 18}
-                                  rebarSpacingWidth={item.rebar_spacing_width || 18}
-                                  includeRebar={item.include_rebar || false}
-                                />
-                              </div>
-                              <p className="text-xs text-blue-700 mt-2 text-center">
-                                <strong>Foundation:</strong> {item.length_inches}" L × {item.width_inches}" W × {item.depth_inches}" D
-                                {item.include_rebar && (() => {
-                                  const firstLayerOffset = 3;
-                                  const layerSpacing = 18;
-                                  const numLayers = Math.max(0, Math.floor((item.depth_inches - firstLayerOffset) / layerSpacing) + 1);
-                                  return ` | <strong>Rebar:</strong> ${item.rebar_size} @ ${item.rebar_spacing_length}" lengthwise & ${item.rebar_spacing_width}" width spacing in ${numLayers} layer${numLayers !== 1 ? 's' : ''} (3" from top, 18" spacing)`;
-                                })()}
-                              </p>
-                            </div>
-
-                            <div className="flex items-center justify-between mb-3">
-                              <Label htmlFor={`include-rebar-${index}`} className="font-medium text-slate-800">Include Rebar Reinforcement</Label>
-                              <input
-                                id={`include-rebar-${index}`}
-                                type="checkbox"
-                                checked={item.include_rebar || false}
-                                onChange={(e) => updateItem(index, 'include_rebar', e.target.checked)}
-                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                        {/* 3D Viewer - Now shown for both types */}
+                        <div className="md:col-span-2 border-t pt-4">
+                          <div className="mb-4">
+                            <Label className="text-sm font-medium text-blue-900 mb-2 block">3D Foundation Preview - Interactive (Click & Drag to Rotate)</Label>
+                            <div className="h-96 rounded-lg overflow-hidden">
+                              <Foundation3DViewer
+                                foundationType={item.foundation_type}
+                                lengthInches={item.length_inches || 12}
+                                widthInches={item.width_inches || 12}
+                                depthInches={item.depth_inches || 24}
+                                diameter={item.diameter || 24}
+                                rebarSize={item.rebar_size || "#4"}
+                                rebarSpacingLength={item.rebar_spacing_length || 18}
+                                rebarSpacingWidth={item.rebar_spacing_width || 18}
+                                includeRebar={item.include_rebar || false}
                               />
                             </div>
-
-                            {item.include_rebar && (
-                              <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
-                                <div className="mb-3">
-                                  <p className="text-sm font-semibold text-blue-900 mb-1">Steel Reinforcement Grid</p>
-                                  <p className="text-xs text-blue-700">Rebar bars are spaced evenly in both directions with layers at 3" from top, then every 18".</p>
-                                </div>
-                                <div className="grid grid-cols-3 gap-4">
-                                  <div>
-                                    <Label className="text-xs">Rebar Size</Label>
-                                    <select
-                                      value={item.rebar_size || "#4"}
-                                      onChange={(e) => updateItem(index, 'rebar_size', e.target.value)}
-                                      className="mt-1 w-full px-3 py-2 border border-blue-200 rounded-md bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    >
-                                      <option value="#3">#3 (3/8")</option>
-                                      <option value="#4">#4 (1/2")</option>
-                                      <option value="#5">#5 (5/8")</option>
-                                      <option value="#6">#6 (3/4")</option>
-                                    </select>
-                                  </div>
-                                  <div>
-                                    <Label className="text-xs">Lengthwise Spacing (inches)</Label>
-                                    <Input
-                                      type="number"
-                                      min="6"
-                                      step="1"
-                                      value={item.rebar_spacing_length || 18}
-                                      onChange={(e) => updateItem(index, 'rebar_spacing_length', parseFloat(e.target.value) || 18)}
-                                      className="mt-1 border-blue-200 focus:ring-blue-500"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label className="text-xs">Width Spacing (inches)</Label>
-                                    <Input
-                                      type="number"
-                                      min="6"
-                                      step="1"
-                                      value={item.rebar_spacing_width || 18}
-                                      onChange={(e) => updateItem(index, 'rebar_spacing_width', parseFloat(e.target.value) || 18)}
-                                      className="mt-1 border-blue-200 focus:ring-blue-500"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            )}
+                            <p className="text-xs text-blue-700 mt-2 text-center">
+                              <strong>Foundation:</strong> {item.foundation_type === 'spread_foot' 
+                                ? `${item.length_inches}" L × ${item.width_inches}" W × ${item.depth_inches}" D`
+                                : `${item.diameter}" Diameter × ${item.depth_inches}" D`}
+                              {item.include_rebar && item.foundation_type === 'spread_foot' && (() => {
+                                const firstLayerOffset = 3;
+                                const layerSpacing = 18;
+                                const numLayers = Math.max(0, Math.floor((item.depth_inches - firstLayerOffset) / layerSpacing) + 1);
+                                return ` | <strong>Rebar:</strong> ${item.rebar_size} @ ${item.rebar_spacing_length}" lengthwise & ${item.rebar_spacing_width}" width spacing in ${numLayers} layer${numLayers !== 1 ? 's' : ''} (3" from top, 18" spacing)`;
+                              })()}
+                            </p>
                           </div>
-                        )}
+
+                          {item.foundation_type === 'spread_foot' && (
+                            <>
+                              <div className="flex items-center justify-between mb-3">
+                                <Label htmlFor={`include-rebar-${index}`} className="font-medium text-slate-800">Include Rebar Reinforcement</Label>
+                                <input
+                                  id={`include-rebar-${index}`}
+                                  type="checkbox"
+                                  checked={item.include_rebar || false}
+                                  onChange={(e) => updateItem(index, 'include_rebar', e.target.checked)}
+                                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                              </div>
+
+                              {item.include_rebar && (
+                                <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
+                                  <div className="mb-3">
+                                    <p className="text-sm font-semibold text-blue-900 mb-1">Steel Reinforcement Grid</p>
+                                    <p className="text-xs text-blue-700">Rebar bars are spaced evenly in both directions with layers at 3" from top, then every 18".</p>
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-4">
+                                    <div>
+                                      <Label className="text-xs">Rebar Size</Label>
+                                      <select
+                                        value={item.rebar_size || "#4"}
+                                        onChange={(e) => updateItem(index, 'rebar_size', e.target.value)}
+                                        className="mt-1 w-full px-3 py-2 border border-blue-200 rounded-md bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                      >
+                                        <option value="#3">#3 (3/8")</option>
+                                        <option value="#4">#4 (1/2")</option>
+                                        <option value="#5">#5 (5/8")</option>
+                                        <option value="#6">#6 (3/4")</option>
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <Label className="text-xs">Lengthwise Spacing (inches)</Label>
+                                      <Input
+                                        type="number"
+                                        min="6"
+                                        step="1"
+                                        value={item.rebar_spacing_length || 18}
+                                        onChange={(e) => updateItem(index, 'rebar_spacing_length', parseFloat(e.target.value) || 18)}
+                                        className="mt-1 border-blue-200 focus:ring-blue-500"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label className="text-xs">Width Spacing (inches)</Label>
+                                      <Input
+                                        type="number"
+                                        min="6"
+                                        step="1"
+                                        value={item.rebar_spacing_width || 18}
+                                        onChange={(e) => updateItem(index, 'rebar_spacing_width', parseFloat(e.target.value) || 18)}
+                                        className="mt-1 border-blue-200 focus:ring-blue-500"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
 
                         {/* Advanced Override Section - Collapsible */}
                         <div className="md:col-span-2 border-t pt-4">
@@ -764,7 +812,7 @@ export default function NewFoundationEstimate() {
               </CardContent>
             </Card>
 
-            {/* Equipment Card - NEW */}
+            {/* Equipment Card */}
             <Card className="bg-white border-0 shadow-sm">
               <CardHeader>
                 <div className="flex justify-between items-center">
@@ -778,7 +826,7 @@ export default function NewFoundationEstimate() {
               <CardContent className="space-y-4">
                 {(!project.selected_equipment || project.selected_equipment.length === 0) ? (
                   <div className="text-center py-8 text-slate-500">
-                    <p>No equipment added. Click "Add Equipment" to include rental equipment.</p>
+                    <p>No equipment added. Equipment will be auto-added when excavation ≥ 0.5 cy or depth &gt; 36"</p>
                   </div>
                 ) : (
                   project.selected_equipment.map((eq, index) => {
@@ -842,7 +890,7 @@ export default function NewFoundationEstimate() {
                                 onChange={(e) => updateEquipmentItem(index, 'include_delivery', e.target.checked)}
                                 className="w-4 h-4 text-orange-600"
                               />
-                              <Label>Include Pickup & Delivery {selectedEquip && `(${(selectedEquip.pickup_delivery_cost || 0).toFixed(2)})`}</Label>
+                              <Label>Include Pickup & Delivery {selectedEquip && `($${(selectedEquip.pickup_delivery_cost || 0).toFixed(2)})`}</Label>
                             </div>
                           </div>
                           
@@ -863,7 +911,7 @@ export default function NewFoundationEstimate() {
             </Card>
           </div>
 
-          {/* Summary Sidebar - Updated with combined costs */}
+          {/* Summary Sidebar */}
           <div>
             <Card className="bg-white border-0 shadow-sm sticky top-8">
               <CardHeader><CardTitle>Cost Summary</CardTitle></CardHeader>
@@ -886,29 +934,25 @@ export default function NewFoundationEstimate() {
                   <p className="text-xs text-green-600">Forming, pouring, finishing & site prep</p>
                 </div>
 
-                {/* Equipment Section */}
-                {project.selected_equipment && project.selected_equipment.length > 0 && (
-                  <div className="p-4 bg-orange-50 rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-orange-800">Equipment:</span>
-                      <span className="text-lg font-bold text-orange-900">${(project.total_equipment_cost || 0).toFixed(2)}</span>
-                    </div>
-                    <p className="text-xs text-orange-600">Excavation equipment rental & delivery</p>
+                {/* Equipment Section - Always shown */}
+                <div className="p-4 bg-orange-50 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-orange-800">Equipment:</span>
+                    <span className="text-lg font-bold text-orange-900">${(project.total_equipment_cost || 0).toFixed(2)}</span>
                   </div>
-                )}
+                  <p className="text-xs text-orange-600">Excavation equipment rental & delivery</p>
+                </div>
 
                 {/* Summary */}
                 <div className="border-t pt-4">
                   <div className="flex justify-between text-sm text-slate-600 mb-2">
-                    <span>Total Foundations:</span>
+                    <span>Total Items:</span>
                     <span className="font-medium">{project.items.length}</span>
                   </div>
-                  {project.selected_equipment && project.selected_equipment.length > 0 && (
-                    <div className="flex justify-between text-sm text-slate-600 mb-2">
-                      <span>Total Equipment:</span>
-                      <span className="font-medium">{project.selected_equipment.length}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between text-sm text-slate-600 mb-2">
+                    <span>Equipment Items:</span>
+                    <span className="font-medium">{(project.selected_equipment || []).length}</span>
+                  </div>
                   <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
                     <span>TOTAL:</span>
                     <span className="text-green-600">${((project.total_concrete_cost || 0) + (project.total_rebar_cost || 0) + (project.total_excavation_cost || 0) + (project.total_labor_cost || 0) + (project.total_equipment_cost || 0)).toFixed(2)}</span>
