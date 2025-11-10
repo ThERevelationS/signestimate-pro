@@ -222,47 +222,52 @@ export default function Layout({ children, currentPageName }) {
                             maxHeight: isExpanded ? '400px' : '0px',
                             opacity: isExpanded ? 1 : 0
                           }}
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <Link
                             to={createPageUrl(module.projectsPage)}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors ${
+                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors block ${
                               location.pathname === createPageUrl(module.projectsPage)
                                 ? 'bg-white text-slate-900 font-medium shadow-sm'
                                 : 'text-slate-700 hover:bg-white/60'
                             }`}
+                            onClick={(e) => e.stopPropagation()}
                           >
                             View Projects
                           </Link>
                           <Link
                             to={createPageUrl(module.newEstimatePage)}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors ${
+                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors block ${
                               location.pathname === createPageUrl(module.newEstimatePage)
                                 ? 'bg-white text-slate-900 font-medium shadow-sm'
                                 : 'text-slate-700 hover:bg-white/60'
                             }`}
+                            onClick={(e) => e.stopPropagation()}
                           >
                             New Estimate
                           </Link>
                           {module.inventoryPage && (
                             <Link
-                                to={createPageUrl(module.inventoryPage)}
-                                className={`text-xs px-2 py-1.5 rounded-lg transition-colors ${
+                              to={createPageUrl(module.inventoryPage)}
+                              className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center ${
                                 location.pathname === createPageUrl(module.inventoryPage)
-                                    ? 'bg-white text-slate-900 font-medium shadow-sm'
-                                    : 'text-slate-700 hover:bg-white/60'
-                                }`}
+                                  ? 'bg-white text-slate-900 font-medium shadow-sm'
+                                  : 'text-slate-700 hover:bg-white/60'
+                              }`}
+                              onClick={(e) => e.stopPropagation()}
                             >
-                                <Server className="w-3 h-3 inline mr-1" />
-                                Inventory
+                              <Server className="w-3 h-3 inline mr-1" />
+                              Inventory
                             </Link>
                           )}
                           <Link
                             to={createPageUrl(module.settingsPage)}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors ${
+                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center ${
                               location.pathname === createPageUrl(module.settingsPage)
                                 ? 'bg-white text-slate-900 font-medium shadow-sm'
                                 : 'text-slate-700 hover:bg-white/60'
                             }`}
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <Settings className="w-3 h-3 inline mr-1" />
                             Settings
