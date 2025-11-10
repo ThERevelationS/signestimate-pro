@@ -306,15 +306,11 @@ export default function NewFoundationEstimate() {
 
     const selectedConcrete = concreteOptions.find(c => c.id === concreteId);
     if (selectedConcrete) {
-      // Calculate cost per cubic yard
-      const costPerCY = selectedConcrete.cubic_yards_per_unit > 0 
-        ? selectedConcrete.cost_per_unit / selectedConcrete.cubic_yards_per_unit
-        : selectedConcrete.cost_per_unit; // Assuming if cubic_yards_per_unit is 0 or not set, cost_per_unit is already per cy
-      
+      // For concrete materials, cost_per_unit is already per cubic yard
       setProject(prev => ({
         ...prev,
         selected_concrete_id: concreteId,
-        concrete_cost_per_cy: costPerCY
+        concrete_cost_per_cy: selectedConcrete.cost_per_unit
       }));
     }
   };
@@ -580,9 +576,7 @@ export default function NewFoundationEstimate() {
                       <SelectContent>
                         <SelectItem value="default">Default (${project.concrete_cost_per_cy.toFixed(2)}/cy)</SelectItem>
                         {concreteOptions.map(concrete => {
-                          const costPerCY = concrete.cubic_yards_per_unit > 0 
-                            ? (concrete.cost_per_unit / concrete.cubic_yards_per_unit).toFixed(2)
-                            : concrete.cost_per_unit.toFixed(2);
+                          const costPerCY = concrete.cost_per_unit.toFixed(2); // Now directly using cost_per_unit
                           return (
                             <SelectItem key={concrete.id} value={concrete.id}>
                               {concrete.material_name} - ${costPerCY}/cy ({concrete.material_type.replace(/_/g, ' ')})
