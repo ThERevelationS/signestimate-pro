@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
-import { FoundationProject, Settings } from "@/entities/all";
+import { FoundationProject, Settings, FoundationInventory } from "@/entities/all";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
@@ -31,10 +31,12 @@ export default function NewFoundationEstimate() {
     forming_labor_rate: 55,
     pouring_labor_rate: 60,
     finishing_labor_rate: 50,
-    notes: ""
+    notes: "",
+    selected_equipment: []
   });
 
   const [globalSettings, setGlobalSettings] = useState({});
+  const [equipment, setEquipment] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -63,12 +65,17 @@ export default function NewFoundationEstimate() {
 
   const loadPrerequisites = useCallback(async () => {
     try {
-      const settingsData = await Settings.list();
+      const [settingsData, equipmentData] = await Promise.all([
+        Settings.list(),
+        FoundationInventory.filter({ material_type: 'excavation_equipment' })
+      ]);
+      
       const settingsObj = {};
       settingsData.forEach(setting => {
         settingsObj[setting.setting_name] = setting.setting_value;
       });
       setGlobalSettings(settingsObj);
+      setEquipment(equipmentData);
 
       if (!editId) {
         const newDefaults = {
@@ -78,7 +85,8 @@ export default function NewFoundationEstimate() {
           forming_labor_rate: parseFloat(settingsObj.foundation_forming_labor_rate) || 55,
           pouring_labor_rate: parseFloat(settingsObj.foundation_pouring_labor_rate) || 60,
           finishing_labor_rate: parseFloat(settingsObj.foundation_finishing_labor_rate) || 50,
-          notes: settingsObj.default_notes_template || ""
+          notes: settingsObj.default_notes_template || "",
+          selected_equipment: []
         };
         setProject(prev => ({ ...prev, ...newDefaults }));
       }
@@ -120,8 +128,8 @@ export default function NewFoundationEstimate() {
       finishing_hours: 0,
       finishing_cost: 0,
       item_total_cost: 0,
-      custom_concrete_cost_per_cy: undefined, // Add new fields for overrides
-      custom_rebar_cost_per_ft: undefined,    // Add new fields for overrides
+      custom_concrete_cost_per_cy: undefined,
+      custom_rebar_cost_per_ft: undefined,
     };
     setProject(prev => ({ ...prev, items: [...prev.items, newItem] }));
   };
@@ -167,6 +175,61 @@ export default function NewFoundationEstimate() {
           }
         }
 
+        return updated;
+      })
+    }));
+  };
+
+  const addEquipment = () => {
+    setProject(prev => ({
+      ...prev,
+      selected_equipment: [
+        ...(prev.selected_equipment || []),
+        {
+          equipment_id: '',
+          rental_period: 'day',
+          rental_duration: 1,
+          include_delivery: true,
+          equipment_cost: 0
+        }
+      ]
+    }));
+  };
+
+  const removeEquipment = (index) => {
+    setProject(prev => ({
+      ...prev,
+      selected_equipment: prev.selected_equipment.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateEquipmentItem = (index, field, value) => {
+    setProject(prev => ({
+      ...prev,
+      selected_equipment: prev.selected_equipment.map((eq, i) => {
+        if (i !== index) return eq;
+        const updated = { ...eq, [field]: value };
+        
+        // Calculate cost when equipment or duration changes
+        if (field === 'equipment_id' || field === 'rental_period' || field === 'rental_duration' || field === 'include_delivery') {
+          const selectedEquip = equipment.find(e => e.id === updated.equipment_id);
+          if (selectedEquip) {
+            let rentalCost = 0;
+            if (updated.rental_period === 'day') {
+              rentalCost = (selectedEquip.cost_per_day || 0) * updated.rental_duration;
+            } else if (updated.rental_period === 'week') {
+              rentalCost = (selectedEquip.cost_per_week || 0) * updated.rental_duration;
+            } else if (updated.rental_period === 'month') {
+              rentalCost = (selectedEquip.cost_per_month || 0) * updated.rental_duration;
+            }
+            
+            const deliveryCost = updated.include_delivery ? (selectedEquip.pickup_delivery_cost || 0) : 0;
+            updated.equipment_cost = rentalCost + deliveryCost;
+          } else {
+            updated.equipment_cost = 0; // If no equipment selected or found, cost is 0
+          }
+        }
+        
         return updated;
       })
     }));
@@ -270,20 +333,27 @@ export default function NewFoundationEstimate() {
         item_total_cost: itemTotalCost
       };
     });
+    
+    // Calculate equipment costs
+    let totalEquipmentCost = 0;
+    if (project.selected_equipment) {
+      totalEquipmentCost = project.selected_equipment.reduce((sum, eq) => sum + (eq.equipment_cost || 0), 0);
+    }
 
     return {
       items: updatedItems,
       total_concrete_cost: totalConcreteCost,
       total_rebar_cost: totalRebarCost,
       total_excavation_cost: totalExcavationCost,
-      total_labor_cost: totalLaborCost
+      total_labor_cost: totalLaborCost,
+      total_equipment_cost: totalEquipmentCost
     };
-  }, [project.items, project.concrete_cost_per_cy, project.rebar_cost_per_ft,
+  }, [project.items, project.selected_equipment, project.concrete_cost_per_cy, project.rebar_cost_per_ft,
       project.excavation_cost_per_cy, project.forming_labor_rate,
-      project.pouring_labor_rate, project.finishing_labor_rate, globalSettings]);
+      project.pouring_labor_rate, project.finishing_labor_rate, globalSettings, equipment]);
 
   useEffect(() => {
-    if (!isLoading && project.items.length > 0) {
+    if (!isLoading && project.items.length >= 0) {
       const calculated = calculateTotals();
       setProject(prev => ({
         ...prev,
@@ -291,18 +361,20 @@ export default function NewFoundationEstimate() {
         total_concrete_cost: calculated.total_concrete_cost,
         total_rebar_cost: calculated.total_rebar_cost,
         total_excavation_cost: calculated.total_excavation_cost,
-        total_labor_cost: calculated.total_labor_cost
+        total_labor_cost: calculated.total_labor_cost,
+        total_equipment_cost: calculated.total_equipment_cost
       }));
-    } else if (!isLoading && project.items.length === 0) { // Clear totals if no items
+    } else if (!isLoading && project.items.length === 0 && (!project.selected_equipment || project.selected_equipment.length === 0)) { // Clear totals if no items or equipment
       setProject(prev => ({
         ...prev,
         total_concrete_cost: 0,
         total_rebar_cost: 0,
         total_excavation_cost: 0,
-        total_labor_cost: 0
+        total_labor_cost: 0,
+        total_equipment_cost: 0
       }));
     }
-  }, [calculateTotals, isLoading, project.items.length]);
+  }, [calculateTotals, isLoading, project.items.length, project.selected_equipment?.length]);
 
   const saveProject = async () => {
     if (!project.project_name || !project.client_name || !project.estimate_number || !project.hyperlink) {
@@ -310,8 +382,8 @@ export default function NewFoundationEstimate() {
       return;
     }
 
-    if (project.items.length === 0) {
-      alert('Please add at least one item to the project');
+    if (project.items.length === 0 && (!project.selected_equipment || project.selected_equipment.length === 0)) {
+      alert('Please add at least one foundation item or one equipment item to the project');
       return;
     }
 
@@ -325,6 +397,7 @@ export default function NewFoundationEstimate() {
         total_rebar_cost: calculated.total_rebar_cost,
         total_excavation_cost: calculated.total_excavation_cost,
         total_labor_cost: calculated.total_labor_cost,
+        total_equipment_cost: calculated.total_equipment_cost,
         status: 'calculated'
       };
 
@@ -367,7 +440,6 @@ export default function NewFoundationEstimate() {
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Projects
             </Button>
-            {/* The save button is now inside the summary card as per outline */}
           </div>
         </div>
 
@@ -685,89 +757,161 @@ export default function NewFoundationEstimate() {
                             <p><strong>Finishing:</strong> {item.finishing_hours.toFixed(2)} hrs</p>
                           </div>
                         </div>
-
-                        <div className="md:col-span-2 p-4 bg-green-50 rounded-lg border border-green-200">
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <p className="text-slate-600">Concrete Cost</p>
-                              <p className="font-semibold text-green-700">${item.concrete_cost.toFixed(2)}</p>
-                            </div>
-                            {item.include_rebar && (
-                              <div>
-                                <p className="text-slate-600">Rebar Cost</p>
-                                <p className="font-semibold text-green-700">${item.rebar_cost.toFixed(2)}</p>
-                              </div>
-                            )}
-                            <div>
-                              <p className="text-slate-600">Excavation Cost</p>
-                              <p className="font-semibold text-green-700">${item.excavation_cost.toFixed(2)}</p>
-                            </div>
-                            <div>
-                              <p className="text-slate-600">Total Labor</p>
-                              <p className="font-semibold text-green-700">${(item.forming_cost + item.pouring_cost + item.finishing_cost).toFixed(2)}</p>
-                            </div>
-                            <div className="col-span-2 border-t border-green-200 pt-2 mt-2">
-                              <p className="text-slate-600">Item Total</p>
-                              <p className="font-bold text-green-800 text-lg">${item.item_total_cost.toFixed(2)}</p>
-                            </div>
-                          </div>
-                        </div>
                       </div>
                     </div>
                   ))
                 )}
               </CardContent>
             </Card>
+
+            {/* Equipment Card - NEW */}
+            <Card className="bg-white border-0 shadow-sm">
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-lg font-semibold text-slate-900">Excavation Equipment</CardTitle>
+                  <Button onClick={addEquipment} size="sm" className="bg-orange-600 hover:bg-orange-700">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Equipment
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {(!project.selected_equipment || project.selected_equipment.length === 0) ? (
+                  <div className="text-center py-8 text-slate-500">
+                    <p>No equipment added. Click "Add Equipment" to include rental equipment.</p>
+                  </div>
+                ) : (
+                  project.selected_equipment.map((eq, index) => {
+                    const selectedEquip = equipment.find(e => e.id === eq.equipment_id);
+                    return (
+                      <div key={index} className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                        <div className="flex justify-between items-start mb-3">
+                          <h5 className="font-medium text-slate-900">Equipment #{index + 1}</h5>
+                          <Button variant="ghost" size="icon" onClick={() => removeEquipment(index)} className="text-red-500 hover:text-red-700">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        
+                        <div className="grid md:grid-cols-2 gap-3">
+                          <div className="md:col-span-2">
+                            <Label>Equipment</Label>
+                            <Select value={eq.equipment_id} onValueChange={(value) => updateEquipmentItem(index, 'equipment_id', value)}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Select equipment" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {equipment.map(e => (
+                                  <SelectItem key={e.id} value={e.id}>
+                                    {e.material_name} ({e.equipment_type?.replace(/_/g, ' ')})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div>
+                            <Label>Rental Period</Label>
+                            <Select value={eq.rental_period} onValueChange={(value) => updateEquipmentItem(index, 'rental_period', value)}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="day">Day</SelectItem>
+                                <SelectItem value="week">Week</SelectItem>
+                                <SelectItem value="month">Month</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div>
+                            <Label>Duration</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={eq.rental_duration}
+                              onChange={(e) => updateEquipmentItem(index, 'rental_duration', parseFloat(e.target.value) || 1)}
+                              className="mt-1"
+                            />
+                          </div>
+                          
+                          <div className="md:col-span-2">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={eq.include_delivery}
+                                onChange={(e) => updateEquipmentItem(index, 'include_delivery', e.target.checked)}
+                                className="w-4 h-4 text-orange-600"
+                              />
+                              <Label>Include Pickup & Delivery {selectedEquip && `(${(selectedEquip.pickup_delivery_cost || 0).toFixed(2)})`}</Label>
+                            </div>
+                          </div>
+                          
+                          {selectedEquip && (
+                            <div className="md:col-span-2 p-3 bg-white rounded border border-orange-300">
+                              <div className="flex justify-between font-semibold">
+                                <span>Equipment Cost:</span>
+                                <span className="text-orange-700">${(eq.equipment_cost || 0).toFixed(2)}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Summary Sidebar - Redesigned like painting estimator */}
+          {/* Summary Sidebar - Updated with combined costs */}
           <div>
             <Card className="bg-white border-0 shadow-sm sticky top-8">
               <CardHeader><CardTitle>Cost Summary</CardTitle></CardHeader>
               <CardContent className="space-y-4 pt-4">
-                {/* Materials Section */}
+                {/* Materials Section - Combined */}
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-blue-800">Concrete:</span>
-                    <span className="text-lg font-bold text-blue-900">${(project.total_concrete_cost || 0).toFixed(2)}</span>
+                    <span className="text-sm font-medium text-blue-800">Materials:</span>
+                    <span className="text-lg font-bold text-blue-900">${((project.total_concrete_cost || 0) + (project.total_rebar_cost || 0)).toFixed(2)}</span>
                   </div>
-                  <p className="text-xs text-blue-600">Based on Ernst Concrete pricing</p>
+                  <p className="text-xs text-blue-600">Concrete & rebar reinforcement</p>
                 </div>
 
-                <div className="p-4 bg-purple-50 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-purple-800">Rebar:</span>
-                    <span className="text-lg font-bold text-purple-900">${(project.total_rebar_cost || 0).toFixed(2)}</span>
-                  </div>
-                  <p className="text-xs text-purple-600">Steel reinforcement materials</p>
-                </div>
-
-                <div className="p-4 bg-amber-50 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-amber-800">Excavation:</span>
-                    <span className="text-lg font-bold text-amber-900">${(project.total_excavation_cost || 0).toFixed(2)}</span>
-                  </div>
-                  <p className="text-xs text-amber-600">Site preparation and digging</p>
-                </div>
-
-                {/* Labor Section */}
+                {/* Labor & Excavation Section - Combined */}
                 <div className="p-4 bg-green-50 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-green-800">Total Labor:</span>
-                    <span className="text-lg font-bold text-green-900">${(project.total_labor_cost || 0).toFixed(2)}</span>
+                    <span className="text-sm font-medium text-green-800">Labor & Excavation:</span>
+                    <span className="text-lg font-bold text-green-900">${((project.total_labor_cost || 0) + (project.total_excavation_cost || 0)).toFixed(2)}</span>
                   </div>
-                  <p className="text-xs text-green-600">Forming, pouring, and finishing labor</p>
+                  <p className="text-xs text-green-600">Forming, pouring, finishing & site prep</p>
                 </div>
+
+                {/* Equipment Section */}
+                {project.selected_equipment && project.selected_equipment.length > 0 && (
+                  <div className="p-4 bg-orange-50 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-orange-800">Equipment:</span>
+                      <span className="text-lg font-bold text-orange-900">${(project.total_equipment_cost || 0).toFixed(2)}</span>
+                    </div>
+                    <p className="text-xs text-orange-600">Excavation equipment rental & delivery</p>
+                  </div>
+                )}
 
                 {/* Summary */}
                 <div className="border-t pt-4">
                   <div className="flex justify-between text-sm text-slate-600 mb-2">
-                    <span>Total Items:</span>
+                    <span>Total Foundations:</span>
                     <span className="font-medium">{project.items.length}</span>
                   </div>
+                  {project.selected_equipment && project.selected_equipment.length > 0 && (
+                    <div className="flex justify-between text-sm text-slate-600 mb-2">
+                      <span>Total Equipment:</span>
+                      <span className="font-medium">{project.selected_equipment.length}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
                     <span>TOTAL:</span>
-                    <span className="text-green-600">${((project.total_concrete_cost || 0) + (project.total_rebar_cost || 0) + (project.total_excavation_cost || 0) + (project.total_labor_cost || 0)).toFixed(2)}</span>
+                    <span className="text-green-600">${((project.total_concrete_cost || 0) + (project.total_rebar_cost || 0) + (project.total_excavation_cost || 0) + (project.total_labor_cost || 0) + (project.total_equipment_cost || 0)).toFixed(2)}</span>
                   </div>
                 </div>
 
