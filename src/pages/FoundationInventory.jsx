@@ -19,7 +19,7 @@ export default function FoundationInventoryPage() {
     material_name: "",
     material_type: "concrete_service",
     equipment_type: "N/A",
-    compatible_equipment: [],
+    compatible_equipment_ids: [],
     parent_attachment_id: null,
     supplier: "",
     rental_company: "",
@@ -86,7 +86,7 @@ export default function FoundationInventoryPage() {
       material_name: item.material_name,
       material_type: item.material_type,
       equipment_type: item.equipment_type || "N/A",
-      compatible_equipment: item.compatible_equipment || [],
+      compatible_equipment_ids: item.compatible_equipment_ids || [],
       parent_attachment_id: item.parent_attachment_id || null,
       supplier: item.supplier || "",
       rental_company: item.rental_company || "",
@@ -120,7 +120,7 @@ export default function FoundationInventoryPage() {
       material_name: "",
       material_type: "concrete_service",
       equipment_type: "N/A",
-      compatible_equipment: [],
+      compatible_equipment_ids: [],
       parent_attachment_id: null,
       supplier: "",
       rental_company: "",
@@ -144,7 +144,7 @@ export default function FoundationInventoryPage() {
       material_name: "",
       material_type: "excavation_equipment",
       equipment_type: "skid_steer",
-      compatible_equipment: [],
+      compatible_equipment_ids: [],
       parent_attachment_id: null,
       supplier: "",
       rental_company: "",
@@ -168,7 +168,7 @@ export default function FoundationInventoryPage() {
       material_name: "",
       material_type: "attachment",
       equipment_type: "N/A",
-      compatible_equipment: [],
+      compatible_equipment_ids: [],
       parent_attachment_id: null,
       supplier: "",
       rental_company: "",
@@ -191,7 +191,7 @@ export default function FoundationInventoryPage() {
       material_name: "",
       material_type: "concrete_service",
       equipment_type: "N/A",
-      compatible_equipment: [],
+      compatible_equipment_ids: [],
       parent_attachment_id: null,
       supplier: "",
       rental_company: "",
@@ -210,13 +210,13 @@ export default function FoundationInventoryPage() {
     setModalType('material');
   };
 
-  const toggleCompatibleEquipment = (equipType) => {
+  const toggleCompatibleEquipment = (equipmentId) => {
     setFormData(prev => {
-      const current = prev.compatible_equipment || [];
-      if (current.includes(equipType)) {
-        return { ...prev, compatible_equipment: current.filter(e => e !== equipType) };
+      const current = prev.compatible_equipment_ids || [];
+      if (current.includes(equipmentId)) {
+        return { ...prev, compatible_equipment_ids: current.filter(e => e !== equipmentId) };
       } else {
-        return { ...prev, compatible_equipment: [...current, equipType] };
+        return { ...prev, compatible_equipment_ids: [...current, equipmentId] };
       }
     });
   };
@@ -245,6 +245,17 @@ export default function FoundationInventoryPage() {
 
   const getParentAttachments = () => {
     return inventory.filter(item => item.material_type === 'attachment' && !item.parent_attachment_id);
+  };
+
+  const getEquipmentNames = (equipmentIds) => {
+    if (!equipmentIds || equipmentIds.length === 0) return 'All Equipment';
+    return equipmentIds
+      .map(id => {
+        const equip = equipmentItems.find(e => e.id === id);
+        return equip ? equip.material_name : null;
+      })
+      .filter(Boolean)
+      .join(', ') || 'Unknown';
   };
 
   if (isLoading) {
@@ -304,7 +315,7 @@ export default function FoundationInventoryPage() {
                             </span>
                           ) : item.material_type === 'attachment' ? (
                             <span className="text-sm">
-                              Compatible: {(item.compatible_equipment || []).map(e => e.replace(/_/g, ' ')).join(', ') || 'All'}
+                              Compatible: {getEquipmentNames(item.compatible_equipment_ids)}
                             </span>
                           ) : item.material_type === 'rebar' ? (
                             <span className="text-sm">{item.rebar_size || 'N/A'}</span>
@@ -463,22 +474,28 @@ export default function FoundationInventoryPage() {
                   {isAttachment && (
                     <>
                       <div>
-                        <Label>Compatible Equipment Types *</Label>
-                        <div className="grid grid-cols-2 gap-3 mt-2">
-                          {['skid_steer', 'auger', 'excavator', 'backhoe', 'other'].map(equipType => (
-                            <div key={equipType} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`compat-${equipType}`}
-                                checked={(formData.compatible_equipment || []).includes(equipType)}
-                                onCheckedChange={() => toggleCompatibleEquipment(equipType)}
-                              />
-                              <Label htmlFor={`compat-${equipType}`} className="text-sm font-normal cursor-pointer">
-                                {equipType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                              </Label>
-                            </div>
-                          ))}
+                        <Label>Compatible Equipment *</Label>
+                        <div className="mt-2 max-h-48 overflow-y-auto border rounded-lg p-3 space-y-2">
+                          {equipmentItems.length === 0 ? (
+                            <p className="text-sm text-slate-500">No equipment available. Add equipment first.</p>
+                          ) : (
+                            equipmentItems.map(equip => (
+                              <div key={equip.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`compat-${equip.id}`}
+                                  checked={(formData.compatible_equipment_ids || []).includes(equip.id)}
+                                  onCheckedChange={() => toggleCompatibleEquipment(equip.id)}
+                                />
+                                <Label htmlFor={`compat-${equip.id}`} className="text-sm font-normal cursor-pointer">
+                                  {equip.material_name} ({equip.equipment_type.replace(/_/g, ' ')})
+                                </Label>
+                              </div>
+                            ))
+                          )}
                         </div>
-                        <p className="text-xs text-slate-500 mt-1">Select all equipment types this attachment works with</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Select all equipment this attachment works with. Leave unchecked for universal compatibility.
+                        </p>
                       </div>
 
                       <div>

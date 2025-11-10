@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox"; // New import
-import { Save, Plus, Trash2, ArrowLeft, Anchor, ChevronDown, ChevronUp, Wrench, X } from "lucide-react"; // New imports
+import { Checkbox } from "@/components/ui/checkbox";
+import { Save, Plus, Trash2, ArrowLeft, Anchor, ChevronDown, ChevronUp, Wrench, X } from "lucide-react";
 import Foundation3DViewer from "@/components/Foundation3DViewer";
 
 export default function NewFoundationEstimate() {
@@ -19,9 +19,9 @@ export default function NewFoundationEstimate() {
   const editId = searchParams.get('edit');
   const [isEditing, setIsEditing] = useState(false);
   const [expandedAdvanced, setExpandedAdvanced] = useState({});
-  const [showAttachmentModal, setShowAttachmentModal] = useState(false); // New state
-  const [currentEquipmentIndex, setCurrentEquipmentIndex] = useState(null); // New state
-  const [availableAttachments, setAvailableAttachments] = useState([]); // New state
+  const [showAttachmentModal, setShowAttachmentModal] = useState(false);
+  const [currentEquipmentIndex, setCurrentEquipmentIndex] = useState(null);
+  const [availableAttachments, setAvailableAttachments] = useState([]);
 
   const [project, setProject] = useState({
     project_name: "",
@@ -36,13 +36,13 @@ export default function NewFoundationEstimate() {
     pouring_labor_rate: 60,
     finishing_labor_rate: 50,
     notes: "",
-    selected_equipment: [], // Initial state is an empty array, attachments will be added to individual items
+    selected_equipment: [],
     selected_concrete_id: null
   });
 
   const [globalSettings, setGlobalSettings] = useState({});
   const [equipment, setEquipment] = useState([]);
-  const [allAttachments, setAllAttachments] = useState([]); // New state
+  const [allAttachments, setAllAttachments] = useState([]);
   const [concreteOptions, setConcreteOptions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -91,7 +91,7 @@ export default function NewFoundationEstimate() {
       setConcreteOptions(concreteItems);
 
       const attachmentItems = allInventory.filter(item => item.material_type === 'attachment');
-      setAllAttachments(attachmentItems); // Set all attachments
+      setAllAttachments(attachmentItems);
 
       if (!editId) {
         const newDefaults = {
@@ -319,9 +319,9 @@ export default function NewFoundationEstimate() {
     
     if (selectedEquip) {
       const compatible = allAttachments.filter(att => 
-        !att.compatible_equipment || 
-        att.compatible_equipment.length === 0 || 
-        att.compatible_equipment.includes(selectedEquip.equipment_type)
+        !att.compatible_equipment_ids || // If the field doesn't exist
+        att.compatible_equipment_ids.length === 0 || // or is empty, it's universally compatible
+        att.compatible_equipment_ids.includes(selectedEquip.id) // otherwise, check for equipment ID match
       );
       setAvailableAttachments(compatible);
       setCurrentEquipmentIndex(equipmentIndex);
@@ -464,24 +464,9 @@ export default function NewFoundationEstimate() {
         if (field === 'equipment_id') {
           updated.attachments = [];
         }
-
-        // Calculate base equipment cost (without attachments for now)
-        const selectedEquip = equipment.find(e => e.id === updated.equipment_id);
-        if (selectedEquip) {
-          let rentalCost = 0;
-          if (updated.rental_period === 'day') {
-            rentalCost = (selectedEquip.cost_per_day || 0) * updated.rental_duration;
-          } else if (updated.rental_period === 'week') {
-            rentalCost = (selectedEquip.cost_per_week || 0) * updated.rental_duration;
-          } else if (updated.rental_period === 'month') {
-            rentalCost = (selectedEquip.cost_per_month || 0) * updated.rental_duration;
-          }
-          const deliveryCost = updated.include_delivery ? (selectedEquip.pickup_delivery_cost || 0) : 0;
-          updated.equipment_cost = rentalCost + deliveryCost; // This is the base cost only
-        } else {
-          updated.equipment_cost = 0;
-        }
         
+        // The 'equipment_cost' itself will be fully recalculated by `recalculateEquipmentCosts`.
+        // This function just sets the raw properties.
         return updated;
       });
       return { ...prev, selected_equipment: newSelectedEquipment };
@@ -489,7 +474,9 @@ export default function NewFoundationEstimate() {
     
     // Recalculate full cost including attachments after state has been updated
     // This timeout is crucial to read the latest state from the previous setProject call
-    setTimeout(() => recalculateEquipmentCosts(index), 0);
+    if (['equipment_id', 'rental_period', 'rental_duration', 'include_delivery'].includes(field)) {
+      setTimeout(() => recalculateEquipmentCosts(index), 0);
+    }
   };
 
   const handleConcreteSelection = (concreteId) => {
@@ -1120,7 +1107,7 @@ export default function NewFoundationEstimate() {
                               onCheckedChange={(checked) => updateEquipmentItem(index, 'include_delivery', checked)}
                               className="w-3 h-3 text-orange-600"
                             />
-                            <Label className="text-xs">Delivery {selectedEquip && `($${(selectedEquip.pickup_delivery_cost || 0).toFixed(2)})`}</Label>
+                            <Label className="text-xs">Delivery {selectedEquip && `(${(selectedEquip.pickup_delivery_cost || 0).toFixed(2)})`}</Label>
                           </div>
 
                           {/* Attachments Section */}
@@ -1279,7 +1266,7 @@ export default function NewFoundationEstimate() {
             </CardHeader>
             <CardContent className="pt-4">
               {availableAttachments.length === 0 ? (
-                <p className="text-center py-8 text-slate-500">No compatible attachments available</p>
+                <p className="text-center py-8 text-slate-500">No compatible attachments available for this equipment</p>
               ) : (
                 <div className="space-y-2">
                   {availableAttachments.map(att => {
@@ -1287,6 +1274,13 @@ export default function NewFoundationEstimate() {
                     // Check if this attachment is already added to the current equipment
                     const isAttachmentAdded = project.selected_equipment[currentEquipmentIndex]?.attachments?.some(a => a.attachment_id === att.id);
                     
+                    const compatibleEquipNames = att.compatible_equipment_ids && att.compatible_equipment_ids.length > 0
+                      ? att.compatible_equipment_ids.map(id => {
+                          const eq = equipment.find(e => e.id === id);
+                          return eq ? eq.material_name : null;
+                        }).filter(Boolean).join(', ')
+                      : 'All Equipment';
+
                     return (
                       <div key={att.id} className="p-3 border rounded-lg hover:bg-slate-50">
                         <div className="flex justify-between items-start mb-2">
@@ -1297,11 +1291,9 @@ export default function NewFoundationEstimate() {
                               Week: ${(att.cost_per_week || 0).toFixed(2)} | 
                               Month: ${(att.cost_per_month || 0).toFixed(2)}
                             </p>
-                            {att.compatible_equipment && att.compatible_equipment.length > 0 && (
-                              <p className="text-xs text-purple-600 mt-1">
-                                Compatible: {att.compatible_equipment.map(e => e.replace(/_/g, ' ')).join(', ')}
-                              </p>
-                            )}
+                            <p className="text-xs text-purple-600 mt-1">
+                              Compatible with: {compatibleEquipNames}
+                            </p>
                           </div>
                           <Button
                             size="sm"
@@ -1341,9 +1333,9 @@ export default function NewFoundationEstimate() {
                                       }
                                       // Then add subsidiary.
                                       // Use a timeout to ensure state update from addAttachmentToEquipment has propagated.
-                                      // In a real app, you might chain promises or use useEffect for more reliability.
                                       setTimeout(() => {
-                                        const updatedEq = project.selected_equipment[currentEquipmentIndex]; // Re-fetch current equipment after potential state update
+                                        // Re-find the parent attachment's index in case addAttachmentToEquipment shifted things
+                                        const updatedEq = project.selected_equipment[currentEquipmentIndex];
                                         const parentIdx = (updatedEq.attachments || []).findIndex(a => a.attachment_id === att.id);
                                         if (parentIdx !== -1) {
                                           addSubsidiaryToAttachment(currentEquipmentIndex, parentIdx, sub.id);
