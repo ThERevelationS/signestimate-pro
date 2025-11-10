@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { FoundationInventory } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ export default function FoundationInventoryPage() {
     material_type: "concrete_service",
     equipment_type: "N/A",
     compatible_equipment_ids: [],
-    parent_attachment_id: null,
+    parent_attachment_ids: [], // Changed from parent_attachment_id to parent_attachment_ids
     supplier: "",
     rental_company: "",
     unit: "cubic yard",
@@ -87,7 +88,7 @@ export default function FoundationInventoryPage() {
       material_type: item.material_type,
       equipment_type: item.equipment_type || "N/A",
       compatible_equipment_ids: item.compatible_equipment_ids || [],
-      parent_attachment_id: item.parent_attachment_id || null,
+      parent_attachment_ids: item.parent_attachment_ids || [], // Changed here
       supplier: item.supplier || "",
       rental_company: item.rental_company || "",
       unit: item.unit || "cubic yard",
@@ -121,7 +122,7 @@ export default function FoundationInventoryPage() {
       material_type: "concrete_service",
       equipment_type: "N/A",
       compatible_equipment_ids: [],
-      parent_attachment_id: null,
+      parent_attachment_ids: [], // Changed here
       supplier: "",
       rental_company: "",
       unit: "cubic yard",
@@ -145,7 +146,7 @@ export default function FoundationInventoryPage() {
       material_type: "excavation_equipment",
       equipment_type: "skid_steer",
       compatible_equipment_ids: [],
-      parent_attachment_id: null,
+      parent_attachment_ids: [], // Changed here
       supplier: "",
       rental_company: "",
       unit: "",
@@ -169,7 +170,7 @@ export default function FoundationInventoryPage() {
       material_type: "attachment",
       equipment_type: "N/A",
       compatible_equipment_ids: [],
-      parent_attachment_id: null,
+      parent_attachment_ids: [], // Changed here
       supplier: "",
       rental_company: "",
       unit: "",
@@ -192,7 +193,7 @@ export default function FoundationInventoryPage() {
       material_type: "concrete_service",
       equipment_type: "N/A",
       compatible_equipment_ids: [],
-      parent_attachment_id: null,
+      parent_attachment_ids: [], // Changed here
       supplier: "",
       rental_company: "",
       unit: "cubic yard",
@@ -221,6 +222,18 @@ export default function FoundationInventoryPage() {
     });
   };
 
+  // New function for toggling parent attachments
+  const toggleParentAttachment = (attachmentId) => {
+    setFormData(prev => {
+      const current = prev.parent_attachment_ids || [];
+      if (current.includes(attachmentId)) {
+        return { ...prev, parent_attachment_ids: current.filter(e => e !== attachmentId) };
+      } else {
+        return { ...prev, parent_attachment_ids: [...current, attachmentId] };
+      }
+    });
+  };
+
   const isEquipment = modalType === 'equipment';
   const isAttachment = modalType === 'attachment';
   const isConcrete = formData.material_type === 'concrete_service' || formData.material_type === 'bagged_concrete';
@@ -236,15 +249,21 @@ export default function FoundationInventoryPage() {
   );
 
   const attachmentItems = inventory.filter(item => 
-    item.material_type === 'attachment' && !item.parent_attachment_id
+    item.material_type === 'attachment' && (!item.parent_attachment_ids || item.parent_attachment_ids.length === 0) // Updated filter
   );
 
   const getSubsidiaryAttachments = (parentId) => {
-    return inventory.filter(item => item.parent_attachment_id === parentId);
+    return inventory.filter(item => item.parent_attachment_ids && item.parent_attachment_ids.includes(parentId)); // Updated filter
   };
 
   const getParentAttachments = () => {
-    return inventory.filter(item => item.material_type === 'attachment' && !item.parent_attachment_id);
+    // Exclude the currently editing item from its own parent selection
+    const availableParents = inventory.filter(item => 
+      item.material_type === 'attachment' && 
+      (!item.parent_attachment_ids || item.parent_attachment_ids.length === 0) &&
+      (editingItem ? item.id !== editingItem.id : true)
+    );
+    return availableParents;
   };
 
   const getEquipmentNames = (equipmentIds) => {
@@ -256,6 +275,18 @@ export default function FoundationInventoryPage() {
       })
       .filter(Boolean)
       .join(', ') || 'Unknown';
+  };
+
+  // New function to get names of parent attachments
+  const getParentNames = (parentIds) => {
+    if (!parentIds || parentIds.length === 0) return null;
+    return parentIds
+      .map(id => {
+        const parent = inventory.find(p => p.id === id);
+        return parent ? parent.material_name : null;
+      })
+      .filter(Boolean)
+      .join(', ');
   };
 
   if (isLoading) {
@@ -360,43 +391,46 @@ export default function FoundationInventoryPage() {
                           </div>
                         </td>
                       </tr>
-                      {subsidiaries.map(sub => (
-                        <tr key={sub.id} className="border-b border-slate-100 bg-slate-25">
-                          <td className="p-3 pl-8">
-                            <span className="text-slate-400 mr-2">└─</span>
-                            {sub.material_name}
-                          </td>
-                          <td className="p-3 text-sm text-slate-500">Subsidiary</td>
-                          <td className="p-3 text-sm text-slate-500">For: {item.material_name}</td>
-                          <td className="p-3 text-right">
-                            <div className="text-sm">
-                              <div>Day: ${(sub.cost_per_day || 0).toFixed(2)}</div>
-                              <div>Week: ${(sub.cost_per_week || 0).toFixed(2)}</div>
-                              <div>Month: ${(sub.cost_per_month || 0).toFixed(2)}</div>
-                            </div>
-                          </td>
-                          <td className="p-3 text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEdit(sub)}
-                                className="text-blue-600 hover:text-blue-800"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(sub.id)}
-                                className="text-red-600 hover:text-red-800"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      {subsidiaries.map(sub => {
+                        const parentNames = getParentNames(sub.parent_attachment_ids); // Using new function
+                        return (
+                          <tr key={sub.id} className="border-b border-slate-100 bg-slate-25">
+                            <td className="p-3 pl-8">
+                              <span className="text-slate-400 mr-2">└─</span>
+                              {sub.material_name}
+                            </td>
+                            <td className="p-3 text-sm text-slate-500">Subsidiary</td>
+                            <td className="p-3 text-sm text-slate-500">For: {parentNames || 'N/A'}</td> {/* Display parent names */}
+                            <td className="p-3 text-right">
+                              <div className="text-sm">
+                                <div>Day: ${(sub.cost_per_day || 0).toFixed(2)}</div>
+                                <div>Week: ${(sub.cost_per_week || 0).toFixed(2)}</div>
+                                <div>Month: ${(sub.cost_per_month || 0).toFixed(2)}</div>
+                              </div>
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEdit(sub)}
+                                  className="text-blue-600 hover:text-blue-800"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDelete(sub.id)}
+                                  className="text-red-600 hover:text-red-800"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </React.Fragment>
                   );
                 })}
@@ -498,24 +532,29 @@ export default function FoundationInventoryPage() {
                         </p>
                       </div>
 
+                      {/* Parent Attachments section updated to use checkboxes */}
                       <div>
-                        <Label htmlFor="parent_attachment_id">Parent Attachment (Optional)</Label>
-                        <Select
-                          value={formData.parent_attachment_id || "none"}
-                          onValueChange={(value) => setFormData(prev => ({ ...prev, parent_attachment_id: value === "none" ? null : value }))}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="None - Main Attachment" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">None - Main Attachment</SelectItem>
-                            {getParentAttachments().map(att => (
-                              <SelectItem key={att.id} value={att.id}>{att.material_name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Label>Parent Attachments (Optional)</Label>
+                        <div className="mt-2 max-h-48 overflow-y-auto border rounded-lg p-3 space-y-2">
+                          {getParentAttachments().length === 0 ? (
+                            <p className="text-sm text-slate-500">No parent attachments available.</p>
+                          ) : (
+                            getParentAttachments().map(att => (
+                              <div key={att.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`parent-${att.id}`}
+                                  checked={(formData.parent_attachment_ids || []).includes(att.id)}
+                                  onCheckedChange={() => toggleParentAttachment(att.id)}
+                                />
+                                <Label htmlFor={`parent-${att.id}`} className="text-sm font-normal cursor-pointer">
+                                  {att.material_name}
+                                </Label>
+                              </div>
+                            ))
+                          )}
+                        </div>
                         <p className="text-xs text-slate-500 mt-1">
-                          If this is a subsidiary (e.g., drill bit for auger), select the parent attachment
+                          Select all parent attachments. E.g., a drill bit can work with multiple auger types. Leave unchecked for main attachment.
                         </p>
                       </div>
 

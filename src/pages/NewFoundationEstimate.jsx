@@ -896,9 +896,9 @@ export default function NewFoundationEstimate() {
                         </div>
                       </div>
 
-                      {/* 3D Viewer - Compact */}
+                      {/* 3D Viewer - UPDATED to 4:3 aspect ratio (taller) */}
                       <div className="border-t pt-3">
-                        <div className="h-64 rounded-lg overflow-hidden">
+                        <div style={{ height: '500px' }} className="rounded-lg overflow-hidden">
                           <Foundation3DViewer
                             foundationType={item.foundation_type}
                             lengthInches={item.length_inches || 12}
