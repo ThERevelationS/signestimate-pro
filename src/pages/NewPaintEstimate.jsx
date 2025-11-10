@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Project, Settings } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -459,7 +460,43 @@ export default function NewPaintEstimate() {
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
     let totalItemLaborCost = project.items.reduce((sum, item) => sum + (item.labor_cost || 0), 0);
     
-    const mixingHours = parseFloat(globalSettings.paint_mixing_labor_hours) || 0;
+    // Calculate total paintable area and gallons needed
+    let totalPaintableArea = 0;
+    project.items.forEach(item => {
+      const perimFactor = parseFloat(globalSettings.letter_perimeter_factor) || 3.5;
+      const itemThicknessDecimal = parseImperialFraction(item.thickness);
+      let paintableSqFt = 0;
+
+      if (item.item_type === 'panel' && item.length > 0 && item.width > 0) {
+        const faceArea = (item.length * item.width) / 144;
+        paintableSqFt = item.paint_sides === 'both_sides' ? faceArea * 2 : faceArea;
+      } else if (item.item_type === 'lettering' && item.width > 0 && item.length > 0 && itemThicknessDecimal > 0) {
+        const letterHeight = item.width;
+        const numLetters = item.length;
+        const faceArea = (Math.pow(letterHeight, 2) * 0.8 * numLetters) / 144;
+        const perimeterInches = letterHeight * perimFactor * numLetters;
+        const edgeArea = (perimeterInches * itemThicknessDecimal) / 144;
+        paintableSqFt = item.paint_sides === 'both_sides' ? (faceArea * 2) + edgeArea : faceArea + edgeArea;
+      } else if (item.item_type === 'complex_shapes' && item.length > 0 && item.width > 0 && itemThicknessDecimal > 0) {
+        const faceArea = (item.length * item.width) / 144;
+        const perimeterInches = 2 * (item.length + item.width);
+        const edgeArea = (perimeterInches * itemThicknessDecimal * (item.edge_complexity_multiplier || 1.0)) / 144;
+        paintableSqFt = item.paint_sides === 'both_sides' ? (faceArea * 2) + edgeArea : (item.paint_sides === 'one_side' ? faceArea + edgeArea : 0);
+      }
+
+      const numColors = item.paint_colors?.length || 0;
+      if (item.quantity > 0 && numColors > 0) {
+        totalPaintableArea += paintableSqFt * numColors * item.quantity;
+      }
+    });
+
+    const paintWasteMultiplier = parseFloat(globalSettings.paint_waste_multiplier) || 1.25;
+    const coverageSqFtPerGallon = parseFloat(globalSettings.mixed_paint_coverage_sqft_per_gallon) || 350;
+    const totalGallonsNeeded = totalPaintableArea > 0 && coverageSqFtPerGallon > 0 ? (totalPaintableArea * paintWasteMultiplier) / coverageSqFtPerGallon : 0;
+    const numberOfMixes = Math.ceil(totalGallonsNeeded);
+    
+    const mixingHoursPerMix = parseFloat(globalSettings.paint_mixing_labor_hours) || 0;
+    const mixingHours = numberOfMixes * mixingHoursPerMix;
     const setupHours = parseFloat(globalSettings.setup_time_labor_hours) || 0;
     const fixedLaborCost = (mixingHours + setupHours) * laborRate;
 
@@ -477,7 +514,16 @@ export default function NewPaintEstimate() {
         totalLiquidPaintAndSupplies = minPaintCost;
     }
 
-    return { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours };
+    return { 
+      totalPaintMask, 
+      totalLiquidPaintAndSupplies, 
+      totalLabor, 
+      totalLaborHours,
+      totalGallonsNeeded,
+      numberOfMixes,
+      mixingHours,
+      setupHours
+    };
   };
 
   const saveProject = async () => {
@@ -537,7 +583,7 @@ export default function NewPaintEstimate() {
   };
 
   const downloadEstimate = () => {
-    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours } = calculateTotals();
+    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, numberOfMixes, mixingHours, setupHours } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
     
@@ -567,7 +613,9 @@ Labor Cost: $${(item.labor_cost || 0).toFixed(2)}
 TOTALS:
 Paint Mask: $${totalPaintMask.toFixed(2)}
 Liquid Paint & Application Supplies: $${totalLiquidPaintAndSupplies.toFixed(2)}
-Fixed Labor (Mixing/Setup): $${(((parseFloat(globalSettings.paint_mixing_labor_hours) || 0) + (parseFloat(globalSettings.setup_time_labor_hours) || 0)) * laborRate).toFixed(2)}
+Fixed Labor:
+  - Mixing (${numberOfMixes} mix${numberOfMixes > 1 ? 'es' : ''}): ${mixingHours.toFixed(1)} hrs ($${(mixingHours * laborRate).toFixed(2)})
+  - Setup: ${setupHours.toFixed(1)} hrs ($${(setupHours * laborRate).toFixed(2)})
 Total Labor: $${totalLabor.toFixed(2)} (${totalLaborHours.toFixed(1)} hours)
 TOTAL ESTIMATE: $${totalCost.toFixed(2)}
 
@@ -586,7 +634,7 @@ Notes: ${project.notes || 'None'}
   };
 
   const printEstimate = () => {
-    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours } = calculateTotals();
+    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, numberOfMixes, mixingHours, setupHours } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
     
@@ -606,7 +654,8 @@ Notes: ${project.notes || 'None'}
             .item-cost-details { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e2e8f0; }
             .item-cost-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
             .totals { margin-top: 30px; padding: 20px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 5px; }
-            .total-row { display: flex; justify-between; margin-bottom: 10px; }
+            .total-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+            .fixed-labor-breakdown { padding-left: 15px; margin-top: -5px; margin-bottom: 5px; font-size: 0.9em; }
             .final-total { font-weight: bold; font-size: 20px; border-top: 2px solid #374151; padding-top: 15px; margin-top: 15px; }
             .notes { margin-top: 30px; padding: 15px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 5px; }
           </style>
@@ -653,7 +702,11 @@ Notes: ${project.notes || 'None'}
               <span>Liquid Paint & Application Supplies:</span><span>$${totalLiquidPaintAndSupplies.toFixed(2)}</span>
             </div>
             <div class="total-row">
-              <span>Fixed Labor (Mixing/Setup):</span><span>$${(((parseFloat(globalSettings.paint_mixing_labor_hours) || 0) + (parseFloat(globalSettings.setup_time_labor_hours) || 0)) * laborRate).toFixed(2)}</span>
+              <span>Fixed Labor:</span><span></span>
+            </div>
+            <div class="fixed-labor-breakdown">
+              <p>Mixing (${numberOfMixes} mix${numberOfMixes > 1 ? 'es' : ''}): ${mixingHours.toFixed(1)} hrs ($${(mixingHours * laborRate).toFixed(2)})</p>
+              <p>Setup: ${setupHours.toFixed(1)} hrs ($${(setupHours * laborRate).toFixed(2)})</p>
             </div>
             <div class="total-row">
               <span>Total Labor (${totalLaborHours.toFixed(1)} hrs):</span><span>$${totalLabor.toFixed(2)}</span>
@@ -675,7 +728,7 @@ Notes: ${project.notes || 'None'}
   };
 
   const sendEstimate = () => {
-    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours } = calculateTotals();
+    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, numberOfMixes, mixingHours, setupHours } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
     
@@ -691,7 +744,9 @@ ${project.hyperlink ? `Reference Link: ${project.hyperlink}` : ''}
 ESTIMATE SUMMARY:
 Paint Mask: $${totalPaintMask.toFixed(2)}
 Liquid Paint & Application Supplies: $${totalLiquidPaintAndSupplies.toFixed(2)}
-Fixed Labor (Mixing/Setup): $${(((parseFloat(globalSettings.paint_mixing_labor_hours) || 0) + (parseFloat(globalSettings.setup_time_labor_hours) || 0)) * laborRate).toFixed(2)}
+Fixed Labor:
+  - Mixing (${numberOfMixes} mix${numberOfMixes > 1 ? 'es' : ''}): ${mixingHours.toFixed(1)} hrs ($${(mixingHours * laborRate).toFixed(2)})
+  - Setup: ${setupHours.toFixed(1)} hrs ($${(setupHours * laborRate).toFixed(2)})
 Total Labor: $${totalLabor.toFixed(2)} (${totalLaborHours.toFixed(1)} hours)
 TOTAL ESTIMATE: $${totalCost.toFixed(2)}
 
@@ -724,7 +779,7 @@ ${globalSettings.company_name || 'Your Sign Company'}`
     setShowEmailModal(false);
   };
 
-  const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours } = calculateTotals();
+  const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours } = calculateTotals();
   const itemsWithDiscounts = getItemsWithDiscounts();
 
   if (isLoading) {
@@ -1127,13 +1182,26 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                     <span className="text-lg font-bold text-blue-900">${totalLiquidPaintAndSupplies.toFixed(2)}</span>
                   </div>
                   <p className="text-xs text-blue-600">Includes liquid paint, application materials, waste, and base supplies</p>
+                  {totalGallonsNeeded > 1 && (
+                    <div className="mt-2 pt-2 border-t border-blue-200">
+                      <p className="text-xs text-blue-700 font-medium">Paint Volume:</p>
+                      <p className="text-xs text-blue-600">
+                        {totalGallonsNeeded.toFixed(2)} gallons needed → {numberOfMixes} mix{numberOfMixes > 1 ? 'es' : ''} required
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="p-4 bg-green-50 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-green-800">Total Labor:</span>
                     <span className="text-lg font-bold text-green-900">${totalLabor.toFixed(2)}</span>
                   </div>
-                  <p className="text-xs text-green-600">{totalLaborHours.toFixed(1)} hours total (includes item labor, mixing, setup)</p>
+                  <p className="text-xs text-green-600">{totalLaborHours.toFixed(1)} hours total</p>
+                  <div className="mt-2 pt-2 border-t border-green-200 text-xs text-green-700 space-y-0.5">
+                    <p>• Item labor: {(totalLaborHours - mixingHours - setupHours).toFixed(1)} hrs</p>
+                    <p>• Mixing ({numberOfMixes} mix{numberOfMixes > 1 ? 'es' : ''}): {mixingHours.toFixed(1)} hrs</p>
+                    <p>• Setup: {setupHours.toFixed(1)} hrs</p>
+                  </div>
                   
                   {itemsWithDiscounts.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-green-200">

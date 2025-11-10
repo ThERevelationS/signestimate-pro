@@ -229,7 +229,47 @@ export default function PaintSettings() {
     const coverageSqFtPerGallon = parseFloat(settings.mixed_paint_coverage_sqft_per_gallon) || 1;
     const finalRate = coverageSqFtPerGallon > 0 ? costPerGallonOfMixedPaint / coverageSqFtPerGallon : 0;
     setLiquidPaintRate(finalRate);
-  }, [settings]);
+  }, [
+    settings.paint_cost_per_unit,
+    settings.paint_unit,
+    settings.hardener_cost_per_unit,
+    settings.hardener_unit,
+    settings.reducer_cost_per_unit,
+    settings.reducer_unit,
+    settings.paint_mix_ratio,
+    settings.hardener_mix_ratio,
+    settings.reducer_mix_ratio,
+    settings.mixed_paint_coverage_sqft_per_gallon,
+  ]);
+
+  // NEW: Calculate paint mixing example
+  const calculateMixingExample = useCallback(() => {
+    const examplePaintableArea = 100; // 100 sq ft example
+    const exampleColors = 3;
+    const totalArea = examplePaintableArea * exampleColors;
+    
+    const wasteMultiplier = parseFloat(settings.paint_waste_multiplier) || 1.25;
+    const coverage = parseFloat(settings.mixed_paint_coverage_sqft_per_gallon) || 350;
+    
+    const gallonsNeeded = (totalArea * wasteMultiplier) / coverage;
+    const numberOfMixes = Math.ceil(gallonsNeeded);
+    const mixingHoursPerGallon = parseFloat(settings.paint_mixing_labor_hours) || 0;
+    const totalMixingHours = numberOfMixes * mixingHoursPerGallon;
+    
+    return {
+      exampleArea: totalArea,
+      gallonsNeeded,
+      numberOfMixes,
+      mixingHoursPerGallon,
+      totalMixingHours
+    };
+  }, [
+    settings.paint_waste_multiplier,
+    settings.mixed_paint_coverage_sqft_per_gallon,
+    settings.paint_mixing_labor_hours
+  ]);
+
+  const mixingExample = calculateMixingExample();
 
   const saveSettings = async () => {
     if (isSaving) return;
@@ -365,7 +405,9 @@ export default function PaintSettings() {
   if (isLoading) {
     return (
       <div className="p-6 md:p-8 bg-slate-50 min-h-screen flex items-center justify-center">
-        <p className="text-slate-600">Loading settings...</p>
+        <div className="animate-pulse space-y-6 text-center">
+          <p className="text-slate-600">Loading settings...</p>
+        </div>
       </div>
     );
   }
@@ -430,7 +472,7 @@ export default function PaintSettings() {
   const categoryDescriptions = {
     "painting_pricing": "Define the core rates, costs, and minimum charges for painting projects.",
     "painting_supplies": "Set parameters for paint mixing ratios, coverage, waste, and other supplies.",
-    "painting_labor": "Control all labor calculations, including fixed times, base rates, and complexity multipliers."
+    // "painting_labor" description is now handled directly in the custom card
   };
 
   const renderCategory = (title, category, icon) => {
@@ -535,91 +577,9 @@ export default function PaintSettings() {
     );
   };
   
-  const managementContent = (
-    <div className="space-y-8">
-      {renderCategory("Pricing & Minimums", "painting_pricing", DollarSign)}
-      {renderCategory("Supplies & Materials", "painting_supplies", Paintbrush)}
-      {renderCategory("Labor & Complexity", "painting_labor", Clock)}
-
-      {/* Quantity-Based Labor Discounts - Tabbed by Item Type */}
-      <Card className="bg-white border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3 text-lg font-semibold text-amber-900">
-            <TrendingDown className="w-6 h-6 text-amber-500" />
-            Quantity-Based Labor Discounts
-          </CardTitle>
-          <CardDescription>
-            Reduce labor costs as quantity increases. Labor becomes more efficient with repetition.
-            Configure separate discount curves for each item type. Materials remain at full price.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="panel" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-4">
-              <TabsTrigger value="panel" className="flex items-center gap-2">
-                <Square className="w-4 h-4" />
-                Panels
-              </TabsTrigger>
-              <TabsTrigger value="complex_shapes" className="flex items-center gap-2">
-                <Shapes className="w-4 h-4" />
-                Complex Shapes
-              </TabsTrigger>
-              <TabsTrigger value="lettering" className="flex items-center gap-2">
-                <Type className="w-4 h-4" />
-                Lettering
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="panel" className="space-y-4">
-              {renderTiersList(panelTiers, setPanelTiers, "Panel", Square, "text-blue-600")}
-            </TabsContent>
-            
-            <TabsContent value="complex_shapes" className="space-y-4">
-              {renderTiersList(complexShapesTiers, setComplexShapesTiers, "Complex Shapes", Shapes, "text-purple-600")}
-            </TabsContent>
-            
-            <TabsContent value="lettering" className="space-y-4">
-              {renderTiersList(letteringTiers, setLetteringTiers, "Lettering", Type, "text-green-600")}
-            </TabsContent>
-          </Tabs>
-          
-          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 mt-4">
-            <h4 className="font-medium text-blue-900 mb-2 text-sm">How It Works:</h4>
-            <ul className="text-xs text-blue-700 space-y-1">
-              <li>• Different item types can have different discount curves</li>
-              <li>• Panels might scale differently than complex shapes or lettering</li>
-              <li>• Example: 10 panels at 0.90x vs 10 letters at 0.85x multiplier</li>
-              <li>• Multipliers only affect labor - materials stay full price</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-white border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3 text-lg font-semibold text-blue-900">
-            <Calculator className="w-6 h-6 text-blue-500" />
-            Calculated Liquid Paint Cost
-          </CardTitle>
-          <CardDescription>This value is derived from the paint, hardener, reducer, and coverage settings above.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center p-6 bg-blue-50 rounded-lg">
-          <div className="text-center">
-            <p className="text-blue-800 font-medium mb-1">Cost per square foot of mixed paint:</p>
-            <h3 className="text-3xl font-bold text-blue-900 flex items-center gap-2">
-              <DollarSign className="w-7 h-7" />
-              {liquidPaintRate.toFixed(4)}
-              <span className="text-lg font-normal text-blue-700">/ sq ft</span>
-            </h3>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
   return (
     <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
@@ -642,7 +602,125 @@ export default function PaintSettings() {
           onUnlock={() => setIsLocked(false)}
           user={currentUser}
         >
-          {managementContent}
+          <div className="grid lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              {renderCategory("Pricing & Minimums", "painting_pricing", DollarSign)}
+              {renderCategory("Supplies & Materials", "painting_supplies", Paintbrush)}
+
+              <Card className="bg-white border-0 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-3 text-lg font-semibold text-slate-900">
+                    <Clock className="w-6 h-6 text-slate-500" />
+                    Labor Settings
+                  </CardTitle>
+                  <p className="text-sm text-slate-600">Configure labor rates and time calculations</p>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {settingsDefinitions
+                      .filter(def => def.category === "painting_labor" && !["paint_mixing_labor_hours", "setup_time_labor_hours"].includes(def.name))
+                      .map(def => renderSettingInput(def))}
+                  </div>
+                  
+                  <div className="border-t pt-6">
+                    <h4 className="font-medium text-slate-800 mb-4">Fixed Labor Times</h4>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {renderSettingInput(settingsDefinitions.find(def => def.name === "paint_mixing_labor_hours"))}
+                      {renderSettingInput(settingsDefinitions.find(def => def.name === "setup_time_labor_hours"))}
+                    </div>
+
+                    <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                      <h5 className="font-medium text-amber-800 mb-2 text-sm">Paint Mixing Calculation Example</h5>
+                      <div className="space-y-1 text-xs text-amber-700">
+                        <p>• Example: 100 sq ft × 3 colors = {mixingExample.exampleArea} sq ft total</p>
+                        <p>• With waste: {mixingExample.exampleArea} × {parseFloat(settings.paint_waste_multiplier || 1.25)} = {(mixingExample.exampleArea * parseFloat(settings.paint_waste_multiplier || 1.25)).toFixed(0)} sq ft</p>
+                        <p>• Gallons needed: {(mixingExample.exampleArea * parseFloat(settings.paint_waste_multiplier || 1.25)).toFixed(0)} ÷ {parseFloat(settings.mixed_paint_coverage_sqft_per_gallon || 350)} coverage = {mixingExample.gallonsNeeded.toFixed(2)} gal</p>
+                        <p className="font-semibold">• Mixes required: {mixingExample.numberOfMixes} (rounded up)</p>
+                        <p className="font-semibold text-amber-900">• Total mixing time: {mixingExample.numberOfMixes} mixes × {mixingExample.mixingHoursPerGallon} hrs = {mixingExample.totalMixingHours.toFixed(2)} hours</p>
+                        <p className="mt-2 text-amber-800 italic">Note: Each gallon (or partial) requires a separate mix. Mixing time scales with volume, not item quantity.</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Quantity-Based Labor Discounts - Tabbed by Item Type */}
+              <Card className="bg-white border-0 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-3 text-lg font-semibold text-amber-900">
+                    <TrendingDown className="w-6 h-6 text-amber-500" />
+                    Quantity-Based Labor Discounts
+                  </CardTitle>
+                  <CardDescription>
+                    Reduce labor costs as quantity increases. Labor becomes more efficient with repetition.
+                    Configure separate discount curves for each item type. Materials remain at full price.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Tabs defaultValue="panel" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3 mb-4">
+                      <TabsTrigger value="panel" className="flex items-center gap-2">
+                        <Square className="w-4 h-4" />
+                        Panels
+                      </TabsTrigger>
+                      <TabsTrigger value="complex_shapes" className="flex items-center gap-2">
+                        <Shapes className="w-4 h-4" />
+                        Complex Shapes
+                      </TabsTrigger>
+                      <TabsTrigger value="lettering" className="flex items-center gap-2">
+                        <Type className="w-4 h-4" />
+                        Lettering
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="panel" className="space-y-4">
+                      {renderTiersList(panelTiers, setPanelTiers, "Panel", Square, "text-blue-600")}
+                    </TabsContent>
+                    
+                    <TabsContent value="complex_shapes" className="space-y-4">
+                      {renderTiersList(complexShapesTiers, setComplexShapesTiers, "Complex Shapes", Shapes, "text-purple-600")}
+                    </TabsContent>
+                    
+                    <TabsContent value="lettering" className="space-y-4">
+                      {renderTiersList(letteringTiers, setLetteringTiers, "Lettering", Type, "text-green-600")}
+                    </TabsContent>
+                  </Tabs>
+                  
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 mt-4">
+                    <h4 className="font-medium text-blue-900 mb-2 text-sm">How It Works:</h4>
+                    <ul className="text-xs text-blue-700 space-y-1">
+                      <li>• Different item types can have different discount curves</li>
+                      <li>• Panels might scale differently than complex shapes or lettering</li>
+                      <li>• Example: 10 panels at 0.90x vs 10 letters at 0.85x multiplier</li>
+                      <li>• Multipliers only affect labor - materials stay full price</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="lg:col-span-1 space-y-6">
+              <Card className="bg-white border-0 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-3 text-lg font-semibold text-blue-900">
+                    <Calculator className="w-6 h-6 text-blue-500" />
+                    Calculated Liquid Paint Cost
+                  </CardTitle>
+                  <CardDescription>This value is derived from the paint, hardener, reducer, and coverage settings above.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center justify-center p-6 bg-blue-50 rounded-lg">
+                  <div className="text-center">
+                    <p className="text-blue-800 font-medium mb-1">Cost per square foot of mixed paint:</p>
+                    <h3 className="text-3xl font-bold text-blue-900 flex items-center gap-2">
+                      <DollarSign className="w-7 h-7" />
+                      {liquidPaintRate.toFixed(4)}
+                      <span className="text-lg font-normal text-blue-700">/ sq ft</span>
+                    </h3>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </SettingsAuthWrapper>
 
         <div className="mt-8 flex justify-end">
