@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -23,14 +22,14 @@ import {
   Settings, 
   Eye,
   Server,
-  User as UserIcon, // Renamed to avoid conflict with imported User entity
+  User as UserIcon,
   Users,
   Anchor 
 } from 'lucide-react';
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
-  const [currentUser, setCurrentUser] = useState(null); // New state for current user
+  const [currentUser, setCurrentUser] = useState(null);
   const [moduleStatuses, setModuleStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [hoveredModule, setHoveredModule] = useState(null);
@@ -40,7 +39,7 @@ export default function Layout({ children, currentPageName }) {
       setIsLoading(true);
       try {
         const [user, statuses] = await Promise.all([
-          User.me(), // Fetch current user
+          User.me(),
           ModuleStatus.list()
         ]);
         setCurrentUser(user);
@@ -53,8 +52,7 @@ export default function Layout({ children, currentPageName }) {
 
       } catch (error) {
         console.error('Error loading layout prerequisites:', error);
-        // Fallback for public view or error
-        setCurrentUser(null); // Ensure currentUser is null on error or not logged in
+        setCurrentUser(null);
         setModuleStatuses({
           painting: true, laser: true, cnc: true, metal_fabrication: true, channel_letter_installation: true, foundation: true, brick_stone: true
         });
@@ -62,18 +60,15 @@ export default function Layout({ children, currentPageName }) {
       setIsLoading(false);
     };
     loadData();
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
   const hasPermission = (moduleName) => {
-    if (!currentUser) { // If not logged in, show based on global status
-      // Default to true if not in database yet
+    if (!currentUser) {
       return moduleStatuses[moduleName] !== undefined ? moduleStatuses[moduleName] : true;
     }
-    // Check for a user-specific override
     if (currentUser.module_permissions && currentUser.module_permissions[moduleName] !== undefined) {
       return currentUser.module_permissions[moduleName];
     }
-    // Fallback to the global status, default to true if not set
     return moduleStatuses[moduleName] !== undefined ? moduleStatuses[moduleName] : true;
   };
 
@@ -220,41 +215,38 @@ export default function Layout({ children, currentPageName }) {
                           className="grid grid-cols-1 gap-1 overflow-hidden transition-all duration-300 ease-in-out"
                           style={{
                             maxHeight: isExpanded ? '400px' : '0px',
-                            opacity: isExpanded ? 1 : 0
+                            opacity: isExpanded ? 1 : 0,
+                            pointerEvents: isExpanded ? 'auto' : 'none'
                           }}
-                          onClick={(e) => e.stopPropagation()}
                         >
                           <Link
                             to={createPageUrl(module.projectsPage)}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors block ${
+                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors block cursor-pointer ${
                               location.pathname === createPageUrl(module.projectsPage)
                                 ? 'bg-white text-slate-900 font-medium shadow-sm'
                                 : 'text-slate-700 hover:bg-white/60'
                             }`}
-                            onClick={(e) => e.stopPropagation()}
                           >
                             View Projects
                           </Link>
                           <Link
                             to={createPageUrl(module.newEstimatePage)}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors block ${
+                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors block cursor-pointer ${
                               location.pathname === createPageUrl(module.newEstimatePage)
                                 ? 'bg-white text-slate-900 font-medium shadow-sm'
                                 : 'text-slate-700 hover:bg-white/60'
                             }`}
-                            onClick={(e) => e.stopPropagation()}
                           >
                             New Estimate
                           </Link>
                           {module.inventoryPage && (
                             <Link
                               to={createPageUrl(module.inventoryPage)}
-                              className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center ${
+                              className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center cursor-pointer ${
                                 location.pathname === createPageUrl(module.inventoryPage)
                                   ? 'bg-white text-slate-900 font-medium shadow-sm'
                                   : 'text-slate-700 hover:bg-white/60'
                               }`}
-                              onClick={(e) => e.stopPropagation()}
                             >
                               <Server className="w-3 h-3 inline mr-1" />
                               Inventory
@@ -262,12 +254,11 @@ export default function Layout({ children, currentPageName }) {
                           )}
                           <Link
                             to={createPageUrl(module.settingsPage)}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center ${
+                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center cursor-pointer ${
                               location.pathname === createPageUrl(module.settingsPage)
                                 ? 'bg-white text-slate-900 font-medium shadow-sm'
                                 : 'text-slate-700 hover:bg-white/60'
                             }`}
-                            onClick={(e) => e.stopPropagation()}
                           >
                             <Settings className="w-3 h-3 inline mr-1" />
                             Settings
