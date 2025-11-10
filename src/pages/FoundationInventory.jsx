@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, Edit2, Save, X, Anchor, Drill } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, Trash2, Edit2, Save, X, Anchor, Drill, Wrench } from "lucide-react";
 
 export default function FoundationInventoryPage() {
   const [inventory, setInventory] = useState([]);
@@ -18,6 +19,8 @@ export default function FoundationInventoryPage() {
     material_name: "",
     material_type: "concrete_service",
     equipment_type: "N/A",
+    compatible_equipment: [],
+    parent_attachment_id: null,
     supplier: "",
     rental_company: "",
     unit: "cubic yard",
@@ -71,11 +74,20 @@ export default function FoundationInventoryPage() {
 
   const handleEdit = (item) => {
     setEditingItem(item);
-    setModalType(item.material_type === 'excavation_equipment' ? 'equipment' : 'material');
+    if (item.material_type === 'excavation_equipment') {
+      setModalType('equipment');
+    } else if (item.material_type === 'attachment') {
+      setModalType('attachment');
+    } else {
+      setModalType('material');
+    }
+    
     setFormData({
       material_name: item.material_name,
       material_type: item.material_type,
       equipment_type: item.equipment_type || "N/A",
+      compatible_equipment: item.compatible_equipment || [],
+      parent_attachment_id: item.parent_attachment_id || null,
       supplier: item.supplier || "",
       rental_company: item.rental_company || "",
       unit: item.unit || "cubic yard",
@@ -108,6 +120,8 @@ export default function FoundationInventoryPage() {
       material_name: "",
       material_type: "concrete_service",
       equipment_type: "N/A",
+      compatible_equipment: [],
+      parent_attachment_id: null,
       supplier: "",
       rental_company: "",
       unit: "cubic yard",
@@ -130,6 +144,32 @@ export default function FoundationInventoryPage() {
       material_name: "",
       material_type: "excavation_equipment",
       equipment_type: "skid_steer",
+      compatible_equipment: [],
+      parent_attachment_id: null,
+      supplier: "",
+      rental_company: "",
+      unit: "",
+      cost_per_unit: 0,
+      minimum_cost: 0,
+      cost_per_day: 0,
+      cost_per_week: 0,
+      cost_per_month: 0,
+      pickup_delivery_cost: 0,
+      rebar_size: "N/A",
+      notes: ""
+    });
+    setEditingItem(null);
+    setShowModal(true);
+  };
+
+  const openAttachmentModal = () => {
+    setModalType('attachment');
+    setFormData({
+      material_name: "",
+      material_type: "attachment",
+      equipment_type: "N/A",
+      compatible_equipment: [],
+      parent_attachment_id: null,
       supplier: "",
       rental_company: "",
       unit: "",
@@ -151,6 +191,8 @@ export default function FoundationInventoryPage() {
       material_name: "",
       material_type: "concrete_service",
       equipment_type: "N/A",
+      compatible_equipment: [],
+      parent_attachment_id: null,
       supplier: "",
       rental_company: "",
       unit: "cubic yard",
@@ -168,7 +210,19 @@ export default function FoundationInventoryPage() {
     setModalType('material');
   };
 
+  const toggleCompatibleEquipment = (equipType) => {
+    setFormData(prev => {
+      const current = prev.compatible_equipment || [];
+      if (current.includes(equipType)) {
+        return { ...prev, compatible_equipment: current.filter(e => e !== equipType) };
+      } else {
+        return { ...prev, compatible_equipment: [...current, equipType] };
+      }
+    });
+  };
+
   const isEquipment = modalType === 'equipment';
+  const isAttachment = modalType === 'attachment';
   const isConcrete = formData.material_type === 'concrete_service' || formData.material_type === 'bagged_concrete';
 
   const concreteItems = inventory.filter(item => 
@@ -181,6 +235,18 @@ export default function FoundationInventoryPage() {
     item.material_type === 'excavation_equipment'
   );
 
+  const attachmentItems = inventory.filter(item => 
+    item.material_type === 'attachment' && !item.parent_attachment_id
+  );
+
+  const getSubsidiaryAttachments = (parentId) => {
+    return inventory.filter(item => item.parent_attachment_id === parentId);
+  };
+
+  const getParentAttachments = () => {
+    return inventory.filter(item => item.material_type === 'attachment' && !item.parent_attachment_id);
+  };
+
   if (isLoading) {
     return (
       <div className="p-6 md:p-8 bg-slate-50 min-h-screen flex items-center justify-center">
@@ -189,7 +255,7 @@ export default function FoundationInventoryPage() {
     );
   }
 
-  const renderInventoryTable = (items, title, icon) => (
+  const renderInventoryTable = (items, title, icon, isAttachmentSection = false) => (
     <Card className="bg-white border-0 shadow-sm">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -209,7 +275,7 @@ export default function FoundationInventoryPage() {
                 <tr>
                   <th className="text-left p-3 font-semibold text-slate-700">Name</th>
                   <th className="text-left p-3 font-semibold text-slate-700">Type</th>
-                  <th className="text-left p-3 font-semibold text-slate-700">Supplier/Company</th>
+                  {!isAttachmentSection && <th className="text-left p-3 font-semibold text-slate-700">Supplier/Company</th>}
                   <th className="text-left p-3 font-semibold text-slate-700">Details</th>
                   <th className="text-right p-3 font-semibold text-slate-700">Pricing</th>
                   <th className="text-right p-3 font-semibold text-slate-700">Actions</th>
@@ -217,64 +283,110 @@ export default function FoundationInventoryPage() {
               </thead>
               <tbody>
                 {items.map((item) => {
+                  const subsidiaries = isAttachmentSection ? getSubsidiaryAttachments(item.id) : [];
                   return (
-                    <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-25">
-                      <td className="p-3">{item.material_name}</td>
-                      <td className="p-3 capitalize">{item.material_type.replace(/_/g, ' ')}</td>
-                      <td className="p-3 text-sm text-slate-600">
-                        {item.material_type === 'excavation_equipment' 
-                          ? (item.rental_company || '-')
-                          : (item.supplier || '-')}
-                      </td>
-                      <td className="p-3">
-                        {item.material_type === 'excavation_equipment' ? (
-                          <span className="text-sm">
-                            {item.equipment_type?.replace(/_/g, ' ').toUpperCase() || 'N/A'}
-                            {item.pickup_delivery_cost > 0 && ` • Delivery: $${item.pickup_delivery_cost.toFixed(2)}`}
-                          </span>
-                        ) : item.material_type === 'rebar' ? (
-                          <span className="text-sm">{item.rebar_size || 'N/A'}</span>
-                        ) : (
-                          <span className="text-sm">
-                            {item.unit || 'N/A'}
-                            {item.minimum_cost > 0 && ` • Min: $${item.minimum_cost.toFixed(2)}`}
-                          </span>
+                    <React.Fragment key={item.id}>
+                      <tr className="border-b border-slate-100 hover:bg-slate-25">
+                        <td className="p-3 font-medium">{item.material_name}</td>
+                        <td className="p-3 capitalize">{item.material_type.replace(/_/g, ' ')}</td>
+                        {!isAttachmentSection && (
+                          <td className="p-3 text-sm text-slate-600">
+                            {item.material_type === 'excavation_equipment' 
+                              ? (item.rental_company || '-')
+                              : (item.supplier || '-')}
+                          </td>
                         )}
-                      </td>
-                      <td className="p-3 text-right">
-                        {item.material_type === 'excavation_equipment' ? (
-                          <div className="text-sm">
-                            <div>Day: ${(item.cost_per_day || 0).toFixed(2)}</div>
-                            <div>Week: ${(item.cost_per_week || 0).toFixed(2)}</div>
-                            <div>Month: ${(item.cost_per_month || 0).toFixed(2)}</div>
+                        <td className="p-3">
+                          {item.material_type === 'excavation_equipment' ? (
+                            <span className="text-sm">
+                              {item.equipment_type?.replace(/_/g, ' ').toUpperCase() || 'N/A'}
+                              {item.pickup_delivery_cost > 0 && ` • Delivery: $${item.pickup_delivery_cost.toFixed(2)}`}
+                            </span>
+                          ) : item.material_type === 'attachment' ? (
+                            <span className="text-sm">
+                              Compatible: {(item.compatible_equipment || []).map(e => e.replace(/_/g, ' ')).join(', ') || 'All'}
+                            </span>
+                          ) : item.material_type === 'rebar' ? (
+                            <span className="text-sm">{item.rebar_size || 'N/A'}</span>
+                          ) : (
+                            <span className="text-sm">
+                              {item.unit || 'N/A'}
+                              {item.minimum_cost > 0 && ` • Min: $${item.minimum_cost.toFixed(2)}`}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          {item.material_type === 'excavation_equipment' || item.material_type === 'attachment' ? (
+                            <div className="text-sm">
+                              <div>Day: ${(item.cost_per_day || 0).toFixed(2)}</div>
+                              <div>Week: ${(item.cost_per_week || 0).toFixed(2)}</div>
+                              <div>Month: ${(item.cost_per_month || 0).toFixed(2)}</div>
+                            </div>
+                          ) : (
+                            <div className="text-sm">
+                              <div className="font-medium text-green-600 text-lg">${(item.cost_per_unit || 0).toFixed(2)}/{item.unit}</div>
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(item)}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(item.id)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
-                        ) : (
-                          <div className="text-sm">
-                            <div className="font-medium text-green-600 text-lg">${(item.cost_per_unit || 0).toFixed(2)}/{item.unit}</div>
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-3 text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(item)}
-                            className="text-blue-600 hover:text-blue-800"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(item.id)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
+                        </td>
+                      </tr>
+                      {subsidiaries.map(sub => (
+                        <tr key={sub.id} className="border-b border-slate-100 bg-slate-25">
+                          <td className="p-3 pl-8">
+                            <span className="text-slate-400 mr-2">└─</span>
+                            {sub.material_name}
+                          </td>
+                          <td className="p-3 text-sm text-slate-500">Subsidiary</td>
+                          <td className="p-3 text-sm text-slate-500">For: {item.material_name}</td>
+                          <td className="p-3 text-right">
+                            <div className="text-sm">
+                              <div>Day: ${(sub.cost_per_day || 0).toFixed(2)}</div>
+                              <div>Week: ${(sub.cost_per_week || 0).toFixed(2)}</div>
+                              <div>Month: ${(sub.cost_per_month || 0).toFixed(2)}</div>
+                            </div>
+                          </td>
+                          <td className="p-3 text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEdit(sub)}
+                                className="text-blue-600 hover:text-blue-800"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDelete(sub.id)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -294,7 +406,7 @@ export default function FoundationInventoryPage() {
               <Anchor className="w-8 h-8" />
               Foundation Material Inventory
             </h1>
-            <p className="text-slate-600">Manage pricing for concrete, rebar, and excavation equipment</p>
+            <p className="text-slate-600">Manage pricing for concrete, rebar, equipment, and attachments</p>
           </div>
           <div className="flex gap-3">
             <Button onClick={openMaterialModal} className="bg-blue-600 hover:bg-blue-700">
@@ -305,12 +417,17 @@ export default function FoundationInventoryPage() {
               <Plus className="w-4 h-4 mr-2" />
               Add Equipment
             </Button>
+            <Button onClick={openAttachmentModal} className="bg-purple-600 hover:bg-purple-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Attachment
+            </Button>
           </div>
         </div>
 
         <div className="space-y-6">
           {renderInventoryTable(concreteItems, "Concrete & Materials", <Anchor className="w-5 h-5" />)}
           {renderInventoryTable(equipmentItems, "Excavation Equipment", <Drill className="w-5 h-5" />)}
+          {renderInventoryTable(attachmentItems, "Attachments", <Wrench className="w-5 h-5" />, true)}
         </div>
 
         {/* Modal */}
@@ -320,7 +437,7 @@ export default function FoundationInventoryPage() {
               <CardHeader className="border-b">
                 <div className="flex justify-between items-center">
                   <CardTitle>
-                    {editingItem ? 'Edit' : 'Add'} {isEquipment ? 'Equipment' : 'Material'}
+                    {editingItem ? 'Edit' : 'Add'} {isEquipment ? 'Equipment' : isAttachment ? 'Attachment' : 'Material'}
                   </CardTitle>
                   <Button variant="ghost" size="icon" onClick={resetForm}>
                     <X className="w-4 h-4" />
@@ -330,18 +447,117 @@ export default function FoundationInventoryPage() {
               <CardContent className="pt-6">
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <Label htmlFor="material_name">{isEquipment ? 'Equipment' : 'Material'} Name *</Label>
+                    <Label htmlFor="material_name">
+                      {isEquipment ? 'Equipment' : isAttachment ? 'Attachment' : 'Material'} Name *
+                    </Label>
                     <Input
                       id="material_name"
                       value={formData.material_name}
                       onChange={(e) => setFormData(prev => ({ ...prev, material_name: e.target.value }))}
-                      placeholder={isEquipment ? "e.g., Mini Excavator" : "e.g., Ernst Concrete Ready-Mix"}
+                      placeholder={isEquipment ? "e.g., Mini Excavator" : isAttachment ? "e.g., Auger Attachment" : "e.g., Ernst Concrete Ready-Mix"}
                       required
                       className="mt-1"
                     />
                   </div>
 
-                  {!isEquipment ? (
+                  {isAttachment && (
+                    <>
+                      <div>
+                        <Label>Compatible Equipment Types *</Label>
+                        <div className="grid grid-cols-2 gap-3 mt-2">
+                          {['skid_steer', 'auger', 'excavator', 'backhoe', 'other'].map(equipType => (
+                            <div key={equipType} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`compat-${equipType}`}
+                                checked={(formData.compatible_equipment || []).includes(equipType)}
+                                onCheckedChange={() => toggleCompatibleEquipment(equipType)}
+                              />
+                              <Label htmlFor={`compat-${equipType}`} className="text-sm font-normal cursor-pointer">
+                                {equipType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">Select all equipment types this attachment works with</p>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="parent_attachment_id">Parent Attachment (Optional)</Label>
+                        <Select
+                          value={formData.parent_attachment_id || "none"}
+                          onValueChange={(value) => setFormData(prev => ({ ...prev, parent_attachment_id: value === "none" ? null : value }))}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="None - Main Attachment" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None - Main Attachment</SelectItem>
+                            {getParentAttachments().map(att => (
+                              <SelectItem key={att.id} value={att.id}>{att.material_name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-slate-500 mt-1">
+                          If this is a subsidiary (e.g., drill bit for auger), select the parent attachment
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="rental_company">Rental Company</Label>
+                        <Input
+                          id="rental_company"
+                          value={formData.rental_company}
+                          onChange={(e) => setFormData(prev => ({ ...prev, rental_company: e.target.value }))}
+                          placeholder="e.g., Sunbelt Rentals"
+                          className="mt-1"
+                        />
+                      </div>
+
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <div>
+                          <Label htmlFor="cost_per_day">Daily Rate *</Label>
+                          <Input
+                            id="cost_per_day"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.cost_per_day}
+                            onChange={(e) => setFormData(prev => ({ ...prev, cost_per_day: parseFloat(e.target.value) || 0 }))}
+                            required
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="cost_per_week">Weekly Rate *</Label>
+                          <Input
+                            id="cost_per_week"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.cost_per_week}
+                            onChange={(e) => setFormData(prev => ({ ...prev, cost_per_week: parseFloat(e.target.value) || 0 }))}
+                            required
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="cost_per_month">Monthly Rate *</Label>
+                          <Input
+                            id="cost_per_month"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.cost_per_month}
+                            onChange={(e) => setFormData(prev => ({ ...prev, cost_per_month: parseFloat(e.target.value) || 0 }))}
+                            required
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {!isEquipment && !isAttachment && (
                     <>
                       <div>
                         <Label htmlFor="material_type">Material Type *</Label>
@@ -436,7 +652,9 @@ export default function FoundationInventoryPage() {
                         </div>
                       )}
                     </>
-                  ) : (
+                  )}
+
+                  {isEquipment && (
                     <>
                       <div>
                         <Label htmlFor="equipment_type">Equipment Type *</Label>
@@ -542,7 +760,7 @@ export default function FoundationInventoryPage() {
                     </Button>
                     <Button type="submit" className="bg-green-600 hover:bg-green-700">
                       <Save className="w-4 h-4 mr-2" />
-                      {editingItem ? 'Update' : 'Add'} {isEquipment ? 'Equipment' : 'Material'}
+                      {editingItem ? 'Update' : 'Add'} {isEquipment ? 'Equipment' : isAttachment ? 'Attachment' : 'Material'}
                     </Button>
                   </div>
                 </form>
