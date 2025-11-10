@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Plus, Trash2, ArrowLeft, Anchor, ChevronDown, ChevronUp } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox"; // New import
+import { Save, Plus, Trash2, ArrowLeft, Anchor, ChevronDown, ChevronUp, Wrench, X } from "lucide-react"; // New imports
 import Foundation3DViewer from "@/components/Foundation3DViewer";
 
 export default function NewFoundationEstimate() {
@@ -18,6 +19,9 @@ export default function NewFoundationEstimate() {
   const editId = searchParams.get('edit');
   const [isEditing, setIsEditing] = useState(false);
   const [expandedAdvanced, setExpandedAdvanced] = useState({});
+  const [showAttachmentModal, setShowAttachmentModal] = useState(false); // New state
+  const [currentEquipmentIndex, setCurrentEquipmentIndex] = useState(null); // New state
+  const [availableAttachments, setAvailableAttachments] = useState([]); // New state
 
   const [project, setProject] = useState({
     project_name: "",
@@ -32,12 +36,13 @@ export default function NewFoundationEstimate() {
     pouring_labor_rate: 60,
     finishing_labor_rate: 50,
     notes: "",
-    selected_equipment: [],
+    selected_equipment: [], // Initial state is an empty array, attachments will be added to individual items
     selected_concrete_id: null
   });
 
   const [globalSettings, setGlobalSettings] = useState({});
   const [equipment, setEquipment] = useState([]);
+  const [allAttachments, setAllAttachments] = useState([]); // New state
   const [concreteOptions, setConcreteOptions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -80,11 +85,13 @@ export default function NewFoundationEstimate() {
       setGlobalSettings(settingsObj);
       setEquipment(equipmentData);
       
-      // Filter concrete materials only
       const concreteItems = allInventory.filter(item => 
         item.material_type === 'concrete_service' || item.material_type === 'bagged_concrete'
       );
       setConcreteOptions(concreteItems);
+
+      const attachmentItems = allInventory.filter(item => item.material_type === 'attachment');
+      setAllAttachments(attachmentItems); // Set all attachments
 
       if (!editId) {
         const newDefaults = {
@@ -113,8 +120,75 @@ export default function NewFoundationEstimate() {
     }
   }, [editId, loadPrerequisites, loadProjectForEdit]);
 
+  const recalculateEquipmentCosts = useCallback((equipmentIndex) => {
+    setProject(prevProject => {
+      const updatedSelectedEquipment = prevProject.selected_equipment.map((eq, idx) => {
+        if (idx !== equipmentIndex) return eq;
+
+        const selectedEquip = equipment.find(e => e.id === eq.equipment_id);
+        if (!selectedEquip) {
+          // If no main equipment selected, cost is 0, and clear attachment costs too
+          return { ...eq, equipment_cost: 0, attachments: (eq.attachments || []).map(att => ({...att, attachment_cost: 0, subsidiaries: (att.subsidiaries || []).map(sub => ({...sub, subsidiary_cost: 0}))})) };
+        }
+
+        let baseRentalCost = 0;
+        if (eq.rental_period === 'day') {
+          baseRentalCost = (selectedEquip.cost_per_day || 0) * eq.rental_duration;
+        } else if (eq.rental_period === 'week') {
+          baseRentalCost = (selectedEquip.cost_per_week || 0) * eq.rental_duration;
+        } else if (eq.rental_period === 'month') {
+          baseRentalCost = (selectedEquip.cost_per_month || 0) * eq.rental_duration;
+        }
+        const deliveryCost = eq.include_delivery ? (selectedEquip.pickup_delivery_cost || 0) : 0;
+
+        let totalAttachmentsAndSubsidiariesCost = 0;
+        const updatedAttachments = (eq.attachments || []).map(att => {
+          const attachment = allAttachments.find(a => a.id === att.attachment_id);
+          if (!attachment) {
+            return { ...att, attachment_cost: 0, subsidiaries: (att.subsidiaries || []).map(sub => ({...sub, subsidiary_cost: 0})) };
+          }
+
+          let currentAttCost = 0;
+          if (eq.rental_period === 'day') {
+            currentAttCost = (attachment.cost_per_day || 0) * eq.rental_duration;
+          } else if (eq.rental_period === 'week') {
+            currentAttCost = (attachment.cost_per_week || 0) * eq.rental_duration;
+          } else if (eq.rental_period === 'month') {
+            currentAttCost = (attachment.cost_per_month || 0) * eq.rental_duration;
+          }
+          totalAttachmentsAndSubsidiariesCost += currentAttCost;
+
+          const updatedSubsidiaries = (att.subsidiaries || []).map(sub => {
+            const subsidiary = allAttachments.find(a => a.id === sub.subsidiary_id);
+            if (!subsidiary) {
+              return { ...sub, subsidiary_cost: 0 };
+            }
+
+            let currentSubCost = 0;
+            if (eq.rental_period === 'day') {
+              currentSubCost = (subsidiary.cost_per_day || 0) * eq.rental_duration;
+            } else if (eq.rental_period === 'week') {
+              currentSubCost = (subsidiary.cost_per_week || 0) * eq.rental_duration;
+            } else if (eq.rental_period === 'month') {
+              currentSubCost = (subsidiary.cost_per_month || 0) * eq.rental_duration;
+            }
+            totalAttachmentsAndSubsidiariesCost += currentSubCost;
+            return { ...sub, subsidiary_cost: currentSubCost };
+          });
+          return { ...att, attachment_cost: currentAttCost, subsidiaries: updatedSubsidiaries };
+        });
+
+        return {
+          ...eq,
+          equipment_cost: baseRentalCost + deliveryCost + totalAttachmentsAndSubsidiariesCost,
+          attachments: updatedAttachments
+        };
+      });
+      return { ...prevProject, selected_equipment: updatedSelectedEquipment };
+    });
+  }, [equipment, allAttachments]);
+
   const checkAndAddEquipment = useCallback((items) => {
-    // Check if any foundation needs equipment (>= 0.5 cy excavation OR > 36" deep)
     const needsEquipment = items.some(item => 
       item.excavation_volume_cy >= 0.5 || item.depth_inches > 36
     );
@@ -122,7 +196,6 @@ export default function NewFoundationEstimate() {
     setProject(prev => {
       const currentEquipment = prev.selected_equipment || [];
       
-      // If needs equipment but none added, add default equipment
       if (needsEquipment && currentEquipment.length === 0 && equipment.length > 0) {
         const defaultEquip = equipment[0]; // Use first available equipment
         // Calculate initial cost for the default equipment
@@ -138,7 +211,8 @@ export default function NewFoundationEstimate() {
             rental_period: 'day',
             rental_duration: 1,
             include_delivery: true,
-            equipment_cost: initialCost
+            equipment_cost: initialCost,
+            attachments: [] // New: initialize attachments array
           }]
         };
       }
@@ -155,11 +229,11 @@ export default function NewFoundationEstimate() {
       foundation_type: "spread_foot",
       description: "",
       quantity: 1,
-      length_inches: 12, // Changed from 48
-      width_inches: 12,  // Changed from 48
+      length_inches: 12,
+      width_inches: 12,
       diameter: 24,
-      depth_inches: 24,  // Changed from 36
-      include_rebar: false, // Changed from true
+      depth_inches: 24,
+      include_rebar: false,
       rebar_size: "#4",
       rebar_spacing_length: 18,
       rebar_spacing_width: 18,
@@ -239,6 +313,123 @@ export default function NewFoundationEstimate() {
     });
   };
 
+  const openAttachmentModal = (equipmentIndex) => {
+    const eq = project.selected_equipment[equipmentIndex];
+    const selectedEquip = equipment.find(e => e.id === eq.equipment_id);
+    
+    if (selectedEquip) {
+      const compatible = allAttachments.filter(att => 
+        !att.compatible_equipment || 
+        att.compatible_equipment.length === 0 || 
+        att.compatible_equipment.includes(selectedEquip.equipment_type)
+      );
+      setAvailableAttachments(compatible);
+      setCurrentEquipmentIndex(equipmentIndex);
+      setShowAttachmentModal(true);
+    } else {
+      alert("Please select a base equipment first to add attachments.");
+    }
+  };
+
+  const addAttachmentToEquipment = (attachmentId) => {
+    if (currentEquipmentIndex === null) return;
+    
+    const attachment = allAttachments.find(a => a.id === attachmentId);
+    if (!attachment) return;
+
+    setProject(prev => {
+      const newSelectedEquipment = prev.selected_equipment.map((eq, idx) => {
+        if (idx !== currentEquipmentIndex) return eq;
+        
+        const existingAttachments = eq.attachments || [];
+        // Prevent adding duplicate attachments
+        if (existingAttachments.some(a => a.attachment_id === attachmentId)) {
+          return eq;
+        }
+
+        const newAttachment = {
+          attachment_id: attachmentId,
+          // rental_period, rental_duration, attachment_cost will be set/updated by recalculateEquipmentCosts
+          subsidiaries: []
+        };
+
+        return {
+          ...eq,
+          attachments: [...existingAttachments, newAttachment]
+        };
+      });
+      return { ...prev, selected_equipment: newSelectedEquipment };
+    });
+
+    // Defer recalculation to ensure setProject has updated the state
+    setTimeout(() => recalculateEquipmentCosts(currentEquipmentIndex), 0);
+  };
+
+  const removeAttachmentFromEquipment = (equipmentIndex, attachmentIndex) => {
+    setProject(prev => {
+      const newSelectedEquipment = prev.selected_equipment.map((eq, idx) => {
+        if (idx !== equipmentIndex) return eq;
+        return {
+          ...eq,
+          attachments: (eq.attachments || []).filter((_, aIdx) => aIdx !== attachmentIndex)
+        };
+      });
+      return { ...prev, selected_equipment: newSelectedEquipment };
+    });
+    setTimeout(() => recalculateEquipmentCosts(equipmentIndex), 0);
+  };
+
+  const addSubsidiaryToAttachment = (equipmentIndex, attachmentIndex, subsidiaryId) => {
+    const subsidiary = allAttachments.find(a => a.id === subsidiaryId);
+    if (!subsidiary) return;
+
+    setProject(prev => {
+      const newSelectedEquipment = prev.selected_equipment.map((eq, eIdx) => {
+        if (eIdx !== equipmentIndex) return eq;
+        return {
+          ...eq,
+          attachments: (eq.attachments || []).map((att, aIdx) => {
+            if (aIdx !== attachmentIndex) return att;
+            const existingSubs = att.subsidiaries || [];
+            // Prevent adding duplicate subsidiaries
+            if (existingSubs.some(s => s.subsidiary_id === subsidiaryId)) {
+              return att;
+            }
+            return {
+              ...att,
+              subsidiaries: [...existingSubs, {
+                subsidiary_id: subsidiaryId,
+                // rental_period, rental_duration, subsidiary_cost will be set/updated by recalculateEquipmentCosts
+              }]
+            };
+          })
+        };
+      });
+      return { ...prev, selected_equipment: newSelectedEquipment };
+    });
+    setTimeout(() => recalculateEquipmentCosts(equipmentIndex), 0);
+  };
+
+  const removeSubsidiary = (equipmentIndex, attachmentIndex, subsidiaryIndex) => {
+    setProject(prev => {
+      const newSelectedEquipment = prev.selected_equipment.map((eq, eIdx) => {
+        if (eIdx !== equipmentIndex) return eq;
+        return {
+          ...eq,
+          attachments: (eq.attachments || []).map((att, aIdx) => {
+            if (aIdx !== attachmentIndex) return att;
+            return {
+              ...att,
+              subsidiaries: (att.subsidiaries || []).filter((_, sIdx) => sIdx !== subsidiaryIndex)
+            };
+          })
+        };
+      });
+      return { ...prev, selected_equipment: newSelectedEquipment };
+    });
+    setTimeout(() => recalculateEquipmentCosts(equipmentIndex), 0);
+  };
+
   const addEquipment = () => {
     setProject(prev => ({
       ...prev,
@@ -249,7 +440,8 @@ export default function NewFoundationEstimate() {
           rental_period: 'day',
           rental_duration: 1,
           include_delivery: true,
-          equipment_cost: 0
+          equipment_cost: 0,
+          attachments: [] // New: initialize attachments array for manually added equipment
         }
       ]
     }));
@@ -263,35 +455,41 @@ export default function NewFoundationEstimate() {
   };
 
   const updateEquipmentItem = (index, field, value) => {
-    setProject(prev => ({
-      ...prev,
-      selected_equipment: prev.selected_equipment.map((eq, i) => {
+    setProject(prev => {
+      const newSelectedEquipment = prev.selected_equipment.map((eq, i) => {
         if (i !== index) return eq;
-        const updated = { ...eq, [field]: value };
+        let updated = { ...eq, [field]: value };
         
-        // Calculate cost when equipment or duration changes
-        if (field === 'equipment_id' || field === 'rental_period' || field === 'rental_duration' || field === 'include_delivery') {
-          const selectedEquip = equipment.find(e => e.id === updated.equipment_id);
-          if (selectedEquip) {
-            let rentalCost = 0;
-            if (updated.rental_period === 'day') {
-              rentalCost = (selectedEquip.cost_per_day || 0) * updated.rental_duration;
-            } else if (updated.rental_period === 'week') {
-              rentalCost = (selectedEquip.cost_per_week || 0) * updated.rental_duration;
-            } else if (updated.rental_period === 'month') {
-              rentalCost = (selectedEquip.cost_per_month || 0) * updated.rental_duration;
-            }
-            
-            const deliveryCost = updated.include_delivery ? (selectedEquip.pickup_delivery_cost || 0) : 0;
-            updated.equipment_cost = rentalCost + deliveryCost;
+        // Clear attachments if equipment_id changes as compatibility might change
+        if (field === 'equipment_id') {
+          updated.attachments = [];
+        }
+
+        // Calculate base equipment cost (without attachments for now)
+        const selectedEquip = equipment.find(e => e.id === updated.equipment_id);
+        if (selectedEquip) {
+          let rentalCost = 0;
+          if (updated.rental_period === 'day') {
+            rentalCost = (selectedEquip.cost_per_day || 0) * updated.rental_duration;
+          } else if (updated.rental_period === 'week') {
+            rentalCost = (selectedEquip.cost_per_week || 0) * updated.rental_duration;
+          } else if (updated.rental_period === 'month') {
+            rentalCost = (selectedEquip.cost_per_month || 0) * updated.rental_duration;
           }
-          // The else branch `updated.equipment_cost = 0;` is removed as per instructions,
-          // it will naturally be 0 if selectedEquip is not found or costs are 0.
+          const deliveryCost = updated.include_delivery ? (selectedEquip.pickup_delivery_cost || 0) : 0;
+          updated.equipment_cost = rentalCost + deliveryCost; // This is the base cost only
+        } else {
+          updated.equipment_cost = 0;
         }
         
         return updated;
-      })
-    }));
+      });
+      return { ...prev, selected_equipment: newSelectedEquipment };
+    });
+    
+    // Recalculate full cost including attachments after state has been updated
+    // This timeout is crucial to read the latest state from the previous setProject call
+    setTimeout(() => recalculateEquipmentCosts(index), 0);
   };
 
   const handleConcreteSelection = (concreteId) => {
@@ -445,8 +643,6 @@ export default function NewFoundationEstimate() {
         total_equipment_cost: calculated.total_equipment_cost
       }));
     }
-    // Removed the else if block that cleared totals, as they will naturally be 0
-    // if there are no items or selected equipment, based on calculateTotals() logic.
   }, [calculateTotals, isLoading, project.items.length, project.selected_equipment?.length]);
 
   const saveProject = async () => {
@@ -455,7 +651,7 @@ export default function NewFoundationEstimate() {
       return;
     }
 
-    if (project.items.length === 0) { // Removed the condition for selected_equipment
+    if (project.items.length === 0) {
       alert('Please add at least one foundation item');
       return;
     }
@@ -739,11 +935,10 @@ export default function NewFoundationEstimate() {
                         <>
                           <div className="flex items-center justify-between py-2">
                             <Label htmlFor={`rebar-${index}`} className="text-xs font-medium">Include Rebar</Label>
-                            <input
+                            <Checkbox
                               id={`rebar-${index}`}
-                              type="checkbox"
                               checked={item.include_rebar || false}
-                              onChange={(e) => updateItem(index, 'include_rebar', e.target.checked)}
+                              onCheckedChange={(checked) => updateItem(index, 'include_rebar', checked)}
                               className="w-4 h-4 text-blue-600"
                             />
                           </div>
@@ -853,10 +1048,10 @@ export default function NewFoundationEstimate() {
             <Card className="bg-white border-0 shadow-sm">
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-base font-semibold">Equipment</CardTitle>
+                  <CardTitle className="text-base font-semibold">Equipment & Attachments</CardTitle>
                   <Button onClick={addEquipment} size="sm" className="bg-orange-600 hover:bg-orange-700 h-8 text-xs">
                     <Plus className="w-3 h-3 mr-1" />
-                    Add
+                    Add Equipment
                   </Button>
                 </div>
               </CardHeader>
@@ -920,19 +1115,88 @@ export default function NewFoundationEstimate() {
                           </div>
                           
                           <div className="col-span-2 flex items-center gap-2 text-xs">
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={eq.include_delivery}
-                              onChange={(e) => updateEquipmentItem(index, 'include_delivery', e.target.checked)}
+                              onCheckedChange={(checked) => updateEquipmentItem(index, 'include_delivery', checked)}
                               className="w-3 h-3 text-orange-600"
                             />
-                            <Label className="text-xs">Delivery {selectedEquip && `(${(selectedEquip.pickup_delivery_cost || 0).toFixed(2)})`}</Label>
+                            <Label className="text-xs">Delivery {selectedEquip && `($${(selectedEquip.pickup_delivery_cost || 0).toFixed(2)})`}</Label>
                           </div>
+
+                          {/* Attachments Section */}
+                          {selectedEquip && (
+                            <div className="col-span-2 mt-2 p-2 bg-purple-50 rounded border border-purple-200">
+                              <div className="flex justify-between items-center mb-2">
+                                <Label className="text-xs font-semibold text-purple-800">Attachments</Label>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => openAttachmentModal(index)}
+                                  className="bg-purple-600 hover:bg-purple-700 h-6 text-xs"
+                                >
+                                  <Plus className="w-3 h-3 mr-1" />
+                                  Add
+                                </Button>
+                              </div>
+                              
+                              {(eq.attachments || []).length === 0 ? (
+                                <p className="text-xs text-purple-600 text-center py-2">No attachments selected</p>
+                              ) : (
+                                <div className="space-y-1">
+                                  {(eq.attachments || []).map((att, attIdx) => {
+                                    const attachment = allAttachments.find(a => a.id === att.attachment_id);
+                                    return (
+                                      <div key={attIdx} className="bg-white p-2 rounded border border-purple-300">
+                                        <div className="flex justify-between items-start">
+                                          <div className="flex-1">
+                                            <p className="text-xs font-medium">{attachment?.material_name}</p>
+                                            <p className="text-xs text-purple-600">${(att.attachment_cost || 0).toFixed(2)}</p>
+                                          </div>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => removeAttachmentFromEquipment(index, attIdx)}
+                                            className="h-5 w-5 text-red-500"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </Button>
+                                        </div>
+                                        
+                                        {/* Subsidiaries */}
+                                        {(att.subsidiaries || []).length > 0 && (
+                                          <div className="mt-1 ml-2 pl-2 border-l-2 border-purple-200">
+                                            {att.subsidiaries.map((sub, subIdx) => {
+                                              const subsidiary = allAttachments.find(a => a.id === sub.subsidiary_id);
+                                              return (
+                                                <div key={subIdx} className="flex justify-between items-center py-1">
+                                                  <p className="text-xs text-slate-600">└ {subsidiary?.material_name} (${(sub.subsidiary_cost || 0).toFixed(2)})</p>
+                                                  <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => removeSubsidiary(index, attIdx, subIdx)}
+                                                    className="h-4 w-4 text-red-500"
+                                                  >
+                                                    <X className="w-2 h-2" />
+                                                  </Button>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
                           
                           {selectedEquip && (
                             <div className="col-span-2 p-2 bg-white rounded border border-orange-300 text-xs">
                               <div className="flex justify-between font-semibold">
-                                <span>Cost:</span>
+                                <span>Total Cost:</span>
                                 <span className="text-orange-700">${(eq.equipment_cost || 0).toFixed(2)}</span>
                               </div>
                             </div>
@@ -1000,6 +1264,111 @@ export default function NewFoundationEstimate() {
           </div>
         </div>
       </div>
+
+      {/* Attachment Selection Modal */}
+      {showAttachmentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="bg-white w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <CardHeader className="border-b">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-lg">Select Attachments</CardTitle>
+                <Button variant="ghost" size="icon" onClick={() => setShowAttachmentModal(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {availableAttachments.length === 0 ? (
+                <p className="text-center py-8 text-slate-500">No compatible attachments available</p>
+              ) : (
+                <div className="space-y-2">
+                  {availableAttachments.map(att => {
+                    const subsidiaries = allAttachments.filter(a => a.parent_attachment_id === att.id);
+                    // Check if this attachment is already added to the current equipment
+                    const isAttachmentAdded = project.selected_equipment[currentEquipmentIndex]?.attachments?.some(a => a.attachment_id === att.id);
+                    
+                    return (
+                      <div key={att.id} className="p-3 border rounded-lg hover:bg-slate-50">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h4 className="font-medium">{att.material_name}</h4>
+                            <p className="text-xs text-slate-600">
+                              Day: ${(att.cost_per_day || 0).toFixed(2)} | 
+                              Week: ${(att.cost_per_week || 0).toFixed(2)} | 
+                              Month: ${(att.cost_per_month || 0).toFixed(2)}
+                            </p>
+                            {att.compatible_equipment && att.compatible_equipment.length > 0 && (
+                              <p className="text-xs text-purple-600 mt-1">
+                                Compatible: {att.compatible_equipment.map(e => e.replace(/_/g, ' ')).join(', ')}
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => addAttachmentToEquipment(att.id)}
+                            className="bg-purple-600 hover:bg-purple-700"
+                            disabled={isAttachmentAdded}
+                          >
+                            {isAttachmentAdded ? 'Added' : 'Add'}
+                          </Button>
+                        </div>
+                        
+                        {subsidiaries.length > 0 && (
+                          <div className="ml-4 pl-3 border-l-2 border-purple-200 mt-2 space-y-1">
+                            {subsidiaries.map(sub => {
+                              // Check if this subsidiary is already added to the current attachment
+                              const currentEquipment = project.selected_equipment[currentEquipmentIndex];
+                              const currentAttachment = currentEquipment?.attachments?.find(a => a.attachment_id === att.id);
+                              const isSubsidiaryAdded = currentAttachment?.subsidiaries?.some(s => s.subsidiary_id === sub.id);
+
+                              return (
+                                <div key={sub.id} className="flex justify-between items-center py-1">
+                                  <div>
+                                    <p className="text-sm">└ {sub.material_name}</p>
+                                    <p className="text-xs text-slate-500">
+                                      Day: ${(sub.cost_per_day || 0).toFixed(2)}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      // Add parent first if not already added
+                                      const currentEq = project.selected_equipment[currentEquipmentIndex];
+                                      const hasParent = (currentEq.attachments || []).some(a => a.attachment_id === att.id);
+                                      if (!hasParent) {
+                                        addAttachmentToEquipment(att.id);
+                                      }
+                                      // Then add subsidiary.
+                                      // Use a timeout to ensure state update from addAttachmentToEquipment has propagated.
+                                      // In a real app, you might chain promises or use useEffect for more reliability.
+                                      setTimeout(() => {
+                                        const updatedEq = project.selected_equipment[currentEquipmentIndex]; // Re-fetch current equipment after potential state update
+                                        const parentIdx = (updatedEq.attachments || []).findIndex(a => a.attachment_id === att.id);
+                                        if (parentIdx !== -1) {
+                                          addSubsidiaryToAttachment(currentEquipmentIndex, parentIdx, sub.id);
+                                        }
+                                      }, 100); // 100ms delay to allow state update
+                                    }}
+                                    className="text-xs"
+                                    disabled={isSubsidiaryAdded}
+                                  >
+                                    {isSubsidiaryAdded ? 'Added' : 'Add Sub'}
+                                  </Button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
