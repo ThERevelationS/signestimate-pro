@@ -12,14 +12,17 @@ export default function FoundationInventoryPage() {
   const [inventory, setInventory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState('material'); // 'material' or 'equipment'
+  const [modalType, setModalType] = useState('material');
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({
     material_name: "",
     material_type: "concrete_service",
     equipment_type: "N/A",
+    supplier: "",
+    rental_company: "",
     unit: "cubic yard",
     cost_per_unit: 0,
+    minimum_cost: 0,
     cost_per_day: 0,
     cost_per_week: 0,
     cost_per_month: 0,
@@ -46,7 +49,6 @@ export default function FoundationInventoryPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Ensure unit is always set correctly
       const dataToSave = { ...formData };
       if (dataToSave.material_type === 'concrete_service' || dataToSave.material_type === 'bagged_concrete') {
         dataToSave.unit = "cubic yard";
@@ -74,8 +76,11 @@ export default function FoundationInventoryPage() {
       material_name: item.material_name,
       material_type: item.material_type,
       equipment_type: item.equipment_type || "N/A",
+      supplier: item.supplier || "",
+      rental_company: item.rental_company || "",
       unit: item.unit || "cubic yard",
       cost_per_unit: item.cost_per_unit || 0,
+      minimum_cost: item.minimum_cost || 0,
       cost_per_day: item.cost_per_day || 0,
       cost_per_week: item.cost_per_week || 0,
       cost_per_month: item.cost_per_month || 0,
@@ -103,8 +108,11 @@ export default function FoundationInventoryPage() {
       material_name: "",
       material_type: "concrete_service",
       equipment_type: "N/A",
+      supplier: "",
+      rental_company: "",
       unit: "cubic yard",
       cost_per_unit: 0,
+      minimum_cost: 0,
       cost_per_day: 0,
       cost_per_week: 0,
       cost_per_month: 0,
@@ -122,8 +130,11 @@ export default function FoundationInventoryPage() {
       material_name: "",
       material_type: "excavation_equipment",
       equipment_type: "skid_steer",
+      supplier: "",
+      rental_company: "",
       unit: "",
       cost_per_unit: 0,
+      minimum_cost: 0,
       cost_per_day: 0,
       cost_per_week: 0,
       cost_per_month: 0,
@@ -140,8 +151,11 @@ export default function FoundationInventoryPage() {
       material_name: "",
       material_type: "concrete_service",
       equipment_type: "N/A",
+      supplier: "",
+      rental_company: "",
       unit: "cubic yard",
       cost_per_unit: 0,
+      minimum_cost: 0,
       cost_per_day: 0,
       cost_per_week: 0,
       cost_per_month: 0,
@@ -155,8 +169,8 @@ export default function FoundationInventoryPage() {
   };
 
   const isEquipment = modalType === 'equipment';
+  const isConcrete = formData.material_type === 'concrete_service' || formData.material_type === 'bagged_concrete';
 
-  // Separate concrete and equipment items
   const concreteItems = inventory.filter(item => 
     item.material_type === 'concrete_service' || 
     item.material_type === 'bagged_concrete' ||
@@ -195,6 +209,7 @@ export default function FoundationInventoryPage() {
                 <tr>
                   <th className="text-left p-3 font-semibold text-slate-700">Name</th>
                   <th className="text-left p-3 font-semibold text-slate-700">Type</th>
+                  <th className="text-left p-3 font-semibold text-slate-700">Supplier/Company</th>
                   <th className="text-left p-3 font-semibold text-slate-700">Details</th>
                   <th className="text-right p-3 font-semibold text-slate-700">Pricing</th>
                   <th className="text-right p-3 font-semibold text-slate-700">Actions</th>
@@ -206,6 +221,11 @@ export default function FoundationInventoryPage() {
                     <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-25">
                       <td className="p-3">{item.material_name}</td>
                       <td className="p-3 capitalize">{item.material_type.replace(/_/g, ' ')}</td>
+                      <td className="p-3 text-sm text-slate-600">
+                        {item.material_type === 'excavation_equipment' 
+                          ? (item.rental_company || '-')
+                          : (item.supplier || '-')}
+                      </td>
                       <td className="p-3">
                         {item.material_type === 'excavation_equipment' ? (
                           <span className="text-sm">
@@ -215,7 +235,10 @@ export default function FoundationInventoryPage() {
                         ) : item.material_type === 'rebar' ? (
                           <span className="text-sm">{item.rebar_size || 'N/A'}</span>
                         ) : (
-                          <span className="text-sm">{item.unit || 'N/A'}</span>
+                          <span className="text-sm">
+                            {item.unit || 'N/A'}
+                            {item.minimum_cost > 0 && ` • Min: $${item.minimum_cost.toFixed(2)}`}
+                          </span>
                         )}
                       </td>
                       <td className="p-3 text-right">
@@ -340,6 +363,17 @@ export default function FoundationInventoryPage() {
                         </Select>
                       </div>
 
+                      <div>
+                        <Label htmlFor="supplier">Supplier</Label>
+                        <Input
+                          id="supplier"
+                          value={formData.supplier}
+                          onChange={(e) => setFormData(prev => ({ ...prev, supplier: e.target.value }))}
+                          placeholder="e.g., Ernst Concrete, Home Depot"
+                          className="mt-1"
+                        />
+                      </div>
+
                       {formData.material_type === 'rebar' && (
                         <div>
                           <Label htmlFor="rebar_size">Rebar Size</Label>
@@ -356,6 +390,8 @@ export default function FoundationInventoryPage() {
                               <SelectItem value="#4">#4 (1/2")</SelectItem>
                               <SelectItem value="#5">#5 (5/8")</SelectItem>
                               <SelectItem value="#6">#6 (3/4")</SelectItem>
+                              <SelectItem value="#7">#7 (7/8")</SelectItem>
+                              <SelectItem value="#8">#8 (1")</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -381,6 +417,24 @@ export default function FoundationInventoryPage() {
                             : 'Price per cubic yard of concrete'}
                         </p>
                       </div>
+
+                      {isConcrete && (
+                        <div>
+                          <Label htmlFor="minimum_cost">Minimum Order Cost</Label>
+                          <Input
+                            id="minimum_cost"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.minimum_cost}
+                            onChange={(e) => setFormData(prev => ({ ...prev, minimum_cost: parseFloat(e.target.value) || 0 }))}
+                            className="mt-1"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">
+                            Minimum charge for concrete orders (e.g., delivery minimum)
+                          </p>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <>
@@ -401,6 +455,17 @@ export default function FoundationInventoryPage() {
                             <SelectItem value="other">Other</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="rental_company">Rental Company</Label>
+                        <Input
+                          id="rental_company"
+                          value={formData.rental_company}
+                          onChange={(e) => setFormData(prev => ({ ...prev, rental_company: e.target.value }))}
+                          placeholder="e.g., Sunbelt Rentals, United Rentals"
+                          className="mt-1"
+                        />
                       </div>
 
                       <div className="grid md:grid-cols-3 gap-4">
