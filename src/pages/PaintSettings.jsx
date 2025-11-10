@@ -6,15 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, DollarSign, Clock, Paintbrush, Calculator, TrendingDown, Plus, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Save, DollarSign, Clock, Paintbrush, Calculator, TrendingDown, Plus, Trash2, Square, Shapes, Type } from "lucide-react";
 import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
 
 const unitFactors = {
-  oz: 1 / 128,    // 1 oz is 1/128 of a gallon
-  pint: 1 / 8,    // 1 pint is 1/8 of a gallon
-  quart: 1 / 4,   // 1 quart is 1/4 of a gallon
-  liter: 1 / 3.78541, // 1 liter is 1/3.78541 of a gallon
-  gallon: 1,      // 1 gallon is 1 gallon
+  oz: 1 / 128,
+  pint: 1 / 8,
+  quart: 1 / 4,
+  liter: 1 / 3.78541,
+  gallon: 1,
 };
 
 const unitOptions = [
@@ -84,8 +85,22 @@ export default function PaintSettings() {
   const [currentUser, setCurrentUser] = useState(null);
   const [liquidPaintRate, setLiquidPaintRate] = useState(0);
   
-  // Quantity-based labor discount tiers
-  const [quantityTiers, setQuantityTiers] = useState([
+  // Separate quantity tiers for each item type
+  const [panelTiers, setPanelTiers] = useState([
+    { min_quantity: 1, max_quantity: 5, labor_multiplier: 1.0 },
+    { min_quantity: 6, max_quantity: 10, labor_multiplier: 0.95 },
+    { min_quantity: 11, max_quantity: 20, labor_multiplier: 0.90 },
+    { min_quantity: 21, max_quantity: 999, labor_multiplier: 0.85 }
+  ]);
+  
+  const [complexShapesTiers, setComplexShapesTiers] = useState([
+    { min_quantity: 1, max_quantity: 5, labor_multiplier: 1.0 },
+    { min_quantity: 6, max_quantity: 10, labor_multiplier: 0.95 },
+    { min_quantity: 11, max_quantity: 20, labor_multiplier: 0.90 },
+    { min_quantity: 21, max_quantity: 999, labor_multiplier: 0.85 }
+  ]);
+  
+  const [letteringTiers, setLetteringTiers] = useState([
     { min_quantity: 1, max_quantity: 5, labor_multiplier: 1.0 },
     { min_quantity: 6, max_quantity: 10, labor_multiplier: 0.95 },
     { min_quantity: 11, max_quantity: 20, labor_multiplier: 0.90 },
@@ -113,22 +128,56 @@ export default function PaintSettings() {
       
       setSettings(finalSettings);
       
-      // Load quantity tiers from settings
-      if (settingsMap.quantity_labor_tiers) {
+      // Load separate quantity tiers for each item type
+      if (settingsMap.panel_labor_tiers) {
         try {
-          const parsedTiers = JSON.parse(settingsMap.quantity_labor_tiers);
+          const parsedTiers = JSON.parse(settingsMap.panel_labor_tiers);
           // Ensure tiers have valid structure before setting
           if (Array.isArray(parsedTiers) && parsedTiers.every(t => 
             typeof t.min_quantity === 'number' && 
             typeof t.max_quantity === 'number' && 
             typeof t.labor_multiplier === 'number'
           )) {
-            setQuantityTiers(parsedTiers);
+            setPanelTiers(parsedTiers);
           } else {
-            console.warn('Invalid structure for quantity_labor_tiers, using default.');
+            console.warn('Invalid structure for panel_labor_tiers, using default.');
           }
         } catch (e) {
-          console.error('Error parsing quantity tiers from database, using default:', e);
+          console.error('Error parsing panel tiers from database, using default:', e);
+        }
+      }
+      
+      if (settingsMap.complex_shapes_labor_tiers) {
+        try {
+          const parsedTiers = JSON.parse(settingsMap.complex_shapes_labor_tiers);
+          if (Array.isArray(parsedTiers) && parsedTiers.every(t => 
+            typeof t.min_quantity === 'number' && 
+            typeof t.max_quantity === 'number' && 
+            typeof t.labor_multiplier === 'number'
+          )) {
+            setComplexShapesTiers(parsedTiers);
+          } else {
+            console.warn('Invalid structure for complex_shapes_labor_tiers, using default.');
+          }
+        } catch (e) {
+          console.error('Error parsing complex shapes tiers from database, using default:', e);
+        }
+      }
+      
+      if (settingsMap.lettering_labor_tiers) {
+        try {
+          const parsedTiers = JSON.parse(settingsMap.lettering_labor_tiers);
+          if (Array.isArray(parsedTiers) && parsedTiers.every(t => 
+            typeof t.min_quantity === 'number' && 
+            typeof t.max_quantity === 'number' && 
+            typeof t.labor_multiplier === 'number'
+          )) {
+            setLetteringTiers(parsedTiers);
+          } else {
+            console.warn('Invalid structure for lettering_labor_tiers, using default.');
+          }
+        } catch (e) {
+          console.error('Error parsing lettering tiers from database, using default:', e);
         }
       }
     } catch (error) {
@@ -219,22 +268,55 @@ export default function PaintSettings() {
         }
       }
       
-      // Save quantity tiers
-      const tiersData = {
-        setting_name: 'quantity_labor_tiers',
-        setting_value: JSON.stringify(quantityTiers), // Serialize to JSON string
-        setting_type: 'text', // Use 'json' if the backend supports a specific JSON type, otherwise 'text'
+      // Save panel tiers
+      const panelTiersData = {
+        setting_name: 'panel_labor_tiers',
+        setting_value: JSON.stringify(panelTiers),
+        setting_type: 'text',
         category: 'painting_labor',
-        description: 'Quantity-based labor discount tiers'
+        description: 'Panel quantity-based labor discount tiers'
       };
-      
-      const existingTiers = existingSettingsMap.get('quantity_labor_tiers');
-      if (existingTiers) {
-        if (existingTiers.setting_value !== tiersData.setting_value) {
-            updates.push(SettingsEntity.update(existingTiers.id, tiersData));
+      const existingPanelTiers = existingSettingsMap.get('panel_labor_tiers');
+      if (existingPanelTiers) {
+        if (existingPanelTiers.setting_value !== panelTiersData.setting_value) {
+          updates.push(SettingsEntity.update(existingPanelTiers.id, panelTiersData));
         }
       } else {
-        creates.push(SettingsEntity.create(tiersData));
+        creates.push(SettingsEntity.create(panelTiersData));
+      }
+      
+      // Save complex shapes tiers
+      const complexShapesTiersData = {
+        setting_name: 'complex_shapes_labor_tiers',
+        setting_value: JSON.stringify(complexShapesTiers),
+        setting_type: 'text',
+        category: 'painting_labor',
+        description: 'Complex shapes quantity-based labor discount tiers'
+      };
+      const existingComplexShapesTiers = existingSettingsMap.get('complex_shapes_labor_tiers');
+      if (existingComplexShapesTiers) {
+        if (existingComplexShapesTiers.setting_value !== complexShapesTiersData.setting_value) {
+          updates.push(SettingsEntity.update(existingComplexShapesTiers.id, complexShapesTiersData));
+        }
+      } else {
+        creates.push(SettingsEntity.create(complexShapesTiersData));
+      }
+      
+      // Save lettering tiers
+      const letteringTiersData = {
+        setting_name: 'lettering_labor_tiers',
+        setting_value: JSON.stringify(letteringTiers),
+        setting_type: 'text',
+        category: 'painting_labor',
+        description: 'Lettering quantity-based labor discount tiers'
+      };
+      const existingLetteringTiers = existingSettingsMap.get('lettering_labor_tiers');
+      if (existingLetteringTiers) {
+        if (existingLetteringTiers.setting_value !== letteringTiersData.setting_value) {
+          updates.push(SettingsEntity.update(existingLetteringTiers.id, letteringTiersData));
+        }
+      } else {
+        creates.push(SettingsEntity.create(letteringTiersData));
       }
 
       if (updates.length > 0 || creates.length > 0) {
@@ -256,41 +338,27 @@ export default function PaintSettings() {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
   
-  const addTier = () => {
-    const lastTier = quantityTiers.length > 0 ? quantityTiers[quantityTiers.length - 1] : null;
-    let newMin = 1;
-    if (lastTier && lastTier.max_quantity) {
-      newMin = Math.max(1, Math.round(lastTier.max_quantity + 1));
-    }
-    // Default multiplier is typically lower than the last or 1.0 if first
-    const newMultiplier = lastTier ? Math.max(0.05, lastTier.labor_multiplier - 0.05) : 1.0; 
-
-    setQuantityTiers(prev => [...prev, {
+  // Generic tier management functions
+  const addTier = (tiers, setTiers) => {
+    const lastTier = tiers.length > 0 ? tiers[tiers.length - 1] : null;
+    const newMin = lastTier ? lastTier.max_quantity + 1 : 1;
+    setTiers(prev => [...prev, {
       min_quantity: newMin,
-      max_quantity: newMin + 5, // Default range
-      labor_multiplier: parseFloat(newMultiplier.toFixed(2)) // Ensure float and reasonable precision
+      max_quantity: newMin + 5,
+      labor_multiplier: 0.85
     }]);
   };
   
-  const removeTier = (index) => {
-    if (quantityTiers.length > 1) { // Ensure at least one tier remains
-      setQuantityTiers(prev => prev.filter((_, i) => i !== index));
+  const removeTier = (tiers, setTiers, index) => {
+    if (tiers.length > 1) {
+      setTiers(prev => prev.filter((_, i) => i !== index));
     }
   };
   
-  const updateTier = (index, field, value) => {
-    setQuantityTiers(prev => prev.map((tier, i) => {
+  const updateTier = (tiers, setTiers, index, field, value) => {
+    setTiers(prev => prev.map((tier, i) => {
       if (i !== index) return tier;
-      let parsedValue = parseFloat(value);
-      if (isNaN(parsedValue)) parsedValue = 0; // Default to 0 if not a valid number
-
-      if (field === 'labor_multiplier') {
-        parsedValue = Math.max(0, Math.min(1, parsedValue)); // Ensure between 0 and 1
-      } else if (field === 'min_quantity' || field === 'max_quantity') {
-        parsedValue = Math.max(1, Math.round(parsedValue)); // Ensure integer >= 1
-      }
-      
-      return { ...tier, [field]: parsedValue };
+      return { ...tier, [field]: parseFloat(value) || 0 };
     }));
   };
 
@@ -386,13 +454,94 @@ export default function PaintSettings() {
     );
   };
   
+  const renderTiersList = (tiers, setTiers, itemType, icon, color) => {
+    const Icon = icon;
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 mb-3">
+          <Icon className={`w-5 h-5 ${color}`} />
+          <h4 className="font-medium text-slate-800">{itemType} Items</h4>
+        </div>
+        {tiers.map((tier, index) => (
+          <div key={index} className="flex items-end gap-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
+            <div className="flex-1 grid grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs">Min Qty</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={tier.min_quantity}
+                  onChange={(e) => updateTier(tiers, setTiers, index, 'min_quantity', e.target.value)}
+                  disabled={isLocked}
+                  className="mt-1 h-9"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Max Qty</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={tier.max_quantity}
+                  onChange={(e) => updateTier(tiers, setTiers, index, 'max_quantity', e.target.value)}
+                  disabled={isLocked}
+                  className="mt-1 h-9"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Labor Multiplier</Label>
+                <Input
+                  type="number"
+                  step="0.05"
+                  min="0"
+                  max="1"
+                  value={tier.labor_multiplier}
+                  onChange={(e) => updateTier(tiers, setTiers, index, 'labor_multiplier', e.target.value)}
+                  disabled={isLocked}
+                  className="mt-1 h-9"
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <div className="text-xs font-medium text-amber-900 whitespace-nowrap">
+                {tier.min_quantity}-{tier.max_quantity} items
+              </div>
+              <div className="text-xs text-amber-600">
+                {((1 - tier.labor_multiplier) * 100).toFixed(0)}% off labor
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => removeTier(tiers, setTiers, index)}
+              disabled={isLocked || tiers.length === 1}
+              className="text-red-500 hover:text-red-700 hover:bg-red-50 h-9 w-9"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        ))}
+        
+        <Button
+          onClick={() => addTier(tiers, setTiers)}
+          disabled={isLocked}
+          variant="outline"
+          size="sm"
+          className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add Tier
+        </Button>
+      </div>
+    );
+  };
+  
   const managementContent = (
     <div className="space-y-8">
       {renderCategory("Pricing & Minimums", "painting_pricing", DollarSign)}
       {renderCategory("Supplies & Materials", "painting_supplies", Paintbrush)}
       {renderCategory("Labor & Complexity", "painting_labor", Clock)}
 
-      {/* Quantity-Based Labor Discounts */}
+      {/* Quantity-Based Labor Discounts - Tabbed by Item Type */}
       <Card className="bg-white border-0 shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-lg font-semibold text-amber-900">
@@ -401,89 +550,46 @@ export default function PaintSettings() {
           </CardTitle>
           <CardDescription>
             Reduce labor costs as quantity increases. Labor becomes more efficient with repetition.
-            These multipliers only apply to labor costs - materials remain at full price.
+            Configure separate discount curves for each item type. Materials remain at full price.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            {quantityTiers.map((tier, index) => (
-              <div key={index} className="flex items-end gap-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
-                <div className="flex-1 grid grid-cols-3 gap-3">
-                  <div>
-                    <Label className="text-xs">Min Qty</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={tier.min_quantity}
-                      onChange={(e) => updateTier(index, 'min_quantity', e.target.value)}
-                      disabled={isLocked}
-                      className="mt-1 h-9"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Max Qty</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={tier.max_quantity}
-                      onChange={(e) => updateTier(index, 'max_quantity', e.target.value)}
-                      disabled={isLocked}
-                      className="mt-1 h-9"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Labor Multiplier</Label>
-                    <Input
-                      type="number"
-                      step="0.05"
-                      min="0"
-                      max="1"
-                      value={tier.labor_multiplier}
-                      onChange={(e) => updateTier(index, 'labor_multiplier', e.target.value)}
-                      disabled={isLocked}
-                      className="mt-1 h-9"
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <div className="text-xs font-medium text-amber-900 whitespace-nowrap">
-                    {tier.min_quantity}-{tier.max_quantity} items
-                  </div>
-                  <div className="text-xs text-amber-600">
-                    {((1 - tier.labor_multiplier) * 100).toFixed(0)}% off labor
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeTier(index)}
-                  disabled={isLocked || quantityTiers.length === 1}
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50 h-9 w-9"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
+        <CardContent>
+          <Tabs defaultValue="panel" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsTrigger value="panel" className="flex items-center gap-2">
+                <Square className="w-4 h-4" />
+                Panels
+              </TabsTrigger>
+              <TabsTrigger value="complex_shapes" className="flex items-center gap-2">
+                <Shapes className="w-4 h-4" />
+                Complex Shapes
+              </TabsTrigger>
+              <TabsTrigger value="lettering" className="flex items-center gap-2">
+                <Type className="w-4 h-4" />
+                Lettering
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="panel" className="space-y-4">
+              {renderTiersList(panelTiers, setPanelTiers, "Panel", Square, "text-blue-600")}
+            </TabsContent>
+            
+            <TabsContent value="complex_shapes" className="space-y-4">
+              {renderTiersList(complexShapesTiers, setComplexShapesTiers, "Complex Shapes", Shapes, "text-purple-600")}
+            </TabsContent>
+            
+            <TabsContent value="lettering" className="space-y-4">
+              {renderTiersList(letteringTiers, setLetteringTiers, "Lettering", Type, "text-green-600")}
+            </TabsContent>
+          </Tabs>
           
-          <Button
-            onClick={addTier}
-            disabled={isLocked}
-            variant="outline"
-            size="sm"
-            className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Tier
-          </Button>
-          
-          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <h4 className="font-medium text-blue-900 mb-2 text-sm">Example:</h4>
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 mt-4">
+            <h4 className="font-medium text-blue-900 mb-2 text-sm">How It Works:</h4>
             <ul className="text-xs text-blue-700 space-y-1">
-              <li>• 1-5 items: Full labor cost (1.0x multiplier)</li>
-              <li>• 6-10 items: 5% discount on labor (0.95x multiplier)</li>
-              <li>• 11-20 items: 10% discount on labor (0.90x multiplier)</li>
-              <li>• 21+ items: 15% discount on labor (0.85x multiplier)</li>
+              <li>• Different item types can have different discount curves</li>
+              <li>• Panels might scale differently than complex shapes or lettering</li>
+              <li>• Example: 10 panels at 0.90x vs 10 letters at 0.85x multiplier</li>
+              <li>• Multipliers only affect labor - materials stay full price</li>
             </ul>
           </div>
         </CardContent>
