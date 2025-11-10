@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { ModuleStatus, User } from '@/entities/all';
 import {
@@ -29,6 +29,7 @@ import {
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
   const [moduleStatuses, setModuleStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(true);
@@ -167,6 +168,12 @@ export default function Layout({ children, currentPageName }) {
     }
   ];
 
+  const handleNavigation = (e, pageName) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(createPageUrl(pageName));
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
@@ -212,36 +219,36 @@ export default function Layout({ children, currentPageName }) {
                       
                       {isEnabled ? (
                         <div 
-                          className="grid grid-cols-1 gap-1 overflow-hidden transition-all duration-300 ease-in-out"
+                          className="grid grid-cols-1 gap-1 transition-all duration-300 ease-in-out"
                           style={{
                             maxHeight: isExpanded ? '400px' : '0px',
                             opacity: isExpanded ? 1 : 0,
-                            pointerEvents: isExpanded ? 'auto' : 'none'
+                            overflow: isExpanded ? 'visible' : 'hidden'
                           }}
                         >
-                          <Link
-                            to={createPageUrl(module.projectsPage)}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors block cursor-pointer ${
+                          <button
+                            onClick={(e) => handleNavigation(e, module.projectsPage)}
+                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors block cursor-pointer text-left ${
                               location.pathname === createPageUrl(module.projectsPage)
                                 ? 'bg-white text-slate-900 font-medium shadow-sm'
                                 : 'text-slate-700 hover:bg-white/60'
                             }`}
                           >
                             View Projects
-                          </Link>
-                          <Link
-                            to={createPageUrl(module.newEstimatePage)}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors block cursor-pointer ${
+                          </button>
+                          <button
+                            onClick={(e) => handleNavigation(e, module.newEstimatePage)}
+                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors block cursor-pointer text-left ${
                               location.pathname === createPageUrl(module.newEstimatePage)
                                 ? 'bg-white text-slate-900 font-medium shadow-sm'
                                 : 'text-slate-700 hover:bg-white/60'
                             }`}
                           >
                             New Estimate
-                          </Link>
+                          </button>
                           {module.inventoryPage && (
-                            <Link
-                              to={createPageUrl(module.inventoryPage)}
+                            <button
+                              onClick={(e) => handleNavigation(e, module.inventoryPage)}
                               className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center cursor-pointer ${
                                 location.pathname === createPageUrl(module.inventoryPage)
                                   ? 'bg-white text-slate-900 font-medium shadow-sm'
@@ -250,10 +257,10 @@ export default function Layout({ children, currentPageName }) {
                             >
                               <Server className="w-3 h-3 inline mr-1" />
                               Inventory
-                            </Link>
+                            </button>
                           )}
-                          <Link
-                            to={createPageUrl(module.settingsPage)}
+                          <button
+                            onClick={(e) => handleNavigation(e, module.settingsPage)}
                             className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center cursor-pointer ${
                               location.pathname === createPageUrl(module.settingsPage)
                                 ? 'bg-white text-slate-900 font-medium shadow-sm'
@@ -262,7 +269,7 @@ export default function Layout({ children, currentPageName }) {
                           >
                             <Settings className="w-3 h-3 inline mr-1" />
                             Settings
-                          </Link>
+                          </button>
                         </div>
                       ) : (
                         <div className="text-center py-2">
