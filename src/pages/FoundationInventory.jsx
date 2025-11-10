@@ -16,8 +16,13 @@ export default function FoundationInventoryPage() {
   const [formData, setFormData] = useState({
     material_name: "",
     material_type: "rebar",
+    equipment_type: "N/A",
     unit: "per foot",
     cost_per_unit: 0,
+    cost_per_day: 0,
+    cost_per_week: 0,
+    cost_per_month: 0,
+    pickup_delivery_cost: 0,
     rebar_size: "N/A",
     notes: ""
   });
@@ -58,8 +63,13 @@ export default function FoundationInventoryPage() {
     setFormData({
       material_name: item.material_name,
       material_type: item.material_type,
+      equipment_type: item.equipment_type || "N/A",
       unit: item.unit || "",
-      cost_per_unit: item.cost_per_unit,
+      cost_per_unit: item.cost_per_unit || 0,
+      cost_per_day: item.cost_per_day || 0,
+      cost_per_week: item.cost_per_week || 0,
+      cost_per_month: item.cost_per_month || 0,
+      pickup_delivery_cost: item.pickup_delivery_cost || 0,
       rebar_size: item.rebar_size || "N/A",
       notes: item.notes || ""
     });
@@ -81,14 +91,21 @@ export default function FoundationInventoryPage() {
     setFormData({
       material_name: "",
       material_type: "rebar",
+      equipment_type: "N/A",
       unit: "per foot",
       cost_per_unit: 0,
+      cost_per_day: 0,
+      cost_per_week: 0,
+      cost_per_month: 0,
+      pickup_delivery_cost: 0,
       rebar_size: "N/A",
       notes: ""
     });
     setEditingItem(null);
     setShowModal(false);
   };
+
+  const isEquipment = formData.material_type === 'excavation_equipment';
 
   if (isLoading) {
     return (
@@ -107,7 +124,7 @@ export default function FoundationInventoryPage() {
               <Anchor className="w-8 h-8" />
               Foundation Material Inventory
             </h1>
-            <p className="text-slate-600">Manage pricing for rebar, concrete, and other materials</p>
+            <p className="text-slate-600">Manage pricing for rebar, concrete, equipment, and other materials</p>
           </div>
           <Button onClick={() => setShowModal(true)} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="w-4 h-4 mr-2" />
@@ -129,11 +146,10 @@ export default function FoundationInventoryPage() {
                 <table className="w-full">
                   <thead className="bg-slate-50 border-b border-slate-200">
                     <tr>
-                      <th className="text-left p-3 font-semibold text-slate-700">Material Name</th>
+                      <th className="text-left p-3 font-semibold text-slate-700">Name</th>
                       <th className="text-left p-3 font-semibold text-slate-700">Type</th>
-                      <th className="text-left p-3 font-semibold text-slate-700">Unit</th>
-                      <th className="text-right p-3 font-semibold text-slate-700">Cost/Unit</th>
-                      <th className="text-left p-3 font-semibold text-slate-700">Rebar Size</th>
+                      <th className="text-left p-3 font-semibold text-slate-700">Details</th>
+                      <th className="text-right p-3 font-semibold text-slate-700">Pricing</th>
                       <th className="text-right p-3 font-semibold text-slate-700">Actions</th>
                     </tr>
                   </thead>
@@ -141,10 +157,30 @@ export default function FoundationInventoryPage() {
                     {inventory.map((item) => (
                       <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-25">
                         <td className="p-3">{item.material_name}</td>
-                        <td className="p-3 capitalize">{item.material_type.replace('_', ' ')}</td>
-                        <td className="p-3">{item.unit}</td>
-                        <td className="p-3 text-right font-medium">${item.cost_per_unit.toFixed(2)}</td>
-                        <td className="p-3">{item.rebar_size || 'N/A'}</td>
+                        <td className="p-3 capitalize">{item.material_type.replace(/_/g, ' ')}</td>
+                        <td className="p-3">
+                          {item.material_type === 'excavation_equipment' ? (
+                            <span className="text-sm">
+                              {item.equipment_type?.replace(/_/g, ' ').toUpperCase() || 'N/A'}
+                              {item.pickup_delivery_cost > 0 && ` • Delivery: $${item.pickup_delivery_cost.toFixed(2)}`}
+                            </span>
+                          ) : item.material_type === 'rebar' ? (
+                            <span className="text-sm">{item.rebar_size || 'N/A'}</span>
+                          ) : (
+                            <span className="text-sm">{item.unit || 'N/A'}</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          {item.material_type === 'excavation_equipment' ? (
+                            <div className="text-sm">
+                              <div>Day: ${(item.cost_per_day || 0).toFixed(2)}</div>
+                              <div>Week: ${(item.cost_per_week || 0).toFixed(2)}</div>
+                              <div>Month: ${(item.cost_per_month || 0).toFixed(2)}</div>
+                            </div>
+                          ) : (
+                            <span className="font-medium">${(item.cost_per_unit || 0).toFixed(2)} / {item.unit}</span>
+                          )}
+                        </td>
                         <td className="p-3 text-right">
                           <div className="flex justify-end gap-2">
                             <Button
@@ -177,7 +213,7 @@ export default function FoundationInventoryPage() {
         {/* Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <Card className="bg-white w-full max-w-2xl">
+            <Card className="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <CardHeader className="border-b">
                 <div className="flex justify-between items-center">
                   <CardTitle>{editingItem ? 'Edit Material' : 'Add Material'}</CardTitle>
@@ -189,12 +225,12 @@ export default function FoundationInventoryPage() {
               <CardContent className="pt-6">
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <Label htmlFor="material_name">Material Name *</Label>
+                    <Label htmlFor="material_name">Material/Equipment Name *</Label>
                     <Input
                       id="material_name"
                       value={formData.material_name}
                       onChange={(e) => setFormData(prev => ({ ...prev, material_name: e.target.value }))}
-                      placeholder="e.g., Standard Rebar #4"
+                      placeholder="e.g., Standard Rebar #4 or Mini Excavator"
                       required
                       className="mt-1"
                     />
@@ -202,7 +238,7 @@ export default function FoundationInventoryPage() {
 
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="material_type">Material Type *</Label>
+                      <Label htmlFor="material_type">Type *</Label>
                       <Select
                         value={formData.material_type}
                         onValueChange={(value) => setFormData(prev => ({ ...prev, material_type: value }))}
@@ -214,23 +250,47 @@ export default function FoundationInventoryPage() {
                           <SelectItem value="rebar">Rebar</SelectItem>
                           <SelectItem value="concrete_service">Concrete Service</SelectItem>
                           <SelectItem value="bagged_concrete">Bagged Concrete</SelectItem>
+                          <SelectItem value="excavation_equipment">Excavation Equipment</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
-                    <div>
-                      <Label htmlFor="unit">Unit of Measurement</Label>
-                      <Input
-                        id="unit"
-                        value={formData.unit}
-                        onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
-                        placeholder="e.g., per foot, per cy, per bag"
-                        className="mt-1"
-                      />
-                    </div>
+                    {isEquipment && (
+                      <div>
+                        <Label htmlFor="equipment_type">Equipment Type</Label>
+                        <Select
+                          value={formData.equipment_type}
+                          onValueChange={(value) => setFormData(prev => ({ ...prev, equipment_type: value }))}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="skid_steer">Skid Steer</SelectItem>
+                            <SelectItem value="auger">Auger</SelectItem>
+                            <SelectItem value="excavator">Excavator</SelectItem>
+                            <SelectItem value="backhoe">Backhoe</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {!isEquipment && (
+                      <div>
+                        <Label htmlFor="unit">Unit of Measurement</Label>
+                        <Input
+                          id="unit"
+                          value={formData.unit}
+                          onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
+                          placeholder="e.g., per foot, per cy, per bag"
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-4">
+                  {!isEquipment ? (
                     <div>
                       <Label htmlFor="cost_per_unit">Cost Per Unit *</Label>
                       <Input
@@ -244,28 +304,85 @@ export default function FoundationInventoryPage() {
                         className="mt-1"
                       />
                     </div>
-
-                    {formData.material_type === 'rebar' && (
-                      <div>
-                        <Label htmlFor="rebar_size">Rebar Size</Label>
-                        <Select
-                          value={formData.rebar_size}
-                          onValueChange={(value) => setFormData(prev => ({ ...prev, rebar_size: value }))}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="N/A">N/A</SelectItem>
-                            <SelectItem value="#3">#3 (3/8")</SelectItem>
-                            <SelectItem value="#4">#4 (1/2")</SelectItem>
-                            <SelectItem value="#5">#5 (5/8")</SelectItem>
-                            <SelectItem value="#6">#6 (3/4")</SelectItem>
-                          </SelectContent>
-                        </Select>
+                  ) : (
+                    <>
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <div>
+                          <Label htmlFor="cost_per_day">Daily Rate *</Label>
+                          <Input
+                            id="cost_per_day"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.cost_per_day}
+                            onChange={(e) => setFormData(prev => ({ ...prev, cost_per_day: parseFloat(e.target.value) || 0 }))}
+                            required
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="cost_per_week">Weekly Rate *</Label>
+                          <Input
+                            id="cost_per_week"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.cost_per_week}
+                            onChange={(e) => setFormData(prev => ({ ...prev, cost_per_week: parseFloat(e.target.value) || 0 }))}
+                            required
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="cost_per_month">Monthly Rate *</Label>
+                          <Input
+                            id="cost_per_month"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.cost_per_month}
+                            onChange={(e) => setFormData(prev => ({ ...prev, cost_per_month: parseFloat(e.target.value) || 0 }))}
+                            required
+                            className="mt-1"
+                          />
+                        </div>
                       </div>
-                    )}
-                  </div>
+
+                      <div>
+                        <Label htmlFor="pickup_delivery_cost">Pickup & Delivery Cost</Label>
+                        <Input
+                          id="pickup_delivery_cost"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.pickup_delivery_cost}
+                          onChange={(e) => setFormData(prev => ({ ...prev, pickup_delivery_cost: parseFloat(e.target.value) || 0 }))}
+                          className="mt-1"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {formData.material_type === 'rebar' && (
+                    <div>
+                      <Label htmlFor="rebar_size">Rebar Size</Label>
+                      <Select
+                        value={formData.rebar_size}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, rebar_size: value }))}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="N/A">N/A</SelectItem>
+                          <SelectItem value="#3">#3 (3/8")</SelectItem>
+                          <SelectItem value="#4">#4 (1/2")</SelectItem>
+                          <SelectItem value="#5">#5 (5/8")</SelectItem>
+                          <SelectItem value="#6">#6 (3/4")</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   <div>
                     <Label htmlFor="notes">Notes</Label>
