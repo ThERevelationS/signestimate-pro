@@ -1535,65 +1535,156 @@ export default function NewPaintEstimate() {
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
 
+    // Generate HTML email content
+    const htmlEmailContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f4f4f4; }
+    .container { background: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .header { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 30px; text-align: center; }
+    .header h1 { margin: 0; font-size: 28px; }
+    .header p { margin: 5px 0 0; font-size: 14px; opacity: 0.9; }
+    .content { padding: 30px; }
+    .info-box { background: #f8f9fa; padding: 20px; margin-bottom: 20px; border-radius: 8px; border-left: 4px solid #3b82f6; }
+    .info-box h2 { margin-top: 0; color: #2563eb; font-size: 18px; border-bottom: 1px solid #e0e0e0; padding-bottom: 10px; margin-bottom: 15px; }
+    .info-box p { margin: 5px 0; font-size: 14px; }
+    .info-box strong { color: #555; }
+    .item { background: #ffffff; padding: 15px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+    .item h3 { margin-top: 0; color: #1e293b; font-size: 16px; border-bottom: 1px dotted #ccc; padding-bottom: 8px; margin-bottom: 10px; }
+    .item p { margin: 3px 0; font-size: 13px; }
+    .cost-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+    .cost-box { background: #f1f5f9; padding: 10px; border-radius: 6px; text-align: center; border: 1px solid #e2e8f0; }
+    .cost-label { font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: bold; }
+    .cost-value { font-size: 16px; font-weight: bold; color: #1e293b; margin-top: 5px; }
+    .summary { background: #ffffff; padding: 20px; border-radius: 8px; margin-top: 20px; border: 1px solid #e0e0e0; }
+    .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #e0e0e0; font-size: 14px; }
+    .summary-row:last-of-type { border-bottom: none; }
+    .summary-row.total { border-top: 2px solid #3b82f6; margin-top: 15px; padding-top: 15px; font-size: 20px; font-weight: bold; color: #2563eb; }
+    .summary-row.total span:first-child { text-transform: uppercase; }
+    .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; margin-top: 30px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎨 Paint Estimate</h1>
+      <p>Professional Painting Services</p>
+    </div>
+  
+    <div class="content">
+      <div class="info-box">
+        <h2>Project Details</h2>
+        <p><strong>Project:</strong> ${project.project_name}</p>
+        <p><strong>Client:</strong> ${project.client_name}</p>
+        ${project.estimate_number ? `<p><strong>Estimate #:</strong> ${project.estimate_number}</p>` : ''}
+        <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+      </div>
+      
+      <div class="info-box">
+        <h2>Cost Summary</h2>
+        <div class="summary">
+          <div class="summary-row">
+            <span>Total Paint Volume:</span>
+            <span><strong>${formatPaintVolume(totalGallonsNeeded)}</strong></span>
+          </div>
+          <div class="summary-row">
+            <span>Paint Mask:</span>
+            <span>$${totalPaintMask.toFixed(2)}</span>
+          </div>
+          <div class="summary-row">
+            <span>Liquid Paint & Supplies:</span>
+            <span>$${totalLiquidPaintAndSupplies.toFixed(2)}</span>
+          </div>
+          <div class="summary-row">
+            <span>Total Labor (${totalLaborHours.toFixed(1)} hrs):</span>
+            <span>$${totalLabor.toFixed(2)}</span>
+          </div>
+          <div class="summary-row total">
+            <span>TOTAL ESTIMATE:</span>
+            <span>$${totalCost.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="info-box">
+        <h2>Items Breakdown (${project.items.length} items)</h2>
+        ${project.items.map((item, i) => `
+          <div class="item">
+            <h3>Item ${i + 1}: ${item.description || `${item.item_type} item`}</h3>
+            <p><strong>Type:</strong> ${item.item_type} | <strong>Dimensions:</strong> ${item.length}"L × ${item.width}"H × ${item.thickness}" | <strong>Qty:</strong> ${item.quantity}</p>
+            <p><strong>Paint Sides:</strong> ${item.paint_sides} | <strong>Colors:</strong> ${item.paint_colors?.filter((c) => c.trim() !== '').join(', ') || 'None'}</p>
+            <p><strong>Paint Volume:</strong> ${formatPaintVolume(item.paint_gallons || 0)}</p>
+            <div class="cost-grid">
+              <div class="cost-box">
+                <div class="cost-label">Paint Mask</div>
+                <div class="cost-value">$${(item.supplies_cost || 0).toFixed(2)}</div>
+              </div>
+              <div class="cost-box">
+                <div class="cost-label">Paint & Supplies</div>
+                <div class="cost-value">$${(item.paint_cost || 0).toFixed(2)}</div>
+              </div>
+              <div class="cost-box">
+                <div class="cost-label">Labor</div>
+                <div class="cost-value">$${(item.labor_cost || 0).toFixed(2)}</div>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      
+      ${project.notes ? `
+      <div class="info-box">
+        <h2>Additional Notes</h2>
+        <p>${project.notes}</p>
+      </div>
+      ` : ''}
+    </div>
+    
+    <div class="footer">
+      <p>Generated by SignEstimate Pro - Professional Estimating Suite</p>
+      <p>© ${new Date().getFullYear()} All Rights Reserved</p>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    // For the modal, show the HTML content as the message
     setEmailData({
       to: '',
       subject: `Paint Estimate - ${project.project_name}`,
-      message: `Hello,
-
-Please find the detailed paint estimate for ${project.project_name} attached.
-
-PROJECT SUMMARY:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Project: ${project.project_name}
-Client: ${project.client_name}
-${project.estimate_number ? `Estimate #: ${project.estimate_number}` : ''}
-Date: ${new Date().toLocaleDateString()}
-
-COST BREAKDOWN:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎨 Total Paint Volume: ${formatPaintVolume(totalGallonsNeeded)}
-💜 Paint Mask: $${totalPaintMask.toFixed(2)}
-🎨 Liquid Paint & Supplies: $${totalLiquidPaintAndSupplies.toFixed(2)}
-👷 Total Labor (${totalLaborHours.toFixed(1)} hrs): $${totalLabor.toFixed(2)}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💰 TOTAL ESTIMATE: $${totalCost.toFixed(2)}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-ITEMS INCLUDED:
-${project.items.map((item, i) => `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Item ${i + 1}: ${item.description || `${item.item_type} item`}
-  • Type: ${item.item_type}
-  • Dimensions: ${item.length}"L × ${item.width}"H × ${item.thickness}"
-  • Quantity: ${item.quantity}
-  • Paint Sides: ${item.paint_sides}
-  • Colors: ${item.paint_colors?.filter((c) => c.trim() !== '').join(', ') || 'None'}
-  • Paint Volume: ${formatPaintVolume(item.paint_gallons || 0)}
-  • Item Total: $${((item.supplies_cost || 0) + (item.paint_cost || 0) + (item.labor_cost || 0)).toFixed(2)}
-`).join('')}
-
-${project.notes ? `\nADDITIONAL NOTES:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${project.notes}\n` : ''}
-
-For a detailed, beautifully formatted version of this estimate, please download the HTML file using the "Download Estimate" button in the app.
-
-Best regards,
-${globalSettings.company_name || 'SignEstimate Pro'}
-
----
-Generated by SignEstimate Pro - Professional Estimating Suite
-© ${new Date().getFullYear()} All Rights Reserved`
+      message: htmlEmailContent
     });
     setShowEmailModal(true);
   };
 
   const handleSendEmail = () => {
-    if (!emailData.to || !emailData.subject || !emailData.message) {
-      alert('Please fill in all email fields (To, Subject, Message).');
+    if (!emailData.to || !emailData.subject) {
+      alert('Please fill in the recipient email address and subject.');
       return;
     }
-    const mailtoUrl = `mailto:${emailData.to}?subject=${encodeURIComponent(emailData.subject)}&body=${encodeURIComponent(emailData.message)}`;
-    window.location.href = mailtoUrl;
+    
+    // Attempt to use the Clipboard API to copy HTML content
+    if (navigator.clipboard && window.isSecureContext) { // window.isSecureContext ensures clipboard.writeText is available
+      navigator.clipboard.writeText(emailData.message).then(() => {
+        alert('Estimate HTML has been copied to your clipboard! You can paste it into your email client.\n\nNow, your email client will open. Please paste the copied HTML into the email body (often using "Paste as HTML" or switching to HTML/Rich Text mode).');
+        // Open mailto link after successful copy
+        window.location.href = `mailto:${emailData.to}?subject=${encodeURIComponent(emailData.subject)}`;
+      }).catch((err) => {
+        console.error('Failed to copy HTML to clipboard:', err);
+        alert('Failed to copy HTML to clipboard. Please manually copy the content from the text area in the modal and paste it into your email client in HTML mode.\n\nYour email client will now open with the To/Subject filled.');
+        // Open mailto link even if copy failed, for convenience
+        window.location.href = `mailto:${emailData.to}?subject=${encodeURIComponent(emailData.subject)}`;
+      });
+    } else {
+      // Fallback for non-secure contexts or older browsers
+      alert('Your browser does not support automatic clipboard copying for HTML. Please manually copy the content from the text area in the modal and paste it into your email client in HTML mode.\n\nYour email client will now open with the To/Subject filled.');
+      window.location.href = `mailto:${emailData.to}?subject=${encodeURIComponent(emailData.subject)}`;
+    }
+    
     setShowEmailModal(false);
   };
 
@@ -2070,7 +2161,7 @@ Generated by SignEstimate Pro - Professional Estimating Suite
 
         {showEmailModal &&
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <Card className="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <Card className="bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto">
               <CardHeader className="border-b">
                 <div className="flex justify-between items-center">
                   <CardTitle>Send Estimate via Email</CardTitle>
@@ -2080,46 +2171,55 @@ Generated by SignEstimate Pro - Professional Estimating Suite
                 </div>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>💡 Tip:</strong> This estimate is formatted as HTML. Click "Copy & Open Email" to copy the HTML content to your clipboard, then paste it into your email client in HTML/Rich Text mode for the best appearance.
+                  </p>
+                </div>
                 <div>
                   <Label htmlFor="email_to">To Email Address *</Label>
                   <Input
-                  id="email_to"
-                  type="email"
-                  value={emailData.to}
-                  onChange={(e) => setEmailData((prev) => ({ ...prev, to: e.target.value }))}
-                  placeholder="client@example.com"
-                  className="mt-1" />
-
+                    id="email_to"
+                    type="email"
+                    value={emailData.to}
+                    onChange={(e) => setEmailData((prev) => ({ ...prev, to: e.target.value }))}
+                    placeholder="client@example.com"
+                    className="mt-1"
+                  />
                 </div>
                 <div>
                   <Label htmlFor="email_subject">Subject *</Label>
                   <Input
-                  id="email_subject"
-                  value={emailData.subject}
-                  onChange={(e) => setEmailData((prev) => ({ ...prev, subject: e.target.value }))}
-                  className="mt-1" />
-
+                    id="email_subject"
+                    value={emailData.subject}
+                    onChange={(e) => setEmailData((prev) => ({ ...prev, subject: e.target.value }))}
+                    className="mt-1"
+                  />
                 </div>
                 <div>
-                  <Label htmlFor="email_message">Message *</Label>
+                  <Label htmlFor="email_message">HTML Email Content (Preview Below)</Label>
                   <Textarea
-                  id="email_message"
-                  value={emailData.message}
-                  onChange={(e) => setEmailData((prev) => ({ ...prev, message: e.target.value }))}
-                  className="mt-1 h-64" />
-
+                    id="email_message"
+                    value={emailData.message}
+                    onChange={(e) => setEmailData((prev) => ({ ...prev, message: e.target.value }))}
+                    className="mt-1 h-32 font-mono text-xs"
+                  />
+                </div>
+                <div className="border rounded-lg p-4 bg-white max-h-96 overflow-y-auto">
+                  <Label className="mb-2 block text-sm font-medium">Email Preview:</Label>
+                  <div dangerouslySetInnerHTML={{ __html: emailData.message }} />
                 </div>
                 <div className="flex justify-end gap-3 pt-4 border-t">
                   <Button variant="outline" onClick={() => setShowEmailModal(false)}>
                     Cancel
                   </Button>
                   <Button
-                  onClick={handleSendEmail}
-                  disabled={!emailData.to || !emailData.subject || !emailData.message}
-                  className="bg-blue-600 hover:bg-blue-700">
-
+                    onClick={handleSendEmail}
+                    disabled={!emailData.to || !emailData.subject}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
                     <Mail className="w-4 h-4 mr-2" />
-                    Send Email
+                    Copy & Open Email
                   </Button>
                 </div>
               </CardContent>
