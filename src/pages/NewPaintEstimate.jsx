@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Project, Settings } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,10 @@ const formatPaintVolume = (gallons) => {
   if (quarts > 0) parts.push(`${quarts} qt`);
   if (pints > 0) parts.push(`${pints} pt`);
   
-  return parts.length > 0 ? parts.join(' ') : '0 gal';
+  const formatted = parts.length > 0 ? parts.join(' ') : '0 gal';
+  const decimal = gallons.toFixed(2);
+  
+  return `${formatted} (${decimal} gallons)`;
 };
 
 export default function NewPaintEstimate() {
@@ -1148,7 +1152,10 @@ ${globalSettings.company_name || 'Your Sign Company'}`
 
                         <div className="mt-4 p-4 bg-white rounded-lg border border-slate-200">
                           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                            <div><span className="text-slate-500">Paint Volume:</span><p className="font-medium text-blue-600">{formatPaintVolume(item.paint_gallons || 0)}</p></div>
+                            <div>
+                              <span className="text-slate-500">Paint Volume:</span>
+                              <p className="font-medium text-blue-600 leading-tight">{formatPaintVolume(item.paint_gallons || 0)}</p>
+                            </div>
                             <div><span className="text-slate-500">Paint Mask:</span><p className="font-medium">${(item.supplies_cost || 0).toFixed(2)}</p></div>
                             <div><span className="text-slate-500">Paint & Supplies:</span><p className="font-medium">${(item.paint_cost || 0).toFixed(2)}</p></div>
                             <div><span className="text-slate-500">Labor Hrs:</span><p className="font-medium">{(item.labor_hours || 0).toFixed(1)}</p></div>
@@ -1168,9 +1175,9 @@ ${globalSettings.company_name || 'Your Sign Company'}`
               <CardHeader><CardTitle className="text-lg font-semibold text-slate-900">Cost Summary</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="flex justify-between items-start mb-2">
                     <span className="text-sm font-medium text-blue-800">Paint Volume:</span>
-                    <span className="text-xl font-bold text-blue-900">{formatPaintVolume(totalGallonsNeeded)}</span>
+                    <span className="text-lg font-bold text-blue-900 text-right leading-tight">{formatPaintVolume(totalGallonsNeeded)}</span>
                   </div>
                   <p className="text-xs text-blue-600">Total liquid paint needed across all items</p>
                   {totalGallonsNeeded > 1 && (
