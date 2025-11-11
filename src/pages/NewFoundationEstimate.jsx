@@ -726,11 +726,6 @@ export default function NewFoundationEstimate() {
       const pouringHours = item.concrete_volume_cy * pouringHoursPerCy * item.quantity;
       const finishingHours = item.include_finishing ? finishingSqFt * finishingHoursPerSqFt * item.quantity : 0;
 
-      // Calculate labor costs
-      const formingCost = formingHours * project.forming_labor_rate;
-      const pouringCost = pouringHours * project.pouring_labor_rate;
-      const finishingCost = finishingHours * project.finishing_labor_rate;
-
       // NEW: Excavation Labor Cost
       let excavationLaborCost = 0;
       if (project.excavation_method === 'hand_dig') {
@@ -1300,177 +1295,179 @@ export default function NewFoundationEstimate() {
               </CardContent>
             </Card>
 
-            {/* Equipment - Condensed */}
-            <Card className="bg-white border-0 shadow-sm">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-base font-semibold">Equipment & Attachments</CardTitle>
-                  <Button onClick={addEquipment} size="sm" className="bg-orange-600 hover:bg-orange-700 h-8 text-xs">
-                    <Plus className="w-3 h-3 mr-1" />
-                    Add Equipment
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {(!project.selected_equipment || project.selected_equipment.length === 0) ? (
-                  <div className="text-center py-6 text-slate-500 text-xs">
-                    <p>Auto-adds when excavation ≥ 0.5 cy or depth &gt; 36" and <span className="font-semibold">Equipment Excavation</span> method is selected.</p>
+            {/* Equipment - Conditionally Rendered */}
+            {project.excavation_method === 'equipment_excavation' && (
+              <Card className="bg-white border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="text-base font-semibold">Equipment & Attachments</CardTitle>
+                    <Button onClick={addEquipment} size="sm" className="bg-orange-600 hover:bg-orange-700 h-8 text-xs">
+                      <Plus className="w-3 h-3 mr-1" />
+                      Add Equipment
+                    </Button>
                   </div>
-                ) : (
-                  project.selected_equipment.map((eq, index) => {
-                    const selectedEquip = equipment.find(e => e.id === eq.equipment_id);
-                    return (
-                      <div key={index} className="p-3 bg-orange-50 rounded border border-orange-200">
-                        <div className="flex justify-between items-start mb-2">
-                          <h5 className="font-medium text-sm">Equipment #{index + 1}</h5>
-                          <Button variant="ghost" size="icon" onClick={() => removeEquipment(index)} className="text-red-500 h-6 w-6">
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="col-span-2">
-                            <Label className="text-xs">Equipment</Label>
-                            <Select value={eq.equipment_id} onValueChange={(value) => updateEquipmentItem(index, 'equipment_id', value)}>
-                              <SelectTrigger className="mt-1 h-8 text-xs">
-                                <SelectValue placeholder="Select" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {equipment.map(e => (
-                                  <SelectItem key={e.id} value={e.id}>
-                                    {e.material_name} {e.equipment_type ? `(${e.equipment_type})` : ''}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {selectedEquip && selectedEquip.notes && (
-                              <div className="mt-2 p-2 bg-amber-50 rounded border border-amber-200">
-                                <p className="text-xs text-amber-800">
-                                  <strong>Notes:</strong> {selectedEquip.notes}
-                                </p>
-                              </div>
-                            )}
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {(!project.selected_equipment || project.selected_equipment.length === 0) ? (
+                    <div className="text-center py-6 text-slate-500 text-xs">
+                      <p>Click "Add Equipment" to add excavation equipment</p>
+                    </div>
+                  ) : (
+                    project.selected_equipment.map((eq, index) => {
+                      const selectedEquip = equipment.find(e => e.id === eq.equipment_id);
+                      return (
+                        <div key={index} className="p-3 bg-orange-50 rounded border border-orange-200">
+                          <div className="flex justify-between items-start mb-2">
+                            <h5 className="font-medium text-sm">Equipment #{index + 1}</h5>
+                            <Button variant="ghost" size="icon" onClick={() => removeEquipment(index)} className="text-red-500 h-6 w-6">
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
                           </div>
                           
-                          <div>
-                            <Label className="text-xs">Period</Label>
-                            <Select value={eq.rental_period} onValueChange={(value) => updateEquipmentItem(index, 'rental_period', value)}>
-                              <SelectTrigger className="mt-1 h-8 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="day">Day</SelectItem>
-                                <SelectItem value="week">Week</SelectItem>
-                                <SelectItem value="month">Month</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          <div>
-                            <Label className="text-xs">Duration</Label>
-                            <Input
-                              type="number"
-                              min="1"
-                              value={eq.rental_duration}
-                              onChange={(e) => updateEquipmentItem(index, 'rental_duration', parseFloat(e.target.value) || 1)}
-                              className="mt-1 h-8 text-xs"
-                            />
-                          </div>
-                          
-                          <div className="col-span-2 flex items-center gap-2 text-xs">
-                            <Checkbox
-                              checked={eq.include_delivery}
-                              onCheckedChange={(checked) => updateEquipmentItem(index, 'include_delivery', checked)}
-                              className="w-3 h-3 text-orange-600"
-                            />
-                            <Label className="text-xs">Delivery {selectedEquip && `(${(selectedEquip.pickup_delivery_cost || 0).toFixed(2)})`}</Label>
-                          </div>
-
-                          {/* Attachments Section */}
-                          {selectedEquip && (
-                            <div className="col-span-2 mt-2 p-2 bg-purple-50 rounded border border-purple-200">
-                              <div className="flex justify-between items-center mb-2">
-                                <Label className="text-xs font-semibold text-purple-800">Attachments</Label>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  onClick={() => openAttachmentModal(index)}
-                                  className="bg-purple-600 hover:bg-purple-700 h-6 text-xs"
-                                >
-                                  <Plus className="w-3 h-3 mr-1" />
-                                  Add
-                                </Button>
-                              </div>
-                              
-                              {(eq.attachments || []).length === 0 ? (
-                                <p className="text-xs text-purple-600 text-center py-2">No attachments selected</p>
-                              ) : (
-                                <div className="space-y-1">
-                                  {(eq.attachments || []).map((att, attIdx) => {
-                                    const attachment = allAttachments.find(a => a.id === att.attachment_id);
-                                    return (
-                                      <div key={attIdx} className="bg-white p-2 rounded border border-purple-300">
-                                        <div className="flex justify-between items-start">
-                                          <div className="flex-1">
-                                            <p className="text-xs font-medium">{attachment?.material_name}</p>
-                                            <p className="text-xs text-purple-600">${(att.attachment_cost || 0).toFixed(2)}</p>
-                                          </div>
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => removeAttachmentFromEquipment(index, attIdx)}
-                                            className="h-5 w-5 text-red-500"
-                                          >
-                                            <Trash2 className="w-3 h-3" />
-                                          </Button>
-                                        </div>
-                                        
-                                        {/* Subsidiaries */}
-                                        {(att.subsidiaries || []).length > 0 && (
-                                          <div className="mt-1 ml-2 pl-2 border-l-2 border-purple-200">
-                                            {att.subsidiaries.map((sub, subIdx) => {
-                                              const subsidiary = allAttachments.find(a => a.id === sub.subsidiary_id);
-                                              return (
-                                                <div key={subIdx} className="flex justify-between items-center py-1">
-                                                  <p className="text-xs text-slate-600">└ {subsidiary?.material_name} (${(sub.subsidiary_cost || 0).toFixed(2)})</p>
-                                                  <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => removeSubsidiary(index, attIdx, subIdx)}
-                                                    className="h-4 w-4 text-red-500"
-                                                  >
-                                                    <X className="w-2 h-2" />
-                                                  </Button>
-                                                </div>
-                                              );
-                                            })}
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="col-span-2">
+                              <Label className="text-xs">Equipment</Label>
+                              <Select value={eq.equipment_id} onValueChange={(value) => updateEquipmentItem(index, 'equipment_id', value)}>
+                                <SelectTrigger className="mt-1 h-8 text-xs">
+                                  <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {equipment.map(e => (
+                                    <SelectItem key={e.id} value={e.id}>
+                                      {e.material_name} {e.equipment_type ? `(${e.equipment_type})` : ''}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {selectedEquip && selectedEquip.notes && (
+                                <div className="mt-2 p-2 bg-amber-50 rounded border border-amber-200">
+                                  <p className="text-xs text-amber-800">
+                                    <strong>Notes:</strong> {selectedEquip.notes}
+                                  </p>
                                 </div>
                               )}
                             </div>
-                          )}
-                          
-                          {selectedEquip && (
-                            <div className="col-span-2 p-2 bg-white rounded border border-orange-300 text-xs">
-                              <div className="flex justify-between font-semibold">
-                                <span>Total Cost:</span>
-                                <span className="text-orange-700">${(eq.equipment_cost || 0).toFixed(2)}</span>
-                              </div>
+                            
+                            <div>
+                              <Label className="text-xs">Period</Label>
+                              <Select value={eq.rental_period} onValueChange={(value) => updateEquipmentItem(index, 'rental_period', value)}>
+                                <SelectTrigger className="mt-1 h-8 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="day">Day</SelectItem>
+                                  <SelectItem value="week">Week</SelectItem>
+                                  <SelectItem value="month">Month</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
-                          )}
+                            
+                            <div>
+                              <Label className="text-xs">Duration</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={eq.rental_duration}
+                                onChange={(e) => updateEquipmentItem(index, 'rental_duration', parseFloat(e.target.value) || 1)}
+                                className="mt-1 h-8 text-xs"
+                              />
+                            </div>
+                            
+                            <div className="col-span-2 flex items-center gap-2 text-xs">
+                              <Checkbox
+                                checked={eq.include_delivery}
+                                onCheckedChange={(checked) => updateEquipmentItem(index, 'include_delivery', checked)}
+                                className="w-3 h-3 text-orange-600"
+                              />
+                              <Label className="text-xs">Delivery {selectedEquip && `($${(selectedEquip.pickup_delivery_cost || 0).toFixed(2)})`}</Label>
+                            </div>
+
+                            {/* Attachments Section */}
+                            {selectedEquip && (
+                              <div className="col-span-2 mt-2 p-2 bg-purple-50 rounded border border-purple-200">
+                                <div className="flex justify-between items-center mb-2">
+                                  <Label className="text-xs font-semibold text-purple-800">Attachments</Label>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => openAttachmentModal(index)}
+                                    className="bg-purple-600 hover:bg-purple-700 h-6 text-xs"
+                                  >
+                                    <Plus className="w-3 h-3 mr-1" />
+                                    Add
+                                  </Button>
+                                </div>
+                                
+                                {(eq.attachments || []).length === 0 ? (
+                                  <p className="text-xs text-purple-600 text-center py-2">No attachments selected</p>
+                                ) : (
+                                  <div className="space-y-1">
+                                    {(eq.attachments || []).map((att, attIdx) => {
+                                      const attachment = allAttachments.find(a => a.id === att.attachment_id);
+                                      return (
+                                        <div key={attIdx} className="bg-white p-2 rounded border border-purple-300">
+                                          <div className="flex justify-between items-start">
+                                            <div className="flex-1">
+                                              <p className="text-xs font-medium">{attachment?.material_name}</p>
+                                              <p className="text-xs text-purple-600">${(att.attachment_cost || 0).toFixed(2)}</p>
+                                            </div>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="icon"
+                                              onClick={() => removeAttachmentFromEquipment(index, attIdx)}
+                                              className="h-5 w-5 text-red-500"
+                                            >
+                                              <Trash2 className="w-3 h-3" />
+                                            </Button>
+                                          </div>
+                                          
+                                          {/* Subsidiaries */}
+                                          {(att.subsidiaries || []).length > 0 && (
+                                            <div className="mt-1 ml-2 pl-2 border-l-2 border-purple-200">
+                                              {att.subsidiaries.map((sub, subIdx) => {
+                                                const subsidiary = allAttachments.find(a => a.id === sub.subsidiary_id);
+                                                return (
+                                                  <div key={subIdx} className="flex justify-between items-center py-1">
+                                                    <p className="text-xs text-slate-600">└ {subsidiary?.material_name} (${(sub.subsidiary_cost || 0).toFixed(2)})</p>
+                                                    <Button
+                                                      type="button"
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      onClick={() => removeSubsidiary(index, attIdx, subIdx)}
+                                                      className="h-4 w-4 text-red-500"
+                                                    >
+                                                      <X className="w-2 h-2" />
+                                                    </Button>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            
+                            {selectedEquip && (
+                              <div className="col-span-2 p-2 bg-white rounded border border-orange-300 text-xs">
+                                <div className="flex justify-between font-semibold">
+                                  <span>Total Cost:</span>
+                                  <span className="text-orange-700">${(eq.equipment_cost || 0).toFixed(2)}</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })
-                )}
-              </CardContent>
-            </Card>
+                      );
+                    })
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Sidebar - Compact */}
@@ -1490,10 +1487,10 @@ export default function NewFoundationEstimate() {
 
                 <div className="p-3 bg-amber-50 rounded-lg">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium text-amber-800">Excavation (Non-Labor)</span>
+                    <span className="text-xs font-medium text-amber-800">Excavation</span>
                     <span className="text-base font-bold text-amber-900">${(project.total_excavation_cost || 0).toFixed(2)}</span>
                   </div>
-                  <p className="text-xs text-amber-600 mt-0.5">Disposal, base machine costs</p>
+                  <p className="text-xs text-amber-600 mt-0.5">Non-labor excavation costs</p>
                 </div>
 
                 <div className="p-3 bg-green-50 rounded-lg">
@@ -1501,26 +1498,32 @@ export default function NewFoundationEstimate() {
                     <span className="text-xs font-medium text-green-800">Labor</span>
                     <span className="text-base font-bold text-green-900">${(project.total_labor_cost || 0).toFixed(2)}</span>
                   </div>
-                  <p className="text-xs text-green-600 mt-0.5">Forming, pouring, finishing, excavation labor</p>
+                  <p className="text-xs text-green-600 mt-0.5">
+                    {project.excavation_method === 'hand_dig' ? 'Hand dig, forming, pouring, finishing' : 'Excavation operator, forming, pouring, finishing'}
+                  </p>
                 </div>
 
-                <div className="p-3 bg-orange-50 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium text-orange-800">Equipment</span>
-                    <span className="text-base font-bold text-orange-900">${(project.total_equipment_cost || 0).toFixed(2)}</span>
+                {project.excavation_method === 'equipment_excavation' && (
+                  <div className="p-3 bg-orange-50 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-medium text-orange-800">Equipment</span>
+                      <span className="text-base font-bold text-orange-900">${(project.total_equipment_cost || 0).toFixed(2)}</span>
+                    </div>
+                    <p className="text-xs text-orange-600 mt-0.5">Rental & delivery</p>
                   </div>
-                  <p className="text-xs text-orange-600 mt-0.5">Rental & delivery</p>
-                </div>
+                )}
 
                 <div className="border-t pt-3">
                   <div className="flex justify-between text-xs text-slate-600 mb-1">
                     <span>Items:</span>
                     <span className="font-medium">{project.items.length}</span>
                   </div>
-                  <div className="flex justify-between text-xs text-slate-600 mb-2">
-                    <span>Equipment:</span>
-                    <span className="font-medium">{(project.selected_equipment || []).length}</span>
-                  </div>
+                  {project.excavation_method === 'equipment_excavation' && (
+                    <div className="flex justify-between text-xs text-slate-600 mb-2">
+                      <span>Equipment:</span>
+                      <span className="font-medium">{(project.selected_equipment || []).length}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-base font-bold border-t pt-2">
                     <span>TOTAL:</span>
                     <span className="text-green-600">${((project.total_concrete_cost || 0) + (project.total_rebar_cost || 0) + (project.total_excavation_cost || 0) + (project.total_labor_cost || 0) + (project.total_equipment_cost || 0)).toFixed(2)}</span>
