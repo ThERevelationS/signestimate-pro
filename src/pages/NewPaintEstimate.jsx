@@ -23,10 +23,10 @@ const parseImperialFraction = (fractionString) => {
   const wholeAndFraction = fractionString.split('-');
 
   if (wholeAndFraction.length === 2) {
-    totalValue += parseFloat(wholeAndFraction[0]);
-    fractionString = wholeAndFraction[1];
+    totalValue += parseFloat(wholeAndAndFraction[0]);
+    fractionString = wholeAndAndFraction[1];
   } else {
-    fractionString = wholeAndFraction[0];
+    fractionString = wholeAndAndFraction[0];
   }
 
   const parts = fractionString.split('/');
@@ -43,21 +43,11 @@ const parseImperialFraction = (fractionString) => {
 };
 
 const formatPaintVolume = (gallons) => {
-  const wholeGallons = Math.floor(gallons);
-  const remainingGallons = gallons - wholeGallons;
-  const quarts = Math.floor(remainingGallons * 4);
-  const remainingQuarts = remainingGallons * 4 - quarts;
-  const pints = Math.round(remainingQuarts * 2);
-
-  const parts = [];
-  if (wholeGallons > 0) parts.push(`${wholeGallons} gal`);
-  if (quarts > 0) parts.push(`${quarts} qt`);
-  if (pints > 0) parts.push(`${pints} pt`);
-
-  const formatted = parts.length > 0 ? parts.join(' ') : '0 gal';
-  const decimal = gallons.toFixed(2);
-
-  return `${formatted} (${decimal} gallons)`;
+  const totalGallons = gallons.toFixed(2);
+  const totalQuarts = (gallons * 4).toFixed(2);
+  const totalPints = (gallons * 8).toFixed(2);
+  
+  return `${totalGallons} gal | ${totalQuarts} qt | ${totalPints} pt`;
 };
 
 export default function NewPaintEstimate() {
@@ -587,7 +577,7 @@ export default function NewPaintEstimate() {
     const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
-
+    
     const estimateContent = `
 PAINT ESTIMATE
 
@@ -622,7 +612,7 @@ TOTAL ESTIMATE: $${totalCost.toFixed(2)}
 
 Notes: ${project.notes || 'None'}
 `;
-
+    
     const blob = new Blob([estimateContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -638,7 +628,7 @@ Notes: ${project.notes || 'None'}
     const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
-
+    
     const printContent = `
       <html>
         <head>
@@ -721,7 +711,7 @@ Notes: ${project.notes || 'None'}
         </body>
       </html>
     `;
-
+    
     const printWindow = window.open('', '_blank');
     printWindow.document.write(printContent);
     printWindow.document.close();
@@ -732,7 +722,7 @@ Notes: ${project.notes || 'None'}
     const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
-
+    
     setEmailData({
       to: '',
       subject: `Paint Estimate - ${project.project_name}`,
