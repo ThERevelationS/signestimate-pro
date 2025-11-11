@@ -144,14 +144,26 @@ export default function FoundationSettings() {
               />
             </div>
             <div>
-              <Label>Excavation Cost ($/cubic yard)</Label>
+              <Label>Hand Dig Excavation Cost ($/cubic yard)</Label>
               <Input 
                 type="number" 
                 step="1"
-                value={settings.foundation_excavation_cost_per_cy} 
-                onChange={(e) => updateSetting('foundation_excavation_cost_per_cy', e.target.value)} 
+                value={settings.foundation_hand_dig_excavation_cost_per_cy || "10"} 
+                onChange={(e) => updateSetting('foundation_hand_dig_excavation_cost_per_cy', e.target.value)} 
                 disabled={isLocked}
               />
+              <p className="text-xs text-slate-500 mt-1">Non-labor costs for hand digging (disposal, etc.)</p>
+            </div>
+            <div>
+              <Label>Equipment Excavation Cost ($/cubic yard)</Label>
+              <Input 
+                type="number" 
+                step="1"
+                value={settings.foundation_equipment_excavation_cost_per_cy || "15"} 
+                onChange={(e) => updateSetting('foundation_equipment_excavation_cost_per_cy', e.target.value)} 
+                disabled={isLocked}
+              />
+              <p className="text-xs text-slate-500 mt-1">Non-labor costs for equipment excavation (disposal, etc.)</p>
             </div>
           </div>
         </CardContent>
@@ -191,6 +203,28 @@ export default function FoundationSettings() {
                 onChange={(e) => updateSetting('foundation_finishing_labor_rate', e.target.value)} 
                 disabled={isLocked}
               />
+            </div>
+            <div>
+              <Label>Hand Dig Rate ($/hour)</Label>
+              <Input 
+                type="number" 
+                step="1"
+                value={settings.foundation_hand_dig_labor_rate || "45"} 
+                onChange={(e) => updateSetting('foundation_hand_dig_labor_rate', e.target.value)} 
+                disabled={isLocked}
+              />
+              <p className="text-xs text-slate-500 mt-1">Labor rate for hand digging excavation</p>
+            </div>
+            <div>
+              <Label>Equipment Excavation Rate ($/hour)</Label>
+              <Input 
+                type="number" 
+                step="1"
+                value={settings.foundation_equipment_excavation_labor_rate || "35"} 
+                onChange={(e) => updateSetting('foundation_equipment_excavation_labor_rate', e.target.value)} 
+                disabled={isLocked}
+              />
+              <p className="text-xs text-slate-500 mt-1">Operator labor rate when using excavation equipment</p>
             </div>
           </div>
         </CardContent>
@@ -235,6 +269,17 @@ export default function FoundationSettings() {
                 disabled={isLocked}
               />
               <p className="text-xs text-slate-500 mt-1">Applied to top surface area</p>
+            </div>
+            <div>
+              <Label>Excavation (hours/cubic yard)</Label>
+              <Input 
+                type="number" 
+                step="0.1"
+                value={settings.foundation_excavation_hours_per_cy || "0.5"} 
+                onChange={(e) => updateSetting('foundation_excavation_hours_per_cy', e.target.value)} 
+                disabled={isLocked}
+              />
+              <p className="text-xs text-slate-500 mt-1">For both hand dig and equipment methods</p>
             </div>
           </div>
         </CardContent>
