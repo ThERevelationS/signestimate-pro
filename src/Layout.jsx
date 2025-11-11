@@ -224,61 +224,53 @@ export default function Layout({ children, currentPageName }) {
                           overflow: isExpanded ? 'visible' : 'hidden'
                         }}
                       >
-                        <SidebarMenuButton asChild>
-                          <Link
-                            to={createPageUrl(module.projectsPage)}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
-                              location.pathname === createPageUrl(module.projectsPage)
-                                ? 'bg-white text-slate-900 font-medium shadow-sm'
-                                : 'text-slate-700 hover:bg-white/60'
-                            }`}
-                          >
-                            View Projects
-                          </Link>
-                        </SidebarMenuButton>
+                        <Link
+                          to={createPageUrl(module.projectsPage)}
+                          className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
+                            location.pathname === createPageUrl(module.projectsPage)
+                              ? 'bg-white text-slate-900 font-medium shadow-sm'
+                              : 'text-slate-700 hover:bg-white/60'
+                          }`}
+                        >
+                          View Projects
+                        </Link>
                         
-                        <SidebarMenuButton asChild>
-                          <Link
-                            to={createPageUrl(module.newEstimatePage)}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
-                              location.pathname === createPageUrl(module.newEstimatePage)
-                                ? 'bg-white text-slate-900 font-medium shadow-sm'
-                                : 'text-slate-700 hover:bg-white/60'
-                            }`}
-                          >
-                            New Estimate
-                          </Link>
-                        </SidebarMenuButton>
+                        <Link
+                          to={createPageUrl(module.newEstimatePage)}
+                          className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
+                            location.pathname === createPageUrl(module.newEstimatePage)
+                              ? 'bg-white text-slate-900 font-medium shadow-sm'
+                              : 'text-slate-700 hover:bg-white/60'
+                          }`}
+                        >
+                          New Estimate
+                        </Link>
                         
                         {module.inventoryPage && (
-                          <SidebarMenuButton asChild>
-                            <Link
-                              to={createPageUrl(module.inventoryPage)}
-                              className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
-                                location.pathname === createPageUrl(module.inventoryPage)
-                                  ? 'bg-white text-slate-900 font-medium shadow-sm'
-                                  : 'text-slate-700 hover:bg-white/60'
-                              }`}
-                            >
-                              <Server className="w-3 h-3 mr-1" />
-                              Inventory
-                            </Link>
-                          </SidebarMenuButton>
-                        )}
-                        
-                        <SidebarMenuButton asChild>
                           <Link
-                            to={createPageUrl(module.settingsPage)}
+                            to={createPageUrl(module.inventoryPage)}
                             className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
-                              location.pathname === createPageUrl(module.settingsPage)
+                              location.pathname === createPageUrl(module.inventoryPage)
                                 ? 'bg-white text-slate-900 font-medium shadow-sm'
                                 : 'text-slate-700 hover:bg-white/60'
                             }`}
                           >
-                            <Settings className="w-3 h-3 mr-1" />
-                            Settings
+                            <Server className="w-3 h-3 mr-1" />
+                            Inventory
                           </Link>
-                        </SidebarMenuButton>
+                        )}
+                        
+                        <Link
+                          to={createPageUrl(module.settingsPage)}
+                          className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
+                            location.pathname === createPageUrl(module.settingsPage)
+                              ? 'bg-white text-slate-900 font-medium shadow-sm'
+                              : 'text-slate-700 hover:bg-white/60'
+                          }`}
+                        >
+                          <Settings className="w-3 h-3 mr-1" />
+                          Settings
+                        </Link>
                       </div>
                     </div>
                   </SidebarMenuItem>
@@ -290,45 +282,39 @@ export default function Layout({ children, currentPageName }) {
           <SidebarFooter className="border-t border-slate-200 p-3 space-y-1">
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <SidebarMenuButton
-                        asChild
-                        className={`hover:bg-slate-100 hover:text-slate-900 transition-all duration-200 rounded-xl ${
-                          location.pathname === createPageUrl("FormulaViewer") ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600'
-                        }`}
+                    <Link 
+                      to={createPageUrl("FormulaViewer")} 
+                      className={`flex items-center gap-2 px-3 py-2 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200 rounded-xl ${
+                        location.pathname === createPageUrl("FormulaViewer") ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600'
+                      }`}
                     >
-                        <Link to={createPageUrl("FormulaViewer")} className="flex items-center gap-2 px-3 py-2">
-                            <Eye className="w-4 h-4"/>
-                            <span className="font-medium text-sm">Formula Viewer</span>
-                        </Link>
-                    </SidebarMenuButton>
+                      <Eye className="w-4 h-4"/>
+                      <span className="font-medium text-sm">Formula Viewer</span>
+                    </Link>
                 </SidebarMenuItem>
                 {currentUser?.role === 'admin' && (
                   <SidebarMenuItem>
-                      <SidebarMenuButton
-                          asChild
-                          className={`hover:bg-slate-100 hover:text-slate-900 transition-all duration-200 rounded-xl ${
-                            location.pathname === createPageUrl("UserManagement") ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600'
-                          }`}
-                      >
-                          <Link to={createPageUrl("UserManagement")} className="flex items-center gap-2 px-3 py-2">
-                              <Users className="w-4 h-4"/>
-                              <span className="font-medium text-sm">User Management</span>
-                          </Link>
-                      </SidebarMenuButton>
+                    <Link 
+                      to={createPageUrl("UserManagement")} 
+                      className={`flex items-center gap-2 px-3 py-2 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200 rounded-xl ${
+                        location.pathname === createPageUrl("UserManagement") ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600'
+                      }`}
+                    >
+                      <Users className="w-4 h-4"/>
+                      <span className="font-medium text-sm">User Management</span>
+                    </Link>
                   </SidebarMenuItem>
                 )}
                 <SidebarMenuItem>
-                    <SidebarMenuButton
-                        asChild
-                        className={`hover:bg-slate-100 hover:text-slate-900 transition-all duration-200 rounded-xl ${
-                          location.pathname === createPageUrl("MyProfile") ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600'
-                        }`}
+                    <Link 
+                      to={createPageUrl("MyProfile")} 
+                      className={`flex items-center gap-2 px-3 py-2 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200 rounded-xl ${
+                        location.pathname === createPageUrl("MyProfile") ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600'
+                      }`}
                     >
-                        <Link to={createPageUrl("MyProfile")} className="flex items-center gap-2 px-3 py-2">
-                            <UserIcon className="w-4 h-4"/>
-                            <span className="font-medium text-sm">My Profile</span>
-                        </Link>
-                    </SidebarMenuButton>
+                      <UserIcon className="w-4 h-4"/>
+                      <span className="font-medium text-sm">My Profile</span>
+                    </Link>
                 </SidebarMenuItem>
             </SidebarMenu>
             
