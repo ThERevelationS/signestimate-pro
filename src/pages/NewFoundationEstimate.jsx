@@ -803,7 +803,7 @@ export default function NewFoundationEstimate() {
     }
   }, [calculateTotals, isLoading, project.items.length, project.selected_equipment?.length, 
       project.excavation_method, project.hand_dig_labor_rate, project.equipment_excavation_labor_rate,
-      project.hand_dig_excavation_cost_per_cy, project.equipment_excavation_cost_per_cy // Added new dependencies
+      project.hand_dig_excavation_cost_per_cy, project.equipment_excavation_cost_per_cy 
     ]);
 
   const saveProject = async () => {
@@ -960,71 +960,26 @@ export default function NewFoundationEstimate() {
                     )}
                   </div>
                 </div>
-                {/* Excavation Method and Labor Rates */}
-                <div className="grid md:grid-cols-3 gap-3">
-                  <div>
-                    <Label className="text-xs">Excavation Method *</Label>
-                    <Select 
-                      value={project.excavation_method} 
-                      onValueChange={(value) => setProject(prev => ({ ...prev, excavation_method: value }))}
-                    >
-                      <SelectTrigger className="mt-1 h-8 text-xs">
-                        <SelectValue placeholder="Select method" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hand_dig">Hand Dig</SelectItem>
-                        <SelectItem value="equipment_excavation">Equipment Excavation</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {!project.excavation_method && (
-                      <p className="text-xs text-red-600 mt-1 font-medium">
-                        Please select an excavation method
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <Label className="text-xs">Hand Dig Labor Rate ($/hr)</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={project.hand_dig_labor_rate}
-                      onChange={(e) => setProject(prev => ({ ...prev, hand_dig_labor_rate: parseFloat(e.target.value) || 0 }))}
-                      className="mt-1 h-8 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Equip. Excav. Labor Rate ($/hr)</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      value={project.equipment_excavation_labor_rate}
-                      onChange={(e) => setProject(prev => ({ ...prev, equipment_excavation_labor_rate: parseFloat(e.target.value) || 0 }))}
-                      className="mt-1 h-8 text-sm"
-                    />
-                  </div>
-                </div>
-                {/* Excavation Cost per CY Rates */}
-                <div className="grid md:grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">Hand Dig Excavation Cost ($/cy)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={project.hand_dig_excavation_cost_per_cy}
-                      onChange={(e) => setProject(prev => ({ ...prev, hand_dig_excavation_cost_per_cy: parseFloat(e.target.value) || 0 }))}
-                      className="mt-1 h-8 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Equipment Excavation Cost ($/cy)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={project.equipment_excavation_cost_per_cy}
-                      onChange={(e) => setProject(prev => ({ ...prev, equipment_excavation_cost_per_cy: parseFloat(e.target.value) || 0 }))}
-                      className="mt-1 h-8 text-sm"
-                    />
-                  </div>
+                {/* NEW: Excavation Method - REMOVED labor rate inputs */}
+                <div>
+                  <Label className="text-xs">Excavation Method *</Label>
+                  <Select 
+                    value={project.excavation_method} 
+                    onValueChange={(value) => setProject(prev => ({ ...prev, excavation_method: value }))}
+                  >
+                    <SelectTrigger className="mt-1 h-8 text-xs">
+                      <SelectValue placeholder="Select method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hand_dig">Hand Dig</SelectItem>
+                      <SelectItem value="equipment_excavation">Equipment Excavation</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {!project.excavation_method && (
+                    <p className="text-xs text-red-600 mt-1 font-medium">
+                      Please select an excavation method
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-xs">Notes</Label>
