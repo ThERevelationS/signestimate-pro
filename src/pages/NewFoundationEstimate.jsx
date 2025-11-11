@@ -22,6 +22,8 @@ export default function NewFoundationEstimate() {
   const [showAttachmentModal, setShowAttachmentModal] = useState(false);
   const [currentEquipmentIndex, setCurrentEquipmentIndex] = useState(null);
   const [availableAttachments, setAvailableAttachments] = useState([]);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingSubsidiary, setPendingSubsidiary] = useState(null);
 
   const [project, setProject] = useState({
     project_name: "",
@@ -313,33 +315,13 @@ export default function NewFoundationEstimate() {
     });
   };
 
-  const openAttachmentModal = (equipmentIndex) => {
-    const eq = project.selected_equipment[equipmentIndex];
-    const selectedEquip = equipment.find(e => e.id === eq.equipment_id);
-    
-    if (selectedEquip) {
-      const compatible = allAttachments.filter(att => 
-        !att.compatible_equipment_ids || // If the field doesn't exist
-        att.compatible_equipment_ids.length === 0 || // or is empty, it's universally compatible
-        att.compatible_equipment_ids.includes(selectedEquip.id) // otherwise, check for equipment ID match
-      );
-      setAvailableAttachments(compatible);
-      setCurrentEquipmentIndex(equipmentIndex);
-      setShowAttachmentModal(true);
-    } else {
-      alert("Please select a base equipment first to add attachments.");
-    }
-  };
-
-  const addAttachmentToEquipment = (attachmentId) => {
-    if (currentEquipmentIndex === null) return;
-    
+  const addAttachmentToEquipment = useCallback((equipmentIdx, attachmentId) => { // Changed signature to accept equipmentIdx
     const attachment = allAttachments.find(a => a.id === attachmentId);
     if (!attachment) return;
 
     setProject(prev => {
       const newSelectedEquipment = prev.selected_equipment.map((eq, idx) => {
-        if (idx !== currentEquipmentIndex) return eq;
+        if (idx !== equipmentIdx) return eq; // Use equipmentIdx
         
         const existingAttachments = eq.attachments || [];
         // Prevent adding duplicate attachments
@@ -362,7 +344,25 @@ export default function NewFoundationEstimate() {
     });
 
     // Defer recalculation to ensure setProject has updated the state
-    setTimeout(() => recalculateEquipmentCosts(currentEquipmentIndex), 0);
+    setTimeout(() => recalculateEquipmentCosts(equipmentIdx), 0); // Use equipmentIdx
+  }, [allAttachments, recalculateEquipmentCosts]);
+
+  const openAttachmentModal = (equipmentIndex) => {
+    const eq = project.selected_equipment[equipmentIndex];
+    const selectedEquip = equipment.find(e => e.id === eq.equipment_id);
+    
+    if (selectedEquip) {
+      const compatible = allAttachments.filter(att => 
+        !att.compatible_equipment_ids || // If the field doesn't exist
+        att.compatible_equipment_ids.length === 0 || // or is empty, it's universally compatible
+        att.compatible_equipment_ids.includes(selectedEquip.id) // otherwise, check for equipment ID match
+      );
+      setAvailableAttachments(compatible);
+      setCurrentEquipmentIndex(equipmentIndex);
+      setShowAttachmentModal(true);
+    } else {
+      alert("Please select a base equipment first to add attachments.");
+    }
   };
 
   const removeAttachmentFromEquipment = (equipmentIndex, attachmentIndex) => {
@@ -379,7 +379,7 @@ export default function NewFoundationEstimate() {
     setTimeout(() => recalculateEquipmentCosts(equipmentIndex), 0);
   };
 
-  const addSubsidiaryToAttachment = (equipmentIndex, attachmentIndex, subsidiaryId) => {
+  const addSubsidiaryToAttachment = useCallback((equipmentIndex, attachmentIndex, subsidiaryId) => {
     const subsidiary = allAttachments.find(a => a.id === subsidiaryId);
     if (!subsidiary) return;
 
@@ -389,7 +389,8 @@ export default function NewFoundationEstimate() {
         return {
           ...eq,
           attachments: (eq.attachments || []).map((att, aIdx) => {
-            if (aIdx !== attachmentIndex) return att;
+            if (aIdx !== attachmentIndex) return att; // Ensure we modify the correct parent attachment
+
             const existingSubs = att.subsidiaries || [];
             // Prevent adding duplicate subsidiaries
             if (existingSubs.some(s => s.subsidiary_id === subsidiaryId)) {
@@ -397,10 +398,7 @@ export default function NewFoundationEstimate() {
             }
             return {
               ...att,
-              subsidiaries: [...existingSubs, {
-                subsidiary_id: subsidiaryId,
-                // rental_period, rental_duration, subsidiary_cost will be set/updated by recalculateEquipmentCosts
-              }]
+              subsidiaries: [...existingSubs, { subsidiary_id: subsidiaryId }]
             };
           })
         };
@@ -408,7 +406,58 @@ export default function NewFoundationEstimate() {
       return { ...prev, selected_equipment: newSelectedEquipment };
     });
     setTimeout(() => recalculateEquipmentCosts(equipmentIndex), 0);
-  };
+  }, [allAttachments, recalculateEquipmentCosts]);
+
+  const handleConfirmAddParentAndSub = useCallback(() => {
+    if (!pendingSubsidiary) return;
+    
+    const { equipmentIndex, subsidiaryId, parentInfo } = pendingSubsidiary;
+    
+    // 1. Add the parent attachment
+    // This will trigger a setProject and its own recalculateEquipmentCosts.
+    addAttachmentToEquipment(equipmentIndex, parentInfo.id); 
+    
+    // 2. Then, after the state update for the parent is complete, add the subsidiary to it.
+    // Use a setTimeout to allow the state update from addAttachmentToEquipment to propagate.
+    setTimeout(() => {
+      setProject(prev => {
+        const newSelectedEquipment = prev.selected_equipment.map((eq, eIdx) => {
+          if (eIdx !== equipmentIndex) return eq; // Match equipment from pendingSubsidiary
+          
+          // Find the parent attachment we just added within the updated attachments array
+          const parentAttachmentIndex = (eq.attachments || []).findIndex(a => a.attachment_id === parentInfo.id);
+          
+          if (parentAttachmentIndex === -1) {
+            console.error("Parent attachment not found after adding it during confirmation.");
+            return eq;
+          }
+
+          // Directly modify the found parent attachment to add the subsidiary
+          return {
+            ...eq,
+            attachments: (eq.attachments || []).map((att, aIdx) => {
+              if (aIdx !== parentAttachmentIndex) return att;
+              const existingSubs = att.subsidiaries || [];
+              if (existingSubs.some(s => s.subsidiary_id === subsidiaryId)) {
+                return att;
+              }
+              return {
+                ...att,
+                subsidiaries: [...existingSubs, { subsidiary_id: subsidiaryId }]
+              };
+            })
+          };
+        });
+        return { ...prev, selected_equipment: newSelectedEquipment };
+      });
+      // This recalculation accounts for both the parent and the subsidiary just added.
+      setTimeout(() => recalculateEquipmentCosts(equipmentIndex), 0); 
+    }, 100); // Delay for addAttachmentToEquipment to update state
+    
+    setShowConfirmDialog(false);
+    setPendingSubsidiary(null);
+  }, [pendingSubsidiary, addAttachmentToEquipment, recalculateEquipmentCosts, setProject, setShowConfirmDialog, setPendingSubsidiary]);
+
 
   const removeSubsidiary = (equipmentIndex, attachmentIndex, subsidiaryIndex) => {
     setProject(prev => {
@@ -490,7 +539,7 @@ export default function NewFoundationEstimate() {
   };
 
   const handleConcreteSelection = (concreteId) => {
-    if (concreteId === "default") {
+    if (!concreteId) { // Check for empty string, which indicates no selection
       setProject(prev => ({
         ...prev,
         selected_concrete_id: null,
@@ -648,6 +697,11 @@ export default function NewFoundationEstimate() {
       return;
     }
 
+    if (!project.selected_concrete_id) {
+        alert('Please select a concrete material.');
+        return;
+    }
+
     if (project.items.length === 0) {
       alert('Please add at least one foundation item');
       return;
@@ -758,16 +812,15 @@ export default function NewFoundationEstimate() {
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <Label className="text-xs">Concrete Material</Label>
+                    <Label className="text-xs">Concrete Material *</Label>
                     <Select 
-                      value={project.selected_concrete_id || "default"} 
+                      value={project.selected_concrete_id || ""} 
                       onValueChange={handleConcreteSelection}
                     >
                       <SelectTrigger className="mt-1 h-8 text-xs">
                         <SelectValue placeholder="Select concrete material" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="default">Default (${project.concrete_cost_per_cy.toFixed(2)}/cy)</SelectItem>
                         {concreteOptions.map(concrete => {
                           const costPerCY = concrete.cost_per_unit.toFixed(2); // Now directly using cost_per_unit
                           return (
@@ -778,6 +831,11 @@ export default function NewFoundationEstimate() {
                         })}
                       </SelectContent>
                     </Select>
+                    {!project.selected_concrete_id && (
+                      <p className="text-xs text-red-600 mt-1 font-medium">
+                        Please select a concrete material
+                      </p>
+                    )}
                     {selectedConcrete && (
                       <p className="text-xs text-green-600 mt-1 font-medium">
                         Using: {selectedConcrete.material_name} @ ${project.concrete_cost_per_cy.toFixed(2)}/cy
@@ -1079,11 +1137,18 @@ export default function NewFoundationEstimate() {
                               <SelectContent>
                                 {equipment.map(e => (
                                   <SelectItem key={e.id} value={e.id}>
-                                    {e.material_name}
+                                    {e.material_name} {e.equipment_type ? `(${e.equipment_type})` : ''}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
+                            {selectedEquip && selectedEquip.notes && (
+                              <div className="mt-2 p-2 bg-amber-50 rounded border border-amber-200">
+                                <p className="text-xs text-amber-800">
+                                  <strong>Notes:</strong> {selectedEquip.notes}
+                                </p>
+                              </div>
+                            )}
                           </div>
                           
                           <div>
@@ -1264,7 +1329,14 @@ export default function NewFoundationEstimate() {
 
       {/* Attachment Selection Modal */}
       {showAttachmentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowAttachmentModal(false);
+            }
+          }}
+        >
           <Card className="bg-white w-full max-w-2xl max-h-[80vh] overflow-y-auto">
             <CardHeader className="border-b">
               <div className="flex justify-between items-center">
@@ -1280,7 +1352,7 @@ export default function NewFoundationEstimate() {
               ) : (
                 <div className="space-y-2">
                   {availableAttachments.map(att => {
-                    const subsidiaries = allAttachments.filter(a => a.parent_attachment_id === att.id);
+                    const subsidiaries = allAttachments.filter(a => a.parent_attachment_ids && a.parent_attachment_ids.includes(att.id));
                     // Check if this attachment is already added to the current equipment
                     const isAttachmentAdded = project.selected_equipment[currentEquipmentIndex]?.attachments?.some(a => a.attachment_id === att.id);
                     
@@ -1307,7 +1379,7 @@ export default function NewFoundationEstimate() {
                           </div>
                           <Button
                             size="sm"
-                            onClick={() => addAttachmentToEquipment(att.id)}
+                            onClick={() => addAttachmentToEquipment(currentEquipmentIndex, att.id)}
                             className="bg-purple-600 hover:bg-purple-700"
                             disabled={isAttachmentAdded}
                           >
@@ -1318,9 +1390,10 @@ export default function NewFoundationEstimate() {
                         {subsidiaries.length > 0 && (
                           <div className="ml-4 pl-3 border-l-2 border-purple-200 mt-2 space-y-1">
                             {subsidiaries.map(sub => {
-                              // Check if this subsidiary is already added to the current attachment
+                              const subsidiaryInfo = allAttachments.find(a => a.id === sub.id);
                               const currentEquipment = project.selected_equipment[currentEquipmentIndex];
-                              const currentAttachment = currentEquipment?.attachments?.find(a => a.attachment_id === att.id);
+                              const currentAttachment = (currentEquipment.attachments || []).find(a => a.attachment_id === att.id); // 'att' from outer loop
+
                               const isSubsidiaryAdded = currentAttachment?.subsidiaries?.some(s => s.subsidiary_id === sub.id);
 
                               return (
@@ -1335,22 +1408,44 @@ export default function NewFoundationEstimate() {
                                     size="sm"
                                     variant="outline"
                                     onClick={() => {
-                                      // Add parent first if not already added
-                                      const currentEq = project.selected_equipment[currentEquipmentIndex];
-                                      const hasParent = (currentEq.attachments || []).some(a => a.attachment_id === att.id);
-                                      if (!hasParent) {
-                                        addAttachmentToEquipment(att.id);
-                                      }
-                                      // Then add subsidiary.
-                                      // Use a timeout to ensure state update from addAttachmentToEquipment has propagated.
-                                      setTimeout(() => {
-                                        // Re-find the parent attachment's index in case addAttachmentToEquipment shifted things
-                                        const updatedEq = project.selected_equipment[currentEquipmentIndex];
-                                        const parentIdx = (updatedEq.attachments || []).findIndex(a => a.attachment_id === att.id);
-                                        if (parentIdx !== -1) {
-                                          addSubsidiaryToAttachment(currentEquipmentIndex, parentIdx, sub.id);
+                                      const parentRequired = subsidiaryInfo.parent_attachment_ids && subsidiaryInfo.parent_attachment_ids.length > 0;
+                                      
+                                      let hasRequiredParentAlready = false;
+                                      
+                                      if (parentRequired) {
+                                        const selectedEquipmentAttachments = project.selected_equipment[currentEquipmentIndex]?.attachments || [];
+                                        const foundParentAttachment = selectedEquipmentAttachments.find(
+                                          selectedAtt => subsidiaryInfo.parent_attachment_ids.includes(selectedAtt.attachment_id)
+                                        );
+                                        if (foundParentAttachment) {
+                                          hasRequiredParentAlready = true;
                                         }
-                                      }, 100); // 100ms delay to allow state update
+                                      }
+
+                                      if (parentRequired && !hasRequiredParentAlready) {
+                                        const parentInfoToSuggest = allAttachments.find(a => subsidiaryInfo.parent_attachment_ids.includes(a.id));
+                                        if (parentInfoToSuggest) {
+                                          setPendingSubsidiary({
+                                            equipmentIndex: currentEquipmentIndex,
+                                            subsidiaryId: sub.id,
+                                            parentInfo: parentInfoToSuggest
+                                          });
+                                          setShowConfirmDialog(true);
+                                        } else {
+                                            console.error("Required parent for subsidiary not found in allAttachments:", subsidiaryInfo.parent_attachment_ids);
+                                        }
+                                      } else {
+                                        const parentAttachmentIdInModal = att.id; // 'att' is the parent in the modal's current loop
+                                        const actualParentAttachmentIndex = project.selected_equipment[currentEquipmentIndex].attachments.findIndex(
+                                            selectedAtt => selectedAtt.attachment_id === parentAttachmentIdInModal
+                                        );
+
+                                        if (actualParentAttachmentIndex !== -1) {
+                                          addSubsidiaryToAttachment(currentEquipmentIndex, actualParentAttachmentIndex, sub.id);
+                                        } else {
+                                          console.warn("Cannot find target parent attachment in selected_equipment to add subsidiary directly.");
+                                        }
+                                      }
                                     }}
                                     className="text-xs"
                                     disabled={isSubsidiaryAdded}
@@ -1367,6 +1462,41 @@ export default function NewFoundationEstimate() {
                   })}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {showConfirmDialog && pendingSubsidiary && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="bg-white w-full max-w-md">
+            <CardHeader className="border-b">
+              <CardTitle className="text-lg">Parent Attachment Required</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <p className="text-slate-700">
+                This subsidiary attachment requires the parent attachment <strong>"{pendingSubsidiary.parentInfo.material_name}"</strong> to be selected first.
+              </p>
+              <p className="text-slate-600 text-sm">
+                Would you like to add both the parent attachment and this subsidiary?
+              </p>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowConfirmDialog(false);
+                    setPendingSubsidiary(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleConfirmAddParentAndSub}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  Yes, Add Both
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
