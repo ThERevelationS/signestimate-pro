@@ -668,7 +668,7 @@ export default function NewFoundationEstimate() {
         // Calculate layers based on depth
         const firstLayerOffset = 3; // 3 inches from top
         const layerSpacing = 18; // 18 inches between layers
-        const numLayers = Math.max(0, Math.floor((item.depth_inches - firstLayerOffset - edgeClearanceInches) / layerSpacing) + 1); // Adjust depth for bottom clearance
+        const numLayers = Math.max(0, Math.floor((item.depth_inches - firstLayerOffset - edgeClearanceInches) / layerSpacing) + 1);
 
         // Total rebar: lengthwise bars + crosswise bars, multiplied by layers
         const totalLengthwiseRebarFeet = numRebarsLengthwise * lengthFeet * numLayers;
@@ -705,6 +705,11 @@ export default function NewFoundationEstimate() {
       const formingHours = item.include_forming ? formingSqFt * formingHoursPerSqFt * item.quantity : 0;
       const pouringHours = item.concrete_volume_cy * pouringHoursPerCy * item.quantity;
       const finishingHours = item.include_finishing ? finishingSqFt * finishingHoursPerSqFt * item.quantity : 0;
+
+      // Calculate labor costs
+      const formingCost = formingHours * project.forming_labor_rate;
+      const pouringCost = pouringHours * project.pouring_labor_rate;
+      const finishingCost = finishingHours * project.finishing_labor_rate;
 
       const itemTotalCost = concreteCost + rebarCost + excavationCost + formingCost + pouringCost + finishingCost;
 
