@@ -61,11 +61,14 @@ export default function FoundationInventoryPage() {
       }
 
       if (editingItem) {
-        await FoundationInventory.update(editingItem.id, dataToSave);
+        const updatedItem = await FoundationInventory.update(editingItem.id, dataToSave);
+        // Update local state instead of reloading
+        setInventory(prev => prev.map(item => item.id === editingItem.id ? updatedItem : item));
       } else {
-        await FoundationInventory.create(dataToSave);
+        const newItem = await FoundationInventory.create(dataToSave);
+        // Add to local state instead of reloading
+        setInventory(prev => [...prev, newItem]);
       }
-      await loadInventory();
       resetForm();
     } catch (error) {
       console.error('Error saving item:', error);
@@ -108,9 +111,11 @@ export default function FoundationInventoryPage() {
     if (confirm('Are you sure you want to delete this item?')) {
       try {
         await FoundationInventory.delete(id);
-        await loadInventory();
+        // Update local state instead of reloading
+        setInventory(prev => prev.filter(item => item.id !== id));
       } catch (error) {
         console.error('Error deleting item:', error);
+        alert('Error deleting item. Please try again.');
       }
     }
   };
@@ -401,6 +406,11 @@ export default function FoundationInventoryPage() {
                             </td>
                             <td className="p-3 text-sm text-slate-500">Subsidiary</td>
                             <td className="p-3 text-sm text-slate-500">For: {parentNames || 'N/A'}</td> {/* Display parent names */}
+                            <td className="p-3">
+                            <span className="text-sm">
+                              Compatible: {getEquipmentNames(sub.compatible_equipment_ids)}
+                            </span>
+                            </td>
                             <td className="p-3 text-right">
                               <div className="text-sm">
                                 <div>Day: ${(sub.cost_per_day || 0).toFixed(2)}</div>

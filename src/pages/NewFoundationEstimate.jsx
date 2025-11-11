@@ -465,8 +465,18 @@ export default function NewFoundationEstimate() {
           updated.attachments = [];
         }
         
-        // The 'equipment_cost' itself will be fully recalculated by `recalculateEquipmentCosts`.
-        // This function just sets the raw properties.
+        // Auto-switch to week rental if 3+ days
+        if (field === 'rental_duration' || field === 'rental_period') {
+          // Ensure rental_duration is a number for comparison
+          const currentDuration = parseFloat(updated.rental_duration);
+          if (updated.rental_period === 'day' && currentDuration >= 3) {
+            // Convert to weeks, rounding up
+            const weeks = Math.ceil(currentDuration / 7);
+            updated.rental_period = 'week';
+            updated.rental_duration = weeks;
+          }
+        }
+        
         return updated;
       });
       return { ...prev, selected_equipment: newSelectedEquipment };
