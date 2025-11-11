@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Settings as SettingsEntity, User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -53,13 +54,16 @@ export default function FoundationSettings() {
     return [
       { name: "foundation_concrete_cost_per_cy", type: "number", category: "foundation_pricing", description: "Cost per cubic yard of concrete from Ernst Concrete" },
       { name: "foundation_rebar_cost_per_ft", type: "number", category: "foundation_pricing", description: "Cost per linear foot of rebar" },
-      { name: "foundation_excavation_cost_per_cy", type: "number", category: "foundation_pricing", description: "Cost per cubic yard of excavation" },
+      { name: "foundation_excavation_cost_per_cy", type: "number", category: "foundation_pricing", description: "Cost per cubic yard of excavation (non-labor)" },
       { name: "foundation_forming_labor_rate", type: "number", category: "foundation_labor", description: "Forming labor hourly rate" },
       { name: "foundation_pouring_labor_rate", type: "number", category: "foundation_labor", description: "Pouring labor hourly rate" },
       { name: "foundation_finishing_labor_rate", type: "number", category: "foundation_labor", description: "Finishing labor hourly rate" },
+      { name: "foundation_hand_dig_labor_rate", type: "number", category: "foundation_labor", description: "Hand dig labor hourly rate" },
+      { name: "foundation_equipment_excavation_labor_rate", type: "number", category: "foundation_labor", description: "Equipment excavation operator hourly rate" },
       { name: "foundation_forming_hours_per_sqft", type: "number", category: "foundation_calc", description: "Forming time per square foot" },
       { name: "foundation_pouring_hours_per_cy", type: "number", category: "foundation_calc", description: "Pouring time per cubic yard" },
       { name: "foundation_finishing_hours_per_sqft", type: "number", category: "foundation_calc", description: "Finishing time per square foot" },
+      { name: "foundation_excavation_hours_per_cy", type: "number", category: "foundation_calc", description: "Excavation labor time per cubic yard (applies to both hand dig and equipment)" },
       { name: "company_name", type: "text", category: "general", description: "Company name" },
       { name: "default_notes_template", type: "text", category: "general", description: "Default project notes template" }
     ];
