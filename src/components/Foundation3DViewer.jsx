@@ -68,17 +68,24 @@ export default function Foundation3DViewer({
     directionalLight.shadow.mapSize.height = 2048;
     scene.add(directionalLight);
 
-    // Ground plane
+    // Ground plane - semi-transparent with grid
     const groundGeometry = new THREE.PlaneGeometry(200, 200);
     const groundMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x8b7355,
-      roughness: 0.8 
+      roughness: 0.8,
+      transparent: true,
+      opacity: 0.6
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = 0;
     ground.receiveShadow = true;
     scene.add(ground);
+
+    // Add grid helper for ground reference
+    const gridHelper = new THREE.GridHelper(200, 40, 0x666666, 0x888888);
+    gridHelper.position.y = 0.01; // Slightly above ground to prevent z-fighting
+    scene.add(gridHelper);
 
     // Calculate grid layout for multiple foundations
     const gridSize = Math.ceil(Math.sqrt(quantity));
@@ -95,7 +102,7 @@ export default function Foundation3DViewer({
     // Clear previous objects (except lights and ground)
     const objectsToRemove = [];
     scene.children.forEach(child => {
-      if (child !== ground && child !== ambientLight && child !== directionalLight) {
+      if (child !== ground && child !== gridHelper && child !== ambientLight && child !== directionalLight) {
         objectsToRemove.push(child);
       }
     });
@@ -113,7 +120,7 @@ export default function Foundation3DViewer({
       foundationGroup.position.set(offsetX, 0, offsetZ);
 
       if (foundationType === 'spread_foot') {
-        // Create spread footing
+        // Create spread footing - positioned BELOW ground level
         const concreteGeometry = new THREE.BoxGeometry(lengthFeet, depthFeet, widthFeet);
         const concreteMaterial = new THREE.MeshStandardMaterial({ 
           color: 0x9ca3af,
@@ -121,7 +128,7 @@ export default function Foundation3DViewer({
           metalness: 0.1 
         });
         const concrete = new THREE.Mesh(concreteGeometry, concreteMaterial);
-        concrete.position.y = depthFeet / 2;
+        concrete.position.y = -depthFeet / 2; // Negative to go below ground
         concrete.castShadow = true;
         concrete.receiveShadow = true;
         foundationGroup.add(concrete);
@@ -158,7 +165,7 @@ export default function Foundation3DViewer({
           const numLayers = Math.max(1, Math.floor((depthFeet - firstLayerOffset) / layerSpacing) + 1);
 
           for (let layer = 0; layer < numLayers; layer++) {
-            const yPos = firstLayerOffset + layer * layerSpacing;
+            const yPos = -firstLayerOffset - layer * layerSpacing; // Negative for below ground
             
             for (let j = 0; j < numRebarsLengthwise; j++) {
               const zOffset = -widthFeet / 2 + j * rebarSpacingWidthFeet;
@@ -183,7 +190,7 @@ export default function Foundation3DViewer({
         }
 
       } else if (foundationType === 'pillar') {
-        // Create pillar foundation
+        // Create pillar foundation - positioned BELOW ground level
         const radius = diameterFeet / 2;
         const concreteGeometry = new THREE.CylinderGeometry(radius, radius, depthFeet, 32);
         const concreteMaterial = new THREE.MeshStandardMaterial({ 
@@ -192,7 +199,7 @@ export default function Foundation3DViewer({
           metalness: 0.1 
         });
         const concrete = new THREE.Mesh(concreteGeometry, concreteMaterial);
-        concrete.position.y = depthFeet / 2;
+        concrete.position.y = -depthFeet / 2; // Negative to go below ground
         concrete.castShadow = true;
         concrete.receiveShadow = true;
         foundationGroup.add(concrete);
@@ -233,23 +240,23 @@ export default function Foundation3DViewer({
     };
 
     if (foundationType === 'spread_foot') {
-      addLabel(`${lengthInches}"`, new THREE.Vector3(0, -1, widthFeet / 2 + 1));
-      addLabel(`${widthInches}"`, new THREE.Vector3(lengthFeet / 2 + 1, -1, 0));
-      addLabel(`${depthInches}"`, new THREE.Vector3(lengthFeet / 2 + 1, depthFeet / 2, widthFeet / 2 + 1));
+      addLabel(`${lengthInches}"`, new THREE.Vector3(0, 0.5, widthFeet / 2 + 1));
+      addLabel(`${widthInches}"`, new THREE.Vector3(lengthFeet / 2 + 1, 0.5, 0));
+      addLabel(`${depthInches}" deep`, new THREE.Vector3(lengthFeet / 2 + 1, -depthFeet / 2, widthFeet / 2 + 1));
     } else {
-      addLabel(`Ø${diameter}"`, new THREE.Vector3(diameterFeet / 2 + 1, -1, 0));
-      addLabel(`${depthInches}"`, new THREE.Vector3(diameterFeet / 2 + 1, depthFeet / 2, diameterFeet / 2 + 1));
+      addLabel(`Ø${diameter}"`, new THREE.Vector3(diameterFeet / 2 + 1, 0.5, 0));
+      addLabel(`${depthInches}" deep`, new THREE.Vector3(diameterFeet / 2 + 1, -depthFeet / 2, diameterFeet / 2 + 1));
     }
 
-    // Position camera based on foundation size and quantity
+    // Position camera to show both above and below ground
     const maxDimension = Math.max(
       foundationType === 'spread_foot' ? Math.max(lengthFeet, widthFeet) : diameterFeet,
       depthFeet
     ) * gridSize * 1.5;
     
-    camera.position.set(maxDimension * 1.2, maxDimension * 0.8, maxDimension * 1.2);
-    camera.lookAt(0, depthFeet / 2, 0);
-    controls.target.set(0, depthFeet / 2, 0);
+    camera.position.set(maxDimension * 1.2, maxDimension * 0.6, maxDimension * 1.2);
+    camera.lookAt(0, -depthFeet / 4, 0); // Look at below ground level
+    controls.target.set(0, -depthFeet / 4, 0);
     controls.update();
 
     // Animation loop
