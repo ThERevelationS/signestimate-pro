@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { FoundationInventory } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -19,9 +18,9 @@ export default function FoundationInventoryPage() {
   const [formData, setFormData] = useState({
     material_name: "",
     material_type: "concrete_service",
-    equipment_type: "N/A",
+    equipment_type: "",
     compatible_equipment_ids: [],
-    parent_attachment_ids: [], // Changed from parent_attachment_id to parent_attachment_ids
+    parent_attachment_ids: [],
     supplier: "",
     rental_company: "",
     unit: "cubic yard",
@@ -62,11 +61,9 @@ export default function FoundationInventoryPage() {
 
       if (editingItem) {
         const updatedItem = await FoundationInventory.update(editingItem.id, dataToSave);
-        // Update local state instead of reloading
         setInventory(prev => prev.map(item => item.id === editingItem.id ? updatedItem : item));
       } else {
         const newItem = await FoundationInventory.create(dataToSave);
-        // Add to local state instead of reloading
         setInventory(prev => [...prev, newItem]);
       }
       resetForm();
@@ -89,9 +86,9 @@ export default function FoundationInventoryPage() {
     setFormData({
       material_name: item.material_name,
       material_type: item.material_type,
-      equipment_type: item.equipment_type || "N/A",
+      equipment_type: item.equipment_type || "",
       compatible_equipment_ids: item.compatible_equipment_ids || [],
-      parent_attachment_ids: item.parent_attachment_ids || [], // Changed here
+      parent_attachment_ids: item.parent_attachment_ids || [],
       supplier: item.supplier || "",
       rental_company: item.rental_company || "",
       unit: item.unit || "cubic yard",
@@ -111,7 +108,6 @@ export default function FoundationInventoryPage() {
     if (confirm('Are you sure you want to delete this item?')) {
       try {
         await FoundationInventory.delete(id);
-        // Update local state instead of reloading
         setInventory(prev => prev.filter(item => item.id !== id));
       } catch (error) {
         console.error('Error deleting item:', error);
@@ -125,9 +121,9 @@ export default function FoundationInventoryPage() {
     setFormData({
       material_name: "",
       material_type: "concrete_service",
-      equipment_type: "N/A",
+      equipment_type: "",
       compatible_equipment_ids: [],
-      parent_attachment_ids: [], // Changed here
+      parent_attachment_ids: [],
       supplier: "",
       rental_company: "",
       unit: "cubic yard",
@@ -149,9 +145,9 @@ export default function FoundationInventoryPage() {
     setFormData({
       material_name: "",
       material_type: "excavation_equipment",
-      equipment_type: "skid_steer",
+      equipment_type: "",
       compatible_equipment_ids: [],
-      parent_attachment_ids: [], // Changed here
+      parent_attachment_ids: [],
       supplier: "",
       rental_company: "",
       unit: "",
@@ -173,9 +169,9 @@ export default function FoundationInventoryPage() {
     setFormData({
       material_name: "",
       material_type: "attachment",
-      equipment_type: "N/A",
+      equipment_type: "",
       compatible_equipment_ids: [],
-      parent_attachment_ids: [], // Changed here
+      parent_attachment_ids: [],
       supplier: "",
       rental_company: "",
       unit: "",
@@ -196,9 +192,9 @@ export default function FoundationInventoryPage() {
     setFormData({
       material_name: "",
       material_type: "concrete_service",
-      equipment_type: "N/A",
+      equipment_type: "",
       compatible_equipment_ids: [],
-      parent_attachment_ids: [], // Changed here
+      parent_attachment_ids: [],
       supplier: "",
       rental_company: "",
       unit: "cubic yard",
@@ -227,7 +223,6 @@ export default function FoundationInventoryPage() {
     });
   };
 
-  // New function for toggling parent attachments
   const toggleParentAttachment = (attachmentId) => {
     setFormData(prev => {
       const current = prev.parent_attachment_ids || [];
@@ -254,15 +249,14 @@ export default function FoundationInventoryPage() {
   );
 
   const attachmentItems = inventory.filter(item => 
-    item.material_type === 'attachment' && (!item.parent_attachment_ids || item.parent_attachment_ids.length === 0) // Updated filter
+    item.material_type === 'attachment' && (!item.parent_attachment_ids || item.parent_attachment_ids.length === 0)
   );
 
   const getSubsidiaryAttachments = (parentId) => {
-    return inventory.filter(item => item.parent_attachment_ids && item.parent_attachment_ids.includes(parentId)); // Updated filter
+    return inventory.filter(item => item.parent_attachment_ids && item.parent_attachment_ids.includes(parentId));
   };
 
   const getParentAttachments = () => {
-    // Exclude the currently editing item from its own parent selection
     const availableParents = inventory.filter(item => 
       item.material_type === 'attachment' && 
       (!item.parent_attachment_ids || item.parent_attachment_ids.length === 0) &&
@@ -282,7 +276,6 @@ export default function FoundationInventoryPage() {
       .join(', ') || 'Unknown';
   };
 
-  // New function to get names of parent attachments
   const getParentNames = (parentIds) => {
     if (!parentIds || parentIds.length === 0) return null;
     return parentIds
@@ -335,7 +328,7 @@ export default function FoundationInventoryPage() {
                     <React.Fragment key={item.id}>
                       <tr className="border-b border-slate-100 hover:bg-slate-25">
                         <td className="p-3 font-medium">{item.material_name}</td>
-                        <td className="p-3 capitalize">{item.material_type.replace(/_/g, ' ')}</td>
+                        <td className="p-3 capitalize">{item.equipment_type || item.material_type.replace(/_/g, ' ')}</td>
                         {!isAttachmentSection && (
                           <td className="p-3 text-sm text-slate-600">
                             {item.material_type === 'excavation_equipment' 
@@ -346,8 +339,7 @@ export default function FoundationInventoryPage() {
                         <td className="p-3">
                           {item.material_type === 'excavation_equipment' ? (
                             <span className="text-sm">
-                              {item.equipment_type?.replace(/_/g, ' ').toUpperCase() || 'N/A'}
-                              {item.pickup_delivery_cost > 0 && ` • Delivery: $${item.pickup_delivery_cost.toFixed(2)}`}
+                              {item.pickup_delivery_cost > 0 && `Delivery: $${item.pickup_delivery_cost.toFixed(2)}`}
                             </span>
                           ) : item.material_type === 'attachment' ? (
                             <span className="text-sm">
@@ -397,7 +389,7 @@ export default function FoundationInventoryPage() {
                         </td>
                       </tr>
                       {subsidiaries.map(sub => {
-                        const parentNames = getParentNames(sub.parent_attachment_ids); // Using new function
+                        const parentNames = getParentNames(sub.parent_attachment_ids);
                         return (
                           <tr key={sub.id} className="border-b border-slate-100 bg-slate-25">
                             <td className="p-3 pl-8">
@@ -405,12 +397,7 @@ export default function FoundationInventoryPage() {
                               {sub.material_name}
                             </td>
                             <td className="p-3 text-sm text-slate-500">Subsidiary</td>
-                            <td className="p-3 text-sm text-slate-500">For: {parentNames || 'N/A'}</td> {/* Display parent names */}
-                            <td className="p-3">
-                            <span className="text-sm">
-                              Compatible: {getEquipmentNames(sub.compatible_equipment_ids)}
-                            </span>
-                            </td>
+                            <td className="p-3 text-sm text-slate-500">For: {parentNames || 'N/A'}</td>
                             <td className="p-3 text-right">
                               <div className="text-sm">
                                 <div>Day: ${(sub.cost_per_day || 0).toFixed(2)}</div>
@@ -485,7 +472,6 @@ export default function FoundationInventoryPage() {
           {renderInventoryTable(attachmentItems, "Attachments", <Wrench className="w-5 h-5" />, true)}
         </div>
 
-        {/* Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <Card className="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -515,6 +501,88 @@ export default function FoundationInventoryPage() {
                     />
                   </div>
 
+                  {isEquipment && (
+                    <>
+                      <div>
+                        <Label htmlFor="equipment_type">Equipment Type</Label>
+                        <Input
+                          id="equipment_type"
+                          value={formData.equipment_type}
+                          onChange={(e) => setFormData(prev => ({ ...prev, equipment_type: e.target.value }))}
+                          placeholder="e.g., Skid Steer, Auger, Excavator, Backhoe"
+                          className="mt-1"
+                        />
+                        <p className="text-xs text-slate-500 mt-1">Enter a custom equipment type</p>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="rental_company">Rental Company</Label>
+                        <Input
+                          id="rental_company"
+                          value={formData.rental_company}
+                          onChange={(e) => setFormData(prev => ({ ...prev, rental_company: e.target.value }))}
+                          placeholder="e.g., Sunbelt Rentals, United Rentals"
+                          className="mt-1"
+                        />
+                      </div>
+
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <div>
+                          <Label htmlFor="cost_per_day">Daily Rate *</Label>
+                          <Input
+                            id="cost_per_day"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.cost_per_day}
+                            onChange={(e) => setFormData(prev => ({ ...prev, cost_per_day: parseFloat(e.target.value) || 0 }))}
+                            required
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="cost_per_week">Weekly Rate *</Label>
+                          <Input
+                            id="cost_per_week"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.cost_per_week}
+                            onChange={(e) => setFormData(prev => ({ ...prev, cost_per_week: parseFloat(e.target.value) || 0 }))}
+                            required
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="cost_per_month">Monthly Rate *</Label>
+                          <Input
+                            id="cost_per_month"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.cost_per_month}
+                            onChange={(e) => setFormData(prev => ({ ...prev, cost_per_month: parseFloat(e.target.value) || 0 }))}
+                            required
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="pickup_delivery_cost">Pickup & Delivery Cost</Label>
+                        <Input
+                          id="pickup_delivery_cost"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.pickup_delivery_cost}
+                          onChange={(e) => setFormData(prev => ({ ...prev, pickup_delivery_cost: parseFloat(e.target.value) || 0 }))}
+                          className="mt-1"
+                        />
+                      </div>
+                    </>
+                  )}
+
                   {isAttachment && (
                     <>
                       <div>
@@ -531,7 +599,7 @@ export default function FoundationInventoryPage() {
                                   onCheckedChange={() => toggleCompatibleEquipment(equip.id)}
                                 />
                                 <Label htmlFor={`compat-${equip.id}`} className="text-sm font-normal cursor-pointer">
-                                  {equip.material_name} ({equip.equipment_type.replace(/_/g, ' ')})
+                                  {equip.material_name} ({equip.equipment_type || 'N/A'})
                                 </Label>
                               </div>
                             ))
@@ -542,7 +610,6 @@ export default function FoundationInventoryPage() {
                         </p>
                       </div>
 
-                      {/* Parent Attachments section updated to use checkboxes */}
                       <div>
                         <Label>Parent Attachments (Optional)</Label>
                         <div className="mt-2 max-h-48 overflow-y-auto border rounded-lg p-3 space-y-2">
@@ -717,95 +784,6 @@ export default function FoundationInventoryPage() {
                           </p>
                         </div>
                       )}
-                    </>
-                  )}
-
-                  {isEquipment && (
-                    <>
-                      <div>
-                        <Label htmlFor="equipment_type">Equipment Type *</Label>
-                        <Select
-                          value={formData.equipment_type}
-                          onValueChange={(value) => setFormData(prev => ({ ...prev, equipment_type: value }))}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="skid_steer">Skid Steer</SelectItem>
-                            <SelectItem value="auger">Auger</SelectItem>
-                            <SelectItem value="excavator">Excavator</SelectItem>
-                            <SelectItem value="backhoe">Backhoe</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="rental_company">Rental Company</Label>
-                        <Input
-                          id="rental_company"
-                          value={formData.rental_company}
-                          onChange={(e) => setFormData(prev => ({ ...prev, rental_company: e.target.value }))}
-                          placeholder="e.g., Sunbelt Rentals, United Rentals"
-                          className="mt-1"
-                        />
-                      </div>
-
-                      <div className="grid md:grid-cols-3 gap-4">
-                        <div>
-                          <Label htmlFor="cost_per_day">Daily Rate *</Label>
-                          <Input
-                            id="cost_per_day"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={formData.cost_per_day}
-                            onChange={(e) => setFormData(prev => ({ ...prev, cost_per_day: parseFloat(e.target.value) || 0 }))}
-                            required
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="cost_per_week">Weekly Rate *</Label>
-                          <Input
-                            id="cost_per_week"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={formData.cost_per_week}
-                            onChange={(e) => setFormData(prev => ({ ...prev, cost_per_week: parseFloat(e.target.value) || 0 }))}
-                            required
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="cost_per_month">Monthly Rate *</Label>
-                          <Input
-                            id="cost_per_month"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={formData.cost_per_month}
-                            onChange={(e) => setFormData(prev => ({ ...prev, cost_per_month: parseFloat(e.target.value) || 0 }))}
-                            required
-                            className="mt-1"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="pickup_delivery_cost">Pickup & Delivery Cost</Label>
-                        <Input
-                          id="pickup_delivery_cost"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formData.pickup_delivery_cost}
-                          onChange={(e) => setFormData(prev => ({ ...prev, pickup_delivery_cost: parseFloat(e.target.value) || 0 }))}
-                          className="mt-1"
-                        />
-                      </div>
                     </>
                   )}
 
