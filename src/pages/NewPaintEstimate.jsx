@@ -46,17 +46,17 @@ const formatPaintVolume = (gallons) => {
   const wholeGallons = Math.floor(gallons);
   const remainingGallons = gallons - wholeGallons;
   const quarts = Math.floor(remainingGallons * 4);
-  const remainingQuarts = (remainingGallons * 4) - quarts;
+  const remainingQuarts = remainingGallons * 4 - quarts;
   const pints = Math.round(remainingQuarts * 2);
-  
+
   const parts = [];
   if (wholeGallons > 0) parts.push(`${wholeGallons} gal`);
   if (quarts > 0) parts.push(`${quarts} qt`);
   if (pints > 0) parts.push(`${pints} pt`);
-  
+
   const formatted = parts.length > 0 ? parts.join(' ') : '0 gal';
   const decimal = gallons.toFixed(2);
-  
+
   return `${formatted} (${decimal} gallons)`;
 };
 
@@ -65,7 +65,7 @@ export default function NewPaintEstimate() {
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('edit');
   const [isEditing, setIsEditing] = useState(false);
-  
+
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailData, setEmailData] = useState({
     to: '',
@@ -83,19 +83,19 @@ export default function NewPaintEstimate() {
     notes: ""
   });
   const [globalSettings, setGlobalSettings] = useState({});
-  
+
   const [panelTiers, setPanelTiers] = useState([]);
   const [complexShapesTiers, setComplexShapesTiers] = useState([]);
   const [letteringTiers, setLetteringTiers] = useState([]);
-  
+
   const [expandedCostOverride, setExpandedCostOverride] = useState({});
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const toggleCostOverride = (index) => {
-    setExpandedCostOverride(prev => ({
+    setExpandedCostOverride((prev) => ({
       ...prev,
       [index]: !prev[index]
     }));
@@ -110,36 +110,36 @@ export default function NewPaintEstimate() {
     } else if (itemType === 'lettering') {
       tiers = letteringTiers;
     }
-    
+
     if (!tiers || tiers.length === 0) return 1.0;
-    
+
     for (let tier of tiers) {
       if (quantity >= tier.min_quantity && quantity <= tier.max_quantity) {
         return tier.labor_multiplier;
       }
     }
-    
+
     return 1.0;
   }, [panelTiers, complexShapesTiers, letteringTiers]);
-  
+
   const getItemsWithDiscounts = useCallback(() => {
-    return project.items
-      .map((item, index) => {
-        const multiplier = getLaborMultiplier(item.item_type, item.quantity);
-        if (multiplier < 1.0) {
-          const discountPercent = ((1 - multiplier) * 100).toFixed(0);
-          return {
-            index,
-            description: item.description || `${item.item_type} item`,
-            itemType: item.item_type,
-            quantity: item.quantity,
-            multiplier,
-            discountPercent
-          };
-        }
-        return null;
-      })
-      .filter(item => item !== null);
+    return project.items.
+    map((item, index) => {
+      const multiplier = getLaborMultiplier(item.item_type, item.quantity);
+      if (multiplier < 1.0) {
+        const discountPercent = ((1 - multiplier) * 100).toFixed(0);
+        return {
+          index,
+          description: item.description || `${item.item_type} item`,
+          itemType: item.item_type,
+          quantity: item.quantity,
+          multiplier,
+          discountPercent
+        };
+      }
+      return null;
+    }).
+    filter((item) => item !== null);
   }, [project.items, getLaborMultiplier]);
 
   const getCostPerGallon = useCallback((cost, unit) => {
@@ -153,22 +153,22 @@ export default function NewPaintEstimate() {
     const paintCostPerGallon = getCostPerGallon(globalSettings.paint_cost_per_unit, globalSettings.paint_unit);
     const hardenerCostPerGallon = getCostPerGallon(globalSettings.hardener_cost_per_unit, globalSettings.hardener_unit);
     const reducerCostPerGallon = getCostPerGallon(globalSettings.reducer_cost_per_unit, globalSettings.reducer_unit);
-    
+
     const paintMixRatio = parseFloat(globalSettings.paint_mix_ratio) || 3;
     const hardenerMixRatio = parseFloat(globalSettings.hardener_mix_ratio) || 1;
     const reducerMixRatio = parseFloat(globalSettings.reducer_mix_ratio) || 1;
 
     const totalRatio = paintMixRatio + hardenerMixRatio + reducerMixRatio;
-    
+
     const costOfMix = totalRatio > 0 ?
-        (paintCostPerGallon / totalRatio) * paintMixRatio +
-        (hardenerCostPerGallon / totalRatio) * hardenerMixRatio +
-        (reducerCostPerGallon / totalRatio) * reducerMixRatio
-        : 0;
+    paintCostPerGallon / totalRatio * paintMixRatio +
+    hardenerCostPerGallon / totalRatio * hardenerMixRatio +
+    reducerCostPerGallon / totalRatio * reducerMixRatio :
+    0;
 
     const coverageSqFtPerGallon = parseFloat(globalSettings.mixed_paint_coverage_sqft_per_gallon) || 1;
     const finalRate = coverageSqFtPerGallon > 0 ? costOfMix / coverageSqFtPerGallon : 0;
-    
+
     return finalRate;
   }, [globalSettings, getCostPerGallon]);
 
@@ -178,7 +178,7 @@ export default function NewPaintEstimate() {
       if (projectToEdit) {
         const cleanedProject = {
           ...projectToEdit,
-          items: projectToEdit.items.map(item => ({
+          items: projectToEdit.items.map((item) => ({
             ...item,
             paint_sides: item.paint_sides === 'none' ? 'one_side' : item.paint_sides,
             approx_coverage_factor: item.approx_coverage_factor || "1/4",
@@ -206,14 +206,14 @@ export default function NewPaintEstimate() {
   const loadPrerequisites = useCallback(async () => {
     try {
       const settingsData = await Settings.list();
-      
+
       const settingsObj = {};
-      settingsData.forEach(setting => {
+      settingsData.forEach((setting) => {
         settingsObj[setting.setting_name] = setting.setting_value;
       });
-      
+
       setGlobalSettings(settingsObj);
-      
+
       if (settingsObj.panel_labor_tiers) {
         try {
           setPanelTiers(JSON.parse(settingsObj.panel_labor_tiers));
@@ -221,7 +221,7 @@ export default function NewPaintEstimate() {
           console.error('Error parsing panel tiers:', e);
         }
       }
-      
+
       if (settingsObj.complex_shapes_labor_tiers) {
         try {
           setComplexShapesTiers(JSON.parse(settingsObj.complex_shapes_labor_tiers));
@@ -229,7 +229,7 @@ export default function NewPaintEstimate() {
           console.error('Error parsing complex shapes tiers:', e);
         }
       }
-      
+
       if (settingsObj.lettering_labor_tiers) {
         try {
           setLetteringTiers(JSON.parse(settingsObj.lettering_labor_tiers));
@@ -237,14 +237,14 @@ export default function NewPaintEstimate() {
           console.error('Error parsing lettering tiers:', e);
         }
       }
-      
+
       if (!editId) {
         const newDefaults = {
           paint_supplies_per_sqft: parseFloat(settingsObj.default_paint_supplies_per_sqft) || 1.25,
           notes: settingsObj.default_notes_template || ""
         };
-        
-        setProject(prev => ({ ...prev, ...newDefaults }));
+
+        setProject((prev) => ({ ...prev, ...newDefaults }));
       }
     } catch (error) {
       console.error('Error loading prerequisites:', error);
@@ -260,7 +260,7 @@ export default function NewPaintEstimate() {
   }, [editId, loadPrerequisites, loadProjectForEdit]);
 
   const addItem = () => {
-    setProject(prev => ({
+    setProject((prev) => ({
       ...prev,
       items: [...prev.items, {
         item_type: "panel",
@@ -286,35 +286,35 @@ export default function NewPaintEstimate() {
   };
 
   const removeItem = (index) => {
-    setProject(prev => ({
+    setProject((prev) => ({
       ...prev,
       items: prev.items.filter((_, i) => i !== index)
     }));
   };
 
   const updateItem = (index, field, value) => {
-    setProject(prev => {
+    setProject((prev) => {
       const newItems = [...prev.items];
       let item = { ...newItems[index], [field]: value };
-      
+
       if (field === 'width' && item.item_type === 'lettering') {
-          const height = value;
-          if (height <= 4) item.letter_size = 'extra_small';
-          else if (height <= 8) item.letter_size = 'small';
-          else if (height <= 12) item.letter_size = 'normal';
-          else if (height <= 20) item.letter_size = 'medium';
-          else if (height <= 30) item.letter_size = 'large';
-          else item.letter_size = 'extra_large';
+        const height = value;
+        if (height <= 4) item.letter_size = 'extra_small';else
+        if (height <= 8) item.letter_size = 'small';else
+        if (height <= 12) item.letter_size = 'normal';else
+        if (height <= 20) item.letter_size = 'medium';else
+        if (height <= 30) item.letter_size = 'large';else
+        item.letter_size = 'extra_large';
       }
 
       if (['length', 'width', 'item_type'].includes(field) && item.length > 0 && item.width > 0) {
         if (item.item_type === 'panel' || item.item_type === 'complex_shapes') {
-          const faceArea = (item.length * item.width) / 144;
+          const faceArea = item.length * item.width / 144;
           item.paint_mask_sqft = item.paint_sides === 'both_sides' ? faceArea * 2 : faceArea;
         } else if (item.item_type === 'lettering') {
           const letterHeight = item.width;
           const numLetters = item.length;
-          const faceArea = (Math.pow(letterHeight, 2) * 0.8 * numLetters) / 144;
+          const faceArea = Math.pow(letterHeight, 2) * 0.8 * numLetters / 144;
           item.paint_mask_sqft = item.paint_sides === 'both_sides' ? faceArea * 2 : faceArea;
         }
       }
@@ -324,37 +324,37 @@ export default function NewPaintEstimate() {
       const itemThicknessDecimal = parseImperialFraction(item.thickness);
 
       if (item.item_type === 'panel' && item.length > 0 && item.width > 0) {
-        const faceArea = (item.length * item.width) / 144;
+        const faceArea = item.length * item.width / 144;
         paintableSqFt = item.paint_sides === 'both_sides' ? faceArea * 2 : faceArea;
       } else if (item.item_type === 'lettering' && item.width > 0 && item.length > 0 && itemThicknessDecimal > 0) {
         const letterHeight = item.width;
         const numLetters = item.length;
-        
-        const faceArea = (Math.pow(letterHeight, 2) * 0.8 * numLetters) / 144;
+
+        const faceArea = Math.pow(letterHeight, 2) * 0.8 * numLetters / 144;
         const perimeterInches = letterHeight * perimFactor * numLetters;
-        const edgeArea = (perimeterInches * itemThicknessDecimal) / 144;
-        
-        paintableSqFt = item.paint_sides === 'both_sides' ? (faceArea * 2) + edgeArea : faceArea + edgeArea;
+        const edgeArea = perimeterInches * itemThicknessDecimal / 144;
+
+        paintableSqFt = item.paint_sides === 'both_sides' ? faceArea * 2 + edgeArea : faceArea + edgeArea;
       } else if (item.item_type === 'complex_shapes' && item.length > 0 && item.width > 0 && itemThicknessDecimal > 0) {
-        const faceArea = (item.length * item.width) / 144;
+        const faceArea = item.length * item.width / 144;
         const perimeterInches = 2 * (item.length + item.width);
-        const edgeArea = (perimeterInches * itemThicknessDecimal * (item.edge_complexity_multiplier || 1.0)) / 144;
-        
+        const edgeArea = perimeterInches * itemThicknessDecimal * (item.edge_complexity_multiplier || 1.0) / 144;
+
         if (item.paint_sides === 'both_sides') {
-            paintableSqFt = (faceArea * 2) + edgeArea;
+          paintableSqFt = faceArea * 2 + edgeArea;
         } else if (item.paint_sides === 'one_side') {
-            paintableSqFt = faceArea + edgeArea;
+          paintableSqFt = faceArea + edgeArea;
         } else {
-            paintableSqFt = 0;
+          paintableSqFt = 0;
         }
       }
-      
+
       const paintSuppliesRate = prev.paint_supplies_per_sqft;
 
       const paintMaskMaterialRate = parseFloat(globalSettings.paint_mask_rate_per_sqft) || 0.75;
       const paintMaskMachineRate = parseFloat(globalSettings.paint_mask_machine_cutting_rate_per_sqft) || 0.10;
       let paintMaskCost = 0;
-      
+
       const numColors = item.paint_colors?.length || 0;
       if (numColors > 1 && item.paint_mask_sqft > 0) {
         const maskMaterialCost = item.paint_mask_sqft * paintMaskMaterialRate * (numColors - 1);
@@ -366,23 +366,23 @@ export default function NewPaintEstimate() {
       let liquidPaintCost = 0;
       let paintApplicationSuppliesCost = 0;
       let paintGallons = 0; // Initialize paintGallons
-      
-      if (numColors > 0) { 
+
+      if (numColors > 0) {
         paintApplicationSuppliesCost = paintableSqFt * paintSuppliesRate * numColors;
-        
+
         const paintWasteMultiplier = parseFloat(globalSettings.paint_waste_multiplier) || 1.25;
         const coverageSqFtPerGallon = parseFloat(globalSettings.mixed_paint_coverage_sqft_per_gallon) || 350;
-        
+
         if (liquidPaintRate > 0) {
-            liquidPaintCost = paintableSqFt * liquidPaintRate * paintWasteMultiplier * numColors;
+          liquidPaintCost = paintableSqFt * liquidPaintRate * paintWasteMultiplier * numColors;
         }
-        
+
         // Calculate gallons needed for this item
-        paintGallons = (paintableSqFt * paintWasteMultiplier * numColors) / coverageSqFtPerGallon;
+        paintGallons = paintableSqFt * paintWasteMultiplier * numColors / coverageSqFtPerGallon;
       }
-      
+
       liquidPaintAndSuppliesCost = paintApplicationSuppliesCost + liquidPaintCost + (item.base_supplies_cost || 0);
-      
+
       const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
       const baseHoursPerSqFt = parseFloat(globalSettings.base_labor_hours_per_sqft) || 0.5;
       const complexityMap = {
@@ -391,9 +391,9 @@ export default function NewPaintEstimate() {
         normal: 'moderate',
         medium: 'moderate',
         large: 'simple',
-        extra_large: 'simple',
+        extra_large: 'simple'
       };
-      const itemComplexity = item.item_type === 'lettering' ? complexityMap[item.letter_size] || 'moderate' : 'moderate'; 
+      const itemComplexity = item.item_type === 'lettering' ? complexityMap[item.letter_size] || 'moderate' : 'moderate';
 
       const complexityMultipliers = {
         simple: parseFloat(globalSettings.simple_complexity_multiplier) || 0.7,
@@ -405,23 +405,23 @@ export default function NewPaintEstimate() {
         both_sides: parseFloat(globalSettings.both_sides_paint_multiplier) || 1.0
       };
       const additionalColorMultiplier = parseFloat(globalSettings.additional_color_multiplier) || 0.3;
-      
+
       let baseHours = paintableSqFt * baseHoursPerSqFt * (complexityMultipliers[itemComplexity] || 1) * (paintMultipliers[item.paint_sides] || 1);
       if (numColors > 1) {
-        baseHours *= (1 + (numColors - 1) * additionalColorMultiplier);
+        baseHours *= 1 + (numColors - 1) * additionalColorMultiplier;
       }
-      
+
       const maskApplicationLaborRate = parseFloat(globalSettings.paint_mask_application_labor_rate_per_sqft) || 0.25;
       const maskCuttingLaborRate = parseFloat(globalSettings.paint_mask_cutting_labor_rate_per_sqft) || 0.15;
       if (numColors > 1 && item.paint_mask_sqft > 0) {
-        const maskApplicationLaborHours = (item.paint_mask_sqft * maskApplicationLaborRate * (numColors - 1)) / laborRate;
-        const maskCuttingLaborHours = (item.paint_mask_sqft * maskCuttingLaborRate * (numColors - 1)) / laborRate;
+        const maskApplicationLaborHours = item.paint_mask_sqft * maskApplicationLaborRate * (numColors - 1) / laborRate;
+        const maskCuttingLaborHours = item.paint_mask_sqft * maskCuttingLaborRate * (numColors - 1) / laborRate;
         baseHours += maskApplicationLaborHours + maskCuttingLaborHours;
       }
-      
+
       const quantityMultiplier = getLaborMultiplier(item.item_type, item.quantity);
       const discountedLaborHours = baseHours * quantityMultiplier;
-      
+
       const laborHours = discountedLaborHours;
       const laborCost = laborHours * laborRate * item.quantity;
 
@@ -431,37 +431,37 @@ export default function NewPaintEstimate() {
         paint_cost: liquidPaintAndSuppliesCost * item.quantity,
         paint_gallons: paintGallons * item.quantity, // Assign paint_gallons
         labor_hours: laborHours * item.quantity,
-        labor_cost: laborCost,
+        labor_cost: laborCost
       };
 
       newItems[index] = item;
       return { ...prev, items: newItems };
     });
   };
-  
+
   const handleCoverageFactorChange = (index, factorStr) => {
     const factor = parseImperialFraction(factorStr);
     const item = project.items[index];
     let faceArea = 0;
 
     if ((item.item_type === 'panel' || item.item_type === 'complex_shapes') && item.length > 0 && item.width > 0) {
-      faceArea = (item.length * item.width) / 144;
+      faceArea = item.length * item.width / 144;
     } else if (item.item_type === 'lettering' && item.width > 0 && item.length > 0) {
       const letterHeight = item.width;
       const numLetters = item.length;
-      faceArea = (Math.pow(letterHeight, 2) * 0.8 * numLetters) / 144;
+      faceArea = Math.pow(letterHeight, 2) * 0.8 * numLetters / 144;
     }
 
     const calculatedMaskSqFt = faceArea * factor;
-    
-    setProject(prev => {
-        const newItems = [...prev.items];
-        newItems[index] = {
-            ...newItems[index],
-            approx_coverage_factor: factorStr,
-            paint_mask_sqft: calculatedMaskSqFt
-        };
-        return { ...prev, items: newItems };
+
+    setProject((prev) => {
+      const newItems = [...prev.items];
+      newItems[index] = {
+        ...newItems[index],
+        approx_coverage_factor: factorStr,
+        paint_mask_sqft: calculatedMaskSqFt
+      };
+      return { ...prev, items: newItems };
     });
   };
 
@@ -470,12 +470,12 @@ export default function NewPaintEstimate() {
     newColors[colorIndex] = value;
     updateItem(itemIndex, 'paint_colors', newColors);
   };
-  
+
   const addColor = (itemIndex) => {
     const newColors = [...project.items[itemIndex].paint_colors, ""];
     updateItem(itemIndex, 'paint_colors', newColors);
   };
-  
+
   const removeColor = (itemIndex, colorIndex) => {
     const newColors = project.items[itemIndex].paint_colors.filter((_, i) => i !== colorIndex);
     updateItem(itemIndex, 'paint_colors', newColors);
@@ -487,13 +487,13 @@ export default function NewPaintEstimate() {
 
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
     let totalItemLaborCost = project.items.reduce((sum, item) => sum + (item.labor_cost || 0), 0);
-    
+
     // Calculate total paint gallons by summing paint_gallons from each item
     let totalPaintGallons = project.items.reduce((sum, item) => sum + (item.paint_gallons || 0), 0);
-    
+
     // Number of mixes is based on total paint gallons
     const numberOfMixes = Math.ceil(totalPaintGallons);
-    
+
     const mixingHoursPerGallon = parseFloat(globalSettings.paint_mixing_labor_hours) || 0;
     const mixingHours = numberOfMixes * mixingHoursPerGallon;
     const setupHours = parseFloat(globalSettings.setup_time_labor_hours) || 0;
@@ -504,19 +504,19 @@ export default function NewPaintEstimate() {
 
     const minLaborHours = parseFloat(globalSettings.min_labor_hours) || 0;
     const minPaintCost = parseFloat(globalSettings.min_paint_cost) || 0;
-    
+
     if (totalLaborHours > 0 && totalLaborHours < minLaborHours) {
-        totalLabor = minLaborHours * laborRate;
-    }
-    
-    if (totalLiquidPaintAndSupplies > 0 && totalLiquidPaintAndSupplies < minPaintCost) {
-        totalLiquidPaintAndSupplies = minPaintCost;
+      totalLabor = minLaborHours * laborRate;
     }
 
-    return { 
-      totalPaintMask, 
-      totalLiquidPaintAndSupplies, 
-      totalLabor, 
+    if (totalLiquidPaintAndSupplies > 0 && totalLiquidPaintAndSupplies < minPaintCost) {
+      totalLiquidPaintAndSupplies = minPaintCost;
+    }
+
+    return {
+      totalPaintMask,
+      totalLiquidPaintAndSupplies,
+      totalLabor,
       totalLaborHours,
       totalGallonsNeeded: totalPaintGallons, // Use the summed paint_gallons
       numberOfMixes,
@@ -530,15 +530,15 @@ export default function NewPaintEstimate() {
       alert('Please fill in project name and client name');
       return;
     }
-    
+
     setIsSaving(true);
     try {
       const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalGallonsNeeded } = calculateTotals();
       const finalProject = {
         ...project,
-        items: project.items.map(item => ({
-          ...item, 
-          paint_colors: item.paint_colors ? item.paint_colors.filter(c => c.trim() !== '') : []
+        items: project.items.map((item) => ({
+          ...item,
+          paint_colors: item.paint_colors ? item.paint_colors.filter((c) => c.trim() !== '') : []
         })),
         total_paint_mask_cost: totalPaintMask,
         total_liquid_paint_and_supplies_cost: totalLiquidPaintAndSupplies,
@@ -546,13 +546,13 @@ export default function NewPaintEstimate() {
         total_paint_gallons: totalGallonsNeeded, // Save total gallons needed to project
         status: 'calculated'
       };
-      
+
       if (isEditing) {
         await Project.update(editId, finalProject);
       } else {
         await Project.create(finalProject);
       }
-      
+
       // Use window.location for reliable navigation
       window.location.href = createPageUrl("PaintProjects");
     } catch (error) {
@@ -587,7 +587,7 @@ export default function NewPaintEstimate() {
     const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
-    
+
     const estimateContent = `
 PAINT ESTIMATE
 
@@ -604,7 +604,7 @@ Type: ${item.item_type}
 Dimensions: ${item.length}"L × ${item.width}"H × ${item.thickness}"
 Quantity: ${item.quantity}
 Paint Sides: ${item.paint_sides}
-Colors: ${item.paint_colors?.filter(c => c.trim() !== '').join(', ') || 'None'}
+Colors: ${item.paint_colors?.filter((c) => c.trim() !== '').join(', ') || 'None'}
 Paint Volume: ${formatPaintVolume(item.paint_gallons || 0)}
 Paint Mask Cost: $${(item.supplies_cost || 0).toFixed(2)}
 Liquid Paint & Supplies: $${(item.paint_cost || 0).toFixed(2)}
@@ -622,7 +622,7 @@ TOTAL ESTIMATE: $${totalCost.toFixed(2)}
 
 Notes: ${project.notes || 'None'}
 `;
-    
+
     const blob = new Blob([estimateContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -638,7 +638,7 @@ Notes: ${project.notes || 'None'}
     const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
-    
+
     const printContent = `
       <html>
         <head>
@@ -679,7 +679,7 @@ Notes: ${project.notes || 'None'}
               <p><strong>Dimensions:</strong> ${item.length}"L × ${item.width}"H × ${item.thickness}"</p>
               <p><strong>Quantity:</strong> ${item.quantity}</p>
               <p><strong>Paint Sides:</strong> ${item.paint_sides}</p>
-              <p><strong>Colors:</strong> ${item.paint_colors?.filter(c => c.trim() !== '').join(', ') || 'None'}</p>
+              <p><strong>Colors:</strong> ${item.paint_colors?.filter((c) => c.trim() !== '').join(', ') || 'None'}</p>
               <p class="paint-volume"><strong>Paint Volume:</strong> ${formatPaintVolume(item.paint_gallons || 0)}</p>
               <div class="item-cost-details">
                 <div class="item-cost-row">
@@ -721,7 +721,7 @@ Notes: ${project.notes || 'None'}
         </body>
       </html>
     `;
-    
+
     const printWindow = window.open('', '_blank');
     printWindow.document.write(printContent);
     printWindow.document.close();
@@ -732,7 +732,7 @@ Notes: ${project.notes || 'None'}
     const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
-    
+
     setEmailData({
       to: '',
       subject: `Paint Estimate - ${project.project_name}`,
@@ -757,7 +757,7 @@ Item ${i + 1}: ${item.description || `${item.item_type} item`}
 - Dimensions: ${item.length}"L × ${item.width}"H × ${item.thickness}"
 - Quantity: ${item.quantity}
 - Paint Sides: ${item.paint_sides}
-- Colors: ${item.paint_colors?.filter(c => c.trim() !== '').join(', ') || 'None'}
+- Colors: ${item.paint_colors?.filter((c) => c.trim() !== '').join(', ') || 'None'}
 - Paint Volume: ${formatPaintVolume(item.paint_gallons || 0)}
 - Item Total: $${((item.supplies_cost || 0) + (item.paint_cost || 0) + (item.labor_cost || 0)).toFixed(2)}
 `).join('\n')}
@@ -789,12 +789,12 @@ ${globalSettings.company_name || 'Your Sign Company'}`
         <div className="animate-pulse space-y-6 text-center">
           <p className="text-slate-600">Loading...</p>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
-    <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
+    <div className="bg-slate-50 px-6 md:p-8 min-h-screen">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
           <Link to={createPageUrl("PaintProjects")}>
@@ -807,98 +807,98 @@ ${globalSettings.company_name || 'Your Sign Company'}`
             </h1>
             <p className="text-slate-600">{isEditing ? 'Update your paint estimate' : 'Create a detailed estimate for painting dimensional letters and panels'}</p>
           </div>
-          {isEditing && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleDeleteProject} 
-              disabled={isDeleting} 
-              className="ml-auto text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300"
-            >
+          {isEditing &&
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDeleteProject}
+            disabled={isDeleting}
+            className="ml-auto text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300">
+
               {isDeleting ? 'Deleting...' : <><Trash2 className="w-4 h-4 mr-2" /> Delete Project</>}
             </Button>
-          )}
+          }
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <Card className="bg-white border-0 shadow-sm">
-              <CardHeader><CardTitle className="text-lg font-semibold text-slate-900">Project Information</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+              <CardHeader className="px-6 flex flex-col space-y-1.5"><CardTitle className="text-lg font-semibold text-slate-900">Project Information</CardTitle></CardHeader>
+              <CardContent className="px-6 space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="client_name">Client Name *</Label>
-                    <Input 
-                      id="client_name" 
-                      value={project.client_name} 
-                      onChange={(e) => setProject(prev => ({ ...prev, client_name: e.target.value }))} 
-                      placeholder="Enter client name" 
-                      className="mt-1" 
-                    />
+                    <Input
+                      id="client_name"
+                      value={project.client_name}
+                      onChange={(e) => setProject((prev) => ({ ...prev, client_name: e.target.value }))}
+                      placeholder="Enter client name"
+                      className="mt-1" />
+
                   </div>
                   <div>
                     <Label htmlFor="project_name">Project Name *</Label>
-                    <Input 
-                      id="project_name" 
-                      value={project.project_name} 
-                      onChange={(e) => setProject(prev => ({ ...prev, project_name: e.target.value }))} 
-                      placeholder="Enter project name" 
-                      className="mt-1" 
-                    />
+                    <Input
+                      id="project_name"
+                      value={project.project_name}
+                      onChange={(e) => setProject((prev) => ({ ...prev, project_name: e.target.value }))}
+                      placeholder="Enter project name"
+                      className="mt-1" />
+
                   </div>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="estimate_number">Estimate Number</Label>
-                    <Input 
-                      id="estimate_number" 
-                      value={project.estimate_number || ""} 
-                      onChange={(e) => setProject(prev => ({ ...prev, estimate_number: e.target.value }))} 
-                      placeholder="e.g., EST-2024-001" 
-                      className="mt-1" 
-                    />
+                    <Input
+                      id="estimate_number"
+                      value={project.estimate_number || ""}
+                      onChange={(e) => setProject((prev) => ({ ...prev, estimate_number: e.target.value }))}
+                      placeholder="e.g., EST-2024-001"
+                      className="mt-1" />
+
                   </div>
                   <div>
                     <Label htmlFor="hyperlink">Project Link</Label>
-                    <Input 
-                      id="hyperlink" 
-                      value={project.hyperlink || ""} 
-                      onChange={(e) => setProject(prev => ({ ...prev, hyperlink: e.target.value }))} 
-                      placeholder="https://..." 
-                      className="mt-1" 
-                    />
+                    <Input
+                      id="hyperlink"
+                      value={project.hyperlink || ""}
+                      onChange={(e) => setProject((prev) => ({ ...prev, hyperlink: e.target.value }))}
+                      placeholder="https://..."
+                      className="mt-1" />
+
                   </div>
                 </div>
                 <div>
                   <Label htmlFor="notes">Project Notes</Label>
-                  <Textarea 
-                    id="notes" 
-                    value={project.notes} 
-                    onChange={(e) => setProject(prev => ({ ...prev, notes: e.target.value }))} 
-                    placeholder="Additional project details..." 
-                    className="mt-1 h-20" 
-                  />
+                  <Textarea
+                    id="notes"
+                    value={project.notes}
+                    onChange={(e) => setProject((prev) => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Additional project details..."
+                    className="mt-1 h-20" />
+
                 </div>
               </CardContent>
             </Card>
 
             <Card className="bg-white border-0 shadow-sm">
-              <CardHeader>
+              <CardHeader className="px-8 flex flex-col space-y-1.5">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg font-semibold text-slate-900">Project Items</CardTitle>
                   <Button onClick={addItem} size="sm" className="bg-slate-800 hover:bg-slate-900"><Plus className="w-4 h-4 mr-2" />Add Item</Button>
                 </div>
               </CardHeader>
-              <CardContent>
-                {project.items.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500">
+              <CardContent className="px-6">
+                {project.items.length === 0 ?
+                <div className="text-center py-12 text-slate-500">
                     <Calculator className="w-12 h-12 mx-auto mb-4 text-slate-300" />
                     <p>No items added yet. Click "Add Item" to start.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {project.items.map((item, index) => (
-                      <div key={index} className="p-6 border border-slate-200 rounded-xl bg-slate-25">
+                  </div> :
+
+                <div className="space-y-6">
+                    {project.items.map((item, index) =>
+                  <div key={index} className="p-6 border border-slate-200 rounded-xl bg-slate-25">
                         <div className="flex justify-between items-start mb-4">
                           <h4 className="font-medium text-slate-900">Item {index + 1}</h4>
                           <Button variant="ghost" size="icon" onClick={() => removeItem(index)} className="text-red-500 hover:text-red-700 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
@@ -927,101 +927,101 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {imperialSizes.map(size => (
-                                  <SelectItem key={size} value={size}>{size}"</SelectItem>
-                                ))}
+                                {imperialSizes.map((size) =>
+                            <SelectItem key={size} value={size}>{size}"</SelectItem>
+                            )}
                               </SelectContent>
                             </Select>
                           </div>
-                           { item.item_type === 'panel' || item.item_type === 'complex_shapes' ? (
-                            <>
+                           {item.item_type === 'panel' || item.item_type === 'complex_shapes' ?
+                      <>
                               <div>
                                 <Label>Quantity</Label>
-                                <Input 
-                                  type="number" 
-                                  min="1" 
-                                  value={item.quantity || ""}
-                                  onFocus={(e) => e.target.select()}
-                                  onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)} 
-                                  className="mt-1" 
-                                />
+                                <Input
+                            type="number"
+                            min="1"
+                            value={item.quantity || ""}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                            className="mt-1" />
+
                               </div>
                               <div>
                                 <Label>Height (in)</Label>
-                                <Input 
-                                  type="number" 
-                                  min="0" 
-                                  step="0.25" 
-                                  value={item.width || ""}
-                                  onFocus={(e) => e.target.select()}
-                                  onChange={(e) => updateItem(index, 'width', parseFloat(e.target.value) || 0)} 
-                                  className="mt-1" 
-                                />
+                                <Input
+                            type="number"
+                            min="0"
+                            step="0.25"
+                            value={item.width || ""}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => updateItem(index, 'width', parseFloat(e.target.value) || 0)}
+                            className="mt-1" />
+
                               </div>
                               <div>
                                 <Label>Length (in)</Label>
-                                <Input 
-                                  type="number" 
-                                  min="0" 
-                                  step="0.25" 
-                                  value={item.length || ""}
-                                  onFocus={(e) => e.target.select()}
-                                  onChange={(e) => updateItem(index, 'length', parseFloat(e.target.value) || 0)} 
-                                  className="mt-1" 
-                                />
+                                <Input
+                            type="number"
+                            min="0"
+                            step="0.25"
+                            value={item.length || ""}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => updateItem(index, 'length', parseFloat(e.target.value) || 0)}
+                            className="mt-1" />
+
                               </div>
-                              {item.item_type === 'complex_shapes' && (
-                                <div>
+                              {item.item_type === 'complex_shapes' &&
+                        <div>
                                   <Label>Edge Complexity Multiplier</Label>
-                                  <Input 
-                                    type="number" 
-                                    min="1.0" 
-                                    step="0.1" 
-                                    value={item.edge_complexity_multiplier || ""}
-                                    onFocus={(e) => e.target.select()}
-                                    onChange={(e) => updateItem(index, 'edge_complexity_multiplier', parseFloat(e.target.value) || 1.0)} 
-                                    className="mt-1" 
-                                  />
+                                  <Input
+                            type="number"
+                            min="1.0"
+                            step="0.1"
+                            value={item.edge_complexity_multiplier || ""}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => updateItem(index, 'edge_complexity_multiplier', parseFloat(e.target.value) || 1.0)}
+                            className="mt-1" />
+
                                   <p className="text-xs text-slate-500 mt-1">Multiplier for additional edge paint area (1.0 = standard, 2.0 = double edge paint)</p>
                                 </div>
-                              )}
-                            </>
-                          ) : (
-                            <>
+                        }
+                            </> :
+
+                      <>
                               <div>
                                 <Label>Quantity</Label>
-                                <Input 
-                                  type="number" 
-                                  min="1" 
-                                  value={item.quantity || ""}
-                                  onFocus={(e) => e.target.select()}
-                                  onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)} 
-                                  className="mt-1" 
-                                />
+                                <Input
+                            type="number"
+                            min="1"
+                            value={item.quantity || ""}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                            className="mt-1" />
+
                               </div>
                               <div>
                                 <Label>Letter Height (in)</Label>
-                                <Input 
-                                  type="number" 
-                                  min="0" 
-                                  step="0.25" 
-                                  value={item.width || ""}
-                                  onFocus={(e) => e.target.select()}
-                                  onChange={(e) => updateItem(index, 'width', parseFloat(e.target.value) || 0)} 
-                                  className="mt-1" 
-                                />
+                                <Input
+                            type="number"
+                            min="0"
+                            step="0.25"
+                            value={item.width || ""}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => updateItem(index, 'width', parseFloat(e.target.value) || 0)}
+                            className="mt-1" />
+
                               </div>
                               <div>
                                 <Label>Number of Letters</Label>
-                                <Input 
-                                  type="number" 
-                                  min="0" 
-                                  step="1" 
-                                  value={item.length || ""}
-                                  onFocus={(e) => e.target.select()}
-                                  onChange={(e) => updateItem(index, 'length', parseInt(e.target.value) || 0)} 
-                                  className="mt-1" 
-                                />
+                                <Input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={item.length || ""}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => updateItem(index, 'length', parseInt(e.target.value) || 0)}
+                            className="mt-1" />
+
                               </div>
                               <div>
                                 <Label>Letter Size</Label>
@@ -1038,7 +1038,7 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                                 </Select>
                               </div>
                             </>
-                          )}
+                      }
                         </div>
 
                         <div className="mt-4 pt-4 border-t border-slate-200">
@@ -1055,47 +1055,47 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                             </div>
                              <div className="space-y-2">
                               <Label>Paint Colors</Label>
-                              {item.paint_colors && item.paint_colors.length > 0 ? (
-                                item.paint_colors.map((color, cIndex) => (
-                                  <div key={cIndex} className="flex items-center gap-2">
-                                    <Input 
-                                      value={color} 
-                                      onChange={(e) => updateItemColor(index, cIndex, e.target.value)} 
-                                      placeholder="e.g., PMS 186C, Black, White" 
-                                      className="mt-1" 
-                                    />
+                              {item.paint_colors && item.paint_colors.length > 0 ?
+                          item.paint_colors.map((color, cIndex) =>
+                          <div key={cIndex} className="flex items-center gap-2">
+                                    <Input
+                              value={color}
+                              onChange={(e) => updateItemColor(index, cIndex, e.target.value)}
+                              placeholder="e.g., PMS 186C, Black, White"
+                              className="mt-1" />
+
                                     <Button variant="ghost" size="icon" onClick={() => removeColor(index, cIndex)} className="text-red-500 hover:bg-red-50 shrink-0">
                                       <Trash2 className="w-4 h-4" />
                                     </Button>
                                   </div>
-                                ))
-                              ) : (
-                                <div className="text-sm text-slate-500 p-3 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+                          ) :
+
+                          <div className="text-sm text-slate-500 p-3 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
                                   No colors added yet. Click "Add Color" to specify paint colors.
                                   <br />
                                   <span className="text-xs">Suggestions: PMS 186C, Black, White, PMS 285C, Gold</span>
                                 </div>
-                              )}
+                          }
                               <Button variant="outline" size="sm" onClick={() => addColor(index)}>
                                 <Palette className="w-3 h-3 mr-2" />Add Color
                               </Button>
                             </div>
                           </div>
                           
-                          {item.paint_colors && item.paint_colors.length > 1 && (
-                            <div className="mt-4">
+                          {item.paint_colors && item.paint_colors.length > 1 &&
+                      <div className="mt-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                                     <div>
                                         <Label>Paint Mask Square Feet</Label>
                                         <Input
-                                            type="number"
-                                            min="0"
-                                            step="0.25"
-                                            value={item.paint_mask_sqft || ""}
-                                            onFocus={(e) => e.target.select()}
-                                            onChange={(e) => updateItem(index, 'paint_mask_sqft', parseFloat(e.target.value) || 0)}
-                                            className="mt-1"
-                                        />
+                              type="number"
+                              min="0"
+                              step="0.25"
+                              value={item.paint_mask_sqft || ""}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => updateItem(index, 'paint_mask_sqft', parseFloat(e.target.value) || 0)}
+                              className="mt-1" />
+
                                         <p className="text-xs text-slate-500 mt-1">Manually enter sqft or use the helper.</p>
                                     </div>
                                     <div>
@@ -1105,49 +1105,49 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {coverageFactors.map(size => (
-                                                <SelectItem key={size} value={size}>{size}</SelectItem>
-                                                ))}
+                                                {coverageFactors.map((size) =>
+                                <SelectItem key={size} value={size}>{size}</SelectItem>
+                                )}
                                             </SelectContent>
                                         </Select>
                                         <p className="text-xs text-slate-500 mt-1">Calculates mask sqft based on face area.</p>
                                     </div>
                                 </div>
                             </div>
-                          )}
+                      }
                         </div>
 
                         <div className="mt-4 border-t pt-4">
                           <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toggleCostOverride(index)}
-                            className="w-full text-xs h-8"
-                          >
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleCostOverride(index)}
+                        className="w-full text-xs h-8">
+
                             Cost Override
                             {expandedCostOverride[index] ? <ChevronUp className="w-3 h-3 ml-2" /> : <ChevronDown className="w-3 h-3 ml-2" />}
                           </Button>
 
-                          {expandedCostOverride[index] && (
-                            <div className="mt-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                          {expandedCostOverride[index] &&
+                      <div className="mt-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
                               <div>
                                 <Label htmlFor={`base_supplies_${index}`} className="text-xs">Base Supplies Cost (for this item)</Label>
-                                <Input 
-                                  id={`base_supplies_${index}`}
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  value={item.base_supplies_cost || 0}
-                                  onFocus={(e) => e.target.select()}
-                                  onChange={(e) => updateItem(index, 'base_supplies_cost', parseFloat(e.target.value) || 0)}
-                                  placeholder="0.00"
-                                  className="mt-1 h-8 text-xs"
-                                />
+                                <Input
+                            id={`base_supplies_${index}`}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.base_supplies_cost || 0}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => updateItem(index, 'base_supplies_cost', parseFloat(e.target.value) || 0)}
+                            placeholder="0.00"
+                            className="mt-1 h-8 text-xs" />
+
                                 <p className="text-xs text-amber-700 mt-1">Override base supplies for this item (e.g., special masking tape, cleaners)</p>
                               </div>
                             </div>
-                          )}
+                      }
                         </div>
 
                         <div className="mt-4 p-4 bg-white rounded-lg border border-slate-200">
@@ -1163,9 +1163,9 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                           </div>
                         </div>
                       </div>
-                    ))}
+                  )}
                   </div>
-                )}
+                }
               </CardContent>
             </Card>
           </div>
@@ -1180,13 +1180,13 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                     <span className="text-lg font-bold text-blue-900 text-right leading-tight">{formatPaintVolume(totalGallonsNeeded)}</span>
                   </div>
                   <p className="text-xs text-blue-600">Total liquid paint needed across all items</p>
-                  {totalGallonsNeeded > 1 && (
-                    <div className="mt-2 pt-2 border-t border-blue-300">
+                  {totalGallonsNeeded > 1 &&
+                  <div className="mt-2 pt-2 border-t border-blue-300">
                       <p className="text-xs text-blue-700 font-medium">
                         → {numberOfMixes} mix{numberOfMixes > 1 ? 'es' : ''} required
                       </p>
                     </div>
-                  )}
+                  }
                 </div>
                 
                 <div className="p-4 bg-purple-50 rounded-lg">
@@ -1217,18 +1217,18 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                     <p>• Setup: {setupHours.toFixed(1)} hrs</p>
                   </div>
                   
-                  {itemsWithDiscounts.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-green-200">
+                  {itemsWithDiscounts.length > 0 &&
+                  <div className="mt-2 pt-2 border-t border-green-200">
                       <p className="text-xs font-semibold text-amber-700 mb-1">✓ Discounts Applied:</p>
                       <div className="space-y-0.5">
-                        {itemsWithDiscounts.map((discountedItem) => (
-                          <p key={discountedItem.index} className="text-xs text-amber-600">
+                        {itemsWithDiscounts.map((discountedItem) =>
+                      <p key={discountedItem.index} className="text-xs text-amber-600">
                             • Item #{discountedItem.index + 1}: {discountedItem.quantity} {discountedItem.itemType} → {discountedItem.discountPercent}% off
                           </p>
-                        ))}
+                      )}
                       </div>
                     </div>
-                  )}
+                  }
                 </div>
                 
                 <div className="space-y-2 pt-4 border-t">
@@ -1251,8 +1251,8 @@ ${globalSettings.company_name || 'Your Sign Company'}`
           </div>
         </div>
 
-        {showEmailModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        {showEmailModal &&
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <Card className="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <CardHeader className="border-b">
                 <div className="flex justify-between items-center">
@@ -1266,41 +1266,41 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                 <div>
                   <Label htmlFor="email_to">To Email Address *</Label>
                   <Input
-                    id="email_to"
-                    type="email"
-                    value={emailData.to}
-                    onChange={(e) => setEmailData(prev => ({ ...prev, to: e.target.value }))}
-                    placeholder="client@example.com"
-                    className="mt-1"
-                  />
+                  id="email_to"
+                  type="email"
+                  value={emailData.to}
+                  onChange={(e) => setEmailData((prev) => ({ ...prev, to: e.target.value }))}
+                  placeholder="client@example.com"
+                  className="mt-1" />
+
                 </div>
                 <div>
                   <Label htmlFor="email_subject">Subject *</Label>
                   <Input
-                    id="email_subject"
-                    value={emailData.subject}
-                    onChange={(e) => setEmailData(prev => ({ ...prev, subject: e.target.value }))}
-                    className="mt-1"
-                  />
+                  id="email_subject"
+                  value={emailData.subject}
+                  onChange={(e) => setEmailData((prev) => ({ ...prev, subject: e.target.value }))}
+                  className="mt-1" />
+
                 </div>
                 <div>
                   <Label htmlFor="email_message">Message *</Label>
                   <Textarea
-                    id="email_message"
-                    value={emailData.message}
-                    onChange={(e) => setEmailData(prev => ({ ...prev, message: e.target.value }))}
-                    className="mt-1 h-64"
-                  />
+                  id="email_message"
+                  value={emailData.message}
+                  onChange={(e) => setEmailData((prev) => ({ ...prev, message: e.target.value }))}
+                  className="mt-1 h-64" />
+
                 </div>
                 <div className="flex justify-end gap-3 pt-4 border-t">
                   <Button variant="outline" onClick={() => setShowEmailModal(false)}>
                     Cancel
                   </Button>
-                  <Button 
-                    onClick={handleSendEmail}
-                    disabled={!emailData.to || !emailData.subject || !emailData.message}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
+                  <Button
+                  onClick={handleSendEmail}
+                  disabled={!emailData.to || !emailData.subject || !emailData.message}
+                  className="bg-blue-600 hover:bg-blue-700">
+
                     <Mail className="w-4 h-4 mr-2" />
                     Send Email
                   </Button>
@@ -1308,8 +1308,8 @@ ${globalSettings.company_name || 'Your Sign Company'}`
               </CardContent>
             </Card>
           </div>
-        )}
+        }
       </div>
-    </div>
-  );
+    </div>);
+
 }
