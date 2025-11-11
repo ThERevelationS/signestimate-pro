@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Project, Settings } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -40,6 +39,21 @@ const parseImperialFraction = (fractionString) => {
     totalValue += parseFloat(fractionString) || 0;
   }
   return totalValue;
+};
+
+const formatPaintVolume = (gallons) => {
+  const wholeGallons = Math.floor(gallons);
+  const remainingGallons = gallons - wholeGallons;
+  const quarts = Math.floor(remainingGallons * 4);
+  const remainingQuarts = (remainingGallons * 4) - quarts;
+  const pints = Math.round(remainingQuarts * 2);
+  
+  const parts = [];
+  if (wholeGallons > 0) parts.push(`${wholeGallons} gal`);
+  if (quarts > 0) parts.push(`${quarts} qt`);
+  if (pints > 0) parts.push(`${pints} pt`);
+  
+  return parts.length > 0 ? parts.join(' ') : '0 gal';
 };
 
 export default function NewPaintEstimate() {
@@ -587,7 +601,7 @@ Dimensions: ${item.length}"L × ${item.width}"H × ${item.thickness}"
 Quantity: ${item.quantity}
 Paint Sides: ${item.paint_sides}
 Colors: ${item.paint_colors?.filter(c => c.trim() !== '').join(', ') || 'None'}
-Paint Volume: ${(item.paint_gallons || 0).toFixed(2)} gallons
+Paint Volume: ${formatPaintVolume(item.paint_gallons || 0)}
 Paint Mask Cost: $${(item.supplies_cost || 0).toFixed(2)}
 Liquid Paint & Supplies: $${(item.paint_cost || 0).toFixed(2)}
 Labor Hours: ${(item.labor_hours || 0).toFixed(1)}
@@ -595,7 +609,7 @@ Labor Cost: $${(item.labor_cost || 0).toFixed(2)}
 `).join('\n')}
 
 TOTALS:
-Total Paint Volume: ${totalGallonsNeeded.toFixed(2)} gallons
+Total Paint Volume: ${formatPaintVolume(totalGallonsNeeded)}
 Paint Mask: $${totalPaintMask.toFixed(2)}
 Liquid Paint & Application Supplies: $${totalLiquidPaintAndSupplies.toFixed(2)}
 Fixed Labor (Mixing/Setup): $${(((parseFloat(globalSettings.paint_mixing_labor_hours) || 0) + (parseFloat(globalSettings.setup_time_labor_hours) || 0)) * laborRate).toFixed(2)}
@@ -640,7 +654,7 @@ Notes: ${project.notes || 'None'}
             .total-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
             .final-total { font-weight: bold; font-size: 20px; border-top: 2px solid #374151; padding-top: 15px; margin-top: 15px; }
             .notes { margin-top: 30px; padding: 15px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 5px; }
-            .paint-volume-text { color: #2563eb; font-weight: 600; }
+            .paint-volume { color: #2563eb; font-weight: 600; }
           </style>
         </head>
         <body>
@@ -662,7 +676,7 @@ Notes: ${project.notes || 'None'}
               <p><strong>Quantity:</strong> ${item.quantity}</p>
               <p><strong>Paint Sides:</strong> ${item.paint_sides}</p>
               <p><strong>Colors:</strong> ${item.paint_colors?.filter(c => c.trim() !== '').join(', ') || 'None'}</p>
-              <p class="paint-volume-text"><strong>Paint Volume:</strong> ${(item.paint_gallons || 0).toFixed(2)} gallons</p>
+              <p class="paint-volume"><strong>Paint Volume:</strong> ${formatPaintVolume(item.paint_gallons || 0)}</p>
               <div class="item-cost-details">
                 <div class="item-cost-row">
                   <span>Paint Mask Cost:</span><span>$${(item.supplies_cost || 0).toFixed(2)}</span>
@@ -679,8 +693,8 @@ Notes: ${project.notes || 'None'}
           
           <div class="totals">
             <h2>Summary</h2>
-            <div class="total-row paint-volume-text">
-              <span>Total Paint Volume:</span><span>${totalGallonsNeeded.toFixed(2)} gallons</span>
+            <div class="total-row paint-volume">
+              <span>Total Paint Volume:</span><span>${formatPaintVolume(totalGallonsNeeded)}</span>
             </div>
             <div class="total-row">
               <span>Total Paint Mask:</span><span>$${totalPaintMask.toFixed(2)}</span>
@@ -725,7 +739,7 @@ ${project.estimate_number ? `Estimate Number: ${project.estimate_number}` : ''}
 ${project.hyperlink ? `Reference Link: ${project.hyperlink}` : ''}
 
 ESTIMATE SUMMARY:
-Total Paint Volume: ${totalGallonsNeeded.toFixed(2)} gallons
+Total Paint Volume: ${formatPaintVolume(totalGallonsNeeded)}
 Paint Mask: $${totalPaintMask.toFixed(2)}
 Liquid Paint & Application Supplies: $${totalLiquidPaintAndSupplies.toFixed(2)}
 Fixed Labor (Mixing/Setup): $${(((parseFloat(globalSettings.paint_mixing_labor_hours) || 0) + (parseFloat(globalSettings.setup_time_labor_hours) || 0)) * laborRate).toFixed(2)}
@@ -740,7 +754,7 @@ Item ${i + 1}: ${item.description || `${item.item_type} item`}
 - Quantity: ${item.quantity}
 - Paint Sides: ${item.paint_sides}
 - Colors: ${item.paint_colors?.filter(c => c.trim() !== '').join(', ') || 'None'}
-- Paint Volume: ${(item.paint_gallons || 0).toFixed(2)} gallons
+- Paint Volume: ${formatPaintVolume(item.paint_gallons || 0)}
 - Item Total: $${((item.supplies_cost || 0) + (item.paint_cost || 0) + (item.labor_cost || 0)).toFixed(2)}
 `).join('\n')}
 
@@ -1134,7 +1148,7 @@ ${globalSettings.company_name || 'Your Sign Company'}`
 
                         <div className="mt-4 p-4 bg-white rounded-lg border border-slate-200">
                           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                            <div><span className="text-slate-500">Paint Volume:</span><p className="font-medium text-blue-600">{(item.paint_gallons || 0).toFixed(2)} gal</p></div>
+                            <div><span className="text-slate-500">Paint Volume:</span><p className="font-medium text-blue-600">{formatPaintVolume(item.paint_gallons || 0)}</p></div>
                             <div><span className="text-slate-500">Paint Mask:</span><p className="font-medium">${(item.supplies_cost || 0).toFixed(2)}</p></div>
                             <div><span className="text-slate-500">Paint & Supplies:</span><p className="font-medium">${(item.paint_cost || 0).toFixed(2)}</p></div>
                             <div><span className="text-slate-500">Labor Hrs:</span><p className="font-medium">{(item.labor_hours || 0).toFixed(1)}</p></div>
@@ -1156,10 +1170,10 @@ ${globalSettings.company_name || 'Your Sign Company'}`
                 <div className="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-blue-800">Paint Volume:</span>
-                    <span className="text-xl font-bold text-blue-900">{totalGallonsNeeded.toFixed(2)} gal</span>
+                    <span className="text-xl font-bold text-blue-900">{formatPaintVolume(totalGallonsNeeded)}</span>
                   </div>
                   <p className="text-xs text-blue-600">Total liquid paint needed across all items</p>
-                  {totalGallonsNeeded > 0 && (
+                  {totalGallonsNeeded > 1 && (
                     <div className="mt-2 pt-2 border-t border-blue-300">
                       <p className="text-xs text-blue-700 font-medium">
                         → {numberOfMixes} mix{numberOfMixes > 1 ? 'es' : ''} required
