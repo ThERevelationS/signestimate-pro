@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { MetalProject, Settings, Inventory as InventoryEntity } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -6,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2, Save, Wrench, Edit } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Wrench, Edit, Download, Printer } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
 const itemTypes = ["channel_letters", "cabinet_sign", "monument_sign", "pole_sign", "flat_cut_letters", "fabricated_letters", "frame_assembly", "custom_brackets"];
-const materialTypes = ["Aluminum", "Steel", "Stainless_Steel", "Galvanized_Steel"];
+// materialTypes is not directly used in the current structure for display, but could be for filtering
+// const materialTypes = ["Aluminum", "Steel", "Stainless_Steel", "Galvanized_Steel"];
 
 export default function NewMetalEstimate() {
   const navigate = useNavigate();
@@ -96,11 +98,11 @@ export default function NewMetalEstimate() {
         fabrication_hours: 0,
         welding_hours: 0,
         finishing_hours: 0,
-        material_cost: 0,
-        supplies_cost: 0,
-        fabrication_cost: 0,
-        welding_cost: 0,
-        finishing_cost: 0,
+        material_cost: 0, // cost per unit of material_length_ft * cost_per_unit
+        supplies_cost: 0, // cost per item
+        fabrication_cost: 0, // cost per unit
+        welding_cost: 0, // cost per unit
+        finishing_cost: 0, // cost per unit
       }]
     }));
   };
@@ -115,11 +117,13 @@ export default function NewMetalEstimate() {
       let item = { ...newItems[index], [field]: value };
 
       // --- Recalculate ---
+      // Material cost for one unit of the item (based on material_length_ft and inventory item cost)
       const inventoryItem = inventory.find(i => i.id === item.inventory_item_id);
       if (inventoryItem) {
           item.material_cost = (item.material_length_ft || 0) * (inventoryItem.cost_per_unit || 0);
       }
 
+      // Labor costs for one unit of the item
       item.fabrication_cost = (item.fabrication_hours || 0) * prev.fabrication_rate;
       item.welding_cost = (item.welding_hours || 0) * prev.welding_rate;
       item.finishing_cost = (item.finishing_hours || 0) * prev.finishing_rate;
@@ -129,13 +133,13 @@ export default function NewMetalEstimate() {
     });
   };
 
-  const calculateTotals = () => {
+  const calculateTotals = useCallback(() => {
     const totals = {
-      material: 0,
-      supplies: 0,
-      fabrication: 0,
-      welding: 0,
-      finishing: 0
+      material: 0, // Total for all items including quantity
+      supplies: 0, // Total for all items including quantity
+      fabrication: 0, // Total for all items including quantity
+      welding: 0, // Total for all items including quantity
+      finishing: 0 // Total for all items including quantity
     };
     project.items.forEach(item => {
       totals.material += (item.material_cost || 0) * (item.quantity || 1);
@@ -145,7 +149,66 @@ export default function NewMetalEstimate() {
       totals.finishing += (item.finishing_cost || 0) * (item.quantity || 1);
     });
     return totals;
-  };
+  }, [project.items]);
+
+  const getProjectCalculations = useCallback(() => {
+    const currentTotals = calculateTotals(); // This returns material, supplies, fabrication, welding, finishing
+
+    const totalMaterialsCost = currentTotals.material;
+    const totalSuppliesCost = currentTotals.supplies;
+    const totalFabricationCost = currentTotals.fabrication;
+    const totalWeldingCost = currentTotals.welding;
+    const totalFinishingCost = currentTotals.finishing;
+    const totalLaborCost = totalFabricationCost + totalWeldingCost + totalFinishingCost;
+
+    const enrichedItems = project.items.map(item => {
+        const inventoryItem = inventory.find(i => i.id === item.inventory_item_id);
+        const materialType = inventoryItem ? inventoryItem.material_type : 'N/A';
+        const itemTypeDisplay = item.item_type ? item.item_type.replace(/_/g, ' ') : 'N/A';
+
+        let length = 'N/A', width = 'N/A', thickness = 'N/A';
+        let dimensionsDisplay = 'N/A';
+        if (inventoryItem && inventoryItem.size) {
+            dimensionsDisplay = inventoryItem.size;
+            const sizeString = inventoryItem.size.toLowerCase().replace(/['"inchesftt]/g, '').trim();
+            const parts = sizeString.split(/[x×]/).map(p => p.trim());
+            if (parts.length >= 1) length = parts[0];
+            if (parts.length >= 2) width = parts[1];
+            if (parts.length >= 3) thickness = parts[2];
+        }
+
+        const laborHoursPerUnit = (item.fabrication_hours || 0) + (item.welding_hours || 0) + (item.finishing_hours || 0);
+        const materialsCostTotal = (item.material_cost || 0) * (item.quantity || 1); // Total material cost for all quantities of this item
+        const suppliesCostTotal = (item.supplies_cost || 0) * (item.quantity || 1); // Total supplies cost for all quantities of this item
+        const laborCostTotal = ((item.fabrication_cost || 0) + (item.welding_cost || 0) + (item.finishing_cost || 0)) * (item.quantity || 1); // Total labor cost for all quantities of this item
+
+        return {
+            ...item,
+            item_type_display: itemTypeDisplay,
+            material_type: materialType,
+            dimensions_display: dimensionsDisplay,
+            length: length,
+            width: width,
+            thickness: thickness,
+            labor_hours: laborHoursPerUnit, // Labor hours per *unit*
+            materials_cost: materialsCostTotal,
+            supplies_cost: suppliesCostTotal,
+            labor_cost: laborCostTotal,
+        };
+    });
+
+    return {
+        totalMaterialsCost,
+        totalSuppliesCost,
+        totalFabricationCost,
+        totalWeldingCost,
+        totalFinishingCost,
+        totalLaborCost,
+        grandTotal: totalMaterialsCost + totalSuppliesCost + totalLaborCost,
+        enrichedItems,
+    };
+  }, [project.items, inventory, calculateTotals]);
+
 
   const saveProject = async () => {
     if (!project.project_name || !project.client_name) {
@@ -155,14 +218,20 @@ export default function NewMetalEstimate() {
     
     setIsSaving(true);
     try {
-      const totals = calculateTotals();
+      const { 
+          totalMaterialsCost, totalSuppliesCost, 
+          totalFabricationCost, totalWeldingCost, totalFinishingCost,
+          totalLaborCost, enrichedItems // Use enriched items if you want to store computed fields, but usually only raw input is stored
+      } = getProjectCalculations();
+
       const finalProject = { 
           ...project, 
-          total_material_cost: totals.material,
-          total_supplies_cost: totals.supplies,
-          total_fabrication_cost: totals.fabrication,
-          total_welding_cost: totals.welding,
-          total_finishing_cost: totals.finishing,
+          total_material_cost: totalMaterialsCost,
+          total_supplies_cost: totalSuppliesCost,
+          total_fabrication_cost: totalFabricationCost,
+          total_welding_cost: totalWeldingCost,
+          total_finishing_cost: totalFinishingCost,
+          total_labor_cost: totalLaborCost, // Store this aggregate for easier retrieval
           status: 'calculated' 
       };
       
@@ -179,7 +248,482 @@ export default function NewMetalEstimate() {
     setIsSaving(false);
   };
 
-  const totals = calculateTotals();
+  const downloadEstimate = () => {
+    const { 
+      totalMaterialsCost, totalSuppliesCost, totalLaborCost, grandTotal, enrichedItems 
+    } = getProjectCalculations();
+    
+    const estimateContent = `
+╔════════════════════════════════════════════════════════════════╗
+║             METAL FABRICATION ESTIMATE                         ║
+╚════════════════════════════════════════════════════════════════╝
+
+PROJECT DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Project:        ${project.project_name}
+Client:         ${project.client_name}
+Date:           ${new Date().toLocaleDateString()}
+
+ITEMS BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${enrichedItems.map((item, i) => `
+┌─ Item ${i + 1}: ${item.description || `Metal fabrication item`}
+│
+├─ Type:            ${item.item_type_display}
+├─ Material:        ${item.material_type}
+├─ Dimensions:      ${item.dimensions_display}
+├─ Quantity:        ${item.quantity}
+│
+├─ Labor Hours:     ${item.labor_hours.toFixed(2)} hrs (per unit)
+│
+├─ Materials:       $${item.materials_cost.toFixed(2)}
+├─ Supplies:        $${item.supplies_cost.toFixed(2)}
+└─ Labor:           $${item.labor_cost.toFixed(2)}
+`).join('\n')}
+
+COST SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Materials Cost:             $${totalMaterialsCost.toFixed(2)}
+Supplies Cost:              $${totalSuppliesCost.toFixed(2)}
+Labor Cost:                 $${totalLaborCost.toFixed(2)}
+
+╔════════════════════════════════════════════════════════════════╗
+║  TOTAL ESTIMATE:                              $${grandTotal.toFixed(2).padStart(10)}  ║
+╚════════════════════════════════════════════════════════════════╝
+
+${project.notes ? `NOTES\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${project.notes}\n` : ''}
+Generated by SignEstimate Pro - Professional Estimating Suite
+`;
+    
+    const blob = new Blob([estimateContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.project_name.replace(/\s+/g, '_')}_Metal_Estimate.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const printEstimate = () => {
+    const { 
+      totalMaterialsCost, totalSuppliesCost, totalLaborCost, grandTotal, enrichedItems 
+    } = getProjectCalculations();
+    
+    const printContent = `
+      <html>
+        <head>
+          <title>Metal Estimate - ${project.project_name}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+            
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            
+            body { 
+              font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              margin: 0;
+              padding: 40px;
+              color: #1e293b;
+              background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+              min-height: 100vh;
+            }
+            
+            .container {
+              max-width: 900px;
+              margin: 0 auto;
+              background: white;
+              border-radius: 20px;
+              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+              overflow: hidden;
+            }
+            
+            .header {
+              background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+              color: white;
+              padding: 40px;
+              text-align: center;
+            }
+            
+            .header h1 {
+              font-size: 32px;
+              font-weight: 700;
+              margin-bottom: 10px;
+              text-transform: uppercase;
+              letter-spacing: 2px;
+            }
+            
+            .header .subtitle {
+              font-size: 16px;
+              opacity: 0.95;
+              font-weight: 500;
+            }
+            
+            .project-info {
+              padding: 30px 40px;
+              background: #f8fafc;
+              border-bottom: 3px solid #e2e8f0;
+            }
+            
+            .project-info h2 {
+              color: #475569;
+              font-size: 14px;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              margin-bottom: 15px;
+              font-weight: 600;
+            }
+            
+            .info-grid {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 12px;
+            }
+            
+            .info-item {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            }
+            
+            .info-label {
+              font-weight: 600;
+              color: #64748b;
+              font-size: 13px;
+            }
+            
+            .info-value {
+              color: #1e293b;
+              font-size: 13px;
+            }
+            
+            .content {
+              padding: 40px;
+            }
+            
+            .section-title {
+              font-size: 20px;
+              font-weight: 700;
+              color: #1e293b;
+              margin-bottom: 25px;
+              padding-bottom: 10px;
+              border-bottom: 3px solid #f97316;
+              display: inline-block;
+            }
+            
+            .item {
+              background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+              border: 2px solid #e2e8f0;
+              border-radius: 12px;
+              padding: 25px;
+              margin-bottom: 20px;
+            }
+            
+            .item-header {
+              background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+              color: white;
+              padding: 12px 20px;
+              border-radius: 8px;
+              margin: -25px -25px 20px -25px;
+              font-weight: 600;
+              font-size: 16px;
+            }
+            
+            .item-details {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 12px;
+              margin-bottom: 15px;
+            }
+            
+            .detail-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 8px 0;
+            }
+            
+            .detail-label {
+              font-weight: 600;
+              color: #64748b;
+              font-size: 13px;
+            }
+            
+            .detail-value {
+              color: #1e293b;
+              font-weight: 500;
+              font-size: 13px;
+            }
+            
+            .item-costs {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 15px;
+              margin-top: 20px;
+              padding-top: 20px;
+              border-top: 2px dashed #cbd5e1;
+            }
+            
+            .cost-box {
+              background: white;
+              padding: 15px;
+              border-radius: 8px;
+              border: 2px solid #e2e8f0;
+            }
+            
+            .cost-box.materials {
+              border-color: #f97316;
+              background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+            }
+            
+            .cost-box.supplies {
+              border-color: #8b5cf6;
+              background: linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%);
+            }
+            
+            .cost-box.labor {
+              border-color: #3b82f6;
+              background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            }
+            
+            .cost-label {
+              font-size: 11px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              color: #64748b;
+              font-weight: 600;
+              margin-bottom: 5px;
+            }
+            
+            .cost-value {
+              font-size: 20px;
+              font-weight: 700;
+              color: #1e293b;
+            }
+            
+            .summary {
+              background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+              border: 3px solid #e2e8f0;
+              border-radius: 16px;
+              padding: 30px;
+              margin-top: 40px;
+            }
+            
+            .summary-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 12px 0;
+              border-bottom: 1px solid #e2e8f0;
+            }
+            
+            .summary-row:last-child {
+              border-bottom: none;
+            }
+            
+            .summary-label {
+              font-weight: 600;
+              color: #475569;
+              font-size: 15px;
+            }
+            
+            .summary-value {
+              font-weight: 700;
+              color: #1e293b;
+              font-size: 15px;
+            }
+            
+            .summary-row.materials .summary-value { color: #f97316; }
+            .summary-row.supplies .summary-value { color: #8b5cf6; }
+            .summary-row.labor .summary-value { color: #3b82f6; }
+            
+            .total-row {
+              margin-top: 20px;
+              padding-top: 20px;
+              border-top: 3px solid #f97316;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+            
+            .total-label {
+              font-size: 24px;
+              font-weight: 700;
+              color: #1e293b;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+            }
+            
+            .total-value {
+              font-size: 36px;
+              font-weight: 800;
+              background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+              -webkit-background-clip: text;
+              -webkit-text-fill-color: transparent;
+              background-clip: text;
+            }
+            
+            .notes {
+              background: #fef3c7;
+              border: 2px solid #fbbf24;
+              border-radius: 12px;
+              padding: 25px;
+              margin-top: 30px;
+            }
+            
+            .notes h3 {
+              color: #92400e;
+              font-size: 16px;
+              font-weight: 700;
+              margin-bottom: 15px;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+            }
+            
+            .notes p {
+              color: #78350f;
+              line-height: 1.6;
+              font-size: 14px;
+            }
+            
+            .footer {
+              background: #1e293b;
+              color: white;
+              padding: 20px;
+              text-align: center;
+              font-size: 12px;
+            }
+            
+            @media print {
+              body { 
+                background: white;
+                padding: 0;
+              }
+              .container {
+                box-shadow: none;
+                border-radius: 0;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🔨 Metal Fabrication Estimate</h1>
+              <div class="subtitle">Custom Metal Work & Fabrication</div>
+            </div>
+            
+            <div class="project-info">
+              <h2>Project Details</h2>
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="info-label">Project:</span>
+                  <span class="info-value">${project.project_name}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Client:</span>
+                  <span class="info-value">${project.client_name}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Date:</span>
+                  <span class="info-value">${new Date().toLocaleDateString()}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="content">
+              <div class="section-title">Items Breakdown</div>
+              
+              ${enrichedItems.map((item, i) => `
+                <div class="item">
+                  <div class="item-header">
+                    Item ${i + 1}: ${item.description || `Metal fabrication item`}
+                  </div>
+                  
+                  <div class="item-details">
+                    <div class="detail-row">
+                      <span class="detail-label">Type:</span>
+                      <span class="detail-value">${item.item_type_display}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Material:</span>
+                      <span class="detail-value">${item.material_type}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Dimensions:</span>
+                      <span class="detail-value">${item.dimensions_display}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Quantity:</span>
+                      <span class="detail-value">${item.quantity}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Labor Hours:</span>
+                      <span class="detail-value">${item.labor_hours.toFixed(2)} hrs (per unit)</span>
+                    </div>
+                  </div>
+                  
+                  <div class="item-costs">
+                    <div class="cost-box materials">
+                      <div class="cost-label">Materials</div>
+                      <div class="cost-value">$${item.materials_cost.toFixed(2)}</div>
+                    </div>
+                    <div class="cost-box supplies">
+                      <div class="cost-label">Supplies</div>
+                      <div class="cost-value">$${item.supplies_cost.toFixed(2)}</div>
+                    </div>
+                    <div class="cost-box labor">
+                      <div class="cost-label">Labor</div>
+                      <div class="cost-value">$${item.labor_cost.toFixed(2)}</div>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+              
+              <div class="summary">
+                <div class="section-title" style="border-color: #f97316;">Cost Summary</div>
+                
+                <div class="summary-row materials">
+                  <span class="summary-label">Total Materials Cost:</span>
+                  <span class="summary-value">$${totalMaterialsCost.toFixed(2)}</span>
+                </div>
+                <div class="summary-row supplies">
+                  <span class="summary-label">Total Supplies Cost:</span>
+                  <span class="summary-value">$${totalSuppliesCost.toFixed(2)}</span>
+                </div>
+                <div class="summary-row labor">
+                  <span class="summary-label">Total Labor Cost:</span>
+                  <span class="summary-value">$${totalLaborCost.toFixed(2)}</span>
+                </div>
+                
+                <div class="total-row">
+                  <span class="total-label">Total Estimate</span>
+                  <span class="total-value">$${grandTotal.toFixed(2)}</span>
+                </div>
+              </div>
+              
+              ${project.notes ? `
+                <div class="notes">
+                  <h3>📝 Additional Notes</h3>
+                  <p>${project.notes}</p>
+                </div>
+              ` : ''}
+            </div>
+            
+            <div class="footer">
+              Generated by SignEstimate Pro - Professional Estimating Suite<br>
+              © ${new Date().getFullYear()} All Rights Reserved
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const { totalMaterialsCost, totalSuppliesCost, totalFabricationCost, totalWeldingCost, totalFinishingCost, grandTotal } = getProjectCalculations();
 
   if (isLoading) return <div className="p-8">Loading...</div>;
 
@@ -211,19 +755,19 @@ export default function NewMetalEstimate() {
                           <div><Label>Item Type</Label><Select value={item.item_type} onValueChange={(v) => updateItem(index, 'item_type', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{itemTypes.map(t => <SelectItem key={t} value={t}>{t.replace(/_/g, ' ')}</SelectItem>)}</SelectContent></Select></div>
                           <div className="md:col-span-2"><Label>Material</Label><Select value={item.inventory_item_id} onValueChange={(v) => updateItem(index, 'inventory_item_id', v)}><SelectTrigger><SelectValue placeholder="Select from inventory" /></SelectTrigger><SelectContent>{inventory.map(i => <SelectItem key={i.id} value={i.id}>{i.material_type} {i.product_type} {i.size} - ${i.cost_per_unit}/{i.unit_type}</SelectItem>)}</SelectContent></Select></div>
                           <div><Label>Material Length (ft)</Label><Input type="number" min="0" value={item.material_length_ft || ""} onChange={e => updateItem(index, 'material_length_ft', parseFloat(e.target.value) || 0)} /></div>
-                          <div><Label>Supplies Cost</Label><Input type="number" min="0" value={item.supplies_cost || ""} onChange={e => updateItem(index, 'supplies_cost', parseFloat(e.target.value) || 0)} /></div>
+                          <div><Label>Supplies Cost (per unit)</Label><Input type="number" min="0" value={item.supplies_cost || ""} onChange={e => updateItem(index, 'supplies_cost', parseFloat(e.target.value) || 0)} /></div>
                           <div><Label>Quantity</Label><Input type="number" min="1" value={item.quantity || ""} onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)} /></div>
                           
-                          <div className="md:col-span-3 pt-4 border-t"><h5 className="font-medium text-sm text-slate-700">Labor Hours</h5></div>
+                          <div className="md:col-span-3 pt-4 border-t"><h5 className="font-medium text-sm text-slate-700">Labor Hours (per unit)</h5></div>
                           <div><Label>Fabrication</Label><Input type="number" min="0" value={item.fabrication_hours || ""} onChange={e => updateItem(index, 'fabrication_hours', parseFloat(e.target.value) || 0)} /></div>
                           <div><Label>Welding</Label><Input type="number" min="0" value={item.welding_hours || ""} onChange={e => updateItem(index, 'welding_hours', parseFloat(e.target.value) || 0)} /></div>
                           <div><Label>Finishing</Label><Input type="number" min="0" value={item.finishing_hours || ""} onChange={e => updateItem(index, 'finishing_hours', parseFloat(e.target.value) || 0)} /></div>
                         </div>
                         <div className="mt-4 p-4 bg-white rounded-lg border text-xs">
-                          <div className="flex justify-between"><span className="text-slate-500">Material Cost:</span><p className="font-medium">${(item.material_cost || 0).toFixed(2)}</p></div>
-                          <div className="flex justify-between"><span className="text-slate-500">Fabrication Cost:</span><p className="font-medium">${(item.fabrication_cost || 0).toFixed(2)}</p></div>
-                          <div className="flex justify-between"><span className="text-slate-500">Welding Cost:</span><p className="font-medium">${(item.welding_cost || 0).toFixed(2)}</p></div>
-                          <div className="flex justify-between"><span className="text-slate-500">Finishing Cost:</span><p className="font-medium">${(item.finishing_cost || 0).toFixed(2)}</p></div>
+                          <div className="flex justify-between"><span className="text-slate-500">Material Cost (per unit):</span><p className="font-medium">${(item.material_cost || 0).toFixed(2)}</p></div>
+                          <div className="flex justify-between"><span className="text-slate-500">Fabrication Cost (per unit):</span><p className="font-medium">${(item.fabrication_cost || 0).toFixed(2)}</p></div>
+                          <div className="flex justify-between"><span className="text-slate-500">Welding Cost (per unit):</span><p className="font-medium">${(item.welding_cost || 0).toFixed(2)}</p></div>
+                          <div className="flex justify-between"><span className="text-slate-500">Finishing Cost (per unit):</span><p className="font-medium">${(item.finishing_cost || 0).toFixed(2)}</p></div>
                         </div>
                       </div>
                     ))}
@@ -231,8 +775,12 @@ export default function NewMetalEstimate() {
             </Card>
           </div>
           <div className="space-y-6">
-            <Card className="bg-white border-0 shadow-sm sticky top-8"><CardHeader><CardTitle>Cost Summary</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><div className="flex justify-between"><span className="text-slate-600">Total Material Cost:</span><span className="font-medium text-slate-900">${totals.material.toFixed(2)}</span></div><div className="flex justify-between"><span className="text-slate-600">Total Supplies Cost:</span><span className="font-medium text-slate-900">${totals.supplies.toFixed(2)}</span></div><div className="flex justify-between"><span className="text-slate-600">Total Fabrication Cost:</span><span className="font-medium text-slate-900">${totals.fabrication.toFixed(2)}</span></div><div className="flex justify-between"><span className="text-slate-600">Total Welding Cost:</span><span className="font-medium text-slate-900">${totals.welding.toFixed(2)}</span></div><div className="flex justify-between"><span className="text-slate-600">Total Finishing Cost:</span><span className="font-medium text-slate-900">${totals.finishing.toFixed(2)}</span></div><div className="mt-4 pt-4 border-t"><div className="flex justify-between items-center"><span className="font-bold text-lg text-slate-900">Grand Total:</span><span className="font-bold text-2xl text-blue-600">${(totals.material + totals.supplies + totals.fabrication + totals.welding + totals.finishing).toFixed(2)}</span></div></div></CardContent></Card>
+            <Card className="bg-white border-0 shadow-sm sticky top-8"><CardHeader><CardTitle>Cost Summary</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><div className="flex justify-between"><span className="text-slate-600">Total Material Cost:</span><span className="font-medium text-slate-900">${totalMaterialsCost.toFixed(2)}</span></div><div className="flex justify-between"><span className="text-slate-600">Total Supplies Cost:</span><span className="font-medium text-slate-900">${totalSuppliesCost.toFixed(2)}</span></div><div className="flex justify-between"><span className="text-slate-600">Total Fabrication Cost:</span><span className="font-medium text-slate-900">${totalFabricationCost.toFixed(2)}</span></div><div className="flex justify-between"><span className="text-slate-600">Total Welding Cost:</span><span className="font-medium text-slate-900">${totalWeldingCost.toFixed(2)}</span></div><div className="flex justify-between"><span className="text-slate-600">Total Finishing Cost:</span><span className="font-medium text-slate-900">${totalFinishingCost.toFixed(2)}</span></div><div className="mt-4 pt-4 border-t"><div className="flex justify-between items-center"><span className="font-bold text-lg text-slate-900">Grand Total:</span><span className="font-bold text-2xl text-blue-600">${grandTotal.toFixed(2)}</span></div></div></CardContent></Card>
             <Button onClick={saveProject} disabled={isSaving} className="w-full bg-green-600 hover:bg-green-700">{isSaving ? 'Saving...' : <><Save className="w-4 h-4 mr-2" />{isEditing ? 'Update Estimate' : 'Save Estimate'}</>}</Button>
+            <div className="grid grid-cols-2 gap-4">
+              <Button onClick={downloadEstimate} variant="outline" className="w-full"><Download className="w-4 h-4 mr-2" /> Download</Button>
+              <Button onClick={printEstimate} variant="outline" className="w-full"><Printer className="w-4 h-4 mr-2" /> Print</Button>
+            </div>
           </div>
         </div>
       </div>
