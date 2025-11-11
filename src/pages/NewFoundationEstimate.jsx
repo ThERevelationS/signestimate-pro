@@ -35,10 +35,13 @@ export default function NewFoundationEstimate() {
     items: [],
     concrete_cost_per_cy: 135,
     rebar_cost_per_ft: 0.75,
-    excavation_cost_per_cy: 15,
+    excavation_cost_per_cy: 15, // This is likely a non-labor cost for excavation (e.g., disposal, base machine cost)
     forming_labor_rate: 55,
     pouring_labor_rate: 60,
     finishing_labor_rate: 50,
+    hand_dig_labor_rate: 45, // NEW: Default rate for hand digging labor
+    equipment_excavation_labor_rate: 35, // NEW: Default rate for equipment excavation labor (operator)
+    excavation_method: "", // NEW: "hand_dig" or "equipment_excavation"
     notes: "",
     selected_equipment: [],
     selected_concrete_id: null
@@ -105,6 +108,9 @@ export default function NewFoundationEstimate() {
           forming_labor_rate: parseFloat(settingsObj.foundation_forming_labor_rate) || 55,
           pouring_labor_rate: parseFloat(settingsObj.foundation_pouring_labor_rate) || 60,
           finishing_labor_rate: parseFloat(settingsObj.foundation_finishing_labor_rate) || 50,
+          hand_dig_labor_rate: parseFloat(settingsObj.foundation_hand_dig_labor_rate) || 45, // NEW
+          equipment_excavation_labor_rate: parseFloat(settingsObj.foundation_equipment_excavation_labor_rate) || 35, // NEW
+          excavation_method: settingsObj.foundation_default_excavation_method || "", // NEW
           notes: settingsObj.default_notes_template || "",
           selected_equipment: [],
           selected_concrete_id: null
@@ -193,6 +199,13 @@ export default function NewFoundationEstimate() {
   }, [equipment, allAttachments]);
 
   const checkAndAddEquipment = useCallback((items) => {
+    // If excavation method is 'hand_dig', we explicitly don't auto-add equipment based on items.
+    // However, if equipment was already added manually or by a previous state, we don't remove it here.
+    // The user controls removal.
+    if (project.excavation_method === 'hand_dig') {
+      return;
+    }
+
     const needsEquipment = items.some(item => 
       item.excavation_volume_cy >= 0.5 || item.depth_inches > 36
     );
@@ -200,11 +213,12 @@ export default function NewFoundationEstimate() {
     setProject(prev => {
       const currentEquipment = prev.selected_equipment || [];
       
-      if (needsEquipment && currentEquipment.length === 0 && equipment.length > 0) {
+      // Only auto-add if needs equipment AND no equipment is currently selected AND excavation method is equipment_excavation
+      if (needsEquipment && currentEquipment.length === 0 && equipment.length > 0 && prev.excavation_method === 'equipment_excavation') {
         const defaultEquip = equipment[0]; // Use first available equipment
         // Calculate initial cost for the default equipment
         let initialCost = (defaultEquip.cost_per_day || 0); // Assuming 'day' is default rental_period for auto-added
-        if (true) { // If include_delivery is true
+        if (true) { // If include_delivery is true (default for auto-added)
           initialCost += (defaultEquip.pickup_delivery_cost || 0);
         }
 
@@ -216,16 +230,17 @@ export default function NewFoundationEstimate() {
             rental_duration: 1,
             include_delivery: true,
             equipment_cost: initialCost,
-            attachments: [] // New: initialize attachments array
+            attachments: []
           }]
         };
       }
       
-      // As per instructions, if it doesn't need equipment, we don't auto-remove it here.
-      // User might have added it manually or for future expansion.
+      // If needsEquipment is false but equipment exists, we don't auto-remove.
+      // If needsEquipment is true but equipment is already present, do nothing.
+      // If excavation method is hand_dig, do nothing (handled at the start).
       return prev;
     });
-  }, [equipment]);
+  }, [equipment, project.excavation_method]);
 
 
   const addItem = () => {
@@ -633,10 +648,14 @@ export default function NewFoundationEstimate() {
     const formingHoursPerSqFt = parseFloat(globalSettings.foundation_forming_hours_per_sqft) || 0.15;
     const pouringHoursPerCy = parseFloat(globalSettings.foundation_pouring_hours_per_cy) || 0.5;
     const finishingHoursPerSqFt = parseFloat(globalSettings.foundation_finishing_hours_per_sqft) || 0.10;
+    const excavationHoursPerCy = parseFloat(globalSettings.foundation_excavation_hours_per_cy) || 0.5; // Default if no setting
+
+    const handDigLaborRate = project.hand_dig_labor_rate;
+    const equipmentExcavationLaborRate = project.equipment_excavation_labor_rate;
 
     let totalConcreteCost = 0;
     let totalRebarCost = 0;
-    let totalExcavationCost = 0;
+    let totalNonLaborExcavationCost = 0; // Cost of excavation excluding labor (e.g., disposal, base machine cost)
     let totalLaborCost = 0;
 
     const updatedItems = project.items.map(item => {
@@ -678,9 +697,10 @@ export default function NewFoundationEstimate() {
         rebarCost = totalRebarFeet * rebarRate;
       }
 
-      const excavationCost = item.excavation_volume_cy * project.excavation_cost_per_cy * item.quantity;
+      // Non-labor excavation cost
+      const nonLaborExcavationCost = item.excavation_volume_cy * project.excavation_cost_per_cy * item.quantity;
 
-      // Labor calculations
+      // Labor calculations for forming, pouring, finishing
       let formingSqFt = 0;
       let finishingSqFt = 0;
 
@@ -711,18 +731,29 @@ export default function NewFoundationEstimate() {
       const pouringCost = pouringHours * project.pouring_labor_rate;
       const finishingCost = finishingHours * project.finishing_labor_rate;
 
-      const itemTotalCost = concreteCost + rebarCost + excavationCost + formingCost + pouringCost + finishingCost;
+      // NEW: Excavation Labor Cost
+      let excavationLaborCost = 0;
+      if (project.excavation_method === 'hand_dig') {
+        excavationLaborCost = item.excavation_volume_cy * excavationHoursPerCy * handDigLaborRate * item.quantity;
+      } else if (project.excavation_method === 'equipment_excavation') {
+        // This labor is for the operator, distinct from equipment rental cost
+        excavationLaborCost = item.excavation_volume_cy * excavationHoursPerCy * equipmentExcavationLaborRate * item.quantity;
+      }
+
+
+      const itemTotalCost = concreteCost + rebarCost + nonLaborExcavationCost + formingCost + pouringCost + finishingCost + excavationLaborCost;
 
       totalConcreteCost += concreteCost;
       totalRebarCost += rebarCost;
-      totalExcavationCost += excavationCost;
-      totalLaborCost += (formingCost + pouringCost + finishingCost);
+      totalNonLaborExcavationCost += nonLaborExcavationCost;
+      totalLaborCost += (formingCost + pouringCost + finishingCost + excavationLaborCost); // Add excavation labor to total labor
 
       return {
         ...item,
         concrete_cost: concreteCost,
         rebar_cost: rebarCost,
-        excavation_cost: excavationCost,
+        // The item's excavation_cost sums both the non-labor and labor components for that item
+        excavation_cost: nonLaborExcavationCost + excavationLaborCost, 
         forming_hours: formingHours,
         forming_cost: formingCost,
         pouring_hours: pouringHours,
@@ -743,13 +774,14 @@ export default function NewFoundationEstimate() {
       items: updatedItems,
       total_concrete_cost: totalConcreteCost,
       total_rebar_cost: totalRebarCost,
-      total_excavation_cost: totalExcavationCost,
+      total_excavation_cost: totalNonLaborExcavationCost, // This now explicitly represents the non-labor portion
       total_labor_cost: totalLaborCost,
       total_equipment_cost: totalEquipmentCost
     };
   }, [project.items, project.selected_equipment, project.concrete_cost_per_cy, project.rebar_cost_per_ft,
-      project.excavation_cost_per_cy, project.forming_labor_rate,
-      project.pouring_labor_rate, project.finishing_labor_rate, globalSettings]);
+      project.excavation_cost_per_cy, project.forming_labor_rate, project.pouring_labor_rate,
+      project.finishing_labor_rate, project.hand_dig_labor_rate, project.equipment_excavation_labor_rate,
+      project.excavation_method, globalSettings]);
 
   useEffect(() => {
     if (!isLoading && project.items.length >= 0) {
@@ -764,11 +796,11 @@ export default function NewFoundationEstimate() {
         total_equipment_cost: calculated.total_equipment_cost
       }));
     }
-  }, [calculateTotals, isLoading, project.items.length, project.selected_equipment?.length]);
+  }, [calculateTotals, isLoading, project.items.length, project.selected_equipment?.length, project.excavation_method, project.hand_dig_labor_rate, project.equipment_excavation_labor_rate]);
 
   const saveProject = async () => {
-    if (!project.project_name || !project.client_name || !project.estimate_number || !project.hyperlink) {
-      alert('Please fill in all required project information fields');
+    if (!project.project_name || !project.client_name || !project.estimate_number || !project.hyperlink || !project.excavation_method) {
+      alert('Please fill in all required project information fields, including excavation method.');
       return;
     }
 
@@ -918,6 +950,49 @@ export default function NewFoundationEstimate() {
                         Using: {selectedConcrete.material_name} @ ${project.concrete_cost_per_cy.toFixed(2)}/cy
                       </p>
                     )}
+                  </div>
+                </div>
+                {/* NEW: Excavation Method and Labor Rates */}
+                <div className="grid md:grid-cols-3 gap-3">
+                  <div>
+                    <Label className="text-xs">Excavation Method *</Label>
+                    <Select 
+                      value={project.excavation_method} 
+                      onValueChange={(value) => setProject(prev => ({ ...prev, excavation_method: value }))}
+                    >
+                      <SelectTrigger className="mt-1 h-8 text-xs">
+                        <SelectValue placeholder="Select method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hand_dig">Hand Dig</SelectItem>
+                        <SelectItem value="equipment_excavation">Equipment Excavation</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {!project.excavation_method && (
+                      <p className="text-xs text-red-600 mt-1 font-medium">
+                        Please select an excavation method
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <Label className="text-xs">Hand Dig Rate ($/hr)</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      value={project.hand_dig_labor_rate}
+                      onChange={(e) => setProject(prev => ({ ...prev, hand_dig_labor_rate: parseFloat(e.target.value) || 0 }))}
+                      className="mt-1 h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Equip. Excav. Rate ($/hr)</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      value={project.equipment_excavation_labor_rate}
+                      onChange={(e) => setProject(prev => ({ ...prev, equipment_excavation_labor_rate: parseFloat(e.target.value) || 0 }))}
+                      className="mt-1 h-8 text-sm"
+                    />
                   </div>
                 </div>
                 <div>
@@ -1239,7 +1314,7 @@ export default function NewFoundationEstimate() {
               <CardContent className="space-y-3">
                 {(!project.selected_equipment || project.selected_equipment.length === 0) ? (
                   <div className="text-center py-6 text-slate-500 text-xs">
-                    <p>Auto-adds when excavation ≥ 0.5 cy or depth &gt; 36"</p>
+                    <p>Auto-adds when excavation ≥ 0.5 cy or depth &gt; 36" and <span className="font-semibold">Equipment Excavation</span> method is selected.</p>
                   </div>
                 ) : (
                   project.selected_equipment.map((eq, index) => {
@@ -1415,10 +1490,10 @@ export default function NewFoundationEstimate() {
 
                 <div className="p-3 bg-amber-50 rounded-lg">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium text-amber-800">Excavation</span>
+                    <span className="text-xs font-medium text-amber-800">Excavation (Non-Labor)</span>
                     <span className="text-base font-bold text-amber-900">${(project.total_excavation_cost || 0).toFixed(2)}</span>
                   </div>
-                  <p className="text-xs text-amber-600 mt-0.5">Site excavation work</p>
+                  <p className="text-xs text-amber-600 mt-0.5">Disposal, base machine costs</p>
                 </div>
 
                 <div className="p-3 bg-green-50 rounded-lg">
@@ -1426,7 +1501,7 @@ export default function NewFoundationEstimate() {
                     <span className="text-xs font-medium text-green-800">Labor</span>
                     <span className="text-base font-bold text-green-900">${(project.total_labor_cost || 0).toFixed(2)}</span>
                   </div>
-                  <p className="text-xs text-green-600 mt-0.5">Forming, pouring, finishing</p>
+                  <p className="text-xs text-green-600 mt-0.5">Forming, pouring, finishing, excavation labor</p>
                 </div>
 
                 <div className="p-3 bg-orange-50 rounded-lg">
