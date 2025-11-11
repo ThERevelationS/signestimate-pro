@@ -236,6 +236,8 @@ export default function NewFoundationEstimate() {
       diameter: 24,
       depth_inches: 24,
       include_rebar: false,
+      include_forming: true,
+      include_finishing: true,
       rebar_size: "#4",
       rebar_spacing_length: 18,
       rebar_spacing_width: 18,
@@ -277,6 +279,17 @@ export default function NewFoundationEstimate() {
       const updatedItems = prev.items.map((item, i) => {
         if (i !== index) return item;
         const updated = { ...item, [field]: value };
+
+        // When foundation type changes, set default forming/finishing
+        if (field === 'foundation_type') {
+          if (value === 'spread_foot') {
+            updated.include_forming = true;
+            updated.include_finishing = true;
+          } else if (value === 'pillar') {
+            updated.include_forming = false;
+            updated.include_finishing = false;
+          }
+        }
 
         // Auto-calculate volumes when dimensions change
         if (field === 'foundation_type' || field === 'length_inches' || field === 'width_inches' ||
@@ -628,9 +641,10 @@ export default function NewFoundationEstimate() {
         finishingSqFt = Math.PI * Math.pow(radiusFeet, 2);
       }
 
-      const formingHours = formingSqFt * formingHoursPerSqFt * item.quantity;
+      // Only calculate forming/finishing if enabled
+      const formingHours = item.include_forming ? formingSqFt * formingHoursPerSqFt * item.quantity : 0;
       const pouringHours = item.concrete_volume_cy * pouringHoursPerCy * item.quantity;
-      const finishingHours = finishingSqFt * finishingHoursPerSqFt * item.quantity;
+      const finishingHours = item.include_finishing ? finishingSqFt * finishingHoursPerSqFt * item.quantity : 0;
 
       const formingCost = formingHours * project.forming_labor_rate;
       const pouringCost = pouringHours * project.pouring_labor_rate;
@@ -824,7 +838,7 @@ export default function NewFoundationEstimate() {
                       </SelectTrigger>
                       <SelectContent>
                         {concreteOptions.map(concrete => {
-                          const costPerCY = concrete.cost_per_unit.toFixed(2); // Now directly using cost_per_unit
+                          const costPerCY = concrete.cost_per_unit.toFixed(2);
                           return (
                             <SelectItem key={concrete.id} value={concrete.id}>
                               {concrete.material_name} - ${costPerCY}/cy ({concrete.material_type.replace(/_/g, ' ')})
@@ -966,7 +980,7 @@ export default function NewFoundationEstimate() {
                         </div>
                       </div>
 
-                      {/* 3D Viewer - UPDATED to 4:3 aspect ratio (taller) */}
+                      {/* 3D Viewer - NOW WITH QUANTITY SUPPORT */}
                       <div className="border-t pt-3">
                         <div style={{ height: '500px' }} className="rounded-lg overflow-hidden">
                           <Foundation3DViewer
@@ -979,13 +993,40 @@ export default function NewFoundationEstimate() {
                             rebarSpacingLength={item.rebar_spacing_length || 18}
                             rebarSpacingWidth={item.rebar_spacing_width || 18}
                             includeRebar={item.include_rebar || false}
+                            quantity={item.quantity || 1}
                           />
                         </div>
                         <p className="text-xs text-blue-700 mt-1 text-center">
                           {item.foundation_type === 'spread_foot' 
                             ? `${item.length_inches}" L × ${item.width_inches}" W × ${item.depth_inches}" D`
                             : `Ø${item.diameter}" × ${item.depth_inches}" D`}
+                          {item.quantity > 1 && ` × ${item.quantity} units`}
                         </p>
+                      </div>
+
+                      {/* Forming & Finishing Checkboxes */}
+                      <div className="border-t pt-3">
+                        <Label className="text-xs font-semibold mb-2 block">Labor Options</Label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="flex items-center justify-between py-2 px-3 bg-blue-50 rounded border border-blue-200">
+                            <Label htmlFor={`forming-${index}`} className="text-xs font-medium">Include Forming</Label>
+                            <Checkbox
+                              id={`forming-${index}`}
+                              checked={item.include_forming || false}
+                              onCheckedChange={(checked) => updateItem(index, 'include_forming', checked)}
+                              className="w-4 h-4 text-blue-600"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between py-2 px-3 bg-green-50 rounded border border-green-200">
+                            <Label htmlFor={`finishing-${index}`} className="text-xs font-medium">Include Finishing</Label>
+                            <Checkbox
+                              id={`finishing-${index}`}
+                              checked={item.include_finishing || false}
+                              onCheckedChange={(checked) => updateItem(index, 'include_finishing', checked)}
+                              className="w-4 h-4 text-green-600"
+                            />
+                          </div>
+                        </div>
                       </div>
 
                       {item.foundation_type === 'spread_foot' && (
@@ -1090,9 +1131,9 @@ export default function NewFoundationEstimate() {
                         <div className="grid grid-cols-3 gap-1">
                           <p><strong>Concrete:</strong> {item.concrete_volume_cy.toFixed(2)} cy</p>
                           <p><strong>Excavation:</strong> {item.excavation_volume_cy.toFixed(2)} cy</p>
-                          <p><strong>Form:</strong> {item.forming_hours.toFixed(1)} hrs</p>
+                          {item.include_forming && <p><strong>Form:</strong> {item.forming_hours.toFixed(1)} hrs</p>}
                           <p><strong>Pour:</strong> {item.pouring_hours.toFixed(1)} hrs</p>
-                          <p><strong>Finish:</strong> {item.finishing_hours.toFixed(1)} hrs</p>
+                          {item.include_finishing && <p><strong>Finish:</strong> {item.finishing_hours.toFixed(1)} hrs</p>}
                         </div>
                       </div>
                     </div>
