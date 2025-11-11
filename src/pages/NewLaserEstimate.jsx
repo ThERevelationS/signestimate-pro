@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { LaserProject, Settings, User } from "@/entities/all";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom"; // Removed useNavigate
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +38,6 @@ const parseImperialFraction = (fractionString) => {
 };
 
 export default function NewLaserEstimate() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('edit');
   const [isEditing, setIsEditing] = useState(false);
@@ -70,13 +69,13 @@ export default function NewLaserEstimate() {
         setIsEditing(true);
       } else {
         console.warn(`Project with ID ${projectId} not found.`);
-        navigate(createPageUrl("LaserProjects"));
+        window.location.href = createPageUrl("LaserProjects"); // Changed navigate to window.location.href
       }
     } catch (error) {
       console.error('Error loading project for edit:', error);
       alert('Error loading project for edit. Please try again.');
     }
-  }, [navigate]);
+  }, []); // Removed navigate from dependency array
 
   const loadPrerequisites = useCallback(async () => {
     try {
@@ -268,7 +267,7 @@ export default function NewLaserEstimate() {
         ...project,
         items: calculated.items,
         total_machine_cost: calculated.total_machine_cost,
-        total_supplies_cost: calculated.total_supplies_cost, // Add total_supplies_cost
+        total_supplies_cost: calculated.total_supplies_cost,
         total_labor_cost: calculated.total_labor_cost,
         status: 'calculated'
       };
@@ -280,7 +279,7 @@ export default function NewLaserEstimate() {
         await LaserProject.create(dataToSave);
         alert('Project saved successfully!');
       }
-      navigate(createPageUrl("LaserProjects"));
+      window.location.href = createPageUrl("LaserProjects"); // Changed navigate to window.location.href
     } catch (error) {
       console.error('Error saving project:', error);
       alert('Error saving project. Please try again.');
@@ -459,7 +458,7 @@ Best regards`;
             <p className="text-slate-600">Create detailed laser cutting and engraving estimates</p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" onClick={() => navigate(createPageUrl("LaserProjects"))}>
+            <Button variant="outline" onClick={() => { window.location.href = createPageUrl("LaserProjects"); }}> {/* Changed navigate to window.location.href */}
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Projects
             </Button>
