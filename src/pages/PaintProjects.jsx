@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { Project, User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Link, useNavigate } from "react-router-dom"; // Import useNavigate
+import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Plus, Search, Eye, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
@@ -18,12 +17,9 @@ export default function PaintProjects() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
 
-  const navigate = useNavigate(); // Initialize useNavigate hook
-
   const loadProjects = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Get current user first
       let user;
       try {
         user = await User.me();
@@ -31,12 +27,10 @@ export default function PaintProjects() {
       } catch (error) {
         console.error('Error getting current user:', error);
         setCurrentUser(null);
-        // If user is not logged in, stop loading.
         setIsLoading(false);
         return;
       }
 
-      // Load projects created by the current user
       const projectsData = await Project.filter({ created_by: user.email }, '-created_date');
       setProjects(projectsData);
       
@@ -71,7 +65,6 @@ export default function PaintProjects() {
     } else if (filtered.length === 0) {
         setSelectedProject(null);
     }
-    // If the selected project is no longer in the filtered list, re-select the first one
     if (selectedProject && !filtered.find(p => p.id === selectedProject.id)) {
         setSelectedProject(filtered.length > 0 ? filtered[0] : null);
     }
@@ -81,7 +74,7 @@ export default function PaintProjects() {
     if (confirm(`Are you sure you want to delete "${projectName}"? This action cannot be undone.`)) {
       try {
         await Project.delete(projectId);
-        await loadProjects(); // Call the memoized loadProjects
+        await loadProjects();
       } catch (error) {
         console.error('Error deleting project:', error);
         alert('Error deleting project. Please try again.');
@@ -96,10 +89,6 @@ export default function PaintProjects() {
       case 'archived': return 'bg-slate-100 text-slate-800 border-slate-200';
       default: return 'bg-slate-100 text-slate-800 border-slate-200';
     }
-  };
-
-  const navigateToEdit = (project) => {
-    navigate(createPageUrl(`NewPaintEstimate?edit=${project.id}`));
   };
 
   if (isLoading) {
@@ -143,36 +132,41 @@ export default function PaintProjects() {
                 ) : (
                   <div className="space-y-0">
                     {filteredProjects.map((project) => (
-                      <div
+                      <Link 
                         key={project.id}
-                        className={`p-6 border-b border-slate-50 last:border-b-0 hover:bg-blue-50 transition-colors cursor-pointer ${selectedProject?.id === project.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`}
-                        onClick={() => navigateToEdit(project)}
+                        to={`${createPageUrl("NewPaintEstimate")}?edit=${project.id}`}
+                        className="block"
                       >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-slate-900 truncate">{project.project_name}</h3>
-                            <p className="text-slate-600 mb-2">{project.client_name}</p>
+                        <div
+                          className={`p-6 border-b border-slate-50 last:border-b-0 hover:bg-blue-50 transition-colors cursor-pointer ${selectedProject?.id === project.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-slate-900 truncate">{project.project_name}</h3>
+                              <p className="text-slate-600 mb-2">{project.client_name}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className={`${getStatusColor(project.status)} mt-1`}>{project.status}</Badge>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  deleteProject(project.id, project.project_name);
+                                }}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Badge className={`${getStatusColor(project.status)} mt-1`}>{project.status}</Badge>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteProject(project.id, project.project_name);
-                              }}
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                          <div className="flex items-center gap-4 text-sm text-slate-500">
+                            <span>{format(new Date(project.created_date), 'MMM d, yyyy')}</span>
+                            <span>{project.items?.length || 0} items</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-slate-500">
-                          <span>{format(new Date(project.created_date), 'MMM d, yyyy')}</span>
-                          <span>{project.items?.length || 0} items</span>
-                        </div>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 )}
@@ -185,14 +179,12 @@ export default function PaintProjects() {
                 <CardHeader className="border-b border-slate-100">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg font-semibold text-slate-900">Project Details</CardTitle>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => navigateToEdit(selectedProject)}
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit
-                    </Button>
+                    <Link to={`${createPageUrl("NewPaintEstimate")}?edit=${selectedProject.id}`}>
+                      <Button variant="outline" size="sm">
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit
+                      </Button>
+                    </Link>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">

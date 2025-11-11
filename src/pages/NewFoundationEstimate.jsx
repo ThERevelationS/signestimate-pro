@@ -728,7 +728,9 @@ export default function NewFoundationEstimate() {
         await FoundationProject.create(dataToSave);
         alert('Project saved successfully!');
       }
-      navigate(createPageUrl("FoundationProjects"));
+      
+      // Use window.location for reliable navigation
+      window.location.href = createPageUrl("FoundationProjects");
     } catch (error) {
       console.error('Error saving project:', error);
       alert('Error saving project. Please try again.');

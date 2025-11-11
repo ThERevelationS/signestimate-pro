@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Project, Settings } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -550,7 +551,8 @@ export default function NewPaintEstimate() {
         await Project.create(finalProject);
       }
       
-      navigate(createPageUrl("PaintProjects"));
+      // Use window.location for reliable navigation
+      window.location.href = createPageUrl("PaintProjects");
     } catch (error) {
       console.error('Error saving project:', error);
       alert('Error saving project. Please try again.');
