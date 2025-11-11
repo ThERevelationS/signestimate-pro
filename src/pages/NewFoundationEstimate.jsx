@@ -35,7 +35,8 @@ export default function NewFoundationEstimate() {
     items: [],
     concrete_cost_per_cy: 135,
     rebar_cost_per_ft: 0.75,
-    excavation_cost_per_cy: 15, // This is likely a non-labor cost for excavation (e.g., disposal, base machine cost)
+    hand_dig_excavation_cost_per_cy: 10, // NEW: Cost for hand dig excavation (e.g., disposal)
+    equipment_excavation_cost_per_cy: 15, // NEW: Cost for equipment excavation (e.g., disposal, machine operating cost aside from labor)
     forming_labor_rate: 55,
     pouring_labor_rate: 60,
     finishing_labor_rate: 50,
@@ -104,13 +105,14 @@ export default function NewFoundationEstimate() {
         const newDefaults = {
           concrete_cost_per_cy: parseFloat(settingsObj.foundation_concrete_cost_per_cy) || 135,
           rebar_cost_per_ft: parseFloat(settingsObj.foundation_rebar_cost_per_ft) || 0.75,
-          excavation_cost_per_cy: parseFloat(settingsObj.foundation_excavation_cost_per_cy) || 15,
+          hand_dig_excavation_cost_per_cy: parseFloat(settingsObj.foundation_hand_dig_excavation_cost_per_cy) || 10,
+          equipment_excavation_cost_per_cy: parseFloat(settingsObj.foundation_equipment_excavation_cost_per_cy) || 15,
           forming_labor_rate: parseFloat(settingsObj.foundation_forming_labor_rate) || 55,
           pouring_labor_rate: parseFloat(settingsObj.foundation_pouring_labor_rate) || 60,
           finishing_labor_rate: parseFloat(settingsObj.foundation_finishing_labor_rate) || 50,
-          hand_dig_labor_rate: parseFloat(settingsObj.foundation_hand_dig_labor_rate) || 45, // NEW
-          equipment_excavation_labor_rate: parseFloat(settingsObj.foundation_equipment_excavation_labor_rate) || 35, // NEW
-          excavation_method: settingsObj.foundation_default_excavation_method || "", // NEW
+          hand_dig_labor_rate: parseFloat(settingsObj.foundation_hand_dig_labor_rate) || 45,
+          equipment_excavation_labor_rate: parseFloat(settingsObj.foundation_equipment_excavation_labor_rate) || 35,
+          excavation_method: settingsObj.foundation_default_excavation_method || "",
           notes: settingsObj.default_notes_template || "",
           selected_equipment: [],
           selected_concrete_id: null
@@ -262,7 +264,6 @@ export default function NewFoundationEstimate() {
       concrete_volume_cy: 0,
       excavation_volume_cy: 0,
       concrete_cost: 0,
-      rebar_cost: 0,
       excavation_cost: 0,
       forming_hours: 0,
       forming_cost: 0,
@@ -684,10 +685,8 @@ export default function NewFoundationEstimate() {
         const numRebarsLengthwise = Math.floor(effectiveWidthInches / item.rebar_spacing_width) + 1;
         const numRebarsWidthwise = Math.floor(effectiveLengthInches / item.rebar_spacing_length) + 1;
 
-        // Calculate layers based on depth
-        const firstLayerOffset = 3; // 3 inches from top
-        const layerSpacing = 18; // 18 inches between layers
-        const numLayers = Math.max(0, Math.floor((item.depth_inches - firstLayerOffset - edgeClearanceInches) / layerSpacing) + 1);
+        // Assuming one layer for spread footings for this calculator
+        const numLayers = 1; 
 
         // Total rebar: lengthwise bars + crosswise bars, multiplied by layers
         const totalLengthwiseRebarFeet = numRebarsLengthwise * lengthFeet * numLayers;
@@ -698,7 +697,13 @@ export default function NewFoundationEstimate() {
       }
 
       // Non-labor excavation cost
-      const nonLaborExcavationCost = item.excavation_volume_cy * project.excavation_cost_per_cy * item.quantity;
+      let currentNonLaborExcavationRate = 0;
+      if (project.excavation_method === 'hand_dig') {
+        currentNonLaborExcavationRate = project.hand_dig_excavation_cost_per_cy;
+      } else if (project.excavation_method === 'equipment_excavation') {
+        currentNonLaborExcavationRate = project.equipment_excavation_cost_per_cy;
+      }
+      const nonLaborExcavationCost = item.excavation_volume_cy * currentNonLaborExcavationRate * item.quantity;
 
       // Labor calculations for forming, pouring, finishing
       let formingSqFt = 0;
@@ -722,9 +727,13 @@ export default function NewFoundationEstimate() {
       }
 
       // Only calculate forming/finishing if enabled
-      const formingHours = item.include_forming ? formingSqFt * formingHoursPerSqFt * item.quantity : 0;
-      const pouringHours = item.concrete_volume_cy * pouringHoursPerCy * item.quantity;
-      const finishingHours = item.include_finishing ? finishingSqFt * finishingHoursPerSqFt * item.quantity : 0;
+      const formingHoursPerItem = item.include_forming ? formingSqFt * formingHoursPerSqFt : 0;
+      const pouringHoursPerItem = item.concrete_volume_cy * pouringHoursPerCy;
+      const finishingHoursPerItem = item.include_finishing ? finishingSqFt * finishingHoursPerSqFt : 0;
+
+      const formingCost = formingHoursPerItem * project.forming_labor_rate * item.quantity;
+      const pouringCost = pouringHoursPerItem * project.pouring_labor_rate * item.quantity;
+      const finishingCost = finishingHoursPerItem * project.finishing_labor_rate * item.quantity;
 
       // NEW: Excavation Labor Cost
       let excavationLaborCost = 0;
@@ -749,11 +758,11 @@ export default function NewFoundationEstimate() {
         rebar_cost: rebarCost,
         // The item's excavation_cost sums both the non-labor and labor components for that item
         excavation_cost: nonLaborExcavationCost + excavationLaborCost, 
-        forming_hours: formingHours,
+        forming_hours: formingHoursPerItem,
         forming_cost: formingCost,
-        pouring_hours: pouringHours,
+        pouring_hours: pouringHoursPerItem,
         pouring_cost: pouringCost,
-        finishing_hours: finishingHours,
+        finishing_hours: finishingHoursPerItem,
         finishing_cost: finishingCost,
         item_total_cost: itemTotalCost
       };
@@ -774,7 +783,8 @@ export default function NewFoundationEstimate() {
       total_equipment_cost: totalEquipmentCost
     };
   }, [project.items, project.selected_equipment, project.concrete_cost_per_cy, project.rebar_cost_per_ft,
-      project.excavation_cost_per_cy, project.forming_labor_rate, project.pouring_labor_rate,
+      project.hand_dig_excavation_cost_per_cy, project.equipment_excavation_cost_per_cy,
+      project.forming_labor_rate, project.pouring_labor_rate,
       project.finishing_labor_rate, project.hand_dig_labor_rate, project.equipment_excavation_labor_rate,
       project.excavation_method, globalSettings]);
 
@@ -791,7 +801,10 @@ export default function NewFoundationEstimate() {
         total_equipment_cost: calculated.total_equipment_cost
       }));
     }
-  }, [calculateTotals, isLoading, project.items.length, project.selected_equipment?.length, project.excavation_method, project.hand_dig_labor_rate, project.equipment_excavation_labor_rate]);
+  }, [calculateTotals, isLoading, project.items.length, project.selected_equipment?.length, 
+      project.excavation_method, project.hand_dig_labor_rate, project.equipment_excavation_labor_rate,
+      project.hand_dig_excavation_cost_per_cy, project.equipment_excavation_cost_per_cy // Added new dependencies
+    ]);
 
   const saveProject = async () => {
     if (!project.project_name || !project.client_name || !project.estimate_number || !project.hyperlink || !project.excavation_method) {
@@ -947,7 +960,7 @@ export default function NewFoundationEstimate() {
                     )}
                   </div>
                 </div>
-                {/* NEW: Excavation Method and Labor Rates */}
+                {/* Excavation Method and Labor Rates */}
                 <div className="grid md:grid-cols-3 gap-3">
                   <div>
                     <Label className="text-xs">Excavation Method *</Label>
@@ -970,7 +983,7 @@ export default function NewFoundationEstimate() {
                     )}
                   </div>
                   <div>
-                    <Label className="text-xs">Hand Dig Rate ($/hr)</Label>
+                    <Label className="text-xs">Hand Dig Labor Rate ($/hr)</Label>
                     <Input
                       type="number"
                       step="1"
@@ -980,12 +993,35 @@ export default function NewFoundationEstimate() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Equip. Excav. Rate ($/hr)</Label>
+                    <Label className="text-xs">Equip. Excav. Labor Rate ($/hr)</Label>
                     <Input
                       type="number"
                       step="1"
                       value={project.equipment_excavation_labor_rate}
                       onChange={(e) => setProject(prev => ({ ...prev, equipment_excavation_labor_rate: parseFloat(e.target.value) || 0 }))}
+                      className="mt-1 h-8 text-sm"
+                    />
+                  </div>
+                </div>
+                {/* Excavation Cost per CY Rates */}
+                <div className="grid md:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Hand Dig Excavation Cost ($/cy)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={project.hand_dig_excavation_cost_per_cy}
+                      onChange={(e) => setProject(prev => ({ ...prev, hand_dig_excavation_cost_per_cy: parseFloat(e.target.value) || 0 }))}
+                      className="mt-1 h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Equipment Excavation Cost ($/cy)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={project.equipment_excavation_cost_per_cy}
+                      onChange={(e) => setProject(prev => ({ ...prev, equipment_excavation_cost_per_cy: parseFloat(e.target.value) || 0 }))}
                       className="mt-1 h-8 text-sm"
                     />
                   </div>
@@ -1379,7 +1415,7 @@ export default function NewFoundationEstimate() {
                                 onCheckedChange={(checked) => updateEquipmentItem(index, 'include_delivery', checked)}
                                 className="w-3 h-3 text-orange-600"
                               />
-                              <Label className="text-xs">Delivery {selectedEquip && `($${(selectedEquip.pickup_delivery_cost || 0).toFixed(2)})`}</Label>
+                              <Label className="text-xs">Delivery {selectedEquip && `(${(selectedEquip.pickup_delivery_cost || 0).toFixed(2)})`}</Label>
                             </div>
 
                             {/* Attachments Section */}

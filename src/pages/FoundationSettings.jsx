@@ -21,13 +21,17 @@ export default function FoundationSettings() {
       const defaultSettings = {
         foundation_concrete_cost_per_cy: "135",
         foundation_rebar_cost_per_ft: "0.75",
-        foundation_excavation_cost_per_cy: "15",
+        foundation_hand_dig_excavation_cost_per_cy: "10",
+        foundation_equipment_excavation_cost_per_cy: "15",
         foundation_forming_labor_rate: "55",
         foundation_pouring_labor_rate: "60",
         foundation_finishing_labor_rate: "50",
+        foundation_hand_dig_labor_rate: "45",
+        foundation_equipment_excavation_labor_rate: "35",
         foundation_forming_hours_per_sqft: "0.15",
         foundation_pouring_hours_per_cy: "0.5",
         foundation_finishing_hours_per_sqft: "0.10",
+        foundation_excavation_hours_per_cy: "0.5",
         company_name: "Sign Company",
         default_notes_template: ""
       };
@@ -54,7 +58,8 @@ export default function FoundationSettings() {
     return [
       { name: "foundation_concrete_cost_per_cy", type: "number", category: "foundation_pricing", description: "Cost per cubic yard of concrete from Ernst Concrete" },
       { name: "foundation_rebar_cost_per_ft", type: "number", category: "foundation_pricing", description: "Cost per linear foot of rebar" },
-      { name: "foundation_excavation_cost_per_cy", type: "number", category: "foundation_pricing", description: "Cost per cubic yard of excavation (non-labor)" },
+      { name: "foundation_hand_dig_excavation_cost_per_cy", type: "number", category: "foundation_pricing", description: "Non-labor excavation cost per cubic yard for hand digging (disposal, etc.)" },
+      { name: "foundation_equipment_excavation_cost_per_cy", type: "number", category: "foundation_pricing", description: "Non-labor excavation cost per cubic yard for equipment excavation (disposal, etc.)" },
       { name: "foundation_forming_labor_rate", type: "number", category: "foundation_labor", description: "Forming labor hourly rate" },
       { name: "foundation_pouring_labor_rate", type: "number", category: "foundation_labor", description: "Pouring labor hourly rate" },
       { name: "foundation_finishing_labor_rate", type: "number", category: "foundation_labor", description: "Finishing labor hourly rate" },
