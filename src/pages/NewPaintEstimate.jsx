@@ -23,10 +23,10 @@ const parseImperialFraction = (fractionString) => {
   const wholeAndFraction = fractionString.split('-');
 
   if (wholeAndFraction.length === 2) {
-    totalValue += parseFloat(wholeAndAndFraction[0]);
-    fractionString = wholeAndAndFraction[1];
+    totalValue += parseFloat(wholeAndFraction[0]);
+    fractionString = wholeAndFraction[1];
   } else {
-    fractionString = wholeAndAndFraction[0];
+    fractionString = wholeAndFraction[0];
   }
 
   const parts = fractionString.split('/');
