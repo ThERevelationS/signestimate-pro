@@ -166,8 +166,15 @@ export default function Foundation3DViewer({
               emissiveIntensity: 0.2 // Slight glow to make it more visible
             });
             
-            const numRebarsLengthwise = Math.floor(widthFeet / rebarSpacingWidthFeet) + 1;
-            const numRebarsWidthwise = Math.floor(lengthFeet / rebarSpacingLengthFeet) + 1;
+            // 3" edge clearance for rebar positioning
+            const edgeClearance = 3 / 12; // 3 inches in feet
+            
+            // Calculate effective area for rebar (accounting for 3" clearance on all sides)
+            const effectiveLengthFeet = lengthFeet - (2 * edgeClearance);
+            const effectiveWidthFeet = widthFeet - (2 * edgeClearance);
+            
+            const numRebarsLengthwise = Math.floor(effectiveWidthFeet / rebarSpacingWidthFeet) + 1;
+            const numRebarsWidthwise = Math.floor(effectiveLengthFeet / rebarSpacingLengthFeet) + 1;
             
             const firstLayerOffset = 3 / 12;
             const layerSpacing = 18 / 12;
@@ -176,18 +183,22 @@ export default function Foundation3DViewer({
             for (let layer = 0; layer < numLayers; layer++) {
               const yPos = -firstLayerOffset - layer * layerSpacing; // Negative for below ground
               
+              // Lengthwise rebars (running along X axis)
               for (let j = 0; j < numRebarsLengthwise; j++) {
-                const zOffset = -widthFeet / 2 + j * rebarSpacingWidthFeet;
-                const rebarGeometry = new THREE.CylinderGeometry(rebarDiameter, rebarDiameter, lengthFeet, 8);
+                const zOffset = -effectiveWidthFeet / 2 + j * rebarSpacingWidthFeet;
+                // Shorten the rebar length to account for clearance on both ends
+                const rebarGeometry = new THREE.CylinderGeometry(rebarDiameter, rebarDiameter, effectiveLengthFeet, 8);
                 const rebar = new THREE.Mesh(rebarGeometry, rebarMaterial);
                 rebar.rotation.z = Math.PI / 2;
                 rebar.position.set(0, yPos, zOffset);
                 rebarGroup.add(rebar);
               }
               
+              // Widthwise rebars (running along Z axis)
               for (let j = 0; j < numRebarsWidthwise; j++) {
-                const xOffset = -lengthFeet / 2 + j * rebarSpacingLengthFeet;
-                const rebarGeometry = new THREE.CylinderGeometry(rebarDiameter, rebarDiameter, widthFeet, 8);
+                const xOffset = -effectiveLengthFeet / 2 + j * rebarSpacingLengthFeet;
+                // Shorten the rebar length to account for clearance on both ends
+                const rebarGeometry = new THREE.CylinderGeometry(rebarDiameter, rebarDiameter, effectiveWidthFeet, 8);
                 const rebar = new THREE.Mesh(rebarGeometry, rebarMaterial);
                 rebar.rotation.x = Math.PI / 2;
                 rebar.position.set(xOffset, yPos, 0);
@@ -228,27 +239,39 @@ export default function Foundation3DViewer({
       scene.add(foundationGroup);
     }
 
-    // Add dimension labels - ALWAYS VISIBLE from any angle
+    // Add dimension labels - FLOATING TEXT without background box
     const addLabel = (text, position) => {
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
       canvas.width = 256;
       canvas.height = 64;
       
-      context.fillStyle = 'rgba(59, 130, 246, 0.95)';
-      context.fillRect(0, 0, canvas.width, canvas.height);
+      // Transparent background
+      context.clearRect(0, 0, canvas.width, canvas.height);
       
-      context.font = 'Bold 24px Inter, Arial';
+      // Add text shadow for readability
+      context.shadowColor = 'rgba(0, 0, 0, 0.8)';
+      context.shadowBlur = 8;
+      context.shadowOffsetX = 2;
+      context.shadowOffsetY = 2;
+      
+      context.font = 'Bold 28px Inter, Arial';
       context.fillStyle = 'white';
+      context.strokeStyle = 'rgba(59, 130, 246, 0.9)';
+      context.lineWidth = 3;
       context.textAlign = 'center';
       context.textBaseline = 'middle';
+      
+      // Stroke (outline) for better visibility
+      context.strokeText(text, canvas.width / 2, canvas.height / 2);
       context.fillText(text, canvas.width / 2, canvas.height / 2);
       
       const texture = new THREE.CanvasTexture(canvas);
       const spriteMaterial = new THREE.SpriteMaterial({ 
         map: texture,
         depthTest: false, // Always render on top
-        depthWrite: false // Don't write to depth buffer
+        depthWrite: false, // Don't write to depth buffer
+        transparent: true
       });
       const sprite = new THREE.Sprite(spriteMaterial);
       sprite.scale.set(2, 0.5, 1);

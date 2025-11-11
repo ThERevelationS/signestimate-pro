@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Save, Plus, Trash2, ArrowLeft, Anchor, ChevronDown, ChevronUp, Wrench, X } from "lucide-react";
+import { Save, Plus, Trash2, ArrowLeft, Anchor, ChevronDown, ChevronUp, Wrench, X, AlertCircle } from "lucide-react";
 import Foundation3DViewer from "@/components/Foundation3DViewer";
 
 export default function NewFoundationEstimate() {
@@ -24,6 +24,8 @@ export default function NewFoundationEstimate() {
   const [availableAttachments, setAvailableAttachments] = useState([]);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingSubsidiary, setPendingSubsidiary] = useState(null);
+  const [showRebarError, setShowRebarError] = useState(false);
+  const [rebarErrorMessage, setRebarErrorMessage] = useState('');
 
   const [project, setProject] = useState({
     project_name: "",
@@ -293,18 +295,33 @@ export default function NewFoundationEstimate() {
 
         // Validate rebar spacing when include_rebar is set to true
         if (field === 'include_rebar' && value === true && updated.foundation_type === 'spread_foot') {
-          const lengthFeet = updated.length_inches / 12;
-          const widthFeet = updated.width_inches / 12;
-          // Ensure these are treated as numbers for comparison
-          const rebarSpacingLengthFeet = (parseFloat(updated.rebar_spacing_length) || 0) / 12;
-          const rebarSpacingWidthFeet = (parseFloat(updated.rebar_spacing_width) || 0) / 12;
+          const lengthInches = updated.length_inches;
+          const widthInches = updated.width_inches;
+          const rebarSpacingLength = parseFloat(updated.rebar_spacing_length) || 0;
+          const rebarSpacingWidth = parseFloat(updated.rebar_spacing_width) || 0;
           
-          // Check if at least 2 rebars can fit in each direction
-          // Or if dimensions are too small to fit even one, or if spacing makes it impossible
-          if (lengthFeet < (updated.rebar_spacing_length / 12) * 2 && lengthFeet > 0 || 
-              widthFeet < (updated.rebar_spacing_width / 12) * 2 && widthFeet > 0) {
-            alert('Rebar spacing is too large for this foundation size. Please reduce spacing or increase foundation dimensions.');
-            updated.include_rebar = false;
+          const edgeClearanceInches = 6; // 3 inches on each side means 6 inches total reduction
+          const effectiveLengthInches = lengthInches - edgeClearanceInches;
+          const effectiveWidthInches = widthInches - edgeClearanceInches;
+
+          let validationFailed = false;
+          let message = '';
+
+          if (lengthInches <= edgeClearanceInches || widthInches <= edgeClearanceInches) {
+              validationFailed = true;
+              message = `Foundation dimensions (${lengthInches}" L × ${widthInches}" W) are too small to include rebar. At least ${edgeClearanceInches + 1}" in both length and width is required for rebar with 3" edge clearance.`;
+          } else if (rebarSpacingLength <= 0 || rebarSpacingWidth <= 0) {
+              validationFailed = true;
+              message = `Rebar spacing must be a positive number.`;
+          } else if (effectiveLengthInches < rebarSpacingLength || effectiveWidthInches < rebarSpacingWidth) {
+              validationFailed = true;
+              message = `Rebar spacing is too large for this foundation size.\n\nFoundation: ${lengthInches}" L × ${widthInches}" W\nEffective area (with 3" clearance): ${effectiveLengthInches.toFixed(1)}" L × ${effectiveWidthInches.toFixed(1)}" W\n\nPlease reduce spacing or increase foundation dimensions.`;
+          }
+
+          if (validationFailed) {
+            setRebarErrorMessage(message);
+            setShowRebarError(true);
+            updated.include_rebar = false; // Prevent it from being checked
           }
         }
 
@@ -336,17 +353,25 @@ export default function NewFoundationEstimate() {
         }
 
         // If rebar spacing or dimensions change, validate and disable rebar if needed
+        // This check runs AFTER the `include_rebar` field change logic.
+        // It applies if rebar is currently enabled and dimensions/spacing change.
         if ((field === 'length_inches' || field === 'width_inches' || 
              field === 'rebar_spacing_length' || field === 'rebar_spacing_width') && 
             updated.include_rebar && updated.foundation_type === 'spread_foot') {
-          const lengthFeet = updated.length_inches / 12;
-          const widthFeet = updated.width_inches / 12;
-          const rebarSpacingLengthFeet = (parseFloat(updated.rebar_spacing_length) || 0) / 12;
-          const rebarSpacingWidthFeet = (parseFloat(updated.rebar_spacing_width) || 0) / 12;
+          const lengthInches = updated.length_inches;
+          const widthInches = updated.width_inches;
+          const rebarSpacingLength = parseFloat(updated.rebar_spacing_length) || 0;
+          const rebarSpacingWidth = parseFloat(updated.rebar_spacing_width) || 0;
           
-          if (lengthFeet < rebarSpacingLengthFeet * 2 && lengthFeet > 0 || 
-              widthFeet < rebarSpacingWidthFeet * 2 && widthFeet > 0) {
-            updated.include_rebar = false;
+          const edgeClearanceInches = 6; // 3 inches on each side means 6 inches total reduction
+          const effectiveLengthInches = lengthInches - edgeClearanceInches;
+          const effectiveWidthInches = widthInches - edgeClearanceInches;
+          
+          // Conditions where rebar cannot be placed with 3" clearance
+          if (lengthInches <= edgeClearanceInches || widthInches <= edgeClearanceInches ||
+              rebarSpacingLength <= 0 || rebarSpacingWidth <= 0 ||
+              effectiveLengthInches < rebarSpacingLength || effectiveWidthInches < rebarSpacingWidth) {
+            updated.include_rebar = false; // Silently disable rebar if it no longer fits
           }
         }
 
@@ -630,16 +655,19 @@ export default function NewFoundationEstimate() {
       if (item.include_rebar && item.foundation_type === 'spread_foot') {
         const lengthFeet = item.length_inches / 12;
         const widthFeet = item.width_inches / 12;
-        // const depthFeet = item.depth_inches / 12; // depth is not used directly for rebar length calc in this section
 
-        // Calculate number of rebars based on spacing
-        const numRebarsLengthwise = Math.floor(widthFeet * 12 / item.rebar_spacing_width) + 1; // Bars running length-wise, based on width spacing
-        const numRebarsWidthwise = Math.floor(lengthFeet * 12 / item.rebar_spacing_length) + 1; // Bars running width-wise, based on length spacing
+        // Calculate number of rebars based on spacing and 3" clearance
+        const edgeClearanceInches = 3;
+        const effectiveLengthInches = item.length_inches - 2 * edgeClearanceInches;
+        const effectiveWidthInches = item.width_inches - 2 * edgeClearanceInches;
+
+        const numRebarsLengthwise = Math.floor(effectiveWidthInches / item.rebar_spacing_width) + 1;
+        const numRebarsWidthwise = Math.floor(effectiveLengthInches / item.rebar_spacing_length) + 1;
 
         // Calculate layers based on depth
         const firstLayerOffset = 3; // 3 inches from top
         const layerSpacing = 18; // 18 inches between layers
-        const numLayers = Math.max(0, Math.floor((item.depth_inches - firstLayerOffset) / layerSpacing) + 1);
+        const numLayers = Math.max(0, Math.floor((item.depth_inches - firstLayerOffset - edgeClearanceInches) / layerSpacing) + 1); // Adjust depth for bottom clearance
 
         // Total rebar: lengthwise bars + crosswise bars, multiplied by layers
         const totalLengthwiseRebarFeet = numRebarsLengthwise * lengthFeet * numLayers;
@@ -1577,6 +1605,42 @@ export default function NewFoundationEstimate() {
                   className="bg-purple-600 hover:bg-purple-700"
                 >
                   Yes, Add Both
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Rebar Error Modal */}
+      {showRebarError && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="bg-white w-full max-w-md">
+            <CardHeader className="border-b pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-amber-600" />
+                </div>
+                <CardTitle className="text-lg">Rebar Spacing Too Large</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-slate-700 whitespace-pre-line text-sm leading-relaxed">
+                  {rebarErrorMessage}
+                </p>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-xs text-blue-800">
+                  <strong>💡 Tip:</strong> Rebar needs a 3" clearance from all edges. The effective area for rebar placement is smaller than the foundation size.
+                </p>
+              </div>
+              <div className="flex justify-end pt-4">
+                <Button 
+                  onClick={() => setShowRebarError(false)}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Got It
                 </Button>
               </div>
             </CardContent>
