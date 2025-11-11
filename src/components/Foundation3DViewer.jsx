@@ -12,7 +12,8 @@ export default function Foundation3DViewer({
   rebarSpacingLength = 18,
   rebarSpacingWidth = 18,
   includeRebar = false,
-  quantity = 1
+  quantity = 1,
+  gradeOffsetInches = 0 // New prop for grade adjustment
 }) {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
@@ -68,7 +69,7 @@ export default function Foundation3DViewer({
     directionalLight.shadow.mapSize.height = 2048;
     scene.add(directionalLight);
 
-    // Ground plane - semi-transparent with grid
+    // Ground plane - slightly elevated to prevent z-fighting
     const groundGeometry = new THREE.PlaneGeometry(200, 200);
     const groundMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x8b7355,
@@ -78,13 +79,13 @@ export default function Foundation3DViewer({
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = 0;
+    ground.position.y = 0.02; // Slightly above y=0 to prevent z-fighting
     ground.receiveShadow = true;
     scene.add(ground);
 
     // Add grid helper for ground reference
     const gridHelper = new THREE.GridHelper(200, 40, 0x666666, 0x888888);
-    gridHelper.position.y = 0.01; // Slightly above ground to prevent z-fighting
+    gridHelper.position.y = 0.03; // Slightly above ground to prevent z-fighting
     scene.add(gridHelper);
 
     // Calculate grid layout for multiple foundations
@@ -98,6 +99,7 @@ export default function Foundation3DViewer({
     const widthFeet = widthInches / 12;
     const depthFeet = depthInches / 12;
     const diameterFeet = diameter / 12;
+    const gradeOffsetFeet = gradeOffsetInches / 12;
 
     // Clear previous objects (except lights and ground)
     const objectsToRemove = [];
@@ -121,17 +123,18 @@ export default function Foundation3DViewer({
 
       if (foundationType === 'spread_foot') {
         // Create spread footing - SEMI-TRANSPARENT to see rebar inside
+        // Position adjusted by grade offset (positive = rises above grade, negative = deeper)
         const concreteGeometry = new THREE.BoxGeometry(lengthFeet, depthFeet, widthFeet);
         const concreteMaterial = new THREE.MeshStandardMaterial({ 
           color: 0x9ca3af,
           roughness: 0.7,
           metalness: 0.1,
           transparent: true,
-          opacity: 0.7, // Semi-transparent to see inside
+          opacity: 0.7,
           side: THREE.DoubleSide
         });
         const concrete = new THREE.Mesh(concreteGeometry, concreteMaterial);
-        concrete.position.y = -depthFeet / 2; // Negative to go below ground
+        concrete.position.y = -depthFeet / 2 + gradeOffsetFeet;
         concrete.castShadow = true;
         concrete.receiveShadow = true;
         foundationGroup.add(concrete);
@@ -159,15 +162,15 @@ export default function Foundation3DViewer({
             const rebarDiameter = rebarDiameters[rebarSize] || 0.0417;
             
             const rebarMaterial = new THREE.MeshStandardMaterial({ 
-              color: 0xd97706, // Brighter orange/rust color
+              color: 0xd97706,
               roughness: 0.6,
               metalness: 0.4,
               emissive: 0xd97706,
-              emissiveIntensity: 0.2 // Slight glow to make it more visible
+              emissiveIntensity: 0.2
             });
             
             // 3" edge clearance for rebar positioning
-            const edgeClearance = 3 / 12; // 3 inches in feet
+            const edgeClearance = 3 / 12;
             
             // Calculate effective area for rebar (accounting for 3" clearance on all sides)
             const effectiveLengthFeet = lengthFeet - (2 * edgeClearance);
@@ -181,12 +184,11 @@ export default function Foundation3DViewer({
             const numLayers = Math.max(1, Math.floor((depthFeet - firstLayerOffset) / layerSpacing) + 1);
 
             for (let layer = 0; layer < numLayers; layer++) {
-              const yPos = -firstLayerOffset - layer * layerSpacing; // Negative for below ground
+              const yPos = -firstLayerOffset - layer * layerSpacing + gradeOffsetFeet;
               
               // Lengthwise rebars (running along X axis)
               for (let j = 0; j < numRebarsLengthwise; j++) {
                 const zOffset = -effectiveWidthFeet / 2 + j * rebarSpacingWidthFeet;
-                // Shorten the rebar length to account for clearance on both ends
                 const rebarGeometry = new THREE.CylinderGeometry(rebarDiameter, rebarDiameter, effectiveLengthFeet, 8);
                 const rebar = new THREE.Mesh(rebarGeometry, rebarMaterial);
                 rebar.rotation.z = Math.PI / 2;
@@ -197,7 +199,6 @@ export default function Foundation3DViewer({
               // Widthwise rebars (running along Z axis)
               for (let j = 0; j < numRebarsWidthwise; j++) {
                 const xOffset = -effectiveLengthFeet / 2 + j * rebarSpacingLengthFeet;
-                // Shorten the rebar length to account for clearance on both ends
                 const rebarGeometry = new THREE.CylinderGeometry(rebarDiameter, rebarDiameter, effectiveWidthFeet, 8);
                 const rebar = new THREE.Mesh(rebarGeometry, rebarMaterial);
                 rebar.rotation.x = Math.PI / 2;
@@ -219,11 +220,11 @@ export default function Foundation3DViewer({
           roughness: 0.7,
           metalness: 0.1,
           transparent: true,
-          opacity: 0.7, // Semi-transparent to see inside
+          opacity: 0.7,
           side: THREE.DoubleSide
         });
         const concrete = new THREE.Mesh(concreteGeometry, concreteMaterial);
-        concrete.position.y = -depthFeet / 2; // Negative to go below ground
+        concrete.position.y = -depthFeet / 2 + gradeOffsetFeet;
         concrete.castShadow = true;
         concrete.receiveShadow = true;
         foundationGroup.add(concrete);
@@ -269,24 +270,24 @@ export default function Foundation3DViewer({
       const texture = new THREE.CanvasTexture(canvas);
       const spriteMaterial = new THREE.SpriteMaterial({ 
         map: texture,
-        depthTest: false, // Always render on top
-        depthWrite: false, // Don't write to depth buffer
+        depthTest: false,
+        depthWrite: false,
         transparent: true
       });
       const sprite = new THREE.Sprite(spriteMaterial);
       sprite.scale.set(2, 0.5, 1);
       sprite.position.copy(position);
-      sprite.renderOrder = 999; // Render last (on top)
+      sprite.renderOrder = 999;
       scene.add(sprite);
     };
 
     if (foundationType === 'spread_foot') {
       addLabel(`${lengthInches}"`, new THREE.Vector3(0, 0.5, widthFeet / 2 + 1));
       addLabel(`${widthInches}"`, new THREE.Vector3(lengthFeet / 2 + 1, 0.5, 0));
-      addLabel(`${depthInches}" deep`, new THREE.Vector3(lengthFeet / 2 + 1, -depthFeet / 2, widthFeet / 2 + 1));
+      addLabel(`${depthInches}" deep`, new THREE.Vector3(lengthFeet / 2 + 1, -depthFeet / 2 + gradeOffsetFeet, widthFeet / 2 + 1));
     } else {
       addLabel(`Ø${diameter}"`, new THREE.Vector3(diameterFeet / 2 + 1, 0.5, 0));
-      addLabel(`${depthInches}" deep`, new THREE.Vector3(diameterFeet / 2 + 1, -depthFeet / 2, diameterFeet / 2 + 1));
+      addLabel(`${depthInches}" deep`, new THREE.Vector3(diameterFeet / 2 + 1, -depthFeet / 2 + gradeOffsetFeet, diameterFeet / 2 + 1));
     }
 
     // Position camera to show both above and below ground
@@ -296,8 +297,8 @@ export default function Foundation3DViewer({
     ) * gridSize * 1.5;
     
     camera.position.set(maxDimension * 1.2, maxDimension * 0.6, maxDimension * 1.2);
-    camera.lookAt(0, -depthFeet / 4, 0); // Look at below ground level
-    controls.target.set(0, -depthFeet / 4, 0);
+    camera.lookAt(0, -depthFeet / 4 + gradeOffsetFeet, 0);
+    controls.target.set(0, -depthFeet / 4 + gradeOffsetFeet, 0);
     controls.update();
 
     // Animation loop
@@ -328,7 +329,7 @@ export default function Foundation3DViewer({
       renderer.dispose();
       controls.dispose();
     };
-  }, [foundationType, lengthInches, widthInches, depthInches, diameter, rebarSize, rebarSpacingLength, rebarSpacingWidth, includeRebar, quantity]);
+  }, [foundationType, lengthInches, widthInches, depthInches, diameter, rebarSize, rebarSpacingLength, rebarSpacingWidth, includeRebar, quantity, gradeOffsetInches]);
 
   return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />;
 }

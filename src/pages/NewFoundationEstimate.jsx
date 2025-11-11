@@ -237,6 +237,7 @@ export default function NewFoundationEstimate() {
       width_inches: 12,
       diameter: 24,
       depth_inches: 24,
+      grade_offset_inches: 0, // New field for above/below grade adjustment
       include_rebar: false,
       include_forming: true,
       include_finishing: true,
@@ -705,10 +706,6 @@ export default function NewFoundationEstimate() {
       const pouringHours = item.concrete_volume_cy * pouringHoursPerCy * item.quantity;
       const finishingHours = item.include_finishing ? finishingSqFt * finishingHoursPerSqFt * item.quantity : 0;
 
-      const formingCost = formingHours * project.forming_labor_rate;
-      const pouringCost = pouringHours * project.pouring_labor_rate;
-      const finishingCost = finishingHours * project.finishing_labor_rate;
-
       const itemTotalCost = concreteCost + rebarCost + excavationCost + formingCost + pouringCost + finishingCost;
 
       totalConcreteCost += concreteCost;
@@ -1037,9 +1034,25 @@ export default function NewFoundationEstimate() {
                             className="mt-1 h-8 text-xs"
                           />
                         </div>
+
+                        <div>
+                          <Label className="text-xs flex items-center gap-1">
+                            Grade Offset (in)
+                            <span className="text-slate-400 text-[10px]">(±)</span>
+                          </Label>
+                          <Input
+                            type="number"
+                            step="1"
+                            value={item.grade_offset_inches || 0}
+                            onChange={(e) => updateItem(index, 'grade_offset_inches', parseFloat(e.target.value) || 0)}
+                            className="mt-1 h-8 text-xs"
+                            placeholder="0 = at grade"
+                          />
+                          <p className="text-[10px] text-slate-500 mt-0.5">+ above, - below</p>
+                        </div>
                       </div>
 
-                      {/* 3D Viewer - NOW WITH QUANTITY SUPPORT */}
+                      {/* 3D Viewer - NOW WITH GRADE OFFSET */}
                       <div className="border-t pt-3">
                         <div style={{ height: '500px' }} className="rounded-lg overflow-hidden">
                           <Foundation3DViewer
@@ -1053,6 +1066,7 @@ export default function NewFoundationEstimate() {
                             rebarSpacingWidth={item.rebar_spacing_width || 18}
                             includeRebar={item.include_rebar || false}
                             quantity={item.quantity || 1}
+                            gradeOffsetInches={item.grade_offset_inches || 0}
                           />
                         </div>
                         <p className="text-xs text-blue-700 mt-1 text-center">
@@ -1060,6 +1074,11 @@ export default function NewFoundationEstimate() {
                             ? `${item.length_inches}" L × ${item.width_inches}" W × ${item.depth_inches}" D`
                             : `Ø${item.diameter}" × ${item.depth_inches}" D`}
                           {item.quantity > 1 && ` × ${item.quantity} units`}
+                          {item.grade_offset_inches !== 0 && (
+                            <span className="ml-2 text-amber-600 font-medium">
+                              {item.grade_offset_inches > 0 ? '↑' : '↓'} {Math.abs(item.grade_offset_inches)}" grade
+                            </span>
+                          )}
                         </p>
                       </div>
 
