@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -140,53 +141,75 @@ export default function Foundation3DViewer({
         wireframe.position.copy(concrete.position);
         foundationGroup.add(wireframe);
 
-        // Add rebar if enabled
+        // Add rebar if enabled - with validation
         if (includeRebar) {
-          const rebarGroup = new THREE.Group();
-          
-          // Rebar dimensions based on size
-          const rebarDiameters = { '#3': 0.0313, '#4': 0.0417, '#5': 0.0521, '#6': 0.0625 };
-          const rebarDiameter = rebarDiameters[rebarSize] || 0.0417;
-          
-          const rebarMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x8b4513,
-            roughness: 0.6,
-            metalness: 0.3 
-          });
-
           const rebarSpacingLengthFeet = rebarSpacingLength / 12;
           const rebarSpacingWidthFeet = rebarSpacingWidth / 12;
           
-          const numRebarsLengthwise = Math.floor(widthFeet / rebarSpacingWidthFeet) + 1;
-          const numRebarsWidthwise = Math.floor(lengthFeet / rebarSpacingLengthFeet) + 1;
+          // Validate that rebar spacing fits within bounds
+          const canFitRebar = rebarSpacingLengthFeet < lengthFeet && rebarSpacingWidthFeet < widthFeet;
           
-          const firstLayerOffset = 3 / 12;
-          const layerSpacing = 18 / 12;
-          const numLayers = Math.max(1, Math.floor((depthFeet - firstLayerOffset) / layerSpacing) + 1);
+          if (canFitRebar) {
+            const rebarGroup = new THREE.Group();
+            
+            // Rebar dimensions based on size
+            const rebarDiameters = { '#3': 0.0313, '#4': 0.0417, '#5': 0.0521, '#6': 0.0625 };
+            const rebarDiameter = rebarDiameters[rebarSize] || 0.0417;
+            
+            const rebarMaterial = new THREE.MeshStandardMaterial({ 
+              color: 0x8b4513,
+              roughness: 0.6,
+              metalness: 0.3 
+            });
+            
+            // Number of rebars - ensuring at least one rebar if spacing allows
+            // Add 1 to ensure at least one rebar if the dimension is greater than spacing
+            const numRebarsLengthwise = Math.floor((widthFeet - rebarSpacingWidthFeet) / rebarSpacingWidthFeet) + 1;
+            const numRebarsWidthwise = Math.floor((lengthFeet - rebarSpacingLengthFeet) / rebarSpacingLengthFeet) + 1;
+            
+            const firstLayerOffset = 3 / 12;
+            const layerSpacing = 18 / 12;
+            const numLayers = Math.max(1, Math.floor((depthFeet - firstLayerOffset) / layerSpacing) + 1);
 
-          for (let layer = 0; layer < numLayers; layer++) {
-            const yPos = -firstLayerOffset - layer * layerSpacing; // Negative for below ground
-            
-            for (let j = 0; j < numRebarsLengthwise; j++) {
-              const zOffset = -widthFeet / 2 + j * rebarSpacingWidthFeet;
-              const rebarGeometry = new THREE.CylinderGeometry(rebarDiameter, rebarDiameter, lengthFeet, 8);
-              const rebar = new THREE.Mesh(rebarGeometry, rebarMaterial);
-              rebar.rotation.z = Math.PI / 2;
-              rebar.position.set(0, yPos, zOffset);
-              rebarGroup.add(rebar);
+            for (let layer = 0; layer < numLayers; layer++) {
+              // Ensure rebar stays within the foundation depth
+              let yPos = -depthFeet + firstLayerOffset + layer * layerSpacing; 
+              // If only one layer, center it in the depth
+              if (numLayers === 1) {
+                  yPos = -depthFeet / 2;
+              } else {
+                  // Adjust yPos for multiple layers, positioning from bottom up
+                  yPos = -depthFeet + firstLayerOffset + layer * layerSpacing + rebarDiameter; // Position slightly above bottom
+              }
+              // clamp yPos to be within the concrete
+              yPos = Math.min(yPos, -rebarDiameter - firstLayerOffset); // Prevent going above top, leave some concrete cover
+              yPos = Math.max(yPos, -depthFeet + rebarDiameter + firstLayerOffset); // Prevent going below bottom, leave some concrete cover
+
+              for (let j = 0; j < numRebarsLengthwise; j++) {
+                const zOffset = -widthFeet / 2 + rebarSpacingWidthFeet / 2 + j * rebarSpacingWidthFeet;
+                // Clamp zOffset to ensure rebar stays within width
+                const clampedZOffset = Math.max(Math.min(zOffset, widthFeet / 2 - rebarDiameter), -widthFeet / 2 + rebarDiameter);
+                const rebarGeometry = new THREE.CylinderGeometry(rebarDiameter, rebarDiameter, lengthFeet - rebarDiameter * 2, 8); // Subtract rebarDiameter*2 for cover
+                const rebar = new THREE.Mesh(rebarGeometry, rebarMaterial);
+                rebar.rotation.z = Math.PI / 2;
+                rebar.position.set(0, yPos, clampedZOffset);
+                rebarGroup.add(rebar);
+              }
+              
+              for (let j = 0; j < numRebarsWidthwise; j++) {
+                const xOffset = -lengthFeet / 2 + rebarSpacingLengthFeet / 2 + j * rebarSpacingLengthFeet;
+                // Clamp xOffset to ensure rebar stays within length
+                const clampedXOffset = Math.max(Math.min(xOffset, lengthFeet / 2 - rebarDiameter), -lengthFeet / 2 + rebarDiameter);
+                const rebarGeometry = new THREE.CylinderGeometry(rebarDiameter, rebarDiameter, widthFeet - rebarDiameter * 2, 8); // Subtract rebarDiameter*2 for cover
+                const rebar = new THREE.Mesh(rebarGeometry, rebarMaterial);
+                rebar.rotation.x = Math.PI / 2;
+                rebar.position.set(clampedXOffset, yPos, 0);
+                rebarGroup.add(rebar);
+              }
             }
             
-            for (let j = 0; j < numRebarsWidthwise; j++) {
-              const xOffset = -lengthFeet / 2 + j * rebarSpacingLengthFeet;
-              const rebarGeometry = new THREE.CylinderGeometry(rebarDiameter, rebarDiameter, widthFeet, 8);
-              const rebar = new THREE.Mesh(rebarGeometry, rebarMaterial);
-              rebar.rotation.x = Math.PI / 2;
-              rebar.position.set(xOffset, yPos, 0);
-              rebarGroup.add(rebar);
-            }
+            foundationGroup.add(rebarGroup);
           }
-          
-          foundationGroup.add(rebarGroup);
         }
 
       } else if (foundationType === 'pillar') {
@@ -239,14 +262,22 @@ export default function Foundation3DViewer({
       scene.add(sprite);
     };
 
-    if (foundationType === 'spread_foot') {
-      addLabel(`${lengthInches}"`, new THREE.Vector3(0, 0.5, widthFeet / 2 + 1));
-      addLabel(`${widthInches}"`, new THREE.Vector3(lengthFeet / 2 + 1, 0.5, 0));
-      addLabel(`${depthInches}" deep`, new THREE.Vector3(lengthFeet / 2 + 1, -depthFeet / 2, widthFeet / 2 + 1));
-    } else {
-      addLabel(`Ø${diameter}"`, new THREE.Vector3(diameterFeet / 2 + 1, 0.5, 0));
-      addLabel(`${depthInches}" deep`, new THREE.Vector3(diameterFeet / 2 + 1, -depthFeet / 2, diameterFeet / 2 + 1));
+    // Only add labels for the first foundation (centered one) if quantity is 1 or more
+    if (quantity >= 1) {
+      // Offset calculation for the "center" foundation in a grid (first one if quantity is 1)
+      const centerOffsetX = (0 - (gridSize - 1) / 2) * spacing;
+      const centerOffsetZ = (0 - (gridSize - 1) / 2) * spacing;
+
+      if (foundationType === 'spread_foot') {
+        addLabel(`${lengthInches}"`, new THREE.Vector3(centerOffsetX, 0.5, centerOffsetZ + widthFeet / 2 + 1));
+        addLabel(`${widthInches}"`, new THREE.Vector3(centerOffsetX + lengthFeet / 2 + 1, 0.5, centerOffsetZ));
+        addLabel(`${depthInches}" deep`, new THREE.Vector3(centerOffsetX + lengthFeet / 2 + 1, -depthFeet / 2, centerOffsetZ + widthFeet / 2 + 1));
+      } else {
+        addLabel(`Ø${diameter}"`, new THREE.Vector3(centerOffsetX + diameterFeet / 2 + 1, 0.5, centerOffsetZ));
+        addLabel(`${depthInches}" deep`, new THREE.Vector3(centerOffsetX + diameterFeet / 2 + 1, -depthFeet / 2, centerOffsetZ + diameterFeet / 2 + 1));
+      }
     }
+
 
     // Position camera to show both above and below ground
     const maxDimension = Math.max(

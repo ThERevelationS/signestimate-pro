@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { FoundationProject, User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -182,8 +183,12 @@ export default function FoundationProjects() {
                               <span className="font-medium">${((project.total_concrete_cost || 0) + (project.total_rebar_cost || 0)).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-slate-600">Labor & Excavation:</span>
-                              <span className="font-medium">${((project.total_labor_cost || 0) + (project.total_excavation_cost || 0)).toFixed(2)}</span>
+                              <span className="text-slate-600">Excavation:</span>
+                              <span className="font-medium">${(project.total_excavation_cost || 0).toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-600">Labor:</span>
+                              <span className="font-medium">${(project.total_labor_cost || 0).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-slate-600">Equipment:</span>

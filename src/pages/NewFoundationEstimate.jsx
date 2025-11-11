@@ -291,6 +291,23 @@ export default function NewFoundationEstimate() {
           }
         }
 
+        // Validate rebar spacing when include_rebar is set to true
+        if (field === 'include_rebar' && value === true && updated.foundation_type === 'spread_foot') {
+          const lengthFeet = updated.length_inches / 12;
+          const widthFeet = updated.width_inches / 12;
+          // Ensure these are treated as numbers for comparison
+          const rebarSpacingLengthFeet = (parseFloat(updated.rebar_spacing_length) || 0) / 12;
+          const rebarSpacingWidthFeet = (parseFloat(updated.rebar_spacing_width) || 0) / 12;
+          
+          // Check if at least 2 rebars can fit in each direction
+          // Or if dimensions are too small to fit even one, or if spacing makes it impossible
+          if (lengthFeet < (updated.rebar_spacing_length / 12) * 2 && lengthFeet > 0 || 
+              widthFeet < (updated.rebar_spacing_width / 12) * 2 && widthFeet > 0) {
+            alert('Rebar spacing is too large for this foundation size. Please reduce spacing or increase foundation dimensions.');
+            updated.include_rebar = false;
+          }
+        }
+
         // Auto-calculate volumes when dimensions change
         if (field === 'foundation_type' || field === 'length_inches' || field === 'width_inches' ||
             field === 'diameter' || field === 'depth_inches' || field === 'quantity') {
@@ -314,14 +331,28 @@ export default function NewFoundationEstimate() {
             const radiusFeet = (updated.diameter / 12) / 2;
             const volumeCubicFeet = Math.PI * Math.pow(radiusFeet, 2) * depthFeet;
             updated.concrete_volume_cy = (volumeCubicFeet / 27);
-            updated.excavation_volume_cy = updated.concrete_volume_cy; // For pillar, assume excavation volume similar to concrete volume
+            updated.excavation_volume_cy = updated.concrete_volume_cy;
+          }
+        }
+
+        // If rebar spacing or dimensions change, validate and disable rebar if needed
+        if ((field === 'length_inches' || field === 'width_inches' || 
+             field === 'rebar_spacing_length' || field === 'rebar_spacing_width') && 
+            updated.include_rebar && updated.foundation_type === 'spread_foot') {
+          const lengthFeet = updated.length_inches / 12;
+          const widthFeet = updated.width_inches / 12;
+          const rebarSpacingLengthFeet = (parseFloat(updated.rebar_spacing_length) || 0) / 12;
+          const rebarSpacingWidthFeet = (parseFloat(updated.rebar_spacing_width) || 0) / 12;
+          
+          if (lengthFeet < rebarSpacingLengthFeet * 2 && lengthFeet > 0 || 
+              widthFeet < rebarSpacingWidthFeet * 2 && widthFeet > 0) {
+            updated.include_rebar = false;
           }
         }
 
         return updated;
       });
       
-      // Check if equipment should be auto-added after updating items
       setTimeout(() => checkAndAddEquipment(updatedItems), 0);
       
       return { ...prev, items: updatedItems };
@@ -1330,10 +1361,18 @@ export default function NewFoundationEstimate() {
                   <p className="text-xs text-blue-600 mt-0.5">Concrete & rebar</p>
                 </div>
 
+                <div className="p-3 bg-amber-50 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-medium text-amber-800">Excavation</span>
+                    <span className="text-base font-bold text-amber-900">${(project.total_excavation_cost || 0).toFixed(2)}</span>
+                  </div>
+                  <p className="text-xs text-amber-600 mt-0.5">Site excavation work</p>
+                </div>
+
                 <div className="p-3 bg-green-50 rounded-lg">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium text-green-800">Labor & Excavation</span>
-                    <span className="text-base font-bold text-green-900">${((project.total_labor_cost || 0) + (project.total_excavation_cost || 0)).toFixed(2)}</span>
+                    <span className="text-xs font-medium text-green-800">Labor</span>
+                    <span className="text-base font-bold text-green-900">${(project.total_labor_cost || 0).toFixed(2)}</span>
                   </div>
                   <p className="text-xs text-green-600 mt-0.5">Forming, pouring, finishing</p>
                 </div>
