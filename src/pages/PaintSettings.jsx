@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { Settings as SettingsEntity, User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -127,28 +126,7 @@ export default function PaintSettings() {
     };
   }, [settings]);
 
-  const mixingExample = mixingExample = useCallback(() => {
-    const examplePaintableArea = 100;
-    const exampleColors = 3;
-    const totalArea = examplePaintableArea * exampleColors;
-    
-    const wasteMultiplier = parseFloat(settings.paint_waste_multiplier) || 1.25;
-    const coverage = parseFloat(settings.mixed_paint_coverage_sqft_per_gallon) || 350;
-    
-    const gallonsNeeded = (totalArea * wasteMultiplier) / coverage;
-    const numberOfMixes = Math.ceil(gallonsNeeded);
-    const mixingHoursPerGallon = parseFloat(settings.paint_mixing_labor_hours) || 0;
-    const totalMixingHours = numberOfMixes * mixingHoursPerGallon;
-    
-    return {
-      exampleArea: totalArea,
-      gallonsNeeded,
-      numberOfMixes,
-      mixingHoursPerGallon,
-      totalMixingHours
-    };
-  }, [settings])();
-
+  const mixingExample = calculateMixingExample();
 
   const initializeAndLoad = useCallback(async () => {
     setIsLoading(true);
