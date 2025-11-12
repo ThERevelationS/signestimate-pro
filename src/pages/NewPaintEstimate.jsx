@@ -484,9 +484,9 @@ export default function NewPaintEstimate() {
     // Number of mixes is based on total paint gallons
     const numberOfMixes = Math.ceil(totalPaintGallons);
 
-    const mixingHoursPerGallon = parseFloat(globalSettings.paint_mixing_labor_hours) || 0;
+    const mixingHoursPerGallon = parseFloat(globalSettings.paint_mixing_labor_hours) || 0.25;
     const mixingHours = numberOfMixes * mixingHoursPerGallon;
-    const setupHours = parseFloat(globalSettings.setup_time_labor_hours) || 0;
+    const setupHours = parseFloat(globalSettings.setup_time_labor_hours) || 0.5;
     
     // Calculate unique colors across all items
     const uniqueColors = new Set();
@@ -503,11 +503,11 @@ export default function NewPaintEstimate() {
     const uniqueColorCount = uniqueColors.size;
     
     // Setup time for ADDITIONAL colors (first color doesn't need setup, only changes do)
-    const colorChangeSetupHours = parseFloat(globalSettings.color_change_setup_hours) || 0;
+    const colorChangeSetupHours = parseFloat(globalSettings.color_change_setup_hours) || 0.25;
     const totalColorChangeHours = uniqueColorCount > 1 ? (uniqueColorCount - 1) * colorChangeSetupHours : 0;
     
-    // Paint gun cleaning time per color (all colors need cleaning)
-    const paintGunCleaningHours = parseFloat(globalSettings.paint_gun_cleaning_hours) || 0;
+    // Paint gun cleaning time per color (all colors need cleaning) - with default fallback
+    const paintGunCleaningHours = parseFloat(globalSettings.paint_gun_cleaning_hours) || 0.15;
     const totalPaintGunCleaningHours = uniqueColorCount > 0 ? uniqueColorCount * paintGunCleaningHours : 0;
     
     const fixedLaborCost = (mixingHours + setupHours + totalColorChangeHours + totalPaintGunCleaningHours) * laborRate;
