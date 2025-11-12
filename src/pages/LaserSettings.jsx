@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { Settings as SettingsEntity, User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,8 @@ export default function LaserSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [laserRate, setLaserRate] = useState({ total: 0, parts: {} });
+  const [parameterLaserRate, setParameterLaserRate] = useState({ total: 0, parts: {} });
+  const [engravingLaserRate, setEngravingLaserRate] = useState({ total: 0, parts: {} });
 
   const calculateRate = useCallback((prefix) => {
     const purchasePrice = parseFloat(settings[`${prefix}_purchase_price`]) || 0;
@@ -36,10 +36,8 @@ export default function LaserSettings() {
     const totalPowerKw = laserPower + chillerPower + blowerPower;
     
     const electricityCost = parseFloat(settings.electricity_cost_per_kwh) || 0;
-    const consumables = parseFloat(settings[`${prefix}_consumables_cost_per_hour`]) || 0; // This variable is no longer used in total calculation per outline.
     const overhead = parseFloat(settings.facility_overhead_per_hour) || 0;
 
-    // CO2 Laser Tube Cost
     const tubeCost = parseFloat(settings[`${prefix}_tube_purchase_price`]) || 0;
     const tubeLifespanHours = parseFloat(settings[`${prefix}_tube_lifespan_hours`]) || 1;
     const tubeCostPerHour = tubeLifespanHours > 0 ? tubeCost / tubeLifespanHours : 0;
@@ -51,41 +49,67 @@ export default function LaserSettings() {
     const maintenanceCost = totalMaintenance / annualHours;
     const powerCost = totalPowerKw * electricityCost;
 
-    const total = depreciation + maintenanceCost + powerCost + tubeCostPerHour + overhead; // 'consumables' removed from here
+    const total = depreciation + maintenanceCost + powerCost + tubeCostPerHour + overhead;
     return {
       total: total.toFixed(2),
-      parts: { depreciation, maintenanceCost, powerCost, tubeCostPerHour, overhead } // 'consumables' removed from here
+      parts: { depreciation, maintenanceCost, powerCost, tubeCostPerHour, overhead }
     };
   }, [settings]);
 
   useEffect(() => {
     const initializeAndLoad = async () => {
       const defaultSettings = {
-        laser_machine_rate: "100",
-        laser_labor_rate: "45",
-        handling_time_percentage: "15",
+        // Parameter Laser Settings
+        parameter_laser_machine_rate: "100",
+        parameter_laser_labor_rate: "45",
+        parameter_handling_time_percentage: "15",
         laser_letter_perimeter_factor: "3.5",
-        laser_engrave_speed_sqipm: "5",
         acrylic_cut_multiplier: "1.0",
         wood_cut_multiplier: "1.2",
         leather_cut_multiplier: "0.8",
-        min_laser_labor_hours: "0.25",
-        min_laser_setup_hours: "0.5",
-        laser_fixed_material_setup_cost: "0",
+        min_parameter_laser_labor_hours: "0.25",
+        min_parameter_laser_setup_hours: "0.5",
+        parameter_laser_fixed_material_setup_cost: "0",
+        
+        // Engraving Settings
+        engraving_laser_machine_rate: "80",
+        engraving_laser_labor_rate: "40",
+        engraving_handling_time_percentage: "20",
+        laser_engrave_speed_sqipm: "5",
+        acrylic_engrave_multiplier: "1.0",
+        wood_engrave_multiplier: "1.3",
+        leather_engrave_multiplier: "0.7",
+        min_engraving_laser_labor_hours: "0.25",
+        min_engraving_laser_setup_hours: "0.5",
+        engraving_laser_fixed_material_setup_cost: "0",
+        
         company_name: "Sign Company",
         default_notes_template: "",
 
-        laser_purchase_price: "15000",
-        laser_lifespan_years: "5",
-        laser_usage_hours_per_week: "40",
-        laser_annual_maintenance_cost: "500",
-        laser_chiller_annual_maintenance_cost: "100",
-        laser_power_consumption_kw: "2",
-        laser_chiller_power_consumption_kw: "0.5",
-        laser_blower_power_consumption_kw: "0.75",
-        laser_consumables_cost_per_hour: "2",
-        laser_tube_purchase_price: "1500",
-        laser_tube_lifespan_hours: "4000",
+        // Parameter Laser Calculator
+        parameter_laser_purchase_price: "15000",
+        parameter_laser_lifespan_years: "5",
+        parameter_laser_usage_hours_per_week: "40",
+        parameter_laser_annual_maintenance_cost: "500",
+        parameter_laser_chiller_annual_maintenance_cost: "100",
+        parameter_laser_power_consumption_kw: "2",
+        parameter_laser_chiller_power_consumption_kw: "0.5",
+        parameter_laser_blower_power_consumption_kw: "0.75",
+        parameter_laser_tube_purchase_price: "1500",
+        parameter_laser_tube_lifespan_hours: "4000",
+        
+        // Engraving Laser Calculator
+        engraving_laser_purchase_price: "12000",
+        engraving_laser_lifespan_years: "5",
+        engraving_laser_usage_hours_per_week: "35",
+        engraving_laser_annual_maintenance_cost: "400",
+        engraving_laser_chiller_annual_maintenance_cost: "80",
+        engraving_laser_power_consumption_kw: "1.5",
+        engraving_laser_chiller_power_consumption_kw: "0.4",
+        engraving_laser_blower_power_consumption_kw: "0.6",
+        engraving_laser_tube_purchase_price: "1200",
+        engraving_laser_tube_lifespan_hours: "3500",
+        
         electricity_cost_per_kwh: "0.12",
         operator_cost_per_hour: "25",
         facility_overhead_per_hour: "5",
@@ -115,7 +139,8 @@ export default function LaserSettings() {
   }, []);
 
   useEffect(() => {
-    setLaserRate(calculateRate('laser'));
+    setParameterLaserRate(calculateRate('parameter_laser'));
+    setEngravingLaserRate(calculateRate('engraving_laser'));
   }, [calculateRate]);
 
   const saveSingleSetting = async (key, value) => {
@@ -126,7 +151,7 @@ export default function LaserSettings() {
         setting_name: key,
         setting_value: String(value),
         setting_type: 'number',
-        category: 'laser_rates', // This category might need to be dynamic if called for other types of settings.
+        category: 'laser_rates',
         description: `Calculated value for ${key.replace(/_/g, ' ')}`
       };
       if (existing.length > 0) {
@@ -146,30 +171,54 @@ export default function LaserSettings() {
 
   const getSettingDefinitions = () => {
     let defs = [
-      { name: "laser_machine_rate", type: "number", category: "laser_rates", description: "Laser machine hourly rate" },
-      { name: "laser_labor_rate", type: "number", category: "laser_rates", description: "Laser labor hourly rate" },
-      { name: "handling_time_percentage", type: "number", category: "laser_labor", description: "Handling time as percentage of machine time" },
+      // Parameter Laser
+      { name: "parameter_laser_machine_rate", type: "number", category: "laser_rates", description: "Parameter laser machine hourly rate" },
+      { name: "parameter_laser_labor_rate", type: "number", category: "laser_rates", description: "Parameter laser labor hourly rate" },
+      { name: "parameter_handling_time_percentage", type: "number", category: "laser_labor", description: "Parameter laser handling time as percentage of machine time" },
+      { name: "min_parameter_laser_setup_hours", type: "number", category: "laser_labor", description: "Fixed setup time in hours per parameter laser project" },
+      { name: "min_parameter_laser_labor_hours", type: "number", category: "laser_labor", description: "Minimum parameter laser labor hours per project" },
+      { name: "parameter_laser_fixed_material_setup_cost", type: "number", category: "laser_labor", description: "Fixed material setup cost per parameter laser project" },
+      
+      // Engraving Laser
+      { name: "engraving_laser_machine_rate", type: "number", category: "laser_rates", description: "Engraving laser machine hourly rate" },
+      { name: "engraving_laser_labor_rate", type: "number", category: "laser_rates", description: "Engraving laser labor hourly rate" },
+      { name: "engraving_handling_time_percentage", type: "number", category: "laser_labor", description: "Engraving laser handling time as percentage of machine time" },
+      { name: "min_engraving_laser_setup_hours", type: "number", category: "laser_labor", description: "Fixed setup time in hours per engraving laser project" },
+      { name: "min_engraving_laser_labor_hours", type: "number", category: "laser_labor", description: "Minimum engraving laser labor hours per project" },
+      { name: "engraving_laser_fixed_material_setup_cost", type: "number", category: "laser_labor", description: "Fixed material setup cost per engraving laser project" },
+      
       { name: "laser_letter_perimeter_factor", type: "number", category: "laser_calc", description: "Laser letter perimeter calculation factor" },
       { name: "laser_engrave_speed_sqipm", type: "number", category: "laser_speed", description: "Engraving speed in square inches per minute" },
-      { name: "min_laser_setup_hours", type: "number", category: "laser_labor", description: "Fixed setup time in hours per project" },
-      { name: "min_laser_labor_hours", type: "number", category: "laser_labor", description: "Minimum laser labor hours per project" },
-      { name: "laser_fixed_material_setup_cost", type: "number", category: "laser_labor", description: "Fixed material setup cost per project" },
       { name: "company_name", type: "text", category: "general", description: "Company name" },
       { name: "default_notes_template", type: "text", category: "general", description: "Default project notes template" },
-      { name: "laser_purchase_price", type: "number", category: "laser_calculator", description: "Laser purchase price" },
-      { name: "laser_lifespan_years", type: "number", category: "laser_calculator", description: "Laser expected lifespan in years" },
-      { name: "laser_usage_hours_per_week", type: "number", category: "laser_calculator", description: "Laser usage hours per week" },
-      { name: "laser_annual_maintenance_cost", type: "number", category: "laser_calculator", description: "Laser annual maintenance cost" },
-      { name: "laser_chiller_annual_maintenance_cost", type: "number", category: "laser_calculator", description: "Laser chiller annual maintenance cost" },
-      { name: "laser_power_consumption_kw", type: "number", category: "laser_calculator", description: "Laser power consumption in kW" },
-      { name: "laser_chiller_power_consumption_kw", type: "number", category: "laser_calculator", description: "Chiller power consumption in kW" },
-      { name: "laser_blower_power_consumption_kw", type: "number", category: "laser_calculator", description: "Blower power consumption in kW" },
-      { name: "laser_tube_purchase_price", type: "number", category: "laser_calculator", description: "CO2 laser tube purchase price" },
-      { name: "laser_tube_lifespan_hours", type: "number", category: "laser_calculator", description: "CO2 laser tube lifespan in hours" },
+      
+      // Parameter Laser Calculator
+      { name: "parameter_laser_purchase_price", type: "number", category: "laser_calculator", description: "Parameter laser purchase price" },
+      { name: "parameter_laser_lifespan_years", type: "number", category: "laser_calculator", description: "Parameter laser expected lifespan in years" },
+      { name: "parameter_laser_usage_hours_per_week", type: "number", category: "laser_calculator", description: "Parameter laser usage hours per week" },
+      { name: "parameter_laser_annual_maintenance_cost", type: "number", category: "laser_calculator", description: "Parameter laser annual maintenance cost" },
+      { name: "parameter_laser_chiller_annual_maintenance_cost", type: "number", category: "laser_calculator", description: "Parameter laser chiller annual maintenance cost" },
+      { name: "parameter_laser_power_consumption_kw", type: "number", category: "laser_calculator", description: "Parameter laser power consumption in kW" },
+      { name: "parameter_laser_chiller_power_consumption_kw", type: "number", category: "laser_calculator", description: "Parameter laser chiller power consumption in kW" },
+      { name: "parameter_laser_blower_power_consumption_kw", type: "number", category: "laser_calculator", description: "Parameter laser blower power consumption in kW" },
+      { name: "parameter_laser_tube_purchase_price", type: "number", category: "laser_calculator", description: "Parameter laser CO2 tube purchase price" },
+      { name: "parameter_laser_tube_lifespan_hours", type: "number", category: "laser_calculator", description: "Parameter laser CO2 tube lifespan in hours" },
+      
+      // Engraving Laser Calculator
+      { name: "engraving_laser_purchase_price", type: "number", category: "laser_calculator", description: "Engraving laser purchase price" },
+      { name: "engraving_laser_lifespan_years", type: "number", category: "laser_calculator", description: "Engraving laser expected lifespan in years" },
+      { name: "engraving_laser_usage_hours_per_week", type: "number", category: "laser_calculator", description: "Engraving laser usage hours per week" },
+      { name: "engraving_laser_annual_maintenance_cost", type: "number", category: "laser_calculator", description: "Engraving laser annual maintenance cost" },
+      { name: "engraving_laser_chiller_annual_maintenance_cost", type: "number", category: "laser_calculator", description: "Engraving laser chiller annual maintenance cost" },
+      { name: "engraving_laser_power_consumption_kw", type: "number", category: "laser_calculator", description: "Engraving laser power consumption in kW" },
+      { name: "engraving_laser_chiller_power_consumption_kw", type: "number", category: "laser_calculator", description: "Engraving laser chiller power consumption in kW" },
+      { name: "engraving_laser_blower_power_consumption_kw", type: "number", category: "laser_calculator", description: "Engraving laser blower power consumption in kW" },
+      { name: "engraving_laser_tube_purchase_price", type: "number", category: "laser_calculator", description: "Engraving laser CO2 tube purchase price" },
+      { name: "engraving_laser_tube_lifespan_hours", type: "number", category: "laser_calculator", description: "Engraving laser CO2 tube lifespan in hours" },
+      
       { name: "electricity_cost_per_kwh", type: "number", category: "shared_calculator", description: "Electricity cost per kWh" },
       { name: "operator_cost_per_hour", type: "number", category: "shared_calculator", description: "Operator cost per hour" },
       { name: "facility_overhead_per_hour", type: "number", category: "shared_calculator", description: "Facility overhead cost per hour" },
-      { name: "laser_consumables_cost_per_hour", type: "number", category: "laser_calculator", description: "Laser consumables cost per hour" }, // Ensure this is explicitly defined here
     ];
     
     materials.forEach(mat => {
@@ -178,6 +227,12 @@ export default function LaserSettings() {
         type: "number", 
         category: "laser_material",
         description: `Cut time multiplier for ${mat}` 
+      });
+      defs.push({ 
+        name: `${mat.toLowerCase()}_engrave_multiplier`, 
+        type: "number", 
+        category: "laser_material",
+        description: `Engrave time multiplier for ${mat}` 
       });
     });
     
@@ -233,32 +288,33 @@ export default function LaserSettings() {
 
   const settingsContent = (
     <div className="space-y-8">
-      {/* Laser Calculator - Equipment & Operating Costs */}
+      {/* Parameter Laser Calculator */}
       <Card className="bg-white border-0 shadow-sm">
-        <CardHeader><CardTitle className="flex items-center gap-2"><Calculator />Laser Cost Calculator</CardTitle>
-        <p className="text-sm text-slate-500">Calculate your machine's hourly operational cost. Shared costs like operator and electricity are used by other calculators.</p>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Calculator />Parameter Laser Cost Calculator</CardTitle>
+          <p className="text-sm text-slate-500">Calculate your parameter cutting laser machine's hourly operational cost.</p>
         </CardHeader>
         <CardContent className="grid md:grid-cols-2 gap-x-8 gap-y-4 pt-6">
           <div className="space-y-6">
             <div className="space-y-4">
               <h4 className="font-medium text-slate-800">Equipment Information</h4>
               <div className="grid md:grid-cols-2 gap-4">
-                <div><Label>Laser Purchase Price ($)</Label><Input type="number" value={settings.laser_purchase_price} onChange={(e) => updateSetting('laser_purchase_price', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Expected Lifespan (years)</Label><Input type="number" value={settings.laser_lifespan_years} onChange={(e) => updateSetting('laser_lifespan_years', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Usage Hours per Week</Label><Input type="number" value={settings.laser_usage_hours_per_week} onChange={(e) => updateSetting('laser_usage_hours_per_week', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>CO2 Tube Purchase Price ($)</Label><Input type="number" value={settings.laser_tube_purchase_price} onChange={(e) => updateSetting('laser_tube_purchase_price', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>CO2 Tube Lifespan (hours)</Label><Input type="number" value={settings.laser_tube_lifespan_hours} onChange={(e) => updateSetting('laser_tube_lifespan_hours', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Laser Purchase Price ($)</Label><Input type="number" value={settings.parameter_laser_purchase_price} onChange={(e) => updateSetting('parameter_laser_purchase_price', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Expected Lifespan (years)</Label><Input type="number" value={settings.parameter_laser_lifespan_years} onChange={(e) => updateSetting('parameter_laser_lifespan_years', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Usage Hours per Week</Label><Input type="number" value={settings.parameter_laser_usage_hours_per_week} onChange={(e) => updateSetting('parameter_laser_usage_hours_per_week', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>CO2 Tube Purchase Price ($)</Label><Input type="number" value={settings.parameter_laser_tube_purchase_price} onChange={(e) => updateSetting('parameter_laser_tube_purchase_price', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>CO2 Tube Lifespan (hours)</Label><Input type="number" value={settings.parameter_laser_tube_lifespan_hours} onChange={(e) => updateSetting('parameter_laser_tube_lifespan_hours', e.target.value)} disabled={isLocked}/></div>
               </div>
             </div>
             <Separator />
             <div className="space-y-4">
               <h4 className="font-medium text-slate-800">Maintenance & Power</h4>
               <div className="grid md:grid-cols-2 gap-4">
-                <div><Label>Laser Annual Maintenance ($)</Label><Input type="number" value={settings.laser_annual_maintenance_cost} onChange={(e) => updateSetting('laser_annual_maintenance_cost', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Chiller Annual Maintenance ($)</Label><Input type="number" value={settings.laser_chiller_annual_maintenance_cost} onChange={(e) => updateSetting('laser_chiller_annual_maintenance_cost', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Laser Power Consumption (kW)</Label><Input type="number" value={settings.laser_power_consumption_kw} onChange={(e) => updateSetting('laser_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Chiller Power Consumption (kW)</Label><Input type="number" value={settings.laser_chiller_power_consumption_kw} onChange={(e) => updateSetting('laser_chiller_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Blower Power Consumption (kW)</Label><Input type="number" value={settings.laser_blower_power_consumption_kw} onChange={(e) => updateSetting('laser_blower_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Laser Annual Maintenance ($)</Label><Input type="number" value={settings.parameter_laser_annual_maintenance_cost} onChange={(e) => updateSetting('parameter_laser_annual_maintenance_cost', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Chiller Annual Maintenance ($)</Label><Input type="number" value={settings.parameter_laser_chiller_annual_maintenance_cost} onChange={(e) => updateSetting('parameter_laser_chiller_annual_maintenance_cost', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Laser Power Consumption (kW)</Label><Input type="number" value={settings.parameter_laser_power_consumption_kw} onChange={(e) => updateSetting('parameter_laser_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Chiller Power Consumption (kW)</Label><Input type="number" value={settings.parameter_laser_chiller_power_consumption_kw} onChange={(e) => updateSetting('parameter_laser_chiller_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Blower Power Consumption (kW)</Label><Input type="number" value={settings.parameter_laser_blower_power_consumption_kw} onChange={(e) => updateSetting('parameter_laser_blower_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
               </div>
             </div>
             <Separator />
@@ -274,23 +330,22 @@ export default function LaserSettings() {
           <div className="bg-slate-50 p-6 rounded-lg space-y-3 self-start">
             <h3 className="font-semibold text-lg text-slate-900">Calculated Rate Breakdown</h3>
             <div className="text-sm space-y-2">
-              <div className="flex justify-between"><span>Depreciation:</span><span className="font-mono">${(laserRate.parts.depreciation || 0).toFixed(2)}/hr</span></div>
-              <div className="flex justify-between"><span>Maintenance:</span><span className="font-mono">${(laserRate.parts.maintenanceCost || 0).toFixed(2)}/hr</span></div>
-              <div className="flex justify-between"><span>Power:</span><span className="font-mono">${(laserRate.parts.powerCost || 0).toFixed(2)}/hr</span></div>
-              {/* Removed Consumables as per outline */}
-              <div className="flex justify-between border-l-2 border-red-400 pl-2"><span>CO2 Tube:</span><span className="font-mono">${(laserRate.parts.tubeCostPerHour || 0).toFixed(2)}/hr</span></div>
-              <div className="flex justify-between"><span>Overhead:</span><span className="font-mono">${(laserRate.parts.overhead || 0).toFixed(2)}/hr</span></div>
+              <div className="flex justify-between"><span>Depreciation:</span><span className="font-mono">${(parameterLaserRate.parts.depreciation || 0).toFixed(2)}/hr</span></div>
+              <div className="flex justify-between"><span>Maintenance:</span><span className="font-mono">${(parameterLaserRate.parts.maintenanceCost || 0).toFixed(2)}/hr</span></div>
+              <div className="flex justify-between"><span>Power:</span><span className="font-mono">${(parameterLaserRate.parts.powerCost || 0).toFixed(2)}/hr</span></div>
+              <div className="flex justify-between border-l-2 border-red-400 pl-2"><span>CO2 Tube:</span><span className="font-mono">${(parameterLaserRate.parts.tubeCostPerHour || 0).toFixed(2)}/hr</span></div>
+              <div className="flex justify-between"><span>Overhead:</span><span className="font-mono">${(parameterLaserRate.parts.overhead || 0).toFixed(2)}/hr</span></div>
             </div>
             <div className="border-t pt-3 mt-3">
               <div className="flex justify-between items-center">
                 <span className="font-bold text-slate-900 text-xl">Total Rate:</span>
-                <span className="font-mono font-bold text-2xl text-blue-600">${laserRate.total}</span>
+                <span className="font-mono font-bold text-2xl text-blue-600">${parameterLaserRate.total}</span>
               </div>
               <p className="text-xs text-slate-500">per hour</p>
             </div>
-            <Button className="w-full mt-4" onClick={() => saveSingleSetting('laser_machine_rate', laserRate.total)} disabled={isLocked || isSaving}>
+            <Button className="w-full mt-4" onClick={() => saveSingleSetting('parameter_laser_machine_rate', parameterLaserRate.total)} disabled={isLocked || isSaving}>
               <Save className="w-4 h-4 mr-2" />
-              Save to Laser Rate Setting
+              Save to Parameter Laser Rate
             </Button>
             <div className="flex items-start gap-2 p-3 bg-blue-50 text-blue-800 rounded-md mt-2">
                 <AlertCircle className="w-4 h-4 mt-0.5 shrink-0"/>
@@ -299,44 +354,44 @@ export default function LaserSettings() {
           </div>
         </CardContent>
       </Card>
-      
-      {/* Laser Settings - Rates & Labor */}
+
+      {/* Parameter Laser Rates & Labor */}
       <Card className="bg-white border-0 shadow-sm">
-        <CardHeader><CardTitle className="flex items-center gap-2"><DollarSign />Laser Rates & Labor</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2"><DollarSign />Parameter Laser Rates & Labor</CardTitle></CardHeader>
         <CardContent className="space-y-6 pt-6">
           <div className="grid md:grid-cols-2 gap-6">
-            <div><Label>Machine Rate ($/hour)</Label><Input type="number" value={settings.laser_machine_rate} onChange={(e) => updateSetting('laser_machine_rate', e.target.value)} disabled={isLocked}/></div>
-            <div><Label>Labor Rate ($/hour)</Label><Input type="number" value={settings.laser_labor_rate} onChange={(e) => updateSetting('laser_labor_rate', e.target.value)} disabled={isLocked}/></div>
+            <div><Label>Machine Rate ($/hour)</Label><Input type="number" value={settings.parameter_laser_machine_rate} onChange={(e) => updateSetting('parameter_laser_machine_rate', e.target.value)} disabled={isLocked}/></div>
+            <div><Label>Labor Rate ($/hour)</Label><Input type="number" value={settings.parameter_laser_labor_rate} onChange={(e) => updateSetting('parameter_laser_labor_rate', e.target.value)} disabled={isLocked}/></div>
           </div>
           <Separator />
           <div>
             <Label>Handling Time (% of Machine Time)</Label>
             <div className="relative mt-1 max-w-xs">
-                <Input type="number" value={settings.handling_time_percentage} onChange={(e) => updateSetting('handling_time_percentage', e.target.value)} disabled={isLocked} className="pl-8"/>
+                <Input type="number" value={settings.parameter_handling_time_percentage} onChange={(e) => updateSetting('parameter_handling_time_percentage', e.target.value)} disabled={isLocked} className="pl-8"/>
                 <Percent className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             </div>
             <p className="text-xs text-slate-500 mt-1">Labor for handling, setup, and cleanup calculated as a percentage of the total machine run time.</p>
           </div>
           <div>
             <Label>Fixed Setup Time (hours)</Label>
-            <Input type="number" min="0" step="0.1" value={settings.min_laser_setup_hours} onChange={(e) => updateSetting('min_laser_setup_hours', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
+            <Input type="number" min="0" step="0.1" value={settings.min_parameter_laser_setup_hours} onChange={(e) => updateSetting('min_parameter_laser_setup_hours', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
             <p className="text-xs text-slate-500 mt-1">A fixed setup time added to each project's labor cost.</p>
           </div>
           <div>
             <Label>Fixed Material Setup Cost ($)</Label>
-            <Input type="number" min="0" step="1" value={settings.laser_fixed_material_setup_cost} onChange={(e) => updateSetting('laser_fixed_material_setup_cost', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
+            <Input type="number" min="0" step="1" value={settings.parameter_laser_fixed_material_setup_cost} onChange={(e) => updateSetting('parameter_laser_fixed_material_setup_cost', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
             <p className="text-xs text-slate-500 mt-1">A fixed material/setup cost added to each project.</p>
           </div>
           <div>
             <Label>Minimum Labor (hours)</Label>
-            <Input type="number" min="0" step="0.1" value={settings.min_laser_labor_hours} onChange={(e) => updateSetting('min_laser_labor_hours', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
+            <Input type="number" min="0" step="0.1" value={settings.min_parameter_laser_labor_hours} onChange={(e) => updateSetting('min_parameter_laser_labor_hours', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
           </div>
         </CardContent>
       </Card>
 
-      {/* Laser Settings - Material Cut Time Multipliers */}
+      {/* Parameter Laser Material Cut Time Multipliers */}
       <Card className="bg-white border-0 shadow-sm">
-        <CardHeader><CardTitle className="flex items-center gap-2"><Zap />Laser Material Cut Time Multipliers</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Zap />Parameter Laser Material Cut Time Multipliers</CardTitle></CardHeader>
         <CardContent className="pt-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
             <h4 className="font-semibold text-slate-500 md:col-span-1">Material</h4>
@@ -351,9 +406,9 @@ export default function LaserSettings() {
         </CardContent>
       </Card>
       
-      {/* Laser Settings - Cut Speed by Thickness */}
+      {/* Parameter Laser Cut Speed by Thickness */}
       <Card className="bg-white border-0 shadow-sm">
-        <CardHeader><CardTitle className="flex items-center gap-2"><Clock />Laser Cut Speed by Thickness</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Clock />Parameter Laser Cut Speed by Thickness</CardTitle></CardHeader>
         <CardContent className="pt-6 space-y-4">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
             {imperialSizes.map(size => (
@@ -366,7 +421,116 @@ export default function LaserSettings() {
         </CardContent>
       </Card>
 
-      {/* Laser Settings - Engraving Speed */}
+      {/* Engraving Laser Calculator */}
+      <Card className="bg-white border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Calculator />Engraving Laser Cost Calculator</CardTitle>
+          <p className="text-sm text-slate-500">Calculate your engraving laser machine's hourly operational cost.</p>
+        </CardHeader>
+        <CardContent className="grid md:grid-cols-2 gap-x-8 gap-y-4 pt-6">
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <h4 className="font-medium text-slate-800">Equipment Information</h4>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div><Label>Laser Purchase Price ($)</Label><Input type="number" value={settings.engraving_laser_purchase_price} onChange={(e) => updateSetting('engraving_laser_purchase_price', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Expected Lifespan (years)</Label><Input type="number" value={settings.engraving_laser_lifespan_years} onChange={(e) => updateSetting('engraving_laser_lifespan_years', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Usage Hours per Week</Label><Input type="number" value={settings.engraving_laser_usage_hours_per_week} onChange={(e) => updateSetting('engraving_laser_usage_hours_per_week', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>CO2 Tube Purchase Price ($)</Label><Input type="number" value={settings.engraving_laser_tube_purchase_price} onChange={(e) => updateSetting('engraving_laser_tube_purchase_price', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>CO2 Tube Lifespan (hours)</Label><Input type="number" value={settings.engraving_laser_tube_lifespan_hours} onChange={(e) => updateSetting('engraving_laser_tube_lifespan_hours', e.target.value)} disabled={isLocked}/></div>
+              </div>
+            </div>
+            <Separator />
+            <div className="space-y-4">
+              <h4 className="font-medium text-slate-800">Maintenance & Power</h4>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div><Label>Laser Annual Maintenance ($)</Label><Input type="number" value={settings.engraving_laser_annual_maintenance_cost} onChange={(e) => updateSetting('engraving_laser_annual_maintenance_cost', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Chiller Annual Maintenance ($)</Label><Input type="number" value={settings.engraving_laser_chiller_annual_maintenance_cost} onChange={(e) => updateSetting('engraving_laser_chiller_annual_maintenance_cost', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Laser Power Consumption (kW)</Label><Input type="number" value={settings.engraving_laser_power_consumption_kw} onChange={(e) => updateSetting('engraving_laser_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Chiller Power Consumption (kW)</Label><Input type="number" value={settings.engraving_laser_chiller_power_consumption_kw} onChange={(e) => updateSetting('engraving_laser_chiller_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
+                <div><Label>Blower Power Consumption (kW)</Label><Input type="number" value={settings.engraving_laser_blower_power_consumption_kw} onChange={(e) => updateSetting('engraving_laser_blower_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-slate-50 p-6 rounded-lg space-y-3 self-start">
+            <h3 className="font-semibold text-lg text-slate-900">Calculated Rate Breakdown</h3>
+            <div className="text-sm space-y-2">
+              <div className="flex justify-between"><span>Depreciation:</span><span className="font-mono">${(engravingLaserRate.parts.depreciation || 0).toFixed(2)}/hr</span></div>
+              <div className="flex justify-between"><span>Maintenance:</span><span className="font-mono">${(engravingLaserRate.parts.maintenanceCost || 0).toFixed(2)}/hr</span></div>
+              <div className="flex justify-between"><span>Power:</span><span className="font-mono">${(engravingLaserRate.parts.powerCost || 0).toFixed(2)}/hr</span></div>
+              <div className="flex justify-between border-l-2 border-red-400 pl-2"><span>CO2 Tube:</span><span className="font-mono">${(engravingLaserRate.parts.tubeCostPerHour || 0).toFixed(2)}/hr</span></div>
+              <div className="flex justify-between"><span>Overhead:</span><span className="font-mono">${(engravingLaserRate.parts.overhead || 0).toFixed(2)}/hr</span></div>
+            </div>
+            <div className="border-t pt-3 mt-3">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-slate-900 text-xl">Total Rate:</span>
+                <span className="font-mono font-bold text-2xl text-green-600">${engravingLaserRate.total}</span>
+              </div>
+              <p className="text-xs text-slate-500">per hour</p>
+            </div>
+            <Button className="w-full mt-4" onClick={() => saveSingleSetting('engraving_laser_machine_rate', engravingLaserRate.total)} disabled={isLocked || isSaving}>
+              <Save className="w-4 h-4 mr-2" />
+              Save to Engraving Laser Rate
+            </Button>
+            <div className="flex items-start gap-2 p-3 bg-blue-50 text-blue-800 rounded-md mt-2">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0"/>
+                <p className="text-xs">Saving this will update the "Machine Rate" value used in new estimates. You can manually override it below if needed.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Engraving Laser Rates & Labor */}
+      <Card className="bg-white border-0 shadow-sm">
+        <CardHeader><CardTitle className="flex items-center gap-2"><DollarSign />Engraving Laser Rates & Labor</CardTitle></CardHeader>
+        <CardContent className="space-y-6 pt-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            <div><Label>Machine Rate ($/hour)</Label><Input type="number" value={settings.engraving_laser_machine_rate} onChange={(e) => updateSetting('engraving_laser_machine_rate', e.target.value)} disabled={isLocked}/></div>
+            <div><Label>Labor Rate ($/hour)</Label><Input type="number" value={settings.engraving_laser_labor_rate} onChange={(e) => updateSetting('engraving_laser_labor_rate', e.target.value)} disabled={isLocked}/></div>
+          </div>
+          <Separator />
+          <div>
+            <Label>Handling Time (% of Machine Time)</Label>
+            <div className="relative mt-1 max-w-xs">
+                <Input type="number" value={settings.engraving_handling_time_percentage} onChange={(e) => updateSetting('engraving_handling_time_percentage', e.target.value)} disabled={isLocked} className="pl-8"/>
+                <Percent className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            </div>
+            <p className="text-xs text-slate-500 mt-1">Labor for handling, setup, and cleanup calculated as a percentage of the total machine run time.</p>
+          </div>
+          <div>
+            <Label>Fixed Setup Time (hours)</Label>
+            <Input type="number" min="0" step="0.1" value={settings.min_engraving_laser_setup_hours} onChange={(e) => updateSetting('min_engraving_laser_setup_hours', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
+            <p className="text-xs text-slate-500 mt-1">A fixed setup time added to each project's labor cost.</p>
+          </div>
+          <div>
+            <Label>Fixed Material Setup Cost ($)</Label>
+            <Input type="number" min="0" step="1" value={settings.engraving_laser_fixed_material_setup_cost} onChange={(e) => updateSetting('engraving_laser_fixed_material_setup_cost', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
+            <p className="text-xs text-slate-500 mt-1">A fixed material/setup cost added to each project.</p>
+          </div>
+          <div>
+            <Label>Minimum Labor (hours)</Label>
+            <Input type="number" min="0" step="0.1" value={settings.min_engraving_laser_labor_hours} onChange={(e) => updateSetting('min_engraving_laser_labor_hours', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Engraving Laser Material Multipliers */}
+      <Card className="bg-white border-0 shadow-sm">
+        <CardHeader><CardTitle className="flex items-center gap-2"><Zap />Engraving Laser Material Time Multipliers</CardTitle></CardHeader>
+        <CardContent className="pt-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            <h4 className="font-semibold text-slate-500 md:col-span-1">Material</h4>
+            <h4 className="font-semibold text-slate-500 md:col-span-1">Engrave Time Multiplier</h4>
+          </div>
+          {materials.map(mat => (
+            <div key={mat} className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 items-center">
+              <Label className="font-medium">{mat}</Label>
+              <Input type="number" step="0.1" value={settings[`${mat.toLowerCase()}_engrave_multiplier`]} onChange={(e) => updateSetting(`${mat.toLowerCase()}_engrave_multiplier`, e.target.value)} disabled={isLocked}/>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Engraving Speed */}
       <Card className="bg-white border-0 shadow-sm">
         <CardHeader><CardTitle className="flex items-center gap-2"><Zap />Laser Engraving Speed</CardTitle></CardHeader>
         <CardContent className="pt-6">
@@ -389,6 +553,7 @@ export default function LaserSettings() {
       <Card className="bg-white border-0 shadow-sm">
         <CardHeader><CardTitle className="flex items-center gap-2"><Zap />General Shop Settings</CardTitle></CardHeader>
         <CardContent className="space-y-6 pt-6">
+          <div><Label>Letter Perimeter Factor</Label><Input type="number" step="0.1" value={settings.laser_letter_perimeter_factor} onChange={(e) => updateSetting('laser_letter_perimeter_factor', e.target.value)} disabled={isLocked} className="max-w-xs"/><p className="text-xs text-slate-500 mt-1">Multiplier for calculating letter perimeter from height.</p></div>
           <div><Label>Company Name</Label><Input value={settings.company_name} onChange={(e) => updateSetting('company_name', e.target.value)} disabled={isLocked}/></div>
           <div><Label>Default Notes Template</Label><Textarea value={settings.default_notes_template} onChange={(e) => updateSetting('default_notes_template', e.target.value)} disabled={isLocked}/></div>
         </CardContent>
