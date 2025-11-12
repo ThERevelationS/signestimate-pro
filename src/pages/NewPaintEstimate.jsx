@@ -487,8 +487,8 @@ export default function NewPaintEstimate() {
     const mixingHoursPerGallon = parseFloat(globalSettings.paint_mixing_labor_hours) || 0;
     const mixingHours = numberOfMixes * mixingHoursPerGallon;
     const setupHours = parseFloat(globalSettings.setup_time_labor_hours) || 0;
-
-    // NEW: Calculate unique colors across all items
+    
+    // Calculate unique colors across all items
     const uniqueColors = new Set();
     project.items.forEach(item => {
       if (item.paint_colors && Array.isArray(item.paint_colors)) {
@@ -503,11 +503,15 @@ export default function NewPaintEstimate() {
     const uniqueColorCount = uniqueColors.size;
     const colorChangeSetupHours = parseFloat(globalSettings.color_change_setup_hours) || 0;
     const totalColorChangeHours = uniqueColorCount > 0 ? uniqueColorCount * colorChangeSetupHours : 0;
-
-    const fixedLaborCost = (mixingHours + setupHours + totalColorChangeHours) * laborRate;
+    
+    // NEW: Paint gun cleaning time per color
+    const paintGunCleaningHours = parseFloat(globalSettings.paint_gun_cleaning_hours) || 0;
+    const totalPaintGunCleaningHours = uniqueColorCount > 0 ? uniqueColorCount * paintGunCleaningHours : 0;
+    
+    const fixedLaborCost = (mixingHours + setupHours + totalColorChangeHours + totalPaintGunCleaningHours) * laborRate;
 
     let totalLabor = totalItemLaborCost + fixedLaborCost;
-    const totalLaborHours = project.items.reduce((sum, item) => sum + (item.labor_hours || 0), 0) + mixingHours + setupHours + totalColorChangeHours;
+    const totalLaborHours = project.items.reduce((sum, item) => sum + (item.labor_hours || 0), 0) + mixingHours + setupHours + totalColorChangeHours + totalPaintGunCleaningHours;
 
     const minLaborHours = parseFloat(globalSettings.min_labor_hours) || 0;
     const minPaintCost = parseFloat(globalSettings.min_paint_cost) || 0;
@@ -530,7 +534,8 @@ export default function NewPaintEstimate() {
       mixingHours,
       setupHours,
       uniqueColorCount,
-      totalColorChangeHours
+      totalColorChangeHours,
+      totalPaintGunCleaningHours
     };
   };
 
@@ -593,7 +598,7 @@ export default function NewPaintEstimate() {
   };
 
   const downloadEstimate = () => {
-    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours } = calculateTotals();
+    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours, totalPaintGunCleaningHours } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
 
@@ -1033,7 +1038,7 @@ export default function NewPaintEstimate() {
         </div>
         <div class="summary-row">
           <span class="summary-label">Fixed Labor (Mixing/Setup):</span>
-          <span class="summary-value">$${((mixingHours + setupHours + totalColorChangeHours) * laborRate).toFixed(2)}</span>
+          <span class="summary-value">$${((mixingHours + setupHours + totalColorChangeHours + totalPaintGunCleaningHours) * laborRate).toFixed(2)}</span>
         </div>
         <div class="summary-row labor">
           <span class="summary-label">Total Labor (${totalLaborHours.toFixed(1)} hrs):</span>
@@ -1075,7 +1080,7 @@ export default function NewPaintEstimate() {
   };
 
   const printEstimate = () => {
-    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours } = calculateTotals();
+    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours, totalPaintGunCleaningHours } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
 
@@ -1513,7 +1518,7 @@ export default function NewPaintEstimate() {
                 </div>
                 <div class="summary-row">
                   <span class="summary-label">Fixed Labor (Mixing/Setup):</span>
-                  <span class="summary-value">$${((mixingHours + setupHours + totalColorChangeHours) * laborRate).toFixed(2)}</span>
+                  <span class="summary-value">$${((mixingHours + setupHours + totalColorChangeHours + totalPaintGunCleaningHours) * laborRate).toFixed(2)}</span>
                 </div>
                 <div class="summary-row labor">
                   <span class="summary-label">Total Labor (${totalLaborHours.toFixed(1)} hrs):</span>
@@ -1550,7 +1555,7 @@ export default function NewPaintEstimate() {
   };
 
   const sendEstimate = () => {
-    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours } = calculateTotals();
+    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours, totalPaintGunCleaningHours } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
 
@@ -1616,6 +1621,10 @@ export default function NewPaintEstimate() {
           <div class="summary-row">
             <span>Liquid Paint & Supplies:</span>
             <span>$${totalLiquidPaintAndSupplies.toFixed(2)}</span>
+          </div>
+          <div class="summary-row">
+            <span>Fixed Labor (Mixing/Setup):</span>
+            <span>$${((mixingHours + setupHours + totalColorChangeHours + totalPaintGunCleaningHours) * laborRate).toFixed(2)}</span>
           </div>
           <div class="summary-row">
             <span>Total Labor (${totalLaborHours.toFixed(1)} hrs):</span>
@@ -1707,7 +1716,7 @@ export default function NewPaintEstimate() {
     setShowEmailModal(false);
   };
 
-  const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours } = calculateTotals();
+  const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours, totalPaintGunCleaningHours } = calculateTotals();
   const itemsWithDiscounts = getItemsWithDiscounts();
 
   if (isLoading) {
@@ -2117,7 +2126,7 @@ export default function NewPaintEstimate() {
                   {uniqueColorCount > 0 && (
                     <div className="mt-2 pt-2 border-t border-blue-300">
                       <p className="text-xs text-blue-700 font-medium">
-                        → {uniqueColorCount} unique color{uniqueColorCount > 1 ? 's' : ''} ({totalColorChangeHours.toFixed(2)} hrs setup)
+                        → {uniqueColorCount} unique color{uniqueColorCount > 1 ? 's' : ''} ({(totalColorChangeHours + totalPaintGunCleaningHours).toFixed(2)} hrs setup)
                       </p>
                     </div>
                   )}
@@ -2146,11 +2155,14 @@ export default function NewPaintEstimate() {
                   </div>
                   <p className="text-xs text-green-600">{totalLaborHours.toFixed(1)} hours total</p>
                   <div className="mt-2 pt-2 border-t border-green-200 text-xs text-green-700 space-y-0.5">
-                    <p>• Item labor: {(totalLaborHours - mixingHours - setupHours - totalColorChangeHours).toFixed(1)} hrs</p>
+                    <p>• Item labor: {(totalLaborHours - mixingHours - setupHours - totalColorChangeHours - totalPaintGunCleaningHours).toFixed(1)} hrs</p>
                     <p>• Mixing ({numberOfMixes} mix{numberOfMixes > 1 ? 'es' : ''}): {mixingHours.toFixed(1)} hrs</p>
                     <p>• Setup: {setupHours.toFixed(1)} hrs</p>
                     {uniqueColorCount > 0 && (
-                      <p>• Color changes ({uniqueColorCount} colors): {totalColorChangeHours.toFixed(1)} hrs</p>
+                      <>
+                        <p>• Color changes ({uniqueColorCount} colors): {totalColorChangeHours.toFixed(1)} hrs</p>
+                        <p>• Gun cleaning ({uniqueColorCount} colors): {totalPaintGunCleaningHours.toFixed(1)} hrs</p>
+                      </>
                     )}
                   </div>
 
