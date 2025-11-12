@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Settings as SettingsEntity, User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,15 @@ const settingsDefinitions = [
     { name: "both_sides_paint_multiplier", type: "number", category: "painting_labor", description: "Labor multiplier for painting both sides", default: "1.0" },
     { name: "additional_color_multiplier", type: "number", category: "painting_labor", description: "Labor multiplier for each additional color applied", default: "0.3" },
     { name: "letter_perimeter_factor", type: "number", category: "painting_labor", description: "Multiplier to estimate letter perimeter from its height", default: "3.5" },
+    
+    // Letter Size Preparation Multipliers
+    { name: "lettering_extra_small_prep_multiplier", type: "number", category: "painting_labor", description: "Prep multiplier for extra small letters (≤4\")", default: "1.5" },
+    { name: "lettering_small_prep_multiplier", type: "number", category: "painting_labor", description: "Prep multiplier for small letters (4-8\")", default: "1.3" },
+    { name: "lettering_normal_prep_multiplier", type: "number", category: "painting_labor", description: "Prep multiplier for normal letters (8-12\")", default: "1.0" },
+    { name: "lettering_medium_prep_multiplier", type: "number", category: "painting_labor", description: "Prep multiplier for medium letters (12-20\")", default: "0.9" },
+    { name: "lettering_large_prep_multiplier", type: "number", category: "painting_labor", description: "Prep multiplier for large letters (20-30\")", default: "0.8" },
+    { name: "lettering_extra_large_prep_multiplier", type: "number", category: "painting_labor", description: "Prep multiplier for extra large letters (30\"+)", default: "0.7" },
+    
     { name: "min_labor_hours", type: "number", category: "painting_pricing", description: "Minimum total labor hours for a paint job", default: "0" },
     { name: "min_paint_cost", type: "number", category: "painting_pricing", description: "Minimum total cost for liquid paint and supplies", default: "0" },
 ];
@@ -117,7 +127,28 @@ export default function PaintSettings() {
     };
   }, [settings]);
 
-  const mixingExample = calculateMixingExample();
+  const mixingExample = mixingExample = useCallback(() => {
+    const examplePaintableArea = 100;
+    const exampleColors = 3;
+    const totalArea = examplePaintableArea * exampleColors;
+    
+    const wasteMultiplier = parseFloat(settings.paint_waste_multiplier) || 1.25;
+    const coverage = parseFloat(settings.mixed_paint_coverage_sqft_per_gallon) || 350;
+    
+    const gallonsNeeded = (totalArea * wasteMultiplier) / coverage;
+    const numberOfMixes = Math.ceil(gallonsNeeded);
+    const mixingHoursPerGallon = parseFloat(settings.paint_mixing_labor_hours) || 0;
+    const totalMixingHours = numberOfMixes * mixingHoursPerGallon;
+    
+    return {
+      exampleArea: totalArea,
+      gallonsNeeded,
+      numberOfMixes,
+      mixingHoursPerGallon,
+      totalMixingHours
+    };
+  }, [settings])();
+
 
   const initializeAndLoad = useCallback(async () => {
     setIsLoading(true);
@@ -439,6 +470,8 @@ export default function PaintSettings() {
     if (filteredSettings.length === 0) return null;
 
     const specialHandling = category === 'painting_labor';
+    const letteringPrepMultipliers = filteredSettings.filter(d => d.name.includes('lettering_') && d.name.includes('_prep_multiplier'));
+    const otherLaborSettings = filteredSettings.filter(d => !(d.name.includes('lettering_') && d.name.includes('_prep_multiplier')));
 
     return (
       <Card className="bg-white border-0 shadow-sm">
@@ -457,8 +490,21 @@ export default function PaintSettings() {
           ) : (
             <>
               <div className="grid md:grid-cols-2 gap-6">
-                {filteredSettings.filter(d => !d.name.includes('paint_mixing') && !d.name.includes('setup_time')).map(def => renderSettingInput(def))}
+                {otherLaborSettings.filter(d => !d.name.includes('paint_mixing') && !d.name.includes('setup_time')).map(def => renderSettingInput(def))}
               </div>
+              
+              {letteringPrepMultipliers.length > 0 && (
+                <div className="border-t pt-6">
+                  <h4 className="font-medium text-slate-800 mb-4 flex items-center gap-2">
+                    <Type className="w-5 h-5 text-purple-600" />
+                    Lettering Preparation Multipliers by Size
+                  </h4>
+                  <p className="text-sm text-slate-600 mb-4">Smaller letters require more preparation time. These multipliers adjust labor for painting lettering based on size.</p>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {letteringPrepMultipliers.map(def => renderSettingInput(def))}
+                  </div>
+                </div>
+              )}
               
               <div className="border-t pt-6">
                 <h4 className="font-medium text-slate-800 mb-4">Fixed Labor Times</h4>
