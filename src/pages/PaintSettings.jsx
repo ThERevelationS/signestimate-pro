@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Settings as SettingsEntity, User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ const settingsDefinitions = [
     { name: "base_supplies_per_job", type: "number", category: "painting_supplies", description: "Flat cost for general consumables per job", default: "50" },
     { name: "paint_mixing_labor_hours", type: "number", category: "painting_labor", description: "Labor hours for mixing one gallon of paint", default: "0.25" },
     { name: "setup_time_labor_hours", type: "number", category: "painting_labor", description: "Fixed labor hours for job setup and cleanup", default: "0.5" },
+    { name: "color_change_setup_hours", type: "number", category: "painting_labor", description: "Additional setup hours for each unique color used in the project", default: "0.25" },
     { name: "paint_cost_per_unit", type: "number", category: "painting_pricing", description: "Cost of one unit of paint", default: "25" },
     { name: "paint_unit", type: "select", options: ["oz", "pint", "quart", "liter", "gallon"], category: "painting_pricing", description: "The unit of measure for paint cost", default: "gallon" },
     { name: "hardener_cost_per_unit", type: "number", category: "painting_pricing", description: "Cost of one unit of hardener", default: "15" },
@@ -468,7 +470,7 @@ export default function PaintSettings() {
           ) : (
             <>
               <div className="grid md:grid-cols-2 gap-6">
-                {otherLaborSettings.filter(d => !d.name.includes('paint_mixing') && !d.name.includes('setup_time')).map(def => renderSettingInput(def))}
+                {otherLaborSettings.filter(d => !d.name.includes('paint_mixing') && !d.name.includes('setup_time') && !d.name.includes('color_change_setup_hours')).map(def => renderSettingInput(def))}
               </div>
               
               {letteringPrepMultipliers.length > 0 && (
@@ -487,7 +489,7 @@ export default function PaintSettings() {
               <div className="border-t pt-6">
                 <h4 className="font-medium text-slate-800 mb-4">Fixed Labor Times</h4>
                 <div className="grid md:grid-cols-2 gap-4">
-                  {settingsDefinitions.filter(d => d.name === 'paint_mixing_labor_hours' || d.name === 'setup_time_labor_hours').map(def => renderSettingInput(def))}
+                  {settingsDefinitions.filter(d => d.name === 'paint_mixing_labor_hours' || d.name === 'setup_time_labor_hours' || d.name === 'color_change_setup_hours').map(def => renderSettingInput(def))}
                 </div>
 
                 <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">

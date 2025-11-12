@@ -487,10 +487,27 @@ export default function NewPaintEstimate() {
     const mixingHoursPerGallon = parseFloat(globalSettings.paint_mixing_labor_hours) || 0;
     const mixingHours = numberOfMixes * mixingHoursPerGallon;
     const setupHours = parseFloat(globalSettings.setup_time_labor_hours) || 0;
-    const fixedLaborCost = (mixingHours + setupHours) * laborRate;
+
+    // NEW: Calculate unique colors across all items
+    const uniqueColors = new Set();
+    project.items.forEach(item => {
+      if (item.paint_colors && Array.isArray(item.paint_colors)) {
+        item.paint_colors.forEach(color => {
+          const trimmedColor = color.trim().toLowerCase();
+          if (trimmedColor) {
+            uniqueColors.add(trimmedColor);
+          }
+        });
+      }
+    });
+    const uniqueColorCount = uniqueColors.size;
+    const colorChangeSetupHours = parseFloat(globalSettings.color_change_setup_hours) || 0;
+    const totalColorChangeHours = uniqueColorCount > 0 ? uniqueColorCount * colorChangeSetupHours : 0;
+
+    const fixedLaborCost = (mixingHours + setupHours + totalColorChangeHours) * laborRate;
 
     let totalLabor = totalItemLaborCost + fixedLaborCost;
-    const totalLaborHours = project.items.reduce((sum, item) => sum + (item.labor_hours || 0), 0) + mixingHours + setupHours;
+    const totalLaborHours = project.items.reduce((sum, item) => sum + (item.labor_hours || 0), 0) + mixingHours + setupHours + totalColorChangeHours;
 
     const minLaborHours = parseFloat(globalSettings.min_labor_hours) || 0;
     const minPaintCost = parseFloat(globalSettings.min_paint_cost) || 0;
@@ -508,10 +525,12 @@ export default function NewPaintEstimate() {
       totalLiquidPaintAndSupplies,
       totalLabor,
       totalLaborHours,
-      totalGallonsNeeded: totalPaintGallons, // Use the summed paint_gallons
+      totalGallonsNeeded: totalPaintGallons,
       numberOfMixes,
       mixingHours,
-      setupHours
+      setupHours,
+      uniqueColorCount,
+      totalColorChangeHours
     };
   };
 
@@ -574,7 +593,7 @@ export default function NewPaintEstimate() {
   };
 
   const downloadEstimate = () => {
-    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded } = calculateTotals();
+    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
 
@@ -586,9 +605,9 @@ export default function NewPaintEstimate() {
   <meta charset="UTF-8">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
+
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       margin: 0;
@@ -597,7 +616,7 @@ export default function NewPaintEstimate() {
       background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
       min-height: 100vh;
     }
-    
+
     .container {
       max-width: 900px;
       margin: 0 auto;
@@ -606,14 +625,14 @@ export default function NewPaintEstimate() {
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       overflow: hidden;
     }
-    
+
     .header {
       background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
       color: white;
       padding: 40px;
       text-align: center;
     }
-    
+
     .header h1 {
       font-size: 32px;
       font-weight: 700;
@@ -621,19 +640,19 @@ export default function NewPaintEstimate() {
       text-transform: uppercase;
       letter-spacing: 2px;
     }
-    
+
     .header .subtitle {
       font-size: 16px;
       opacity: 0.95;
       font-weight: 500;
     }
-    
+
     .project-info {
       padding: 30px 40px;
       background: #f8fafc;
       border-bottom: 3px solid #e2e8f0;
     }
-    
+
     .project-info h2 {
       color: #475569;
       font-size: 14px;
@@ -642,34 +661,34 @@ export default function NewPaintEstimate() {
       margin-bottom: 15px;
       font-weight: 600;
     }
-    
+
     .info-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 12px;
     }
-    
+
     .info-item {
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    
+
     .info-label {
       font-weight: 600;
       color: #64748b;
       font-size: 13px;
     }
-    
+
     .info-value {
       color: #1e293b;
       font-size: 13px;
     }
-    
+
     .content {
       padding: 40px;
     }
-    
+
     .section-title {
       font-size: 20px;
       font-weight: 700;
@@ -679,7 +698,7 @@ export default function NewPaintEstimate() {
       border-bottom: 3px solid #3b82f6;
       display: inline-block;
     }
-    
+
     .item {
       background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
       border: 2px solid #e2e8f0;
@@ -687,7 +706,7 @@ export default function NewPaintEstimate() {
       padding: 25px;
       margin-bottom: 20px;
     }
-    
+
     .item-header {
       background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
       color: white;
@@ -697,32 +716,32 @@ export default function NewPaintEstimate() {
       font-weight: 600;
       font-size: 16px;
     }
-    
+
     .item-details {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 12px;
       margin-bottom: 15px;
     }
-    
+
     .detail-row {
       display: flex;
       justify-content: space-between;
       padding: 8px 0;
     }
-    
+
     .detail-label {
       font-weight: 600;
       color: #64748b;
       font-size: 13px;
     }
-    
+
     .detail-value {
       color: #1e293b;
       font-weight: 500;
       font-size: 13px;
     }
-    
+
     .paint-volume-highlight {
       background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
       border: 2px solid #3b82f6;
@@ -730,7 +749,7 @@ export default function NewPaintEstimate() {
       padding: 12px;
       margin: 15px 0;
     }
-    
+
     .paint-volume-label {
       font-size: 11px;
       text-transform: uppercase;
@@ -739,13 +758,13 @@ export default function NewPaintEstimate() {
       font-weight: 600;
       margin-bottom: 5px;
     }
-    
+
     .paint-volume-value {
       font-size: 16px;
       font-weight: 700;
       color: #1e40af;
     }
-    
+
     .item-costs {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -754,29 +773,29 @@ export default function NewPaintEstimate() {
       padding-top: 20px;
       border-top: 2px dashed #cbd5e1;
     }
-    
+
     .cost-box {
       background: white;
       padding: 15px;
       border-radius: 8px;
       border: 2px solid #e2e8f0;
     }
-    
+
     .cost-box.mask {
       border-color: #8b5cf6;
       background: linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%);
     }
-    
+
     .cost-box.paint {
       border-color: #6366f1;
       background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
     }
-    
+
     .cost-box.labor {
       border-color: #10b981;
       background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
     }
-    
+
     .cost-label {
       font-size: 11px;
       text-transform: uppercase;
@@ -785,13 +804,13 @@ export default function NewPaintEstimate() {
       font-weight: 600;
       margin-bottom: 5px;
     }
-    
+
     .cost-value {
       font-size: 20px;
       font-weight: 700;
       color: #1e293b;
     }
-    
+
     .summary {
       background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
       border: 3px solid #e2e8f0;
@@ -799,30 +818,30 @@ export default function NewPaintEstimate() {
       padding: 30px;
       margin-top: 40px;
     }
-    
+
     .summary-row {
       display: flex;
       justify-content: space-between;
       padding: 12px 0;
       border-bottom: 1px solid #e2e8f0;
     }
-    
+
     .summary-row:last-child {
       border-bottom: none;
     }
-    
+
     .summary-label {
       font-weight: 600;
       color: #475569;
       font-size: 15px;
     }
-    
+
     .summary-value {
       font-weight: 700;
       color: #1e293b;
       font-size: 15px;
     }
-    
+
     .summary-row.volume {
       background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
       border: 2px solid #3b82f6;
@@ -830,14 +849,14 @@ export default function NewPaintEstimate() {
       padding: 15px;
       margin-bottom: 15px;
     }
-    
+
     .summary-row.volume .summary-label { color: #1e40af; font-size: 13px; }
     .summary-row.volume .summary-value { color: #1e40af; font-size: 16px; }
-    
+
     .summary-row.mask .summary-value { color: #8b5cf6; }
     .summary-row.paint .summary-value { color: #6366f1; }
     .summary-row.labor .summary-value { color: #10b981; }
-    
+
     .total-row {
       margin-top: 20px;
       padding-top: 20px;
@@ -846,7 +865,7 @@ export default function NewPaintEstimate() {
       justify-content: space-between;
       align-items: center;
     }
-    
+
     .total-label {
       font-size: 24px;
       font-weight: 700;
@@ -854,7 +873,7 @@ export default function NewPaintEstimate() {
       text-transform: uppercase;
       letter-spacing: 1px;
     }
-    
+
     .total-value {
       font-size: 36px;
       font-weight: 800;
@@ -863,7 +882,7 @@ export default function NewPaintEstimate() {
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
-    
+
     .notes {
       background: #fef3c7;
       border: 2px solid #fbbf24;
@@ -871,7 +890,7 @@ export default function NewPaintEstimate() {
       padding: 25px;
       margin-top: 30px;
     }
-    
+
     .notes h3 {
       color: #92400e;
       font-size: 16px;
@@ -880,13 +899,13 @@ export default function NewPaintEstimate() {
       text-transform: uppercase;
       letter-spacing: 1px;
     }
-    
+
     .notes p {
       color: #78350f;
       line-height: 1.6;
       font-size: 14px;
     }
-    
+
     .footer {
       background: #1e293b;
       color: white;
@@ -894,7 +913,7 @@ export default function NewPaintEstimate() {
       text-align: center;
       font-size: 12px;
     }
-    
+
     @media print {
       body {
         background: white;
@@ -1014,7 +1033,7 @@ export default function NewPaintEstimate() {
         </div>
         <div class="summary-row">
           <span class="summary-label">Fixed Labor (Mixing/Setup):</span>
-          <span class="summary-value">$${(((parseFloat(globalSettings.paint_mixing_labor_hours) || 0) + (parseFloat(globalSettings.setup_time_labor_hours) || 0)) * laborRate).toFixed(2)}</span>
+          <span class="summary-value">$${((mixingHours + setupHours + totalColorChangeHours) * laborRate).toFixed(2)}</span>
         </div>
         <div class="summary-row labor">
           <span class="summary-label">Total Labor (${totalLaborHours.toFixed(1)} hrs):</span>
@@ -1056,7 +1075,7 @@ export default function NewPaintEstimate() {
   };
 
   const printEstimate = () => {
-    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded } = calculateTotals();
+    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
 
@@ -1494,7 +1513,7 @@ export default function NewPaintEstimate() {
                 </div>
                 <div class="summary-row">
                   <span class="summary-label">Fixed Labor (Mixing/Setup):</span>
-                  <span class="summary-value">$${(((parseFloat(globalSettings.paint_mixing_labor_hours) || 0) + (parseFloat(globalSettings.setup_time_labor_hours) || 0)) * laborRate).toFixed(2)}</span>
+                  <span class="summary-value">$${((mixingHours + setupHours + totalColorChangeHours) * laborRate).toFixed(2)}</span>
                 </div>
                 <div class="summary-row labor">
                   <span class="summary-label">Total Labor (${totalLaborHours.toFixed(1)} hrs):</span>
@@ -1531,7 +1550,7 @@ export default function NewPaintEstimate() {
   };
 
   const sendEstimate = () => {
-    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded } = calculateTotals();
+    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
 
@@ -1573,7 +1592,7 @@ export default function NewPaintEstimate() {
       <h1>🎨 Paint Estimate</h1>
       <p>Professional Painting Services</p>
     </div>
-  
+
     <div class="content">
       <div class="info-box">
         <h2>Project Details</h2>
@@ -1582,7 +1601,7 @@ export default function NewPaintEstimate() {
         ${project.estimate_number ? `<p><strong>Estimate #:</strong> ${project.estimate_number}</p>` : ''}
         <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
       </div>
-      
+
       <div class="info-box">
         <h2>Cost Summary</h2>
         <div class="summary">
@@ -1608,7 +1627,7 @@ export default function NewPaintEstimate() {
           </div>
         </div>
       </div>
-      
+
       <div class="info-box">
         <h2>Items Breakdown (${project.items.length} items)</h2>
         ${project.items.map((item, i) => `
@@ -1634,7 +1653,7 @@ export default function NewPaintEstimate() {
           </div>
         `).join('')}
       </div>
-      
+
       ${project.notes ? `
       <div class="info-box">
         <h2>Additional Notes</h2>
@@ -1642,7 +1661,7 @@ export default function NewPaintEstimate() {
       </div>
       ` : ''}
     </div>
-    
+
     <div class="footer">
       <p>Generated by SignEstimate Pro - Professional Estimating Suite</p>
       <p>© ${new Date().getFullYear()} All Rights Reserved</p>
@@ -1666,7 +1685,7 @@ export default function NewPaintEstimate() {
       alert('Please fill in the recipient email address and subject.');
       return;
     }
-    
+
     // Attempt to use the Clipboard API to copy HTML content
     if (navigator.clipboard && window.isSecureContext) { // window.isSecureContext ensures clipboard.writeText is available
       navigator.clipboard.writeText(emailData.message).then(() => {
@@ -1684,11 +1703,11 @@ export default function NewPaintEstimate() {
       alert('Your browser does not support automatic clipboard copying for HTML. Please manually copy the content from the text area in the modal and paste it into your email client in HTML mode.\n\nYour email client will now open with the To/Subject filled.');
       window.location.href = `mailto:${emailData.to}?subject=${encodeURIComponent(emailData.subject)}`;
     }
-    
+
     setShowEmailModal(false);
   };
 
-  const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours } = calculateTotals();
+  const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours } = calculateTotals();
   const itemsWithDiscounts = getItemsWithDiscounts();
 
   if (isLoading) {
@@ -2095,6 +2114,13 @@ export default function NewPaintEstimate() {
                       </p>
                     </div>
                   }
+                  {uniqueColorCount > 0 && (
+                    <div className="mt-2 pt-2 border-t border-blue-300">
+                      <p className="text-xs text-blue-700 font-medium">
+                        → {uniqueColorCount} unique color{uniqueColorCount > 1 ? 's' : ''} ({totalColorChangeHours.toFixed(2)} hrs setup)
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-4 bg-purple-50 rounded-lg">
@@ -2120,9 +2146,12 @@ export default function NewPaintEstimate() {
                   </div>
                   <p className="text-xs text-green-600">{totalLaborHours.toFixed(1)} hours total</p>
                   <div className="mt-2 pt-2 border-t border-green-200 text-xs text-green-700 space-y-0.5">
-                    <p>• Item labor: {(totalLaborHours - mixingHours - setupHours).toFixed(1)} hrs</p>
+                    <p>• Item labor: {(totalLaborHours - mixingHours - setupHours - totalColorChangeHours).toFixed(1)} hrs</p>
                     <p>• Mixing ({numberOfMixes} mix{numberOfMixes > 1 ? 'es' : ''}): {mixingHours.toFixed(1)} hrs</p>
                     <p>• Setup: {setupHours.toFixed(1)} hrs</p>
+                    {uniqueColorCount > 0 && (
+                      <p>• Color changes ({uniqueColorCount} colors): {totalColorChangeHours.toFixed(1)} hrs</p>
+                    )}
                   </div>
 
                   {itemsWithDiscounts.length > 0 &&
