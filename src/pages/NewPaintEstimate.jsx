@@ -501,10 +501,12 @@ export default function NewPaintEstimate() {
       }
     });
     const uniqueColorCount = uniqueColors.size;
-    const colorChangeSetupHours = parseFloat(globalSettings.color_change_setup_hours) || 0;
-    const totalColorChangeHours = uniqueColorCount > 0 ? uniqueColorCount * colorChangeSetupHours : 0;
     
-    // NEW: Paint gun cleaning time per color
+    // Setup time for ADDITIONAL colors (first color doesn't need setup, only changes do)
+    const colorChangeSetupHours = parseFloat(globalSettings.color_change_setup_hours) || 0;
+    const totalColorChangeHours = uniqueColorCount > 1 ? (uniqueColorCount - 1) * colorChangeSetupHours : 0;
+    
+    // Paint gun cleaning time per color (all colors need cleaning)
     const paintGunCleaningHours = parseFloat(globalSettings.paint_gun_cleaning_hours) || 0;
     const totalPaintGunCleaningHours = uniqueColorCount > 0 ? uniqueColorCount * paintGunCleaningHours : 0;
     
@@ -2158,11 +2160,11 @@ export default function NewPaintEstimate() {
                     <p>• Item labor: {(totalLaborHours - mixingHours - setupHours - totalColorChangeHours - totalPaintGunCleaningHours).toFixed(1)} hrs</p>
                     <p>• Mixing ({numberOfMixes} mix{numberOfMixes > 1 ? 'es' : ''}): {mixingHours.toFixed(1)} hrs</p>
                     <p>• Setup: {setupHours.toFixed(1)} hrs</p>
+                    {uniqueColorCount > 1 && (
+                      <p>• Color changes ({uniqueColorCount - 1} change{uniqueColorCount > 2 ? 's' : ''}): {totalColorChangeHours.toFixed(1)} hrs</p>
+                    )}
                     {uniqueColorCount > 0 && (
-                      <>
-                        <p>• Color changes ({uniqueColorCount} colors): {totalColorChangeHours.toFixed(1)} hrs</p>
-                        <p>• Gun cleaning ({uniqueColorCount} colors): {totalPaintGunCleaningHours.toFixed(1)} hrs</p>
-                      </>
+                      <p>• Gun cleaning ({uniqueColorCount} color{uniqueColorCount > 1 ? 's' : ''}): {totalPaintGunCleaningHours.toFixed(1)} hrs</p>
                     )}
                   </div>
 

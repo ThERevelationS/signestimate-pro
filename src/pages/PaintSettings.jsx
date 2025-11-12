@@ -39,7 +39,7 @@ const settingsDefinitions = [
     { name: "base_supplies_per_job", type: "number", category: "painting_supplies", description: "Flat cost for general consumables per job", default: "50" },
     { name: "paint_mixing_labor_hours", type: "number", category: "painting_labor", description: "Labor hours for mixing one gallon of paint", default: "0.25" },
     { name: "setup_time_labor_hours", type: "number", category: "painting_labor", description: "Fixed labor hours for job setup and cleanup", default: "0.5" },
-    { name: "color_change_setup_hours", type: "number", category: "painting_labor", description: "Additional setup hours for each unique color used in the project", default: "0.25" },
+    { name: "color_change_setup_hours", type: "number", category: "painting_labor", description: "Setup hours per color change (first color = no change, 2nd+ colors need setup)", default: "0.25" },
     { name: "paint_gun_cleaning_hours", type: "number", category: "painting_labor", description: "Labor hours for cleaning paint gun per color used", default: "0.15" },
     { name: "paint_cost_per_unit", type: "number", category: "painting_pricing", description: "Cost of one unit of paint", default: "25" },
     { name: "paint_unit", type: "select", options: ["oz", "pint", "quart", "liter", "gallon"], category: "painting_pricing", description: "The unit of measure for paint cost", default: "gallon" },
@@ -456,7 +456,7 @@ export default function PaintSettings() {
         d.name === 'paint_mixing_labor_hours' || 
         d.name === 'setup_time_labor_hours' || 
         d.name === 'color_change_setup_hours' ||
-        d.name === 'paint_gun_cleaning_hours' // Added the new setting here
+        d.name === 'paint_gun_cleaning_hours'
     );
     const otherLaborSettings = filteredSettings.filter(d => 
       !(d.name.includes('lettering_') && d.name.includes('_prep_multiplier')) &&
