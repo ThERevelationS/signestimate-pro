@@ -161,110 +161,121 @@ export default function NewPaintEstimate() {
     return finalRate;
   }, [globalSettings, getCostPerGallon]);
 
+  const calculateItemCosts = useCallback((item, settings, rate, multiplierCallback, projectPaintSuppliesRate) => {
+    const perimFactor = parseFloat(settings.letter_perimeter_factor) || 3.5;
+    let paintableSqFt = 0;
+    const itemThicknessDecimal = parseImperialFraction(item.thickness);
+
+    if (item.item_type === 'panel' && item.length > 0 && item.width > 0) {
+      const faceArea = item.length * item.width / 144;
+      paintableSqFt = item.paint_sides === 'both_sides' ? faceArea * 2 : faceArea;
+    } else if (item.item_type === 'lettering' && item.width > 0 && item.length > 0 && itemThicknessDecimal > 0) {
+      const letterHeight = item.width;
+      const numLetters = item.length;
+      const faceArea = Math.pow(letterHeight, 2) * 0.8 * numLetters / 144;
+      const perimeterInches = letterHeight * perimFactor * numLetters;
+      const edgeArea = perimeterInches * itemThicknessDecimal / 144;
+      paintableSqFt = item.paint_sides === 'both_sides' ? faceArea * 2 + edgeArea : faceArea + edgeArea;
+    } else if (item.item_type === 'complex_shapes' && item.length > 0 && item.width > 0 && itemThicknessDecimal > 0) {
+      const faceArea = item.length * item.width / 144;
+      const perimeterInches = 2 * (item.length + item.width);
+      const edgeArea = perimeterInches * itemThicknessDecimal * (item.edge_complexity_multiplier || 1.0) / 144;
+      paintableSqFt = item.paint_sides === 'both_sides' ? faceArea * 2 + edgeArea : item.paint_sides === 'one_side' ? faceArea + edgeArea : 0;
+    }
+
+    const paintSuppliesRate = projectPaintSuppliesRate;
+    const paintMaskMaterialRate = parseFloat(settings.paint_mask_rate_per_sqft) || 0.75;
+    const paintMaskMachineRate = parseFloat(settings.paint_mask_machine_cutting_rate_per_sqft) || 0.10;
+    let paintMaskCost = 0;
+
+    const numColors = item.paint_colors?.length || 0;
+    if (numColors > 1 && item.paint_mask_sqft > 0) {
+      const maskMaterialCost = item.paint_mask_sqft * paintMaskMaterialRate * (numColors - 1);
+      const maskMachineCost = item.paint_mask_sqft * paintMaskMachineRate * (numColors - 1);
+      paintMaskCost = maskMaterialCost + maskMachineCost;
+    }
+
+    let liquidPaintAndSuppliesCost = 0;
+    let liquidPaintCost = 0;
+    let paintApplicationSuppliesCost = 0;
+    let paintGallons = 0;
+
+    if (numColors > 0) {
+      paintApplicationSuppliesCost = paintableSqFt * paintSuppliesRate * numColors;
+      const paintWasteMultiplier = parseFloat(settings.paint_waste_multiplier) || 1.25;
+      const coverageSqFtPerGallon = parseFloat(settings.mixed_paint_coverage_sqft_per_gallon) || 350;
+
+      if (rate > 0) {
+        liquidPaintCost = paintableSqFt * rate * paintWasteMultiplier * numColors;
+      }
+      paintGallons = paintableSqFt * paintWasteMultiplier * numColors / coverageSqFtPerGallon;
+    }
+
+    // Add fixed waste per item
+    const itemFixedWasteGallons = parseFloat(item.fixed_waste_gallons) || 0;
+    paintGallons += itemFixedWasteGallons;
+    
+    const coverageSqFtPerGallon = parseFloat(settings.mixed_paint_coverage_sqft_per_gallon) || 350;
+    const costPerGallon = rate * coverageSqFtPerGallon;
+    const itemFixedWasteCost = itemFixedWasteGallons * costPerGallon;
+    
+    liquidPaintCost += itemFixedWasteCost;
+
+    liquidPaintAndSuppliesCost = paintApplicationSuppliesCost + liquidPaintCost + (item.base_supplies_cost || 0);
+
+    const laborRate = parseFloat(settings.default_labor_rate) || 60;
+    const baseHoursPerSqFt = parseFloat(settings.base_labor_hours_per_sqft) || 0.5;
+    const complexityMap = {
+      extra_small: 'complex', small: 'complex', normal: 'moderate',
+      medium: 'moderate', large: 'simple', extra_large: 'simple'
+    };
+    const itemComplexity = item.item_type === 'lettering' ? complexityMap[item.letter_size] || 'moderate' : 'moderate';
+
+    const complexityMultipliers = {
+      simple: parseFloat(settings.simple_complexity_multiplier) || 0.7,
+      moderate: parseFloat(settings.moderate_complexity_multiplier) || 1.0,
+      complex: parseFloat(settings.complex_complexity_multiplier) || 1.5
+    };
+    const paintMultipliers = {
+      one_side: parseFloat(settings.one_side_paint_multiplier) || 0.8,
+      both_sides: parseFloat(settings.both_sides_paint_multiplier) || 1.0
+    };
+    const additionalColorMultiplier = parseFloat(settings.additional_color_multiplier) || 0.3;
+
+    let baseHours = paintableSqFt * baseHoursPerSqFt * (complexityMultipliers[itemComplexity] || 1) * (paintMultipliers[item.paint_sides] || 1);
+    if (numColors > 1) {
+      baseHours *= 1 + (numColors - 1) * additionalColorMultiplier;
+    }
+
+    const maskApplicationLaborRate = parseFloat(settings.paint_mask_application_labor_rate_per_sqft) || 0.25;
+    const maskCuttingLaborRate = parseFloat(settings.paint_mask_cutting_labor_rate_per_sqft) || 0.15;
+    if (numColors > 1 && item.paint_mask_sqft > 0) {
+      const maskApplicationLaborHours = item.paint_mask_sqft * maskApplicationLaborRate * (numColors - 1) / laborRate;
+      const maskCuttingLaborHours = item.paint_mask_sqft * maskCuttingLaborRate * (numColors - 1) / laborRate;
+      baseHours += maskApplicationLaborHours + maskCuttingLaborHours;
+    }
+
+    const quantityMultiplier = multiplierCallback(item.item_type, item.quantity);
+    const discountedLaborHours = baseHours * quantityMultiplier;
+    const laborHours = discountedLaborHours;
+    const laborCost = laborHours * laborRate * item.quantity;
+
+    return {
+      ...item,
+      supplies_cost: paintMaskCost * item.quantity,
+      paint_cost: liquidPaintAndSuppliesCost * item.quantity,
+      paint_gallons: paintGallons * item.quantity,
+      labor_hours: laborHours * item.quantity,
+      labor_cost: laborCost
+    };
+  }, []);
+
   const recalculateAllItems = useCallback(() => {
     setProject((prev) => {
-      const newItems = prev.items.map((item) => {
-        // Recalculate all item costs using the same logic as updateItem
-        const perimFactor = parseFloat(globalSettings.letter_perimeter_factor) || 3.5;
-        let paintableSqFt = 0;
-        const itemThicknessDecimal = parseImperialFraction(item.thickness);
-
-        if (item.item_type === 'panel' && item.length > 0 && item.width > 0) {
-          const faceArea = item.length * item.width / 144;
-          paintableSqFt = item.paint_sides === 'both_sides' ? faceArea * 2 : faceArea;
-        } else if (item.item_type === 'lettering' && item.width > 0 && item.length > 0 && itemThicknessDecimal > 0) {
-          const letterHeight = item.width;
-          const numLetters = item.length;
-          const faceArea = Math.pow(letterHeight, 2) * 0.8 * numLetters / 144;
-          const perimeterInches = letterHeight * perimFactor * numLetters;
-          const edgeArea = perimeterInches * itemThicknessDecimal / 144;
-          paintableSqFt = item.paint_sides === 'both_sides' ? faceArea * 2 + edgeArea : faceArea + edgeArea;
-        } else if (item.item_type === 'complex_shapes' && item.length > 0 && item.width > 0 && itemThicknessDecimal > 0) {
-          const faceArea = item.length * item.width / 144;
-          const perimeterInches = 2 * (item.length + item.width);
-          const edgeArea = perimeterInches * itemThicknessDecimal * (item.edge_complexity_multiplier || 1.0) / 144;
-          paintableSqFt = item.paint_sides === 'both_sides' ? faceArea * 2 + edgeArea : item.paint_sides === 'one_side' ? faceArea + edgeArea : 0;
-        }
-
-        const paintSuppliesRate = prev.paint_supplies_per_sqft;
-        const paintMaskMaterialRate = parseFloat(globalSettings.paint_mask_rate_per_sqft) || 0.75;
-        const paintMaskMachineRate = parseFloat(globalSettings.paint_mask_machine_cutting_rate_per_sqft) || 0.10;
-        let paintMaskCost = 0;
-
-        const numColors = item.paint_colors?.length || 0;
-        if (numColors > 1 && item.paint_mask_sqft > 0) {
-          const maskMaterialCost = item.paint_mask_sqft * paintMaskMaterialRate * (numColors - 1);
-          const maskMachineCost = item.paint_mask_sqft * paintMaskMachineRate * (numColors - 1);
-          paintMaskCost = maskMaterialCost + maskMachineCost;
-        }
-
-        let liquidPaintAndSuppliesCost = 0;
-        let liquidPaintCost = 0;
-        let paintApplicationSuppliesCost = 0;
-        let paintGallons = 0;
-
-        if (numColors > 0) {
-          paintApplicationSuppliesCost = paintableSqFt * paintSuppliesRate * numColors;
-          const paintWasteMultiplier = parseFloat(globalSettings.paint_waste_multiplier) || 1.25;
-          const coverageSqFtPerGallon = parseFloat(globalSettings.mixed_paint_coverage_sqft_per_gallon) || 350;
-
-          if (liquidPaintRate > 0) {
-            liquidPaintCost = paintableSqFt * liquidPaintRate * paintWasteMultiplier * numColors;
-          }
-          paintGallons = paintableSqFt * paintWasteMultiplier * numColors / coverageSqFtPerGallon;
-        }
-
-        liquidPaintAndSuppliesCost = paintApplicationSuppliesCost + liquidPaintCost + (item.base_supplies_cost || 0);
-
-        const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
-        const baseHoursPerSqFt = parseFloat(globalSettings.base_labor_hours_per_sqft) || 0.5;
-        const complexityMap = {
-          extra_small: 'complex', small: 'complex', normal: 'moderate',
-          medium: 'moderate', large: 'simple', extra_large: 'simple'
-        };
-        const itemComplexity = item.item_type === 'lettering' ? complexityMap[item.letter_size] || 'moderate' : 'moderate';
-
-        const complexityMultipliers = {
-          simple: parseFloat(globalSettings.simple_complexity_multiplier) || 0.7,
-          moderate: parseFloat(globalSettings.moderate_complexity_multiplier) || 1.0,
-          complex: parseFloat(globalSettings.complex_complexity_multiplier) || 1.5
-        };
-        const paintMultipliers = {
-          one_side: parseFloat(globalSettings.one_side_paint_multiplier) || 0.8,
-          both_sides: parseFloat(globalSettings.both_sides_paint_multiplier) || 1.0
-        };
-        const additionalColorMultiplier = parseFloat(globalSettings.additional_color_multiplier) || 0.3;
-
-        let baseHours = paintableSqFt * baseHoursPerSqFt * (complexityMultipliers[itemComplexity] || 1) * (paintMultipliers[item.paint_sides] || 1);
-        if (numColors > 1) {
-          baseHours *= 1 + (numColors - 1) * additionalColorMultiplier;
-        }
-
-        const maskApplicationLaborRate = parseFloat(globalSettings.paint_mask_application_labor_rate_per_sqft) || 0.25;
-        const maskCuttingLaborRate = parseFloat(globalSettings.paint_mask_cutting_labor_rate_per_sqft) || 0.15;
-        if (numColors > 1 && item.paint_mask_sqft > 0) {
-          const maskApplicationLaborHours = item.paint_mask_sqft * maskApplicationLaborRate * (numColors - 1) / laborRate;
-          const maskCuttingLaborHours = item.paint_mask_sqft * maskCuttingLaborRate * (numColors - 1) / laborRate;
-          baseHours += maskApplicationLaborHours + maskCuttingLaborHours;
-        }
-
-        const quantityMultiplier = getLaborMultiplier(item.item_type, item.quantity);
-        const discountedLaborHours = baseHours * quantityMultiplier;
-        const laborHours = discountedLaborHours;
-        const laborCost = laborHours * laborRate * item.quantity;
-
-        return {
-          ...item,
-          supplies_cost: paintMaskCost * item.quantity,
-          paint_cost: liquidPaintAndSuppliesCost * item.quantity,
-          paint_gallons: paintGallons * item.quantity,
-          labor_hours: laborHours * item.quantity,
-          labor_cost: laborCost
-        };
-      });
+      const newItems = prev.items.map((item) => calculateItemCosts(item, globalSettings, liquidPaintRate, getLaborMultiplier, prev.paint_supplies_per_sqft));
       return { ...prev, items: newItems };
     });
-  }, [globalSettings, liquidPaintRate, getLaborMultiplier]);
+  }, [globalSettings, liquidPaintRate, getLaborMultiplier, calculateItemCosts]);
 
   const loadProjectForEdit = useCallback(async (projectId) => {
     try {
@@ -381,7 +392,8 @@ export default function NewPaintEstimate() {
         paint_gallons: 0, // Initialize paint_gallons for new items
         labor_hours: 0,
         labor_cost: 0,
-        approx_coverage_factor: "1/4"
+        approx_coverage_factor: "1/4",
+        fixed_waste_gallons: 0
       }]
     }));
   };
@@ -501,41 +513,8 @@ export default function NewPaintEstimate() {
         moderate: parseFloat(globalSettings.moderate_complexity_multiplier) || 1.0,
         complex: parseFloat(globalSettings.complex_complexity_multiplier) || 1.5
       };
-      const paintMultipliers = {
-        one_side: parseFloat(globalSettings.one_side_paint_multiplier) || 0.8,
-        both_sides: parseFloat(globalSettings.both_sides_paint_multiplier) || 1.0
-      };
-      const additionalColorMultiplier = parseFloat(globalSettings.additional_color_multiplier) || 0.3;
-
-      let baseHours = paintableSqFt * baseHoursPerSqFt * (complexityMultipliers[itemComplexity] || 1) * (paintMultipliers[item.paint_sides] || 1);
-      if (numColors > 1) {
-        baseHours *= 1 + (numColors - 1) * additionalColorMultiplier;
-      }
-
-      const maskApplicationLaborRate = parseFloat(globalSettings.paint_mask_application_labor_rate_per_sqft) || 0.25;
-      const maskCuttingLaborRate = parseFloat(globalSettings.paint_mask_cutting_labor_rate_per_sqft) || 0.15;
-      if (numColors > 1 && item.paint_mask_sqft > 0) {
-        const maskApplicationLaborHours = item.paint_mask_sqft * maskApplicationLaborRate * (numColors - 1) / laborRate;
-        const maskCuttingLaborHours = item.paint_mask_sqft * maskCuttingLaborRate * (numColors - 1) / laborRate;
-        baseHours += maskApplicationLaborHours + maskCuttingLaborHours;
-      }
-
-      const quantityMultiplier = getLaborMultiplier(item.item_type, item.quantity);
-      const discountedLaborHours = baseHours * quantityMultiplier;
-
-      const laborHours = discountedLaborHours;
-      const laborCost = laborHours * laborRate * item.quantity;
-
-      item = {
-        ...item,
-        supplies_cost: paintMaskCost * item.quantity,
-        paint_cost: liquidPaintAndSuppliesCost * item.quantity,
-        paint_gallons: paintGallons * item.quantity, // Assign paint_gallons
-        labor_hours: laborHours * item.quantity,
-        labor_cost: laborCost
-      };
-
-      newItems[index] = item;
+      const updatedItem = calculateItemCosts(item, globalSettings, liquidPaintRate, getLaborMultiplier, prev.paint_supplies_per_sqft);
+      newItems[index] = updatedItem;
       return { ...prev, items: newItems };
     });
   };
@@ -2217,6 +2196,20 @@ export default function NewPaintEstimate() {
                             className="mt-1 h-8 text-xs" />
 
                                 <p className="text-xs text-amber-700 mt-1">Override base supplies for this item (e.g., special masking tape, cleaners)</p>
+                              </div>
+                              <div className="mt-3 pt-3 border-t border-amber-300/50">
+                                <Label htmlFor={`fixed_waste_${index}`} className="text-xs">Additional Waste (Gallons)</Label>
+                                <Input
+                                  id={`fixed_waste_${index}`}
+                                  type="number"
+                                  min="0"
+                                  step="0.05"
+                                  value={item.fixed_waste_gallons || 0}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => updateItem(index, 'fixed_waste_gallons', parseFloat(e.target.value) || 0)}
+                                  placeholder="0.00"
+                                  className="mt-1 h-8 text-xs" />
+                                <p className="text-xs text-amber-700 mt-1">Add extra paint waste volume specifically for this item</p>
                               </div>
                             </div>
                       }
