@@ -661,7 +661,8 @@ export default function NewPaintEstimate() {
       setupHours,
       uniqueColorCount,
       totalColorChangeHours,
-      totalPaintGunCleaningHours
+      totalPaintGunCleaningHours,
+      fixedWasteGallons
     };
   };
 
@@ -724,7 +725,7 @@ export default function NewPaintEstimate() {
   };
 
   const downloadEstimate = () => {
-    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours, totalPaintGunCleaningHours } = calculateTotals();
+    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours, totalPaintGunCleaningHours, fixedWasteGallons } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
 
@@ -1151,7 +1152,10 @@ export default function NewPaintEstimate() {
 
         <div class="summary-row volume">
           <span class="summary-label">Total Paint Volume Required:</span>
-          <span class="summary-value">${formatPaintVolume(totalGallonsNeeded)}</span>
+          <span class="summary-value">
+            ${formatPaintVolume(totalGallonsNeeded)}
+            ${fixedWasteGallons > 0 ? `<div style="font-size: 11px; font-weight: normal; opacity: 0.8; margin-top: 4px;">(Includes ${formatPaintVolume(fixedWasteGallons)} fixed waste)</div>` : ''}
+          </span>
         </div>
 
         <div class="summary-row mask">
@@ -1206,7 +1210,7 @@ export default function NewPaintEstimate() {
   };
 
   const printEstimate = () => {
-    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours, totalPaintGunCleaningHours } = calculateTotals();
+    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours, totalPaintGunCleaningHours, fixedWasteGallons } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
 
@@ -1631,7 +1635,10 @@ export default function NewPaintEstimate() {
 
                 <div class="summary-row volume">
                   <span class="summary-label">Total Paint Volume Required:</span>
-                  <span class="summary-value">${formatPaintVolume(totalGallonsNeeded)}</span>
+                  <span class="summary-value">
+                    ${formatPaintVolume(totalGallonsNeeded)}
+                    ${fixedWasteGallons > 0 ? `<div style="font-size: 11px; font-weight: normal; opacity: 0.8; margin-top: 4px;">(Includes ${formatPaintVolume(fixedWasteGallons)} fixed waste)</div>` : ''}
+                  </span>
                 </div>
 
                 <div class="summary-row mask">
@@ -1681,7 +1688,7 @@ export default function NewPaintEstimate() {
   };
 
   const sendEstimate = () => {
-    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours, totalPaintGunCleaningHours } = calculateTotals();
+    const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours, totalPaintGunCleaningHours, fixedWasteGallons } = calculateTotals();
     const totalCost = totalPaintMask + totalLiquidPaintAndSupplies + totalLabor;
     const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
 
@@ -1738,7 +1745,10 @@ export default function NewPaintEstimate() {
         <div class="summary">
           <div class="summary-row">
             <span>Total Paint Volume:</span>
-            <span><strong>${formatPaintVolume(totalGallonsNeeded)}</strong></span>
+            <span>
+              <strong>${formatPaintVolume(totalGallonsNeeded)}</strong>
+              ${fixedWasteGallons > 0 ? `<br><span style="font-size: 12px; font-weight: normal; color: #666;">(Includes ${formatPaintVolume(fixedWasteGallons)} fixed waste)</span>` : ''}
+            </span>
           </div>
           <div class="summary-row">
             <span>Paint Mask:</span>
@@ -2242,6 +2252,13 @@ export default function NewPaintEstimate() {
                     <span className="text-lg font-bold text-blue-900 text-right leading-tight">{formatPaintVolume(totalGallonsNeeded)}</span>
                   </div>
                   <p className="text-xs text-blue-600">Total liquid paint needed across all items</p>
+                  {fixedWasteGallons > 0 &&
+                    <div className="mt-1 pt-1 border-t border-blue-300/50">
+                      <p className="text-xs text-blue-700">
+                        + {formatPaintVolume(fixedWasteGallons)} fixed waste
+                      </p>
+                    </div>
+                  }
                   {totalGallonsNeeded > 1 &&
                   <div className="mt-2 pt-2 border-t border-blue-300">
                       <p className="text-xs text-blue-700 font-medium">
