@@ -569,20 +569,27 @@ export default function NewPaintEstimate() {
     let totalItemLaborCost = project.items.reduce((sum, item) => sum + (item.labor_cost || 0), 0);
 
     // Calculate total paint gallons by summing paint_gallons from each item
+    // Note: Item paint_gallons ALREADY INCLUDES the item-specific fixed waste because calculateItemCosts adds it.
+    // So we just need to sum item.paint_gallons.
     let totalPaintGallons = project.items.reduce((sum, item) => sum + (item.paint_gallons || 0), 0);
 
-    // Add fixed waste gallons from settings
-    const fixedWasteGallons = parseFloat(globalSettings.fixed_paint_waste_gallons) || 0;
-    totalPaintGallons += fixedWasteGallons;
+    // Add GLOBAL fixed waste gallons from settings (this is separate from item-level overrides)
+    const globalFixedWasteGallons = parseFloat(globalSettings.fixed_paint_waste_gallons) || 0;
+    totalPaintGallons += globalFixedWasteGallons;
 
-    // Add cost of fixed waste to total supplies
-    // Cost per gallon = liquidPaintRate ($/sqft) * coverage (sqft/gal)
+    // Add cost of GLOBAL fixed waste to total supplies
     const coverageSqFtPerGallon = parseFloat(globalSettings.mixed_paint_coverage_sqft_per_gallon) || 350;
-    const fixedWasteCost = fixedWasteGallons * liquidPaintRate * coverageSqFtPerGallon;
+    const globalFixedWasteCost = globalFixedWasteGallons * liquidPaintRate * coverageSqFtPerGallon;
     
-    if (fixedWasteCost > 0) {
-      totalLiquidPaintAndSupplies += fixedWasteCost;
+    if (globalFixedWasteCost > 0) {
+      totalLiquidPaintAndSupplies += globalFixedWasteCost;
     }
+
+    // Calculate total item-level fixed waste for display purposes
+    const totalItemFixedWaste = project.items.reduce((sum, item) => sum + (parseFloat(item.fixed_waste_gallons) || 0), 0);
+    
+    // Total displayed waste is global + sum of all item overrides
+    const totalFixedWasteGallons = globalFixedWasteGallons + totalItemFixedWaste;
 
     // Number of mixes is based on total paint gallons
     const numberOfMixes = Math.ceil(totalPaintGallons);
@@ -591,7 +598,6 @@ export default function NewPaintEstimate() {
     const mixingHours = numberOfMixes * mixingHoursPerGallon;
     const setupHours = parseFloat(globalSettings.setup_time_labor_hours) || 0.5;
     
-    // Calculate unique colors across all items
     const uniqueColors = new Set();
     project.items.forEach(item => {
       if (item.paint_colors && Array.isArray(item.paint_colors)) {
@@ -605,11 +611,9 @@ export default function NewPaintEstimate() {
     });
     const uniqueColorCount = uniqueColors.size;
     
-    // Setup time for ADDITIONAL colors (first color doesn't need setup, only changes do)
     const colorChangeSetupHours = parseFloat(globalSettings.color_change_setup_hours) || 0.25;
     const totalColorChangeHours = uniqueColorCount > 1 ? (uniqueColorCount - 1) * colorChangeSetupHours : 0;
     
-    // Paint gun cleaning time per color (all colors need cleaning) - with default fallback
     const paintGunCleaningHours = parseFloat(globalSettings.paint_gun_cleaning_hours) || 0.15;
     const totalPaintGunCleaningHours = uniqueColorCount > 0 ? uniqueColorCount * paintGunCleaningHours : 0;
     
@@ -641,7 +645,7 @@ export default function NewPaintEstimate() {
       uniqueColorCount,
       totalColorChangeHours,
       totalPaintGunCleaningHours,
-      fixedWasteGallons
+      fixedWasteGallons: totalFixedWasteGallons // Return the combined total for display
     };
   };
 
