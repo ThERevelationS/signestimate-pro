@@ -592,6 +592,19 @@ export default function NewPaintEstimate() {
     // Calculate total paint gallons by summing paint_gallons from each item
     let totalPaintGallons = project.items.reduce((sum, item) => sum + (item.paint_gallons || 0), 0);
 
+    // Add fixed waste gallons from settings
+    const fixedWasteGallons = parseFloat(globalSettings.fixed_paint_waste_gallons) || 0;
+    totalPaintGallons += fixedWasteGallons;
+
+    // Add cost of fixed waste to total supplies
+    // Cost per gallon = liquidPaintRate ($/sqft) * coverage (sqft/gal)
+    const coverageSqFtPerGallon = parseFloat(globalSettings.mixed_paint_coverage_sqft_per_gallon) || 350;
+    const fixedWasteCost = fixedWasteGallons * liquidPaintRate * coverageSqFtPerGallon;
+    
+    if (fixedWasteCost > 0) {
+      totalLiquidPaintAndSupplies += fixedWasteCost;
+    }
+
     // Number of mixes is based on total paint gallons
     const numberOfMixes = Math.ceil(totalPaintGallons);
 

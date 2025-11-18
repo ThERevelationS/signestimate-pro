@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { Settings as SettingsEntity, User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -52,6 +51,7 @@ const settingsDefinitions = [
     { name: "reducer_mix_ratio", type: "number", category: "painting_supplies", description: "Reducer component ratio in the mix (e.g., 1 part reducer)", default: "1" },
     { name: "mixed_paint_coverage_sqft_per_gallon", type: "number", category: "painting_supplies", description: "Coverage in square feet for one gallon of mixed paint", default: "350" },
     { name: "paint_waste_multiplier", type: "number", category: "painting_supplies", description: "Multiplier to account for paint waste (e.g., 1.25 for 25% waste)", default: "1.25" },
+          { name: "fixed_paint_waste_gallons", type: "number", category: "painting_supplies", description: "Additional fixed volume of waste paint per job (in gallons) added to Cost Summary", default: "0" },
     { name: "default_paint_supplies_per_sqft", type: "number", category: "painting_supplies", description: "Cost of paint-specific supplies per sq. ft. per color (rollers, trays, etc.)", default: "1.25" },
     { name: "paint_mask_rate_per_sqft", type: "number", category: "painting_supplies", description: "Material cost for paint mask vinyl per square foot", default: "0.75" },
     { name: "paint_mask_cutting_labor_rate_per_sqft", type: "number", category: "painting_labor", description: "Labor cost for cutting the paint mask per sq. ft.", default: "0.15" },
