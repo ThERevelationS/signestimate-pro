@@ -633,9 +633,7 @@ export default function NewPaintEstimate() {
       totalLiquidPaintAndSupplies = minPaintCost;
     }
 
-    // Calculate total fixed waste (Global + Items) for display
-    const totalItemFixedWaste = project.items.reduce((sum, item) => sum + (parseFloat(item.fixed_waste_gallons) || 0), 0);
-    const fixedWasteGallons = globalFixedWasteGallons + totalItemFixedWaste;
+
 
     return {
       totalPaintMask,
