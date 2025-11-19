@@ -1835,7 +1835,7 @@ export default function NewPaintEstimate() {
     setShowEmailModal(false);
   };
 
-  const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours, totalPaintGunCleaningHours } = calculateTotals();
+  const { totalPaintMask, totalLiquidPaintAndSupplies, totalLabor, totalLaborHours, totalGallonsNeeded, numberOfMixes, mixingHours, setupHours, uniqueColorCount, totalColorChangeHours, totalPaintGunCleaningHours, fixedWasteGallons } = calculateTotals();
   const itemsWithDiscounts = getItemsWithDiscounts();
 
   if (isLoading) {
