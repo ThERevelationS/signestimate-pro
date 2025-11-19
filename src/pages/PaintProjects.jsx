@@ -31,7 +31,7 @@ export default function PaintProjects() {
         return;
       }
 
-      const projectsData = await Project.filter({ created_by: user.email }, '-created_date');
+      const projectsData = await Project.list('-created_date');
       setProjects(projectsData);
       
       if (projectsData.length > 0) {
