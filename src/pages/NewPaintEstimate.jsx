@@ -369,7 +369,7 @@ export default function NewPaintEstimate() {
     if (!isLoading && project.items.length > 0 && Object.keys(globalSettings).length > 0) {
       recalculateAllItems();
     }
-  }, [isLoading, globalSettings, recalculateAllItems]);
+  }, [isLoading, globalSettings, recalculateAllItems, project.id]);
 
   const addItem = () => {
     setProject((prev) => ({
