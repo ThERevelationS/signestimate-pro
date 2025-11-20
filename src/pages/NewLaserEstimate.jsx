@@ -1595,7 +1595,13 @@ Best regards`;
                 <div className="border-t pt-4">
                   <div className="flex justify-between text-sm text-slate-600">
                     <span>Total Quantity:</span>
-                    <span className="font-medium">{project.items.reduce((sum, item) => sum + (parseFloat(item.quantity) || 0), 0)}</span>
+                    <span className="font-medium">{project.items.reduce((sum, item) => {
+                      const qty = parseFloat(item.quantity) || 0;
+                      if (item.item_type === 'lettering') {
+                        return sum + (qty * (parseFloat(item.num_letters) || 0));
+                      }
+                      return sum + qty;
+                    }, 0)}</span>
                   </div>
                 </div>
 
