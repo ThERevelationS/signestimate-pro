@@ -23,7 +23,8 @@ import {
   Server,
   User as UserIcon,
   Users,
-  Anchor 
+  Anchor,
+  ChevronDown
 } from 'lucide-react';
 
 export default function Layout({ children, currentPageName }) {
@@ -31,24 +32,10 @@ export default function Layout({ children, currentPageName }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [moduleStatuses, setModuleStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(true);
-  const [hoveredModule, setHoveredModule] = useState(null);
-  const hoverTimeoutRef = useRef(null);
+  const [expandedModule, setExpandedModule] = useState(null);
 
-  const handleMouseEnter = (moduleId) => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-    setHoveredModule(moduleId);
-  };
-
-  const handleMouseLeave = () => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
-    hoverTimeoutRef.current = setTimeout(() => {
-      setHoveredModule(null);
-    }, 150); // 150ms delay to prevent accidental closing
+  const handleToggle = (moduleId) => {
+    setExpandedModule(prev => prev === moduleId ? null : moduleId);
   };
 
   useEffect(() => {
@@ -196,9 +183,9 @@ export default function Layout({ children, currentPageName }) {
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full isolate">
-        <Sidebar className="border-r border-slate-200 bg-white z-[100] sticky top-0 h-screen shadow-xl">
+  <SidebarProvider>
+    <div className="flex h-screen w-full">
+      <Sidebar className="border-r border-slate-200 bg-white z-[100] sticky top-0 h-screen shadow-xl">
           <SidebarHeader className="border-b border-slate-200 p-6">
             <Link to={createPageUrl("Dashboard")} className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl flex items-center justify-center">
