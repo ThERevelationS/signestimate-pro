@@ -161,7 +161,7 @@ export default function NewLaserEstimate() {
             updated.total_cut_length_inches = perimeterInches * updated.quantity;
           } 
           
-          if (updated.item_type === 'engraving' || updated.item_type === 'engrave_and_cut') {
+          if ((updated.item_type === 'engraving' || updated.item_type === 'engrave_and_cut') && (field === 'length' || field === 'width' || field === 'item_type')) {
             updated.engrave_area_sqin = updated.length * updated.width;
           }
 
