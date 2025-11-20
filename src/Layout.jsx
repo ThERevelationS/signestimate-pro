@@ -207,18 +207,20 @@ export default function Layout({ children, currentPageName }) {
                   return null;
                 }
 
-                const isExpanded = hoveredModule === module.id;
+                const isExpanded = expandedModule === module.id;
 
                 return (
                   <SidebarMenuItem key={module.id}>
                     <div 
-                      className={`${module.bgColor} ${module.hoverColor} rounded-xl p-3 transition-all duration-200`}
-                      onMouseEnter={() => handleMouseEnter(module.id)}
-                      onMouseLeave={handleMouseLeave}
+                      className={`${module.bgColor} ${module.hoverColor} rounded-xl p-3 transition-all duration-200 cursor-pointer`}
+                      onClick={() => handleToggle(module.id)}
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        <module.icon className={`w-5 h-5 ${module.color}`} />
-                        <span className="font-semibold text-slate-900 text-sm">{module.name}</span>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <module.icon className={`w-5 h-5 ${module.color}`} />
+                          <span className="font-semibold text-slate-900 text-sm">{module.name}</span>
+                        </div>
+                        <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                       </div>
 
                       <div 
