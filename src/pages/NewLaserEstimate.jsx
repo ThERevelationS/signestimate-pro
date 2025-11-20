@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { LaserProject, Settings, User } from "@/entities/all";
 import { useSearchParams } from "react-router-dom"; // Removed useNavigate
@@ -160,7 +159,13 @@ export default function NewLaserEstimate() {
           if (updated.item_type === 'panel' || updated.item_type === 'engrave_and_cut') {
             const perimeterInches = 2 * (updated.length + updated.width);
             updated.total_cut_length_inches = perimeterInches * updated.quantity;
-          } else if (updated.item_type === 'lettering') {
+          } 
+          
+          if (updated.item_type === 'engraving' || updated.item_type === 'engrave_and_cut') {
+            updated.engrave_area_sqin = updated.length * updated.width;
+          }
+
+          if (updated.item_type === 'lettering') {
             const perimeterPerLetter = updated.letter_height * perimFactor;
             updated.total_cut_length_inches = perimeterPerLetter * updated.num_letters * updated.quantity;
           }
@@ -195,7 +200,7 @@ export default function NewLaserEstimate() {
       const cutTimeMinutes = item.total_cut_length_inches / item.cut_speed_ipm;
 
       // Calculate engrave time
-      const engraveTimeMinutes = item.engrave_area_sqin / item.engrave_speed_sqipm;
+      const engraveTimeMinutes = (item.engrave_area_sqin * item.quantity) / item.engrave_speed_sqipm;
 
       // Total machine time
       const totalMachineTimeMinutes = cutTimeMinutes + engraveTimeMinutes;
@@ -1406,7 +1411,7 @@ Best regards`;
 
                         </div>
 
-                        {(item.item_type === 'panel' || item.item_type === 'engrave_and_cut') &&
+                        {(item.item_type === 'panel' || item.item_type === 'engrave_and_cut' || item.item_type === 'engraving') &&
                     <>
                             <div>
                               <Label>Length (inches)</Label>
