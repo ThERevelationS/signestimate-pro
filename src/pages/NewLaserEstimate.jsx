@@ -1594,12 +1594,8 @@ Best regards`;
 
                 <div className="border-t pt-4">
                   <div className="flex justify-between text-sm text-slate-600">
-                    <span>Total Items:</span>
-                    <span className="font-medium">{project.items.length}</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
-                    <span>TOTAL:</span>
-                    <span className="text-green-600">${((project.total_machine_cost || 0) + (project.total_supplies_cost || 0) + (project.total_labor_cost || 0)).toFixed(2)}</span>
+                    <span>Total Quantity:</span>
+                    <span className="font-medium">{project.items.reduce((sum, item) => sum + (parseFloat(item.quantity) || 0), 0)}</span>
                   </div>
                 </div>
 
