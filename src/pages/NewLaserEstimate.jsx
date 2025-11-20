@@ -49,10 +49,14 @@ export default function NewLaserEstimate() {
     items: [],
     machine_rate_per_hour: 100,
     labor_rate: 75,
+    engraving_machine_rate_per_hour: 80,
+    engraving_labor_rate: 40,
+    parameter_handling_time_percentage: 15,
+    engraving_handling_time_percentage: 20,
     fixed_setup_hours: 0.5,
     fixed_material_setup_cost: 0,
     notes: "",
-    total_supplies_cost: 0 // Initialize total supplies cost
+    total_supplies_cost: 0
   });
 
   const [globalSettings, setGlobalSettings] = useState({});
@@ -87,12 +91,16 @@ export default function NewLaserEstimate() {
 
       if (!editId) {
         const newDefaults = {
-          machine_rate_per_hour: parseFloat(settingsObj.laser_machine_rate) || 100,
-          labor_rate: parseFloat(settingsObj.laser_labor_rate) || 75,
-          fixed_setup_hours: parseFloat(settingsObj.min_laser_setup_hours) || 0.5,
-          fixed_material_setup_cost: parseFloat(settingsObj.laser_fixed_material_setup_cost) || 0,
+          machine_rate_per_hour: parseFloat(settingsObj.parameter_laser_machine_rate) || 100,
+          labor_rate: parseFloat(settingsObj.parameter_laser_labor_rate) || 75,
+          engraving_machine_rate_per_hour: parseFloat(settingsObj.engraving_laser_machine_rate) || 80,
+          engraving_labor_rate: parseFloat(settingsObj.engraving_laser_labor_rate) || 40,
+          parameter_handling_time_percentage: parseFloat(settingsObj.parameter_handling_time_percentage) || 15,
+          engraving_handling_time_percentage: parseFloat(settingsObj.engraving_handling_time_percentage) || 20,
+          fixed_setup_hours: parseFloat(settingsObj.min_parameter_laser_setup_hours) || 0.5,
+          fixed_material_setup_cost: parseFloat(settingsObj.parameter_laser_fixed_material_setup_cost) || 0,
           notes: settingsObj.default_notes_template || "",
-          total_supplies_cost: 0 // Initialize for new project
+          total_supplies_cost: 0
         };
         setProject((prev) => ({ ...prev, ...newDefaults }));
       }
@@ -191,39 +199,60 @@ export default function NewLaserEstimate() {
   };
 
   const calculateTotals = useCallback(() => {
-    const handlingPercentage = parseFloat(globalSettings.handling_time_percentage) || 15;
-
     let totalMachineCost = 0;
     let totalLaborCost = 0;
-    let totalSuppliesCost = 0; // New: Initialize total supplies cost
+    let totalSuppliesCost = 0;
 
     const updatedItems = project.items.map((item) => {
-      // Calculate cut time
-      const cutTimeMinutes = item.total_cut_length_inches / item.cut_speed_ipm;
+      const cutTimeMinutes = item.total_cut_length_inches / (item.cut_speed_ipm || 20);
+      const engraveTimeMinutes = (item.engrave_area_sqin * item.quantity) / (item.engrave_speed_sqipm || 5);
 
-      // Calculate engrave time
-      const engraveTimeMinutes = (item.engrave_area_sqin * item.quantity) / item.engrave_speed_sqipm;
+      const cutTimeHours = cutTimeMinutes / 60;
+      const engraveTimeHours = engraveTimeMinutes / 60;
+      const machineTimeHours = cutTimeHours + engraveTimeHours;
 
-      // Total machine time
-      const totalMachineTimeMinutes = cutTimeMinutes + engraveTimeMinutes;
-      const machineTimeHours = totalMachineTimeMinutes / 60;
+      // Rates
+      const paramMachineRate = project.machine_rate_per_hour || 100;
+      const paramLaborRate = project.labor_rate || 75;
+      const paramHandlingPct = (project.parameter_handling_time_percentage || 15) / 100;
 
-      // Handling time
-      const handlingTimeHours = machineTimeHours * (handlingPercentage / 100);
+      const engraveMachineRate = project.engraving_machine_rate_per_hour || 80;
+      const engraveLaborRate = project.engraving_labor_rate || 40;
+      const engraveHandlingPct = (project.engraving_handling_time_percentage || 20) / 100;
 
-      // Costs
-      const machineCost = machineTimeHours * project.machine_rate_per_hour;
-      const laborCost = handlingTimeHours * project.labor_rate;
+      let itemMachineCost = 0;
+      let itemLaborCost = 0;
+      let itemHandlingHours = 0;
 
-      totalMachineCost += machineCost;
-      totalLaborCost += laborCost;
+      if (item.item_type === 'panel' || item.item_type === 'lettering') {
+        // Parameter Only
+        itemHandlingHours = machineTimeHours * paramHandlingPct;
+        itemMachineCost = machineTimeHours * paramMachineRate;
+        itemLaborCost = itemHandlingHours * paramLaborRate;
+      } else if (item.item_type === 'engraving') {
+        // Engraving Only
+        itemHandlingHours = machineTimeHours * engraveHandlingPct;
+        itemMachineCost = machineTimeHours * engraveMachineRate;
+        itemLaborCost = itemHandlingHours * engraveLaborRate;
+      } else if (item.item_type === 'engrave_and_cut') {
+        // Mixed - Split costs
+        const cutHandling = cutTimeHours * paramHandlingPct;
+        const engraveHandling = engraveTimeHours * engraveHandlingPct;
+        itemHandlingHours = cutHandling + engraveHandling;
+
+        itemMachineCost = (cutTimeHours * paramMachineRate) + (engraveTimeHours * engraveMachineRate);
+        itemLaborCost = (cutHandling * paramLaborRate) + (engraveHandling * engraveLaborRate);
+      }
+
+      totalMachineCost += itemMachineCost;
+      totalLaborCost += itemLaborCost;
 
       return {
         ...item,
         machine_time_hours: machineTimeHours,
-        handling_time_hours: handlingTimeHours,
-        machine_cost: machineCost,
-        labor_cost: laborCost
+        handling_time_hours: itemHandlingHours,
+        machine_cost: itemMachineCost,
+        labor_cost: itemLaborCost
       };
     });
 
@@ -241,7 +270,18 @@ export default function NewLaserEstimate() {
       total_labor_cost: totalLaborCost,
       total_supplies_cost: totalSuppliesCost // Return total supplies cost
     };
-  }, [project.items, project.machine_rate_per_hour, project.labor_rate, project.fixed_setup_hours, project.fixed_material_setup_cost, globalSettings]);
+  }, [
+    project.items, 
+    project.machine_rate_per_hour, 
+    project.labor_rate, 
+    project.engraving_machine_rate_per_hour, 
+    project.engraving_labor_rate,
+    project.parameter_handling_time_percentage,
+    project.engraving_handling_time_percentage,
+    project.fixed_setup_hours, 
+    project.fixed_material_setup_cost, 
+    globalSettings
+  ]);
 
   useEffect(() => {
     if (!isLoading && project.items.length > 0) {
