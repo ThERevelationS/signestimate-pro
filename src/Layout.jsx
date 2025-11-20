@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { ModuleStatus, User } from '@/entities/all';
@@ -32,6 +32,24 @@ export default function Layout({ children, currentPageName }) {
   const [moduleStatuses, setModuleStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [hoveredModule, setHoveredModule] = useState(null);
+  const hoverTimeoutRef = useRef(null);
+
+  const handleMouseEnter = (moduleId) => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setHoveredModule(moduleId);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredModule(null);
+    }, 150); // 150ms delay to prevent accidental closing
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -179,8 +197,8 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <Sidebar className="border-r border-slate-200 bg-white z-50 sticky top-0 h-screen">
+      <div className="flex h-screen w-full isolate">
+        <Sidebar className="border-r border-slate-200 bg-white z-[100] sticky top-0 h-screen shadow-xl">
           <SidebarHeader className="border-b border-slate-200 p-6">
             <Link to={createPageUrl("Dashboard")} className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl flex items-center justify-center">
@@ -208,8 +226,8 @@ export default function Layout({ children, currentPageName }) {
                   <SidebarMenuItem key={module.id}>
                     <div 
                       className={`${module.bgColor} ${module.hoverColor} rounded-xl p-3 transition-all duration-200`}
-                      onMouseEnter={() => setHoveredModule(module.id)}
-                      onMouseLeave={() => setHoveredModule(null)}
+                      onMouseEnter={() => handleMouseEnter(module.id)}
+                      onMouseLeave={handleMouseLeave}
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <module.icon className={`w-5 h-5 ${module.color}`} />
@@ -219,9 +237,9 @@ export default function Layout({ children, currentPageName }) {
                       <div 
                         className="space-y-1 transition-all duration-300 ease-in-out"
                         style={{
-                          maxHeight: isExpanded ? '400px' : '0px',
+                          maxHeight: isExpanded ? '500px' : '0px',
                           opacity: isExpanded ? 1 : 0,
-                          overflow: isExpanded ? 'visible' : 'hidden',
+                          overflow: 'hidden',
                           pointerEvents: isExpanded ? 'auto' : 'none'
                         }}
                       >
