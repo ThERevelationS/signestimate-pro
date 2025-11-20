@@ -180,7 +180,9 @@ export default function NewLaserEstimate() {
           updated.cut_speed_ipm = baseSpeed * materialMultiplier;
 
           // Get engraving speed from settings
-          updated.engrave_speed_sqipm = parseFloat(globalSettings.laser_engrave_speed_sqipm) || 5;
+          const engraveBaseSpeed = parseFloat(globalSettings.laser_engrave_speed_sqipm) || 5;
+          const engraveMultiplier = parseFloat(globalSettings[`${updated.material_type.toLowerCase()}_engrave_multiplier`]) || 1.0;
+          updated.engrave_speed_sqipm = engraveBaseSpeed * engraveMultiplier;
         }
 
         return updated;
