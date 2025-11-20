@@ -31,7 +31,7 @@ export default function Layout({ children, currentPageName }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [moduleStatuses, setModuleStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(true);
-  const [hoveredModule, setHoveredModule] = useState(null);
+  const [expandedModule, setExpandedModule] = useState(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -180,7 +180,7 @@ export default function Layout({ children, currentPageName }) {
   return (
     <SidebarProvider>
       <div className="flex h-screen w-full">
-        <Sidebar className="border-r border-slate-200 bg-white">
+        <Sidebar className="border-r border-slate-200 bg-white z-50 relative">
           <SidebarHeader className="border-b border-slate-200 p-6">
             <Link to={createPageUrl("Dashboard")} className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl flex items-center justify-center">
@@ -197,31 +197,33 @@ export default function Layout({ children, currentPageName }) {
             <SidebarMenu className="space-y-1">
               {modules.map((module) => {
                 const isEnabled = hasPermission(module.id);
-                
+
                 if (!isEnabled) {
                   return null;
                 }
-                
-                const isExpanded = hoveredModule === module.id;
-                
+
+                const isExpanded = expandedModule === module.id;
+
                 return (
                   <SidebarMenuItem key={module.id}>
                     <div 
                       className={`${module.bgColor} ${module.hoverColor} rounded-xl p-3 transition-all duration-200`}
-                      onMouseEnter={() => setHoveredModule(module.id)}
-                      onMouseLeave={() => setHoveredModule(null)}
                     >
-                      <div className="flex items-center gap-2 mb-2">
+                      <div 
+                        className="flex items-center gap-2 mb-2 cursor-pointer select-none"
+                        onClick={() => setExpandedModule(isExpanded ? null : module.id)}
+                      >
                         <module.icon className={`w-5 h-5 ${module.color}`} />
                         <span className="font-semibold text-slate-900 text-sm">{module.name}</span>
                       </div>
-                      
+
                       <div 
                         className="space-y-1 transition-all duration-300 ease-in-out"
                         style={{
                           maxHeight: isExpanded ? '400px' : '0px',
                           opacity: isExpanded ? 1 : 0,
-                          overflow: isExpanded ? 'visible' : 'hidden'
+                          overflow: isExpanded ? 'visible' : 'hidden',
+                          pointerEvents: isExpanded ? 'auto' : 'none'
                         }}
                       >
                         <Link
