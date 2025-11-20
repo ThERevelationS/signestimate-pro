@@ -180,7 +180,7 @@ export default function Layout({ children, currentPageName }) {
   return (
     <SidebarProvider>
       <div className="flex h-screen w-full">
-        <Sidebar className="border-r border-slate-200 bg-white z-50 relative">
+        <Sidebar className="border-r border-slate-200 bg-white z-50 sticky top-0 h-screen">
           <SidebarHeader className="border-b border-slate-200 p-6">
             <Link to={createPageUrl("Dashboard")} className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl flex items-center justify-center">
