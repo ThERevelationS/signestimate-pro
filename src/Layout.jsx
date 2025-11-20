@@ -31,7 +31,7 @@ export default function Layout({ children, currentPageName }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [moduleStatuses, setModuleStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(true);
-  const [expandedModule, setExpandedModule] = useState(null);
+  const [hoveredModule, setHoveredModule] = useState(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -202,17 +202,16 @@ export default function Layout({ children, currentPageName }) {
                   return null;
                 }
 
-                const isExpanded = expandedModule === module.id;
+                const isExpanded = hoveredModule === module.id;
 
                 return (
                   <SidebarMenuItem key={module.id}>
                     <div 
                       className={`${module.bgColor} ${module.hoverColor} rounded-xl p-3 transition-all duration-200`}
+                      onMouseEnter={() => setHoveredModule(module.id)}
+                      onMouseLeave={() => setHoveredModule(null)}
                     >
-                      <div 
-                        className="flex items-center gap-2 mb-2 cursor-pointer select-none"
-                        onClick={() => setExpandedModule(isExpanded ? null : module.id)}
-                      >
+                      <div className="flex items-center gap-2 mb-2">
                         <module.icon className={`w-5 h-5 ${module.color}`} />
                         <span className="font-semibold text-slate-900 text-sm">{module.name}</span>
                       </div>
