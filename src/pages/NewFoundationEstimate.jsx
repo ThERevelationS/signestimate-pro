@@ -32,16 +32,19 @@ export default function NewFoundationEstimate() {
     estimate_number: "",
     hyperlink: "",
     items: [],
-    concrete_cost_per_cy: 135,
+    // concrete_cost_per_cy removed - strictly from inventory now
     rebar_cost_per_ft: 0.75,
-    hand_dig_excavation_cost_per_cy: 10, // NEW: Cost for hand dig excavation (e.g., disposal)
-    equipment_excavation_cost_per_cy: 15, // NEW: Cost for equipment excavation (e.g., disposal, machine operating cost aside from labor)
+    forming_materials_cost_spread_foot: 0.50,
+    forming_materials_cost_pillar: 0.75,
+    min_excavation_time_hours: 1.0,
+    hand_dig_excavation_cost_per_cy: 10, 
+    equipment_excavation_cost_per_cy: 15, 
     forming_labor_rate: 55,
     pouring_labor_rate: 60,
     finishing_labor_rate: 50,
-    hand_dig_labor_rate: 45, // NEW: Default rate for hand digging labor
-    equipment_excavation_labor_rate: 35, // NEW: Default rate for equipment excavation labor (operator)
-    excavation_method: "", // NEW: "hand_dig" or "equipment_excavation"
+    hand_dig_labor_rate: 45, 
+    equipment_excavation_labor_rate: 35, 
+    excavation_method: "", 
     notes: "",
     selected_equipment: [],
     selected_concrete_id: null
@@ -102,8 +105,11 @@ export default function NewFoundationEstimate() {
 
       if (!editId) {
         const newDefaults = {
-          concrete_cost_per_cy: parseFloat(settingsObj.foundation_concrete_cost_per_cy) || 135,
+          // foundation_concrete_cost_per_cy removed from settings
           rebar_cost_per_ft: parseFloat(settingsObj.foundation_rebar_cost_per_ft) || 0.75,
+          forming_materials_cost_spread_foot: parseFloat(settingsObj.foundation_forming_materials_cost_spread_foot) || 0.50,
+          forming_materials_cost_pillar: parseFloat(settingsObj.foundation_forming_materials_cost_pillar) || 0.75,
+          min_excavation_time_hours: parseFloat(settingsObj.foundation_min_excavation_time_hours) || 1.0,
           hand_dig_excavation_cost_per_cy: parseFloat(settingsObj.foundation_hand_dig_excavation_cost_per_cy) || 10,
           equipment_excavation_cost_per_cy: parseFloat(settingsObj.foundation_equipment_excavation_cost_per_cy) || 15,
           forming_labor_rate: parseFloat(settingsObj.foundation_forming_labor_rate) || 55,
@@ -629,7 +635,7 @@ export default function NewFoundationEstimate() {
       setProject(prev => ({
         ...prev,
         selected_concrete_id: null,
-        concrete_cost_per_cy: parseFloat(globalSettings.foundation_concrete_cost_per_cy) || 135
+        concrete_cost_per_cy: 0 // No default fallback
       }));
       return;
     }
@@ -656,14 +662,15 @@ export default function NewFoundationEstimate() {
 
     let totalConcreteCost = 0;
     let totalRebarCost = 0;
-    let totalNonLaborExcavationCost = 0; // Cost of excavation excluding labor (e.g., disposal, base machine cost)
+    let totalNonLaborExcavationCost = 0; 
     let totalLaborCost = 0;
+    let totalFormingMaterialsCost = 0;
 
     const updatedItems = project.items.map(item => {
       // Determine rates, using item-specific override if present, otherwise project default
       const concreteRate = (item.custom_concrete_cost_per_cy !== undefined && item.custom_concrete_cost_per_cy !== null)
         ? item.custom_concrete_cost_per_cy
-        : project.concrete_cost_per_cy;
+        : (project.concrete_cost_per_cy || 0);
 
       const rebarRate = (item.custom_rebar_cost_per_ft !== undefined && item.custom_rebar_cost_per_ft !== null)
         ? item.custom_rebar_cost_per_ft
@@ -708,6 +715,7 @@ export default function NewFoundationEstimate() {
       // Labor calculations for forming, pouring, finishing
       let formingSqFt = 0;
       let finishingSqFt = 0;
+      let formingMaterialsRate = 0;
 
       if (item.foundation_type === 'spread_foot') {
         const lengthFeet = item.length_inches / 12;
@@ -717,6 +725,7 @@ export default function NewFoundationEstimate() {
         const perimeter = 2 * (lengthFeet + widthFeet);
         formingSqFt = perimeter * depthFeet;
         finishingSqFt = lengthFeet * widthFeet;
+        formingMaterialsRate = project.forming_materials_cost_spread_foot || 0;
       } else if (item.foundation_type === 'pillar') {
         const depthFeet = item.depth_inches / 12;
         const circumference = Math.PI * (item.diameter / 12);
@@ -724,6 +733,7 @@ export default function NewFoundationEstimate() {
 
         const radiusFeet = (item.diameter / 12) / 2;
         finishingSqFt = Math.PI * Math.pow(radiusFeet, 2);
+        formingMaterialsRate = project.forming_materials_cost_pillar || 0;
       }
 
       // Only calculate forming/finishing if enabled
@@ -731,42 +741,137 @@ export default function NewFoundationEstimate() {
       const pouringHoursPerItem = item.concrete_volume_cy * pouringHoursPerCy;
       const finishingHoursPerItem = item.include_finishing ? finishingSqFt * finishingHoursPerSqFt : 0;
 
+      // Calculate Forming Materials Cost if forming is included
+      const formingMaterialsCost = item.include_forming ? (formingSqFt * formingMaterialsRate * item.quantity) : 0;
+
       const formingCost = formingHoursPerItem * project.forming_labor_rate * item.quantity;
       const pouringCost = pouringHoursPerItem * project.pouring_labor_rate * item.quantity;
       const finishingCost = finishingHoursPerItem * project.finishing_labor_rate * item.quantity;
 
-      // NEW: Excavation Labor Cost
+      // Excavation Labor Cost with Minimum Time
       let excavationLaborCost = 0;
-      if (project.excavation_method === 'hand_dig') {
-        excavationLaborCost = item.excavation_volume_cy * excavationHoursPerCy * handDigLaborRate * item.quantity;
-      } else if (project.excavation_method === 'equipment_excavation') {
-        // This labor is for the operator, distinct from equipment rental cost
-        excavationLaborCost = item.excavation_volume_cy * excavationHoursPerCy * equipmentExcavationLaborRate * item.quantity;
-      }
+      let rawExcavationHours = item.excavation_volume_cy * excavationHoursPerCy * item.quantity;
+      
+      // Apply minimum time logic PER ITEM or PER PROJECT? 
+      // Usually min time is per project/visit. But here we are calculating item lines.
+      // Let's calculate raw hours here, and apply min time to the TOTAL if needed, 
+      // OR apply it per item if that's the intention. 
+      // However, the user said "Give me a minimum time option for excavating".
+      // Usually this means for the whole job.
+      // BUT, the current structure sums up item costs.
+      // Let's adhere to the existing per-item structure for now but maybe apply min time check at the end?
+      // No, let's just sum up the raw hours first, then apply min time to the total labor calculation below.
+      
+      // Wait, the current code calculates cost per item.
+      // If I change it to per project, I need to track total hours.
+      // Let's change the logic to sum hours first.
+      
+      // For now, let's just calculate the raw cost per item, and handle min time at the aggregate level?
+      // The `updatedItems` map returns `excavation_cost` which currently includes labor.
+      // I should separate them or adjust the last item?
+      // Actually, a "Minimum Time" usually applies to the total excavation labor hours for the project.
+      // So I should sum up all excavation hours, apply the min, and then recalculate the cost.
+      // But I also need to attribute cost to items for the breakdown.
+      // This is tricky with the current structure.
+      // Let's just calculate raw hours here and store them.
+      
+      // REVISION: The user asked for a minimum time option. 
+      // I will accumulate total excavation hours and apply the minimum at the end, 
+      // then distribute the difference or just add it as a separate line item?
+      // Or just ensure the total labor cost reflects the minimum.
+      // But the items need to sum up to the total.
+      
+      // Simpler approach: Calculate raw hours per item.
+      // At the end, check if total hours < min hours. 
+      // If so, add the difference to the total labor cost.
+      // But `updatedItems` need to reflect this.
+      // I will calculate the `excavationLaborCost` here simply as hours * rate.
+      // Then after the loop, I'll check the total and adjust.
+      
+      let excavationLaborRate = (project.excavation_method === 'hand_dig') ? handDigLaborRate : equipmentExcavationLaborRate;
+      let itemExcavationLaborCost = rawExcavationHours * excavationLaborRate;
 
-
-      const itemTotalCost = concreteCost + rebarCost + nonLaborExcavationCost + formingCost + pouringCost + finishingCost + excavationLaborCost;
+      const itemTotalCost = concreteCost + rebarCost + nonLaborExcavationCost + formingCost + pouringCost + finishingCost + itemExcavationLaborCost + formingMaterialsCost;
 
       totalConcreteCost += concreteCost;
       totalRebarCost += rebarCost;
       totalNonLaborExcavationCost += nonLaborExcavationCost;
-      totalLaborCost += (formingCost + pouringCost + finishingCost + excavationLaborCost); // Add excavation labor to total labor
-
+      totalFormingMaterialsCost += formingMaterialsCost;
+      
+      // We'll sum labor components separately to apply min time correctly later
+      // But wait, forming/pouring/finishing are also labor. 
+      // Min time likely applies only to excavation.
+      // Let's track excavation hours separately.
+      
       return {
         ...item,
         concrete_cost: concreteCost,
         rebar_cost: rebarCost,
-        // The item's excavation_cost sums both the non-labor and labor components for that item
-        excavation_cost: nonLaborExcavationCost + excavationLaborCost, 
+        excavation_cost: nonLaborExcavationCost + itemExcavationLaborCost, 
+        forming_materials_cost: formingMaterialsCost,
         forming_hours: formingHoursPerItem,
         forming_cost: formingCost,
         pouring_hours: pouringHoursPerItem,
         pouring_cost: pouringCost,
         finishing_hours: finishingHoursPerItem,
         finishing_cost: finishingCost,
-        item_total_cost: itemTotalCost
+        item_total_cost: itemTotalCost,
+        raw_excavation_hours: rawExcavationHours // Store for total calc
       };
     });
+
+    // Calculate total excavation hours
+    const totalExcavationHours = updatedItems.reduce((sum, item) => sum + (item.raw_excavation_hours || 0), 0);
+    const minExcavationHours = project.min_excavation_time_hours || 0;
+    
+    let finalExcavationLaborCost = 0;
+    let excavationLaborRate = (project.excavation_method === 'hand_dig') ? handDigLaborRate : equipmentExcavationLaborRate;
+
+    if (totalExcavationHours < minExcavationHours && totalExcavationHours > 0) {
+        // Apply minimum
+        finalExcavationLaborCost = minExcavationHours * excavationLaborRate;
+        
+        // We need to distribute the extra cost back to items or just keep it in total.
+        // To keep items summing to total, we should distribute.
+        // Or easier: just add the difference to the first item or distribute proportionally.
+        const extraCost = finalExcavationLaborCost - (totalExcavationHours * excavationLaborRate);
+        if (updatedItems.length > 0) {
+            // Add to first item for simplicity, or mark it as "Minimum Charge Adjustment"
+            updatedItems[0].excavation_cost += extraCost;
+            updatedItems[0].item_total_cost += extraCost;
+            // Note: this slightly skews the first item's data but keeps totals correct.
+        }
+    } else {
+        finalExcavationLaborCost = totalExcavationHours * excavationLaborRate;
+    }
+
+    // Now sum up all labor costs again
+    updatedItems.forEach(item => {
+        totalLaborCost += item.forming_cost + item.pouring_cost + item.finishing_cost;
+    });
+    totalLaborCost += finalExcavationLaborCost;
+
+    // Recalculate total non-labor excavation cost just to be safe (it was summed in map)
+    // But we modified updatedItems[0].excavation_cost which includes labor. 
+    // We need to be careful. `totalNonLaborExcavationCost` was summed correctly in the map (it's purely non-labor).
+    // `excavation_cost` on item is (non-labor + labor). 
+    // So updating `excavation_cost` on item is correct for display.
+    // We just need to ensure `totalLaborCost` is correct.
+    
+    // Re-sum total excavation cost from items for consistency?
+    // The `totalNonLaborExcavationCost` variable holds the non-labor part.
+    // The `finalExcavationLaborCost` holds the labor part (including min charge).
+    // So Total Excavation Cost shown in summary (if it combines both) should be sum of these.
+    // In the current UI, "Excavation" summary card shows `total_excavation_cost` which seems to be NON-LABOR only based on previous code:
+    // `total_excavation_cost: totalNonLaborExcavationCost`
+    // And labor is in "Labor" card.
+    // So my logic for `totalLaborCost` (summing forming/pouring/finish + finalExcavation) is correct.
+    // And `totalNonLaborExcavationCost` remains as is.
+    
+    // Just need to make sure `item.excavation_cost` updates didn't mess anything else up.
+    // `item.excavation_cost` is for per-item display.
+    
+    // Remove raw_excavation_hours from items before returning if not needed, but it's harmless.
     
     // Calculate equipment costs
     let totalEquipmentCost = 0;
