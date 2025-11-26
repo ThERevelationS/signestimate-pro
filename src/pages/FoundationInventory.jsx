@@ -31,6 +31,7 @@ export default function FoundationInventoryPage() {
     cost_per_month: 0,
     pickup_delivery_cost: 0,
     rebar_size: "N/A",
+    foundation_usage: "general",
     notes: ""
   });
 
@@ -101,6 +102,7 @@ export default function FoundationInventoryPage() {
       cost_per_month: item.cost_per_month || 0,
       pickup_delivery_cost: item.pickup_delivery_cost || 0,
       rebar_size: item.rebar_size || "N/A",
+      foundation_usage: item.foundation_usage || "general",
       notes: item.notes || ""
     });
     setShowModal(true);
@@ -207,6 +209,7 @@ export default function FoundationInventoryPage() {
       cost_per_month: 0,
       pickup_delivery_cost: 0,
       rebar_size: "N/A",
+      foundation_usage: "general",
       notes: ""
     });
     setEditingItem(null);
@@ -354,6 +357,15 @@ export default function FoundationInventoryPage() {
                             </span>
                           ) : item.material_type === 'rebar' ? (
                             <span className="text-sm">{item.rebar_size || 'N/A'}</span>
+                          ) : item.material_type === 'forming_material' ? (
+                            <span className="text-sm">
+                              {item.unit || 'N/A'}
+                              {item.foundation_usage && item.foundation_usage !== 'general' && (
+                                <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800 capitalize">
+                                  {item.foundation_usage.replace('_', ' ')}
+                                </span>
+                              )}
+                            </span>
                           ) : (
                             <span className="text-sm">
                               {item.unit || 'N/A'}
@@ -776,6 +788,26 @@ export default function FoundationInventoryPage() {
                             : 'Price per cubic yard of concrete'}
                         </p>
                       </div>
+
+                      {formData.material_type === 'forming_material' && (
+                        <div>
+                          <Label htmlFor="foundation_usage">Foundation Type Usage</Label>
+                          <Select
+                            value={formData.foundation_usage || "general"}
+                            onValueChange={(value) => setFormData(prev => ({ ...prev, foundation_usage: value }))}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="spread_foot">Spread Foot Only</SelectItem>
+                              <SelectItem value="pillar">Pillar Only</SelectItem>
+                              <SelectItem value="general">General / Both</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-slate-500 mt-1">Specify if this material is for a specific foundation type</p>
+                        </div>
+                      )}
 
                       {isConcrete && (
                         <div>
