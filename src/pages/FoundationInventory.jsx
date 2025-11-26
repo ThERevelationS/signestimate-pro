@@ -57,6 +57,8 @@ export default function FoundationInventoryPage() {
         dataToSave.unit = "cubic yard";
       } else if (dataToSave.material_type === 'rebar') {
         dataToSave.unit = "per foot";
+      } else if (dataToSave.material_type === 'forming_material') {
+        dataToSave.unit = "sqft";
       }
 
       if (editingItem) {
@@ -241,7 +243,8 @@ export default function FoundationInventoryPage() {
   const concreteItems = inventory.filter(item => 
     item.material_type === 'concrete_service' || 
     item.material_type === 'bagged_concrete' ||
-    item.material_type === 'rebar'
+    item.material_type === 'rebar' ||
+    item.material_type === 'forming_material'
   );
   
   const equipmentItems = inventory.filter(item => 
@@ -701,7 +704,7 @@ export default function FoundationInventoryPage() {
                         <Select
                           value={formData.material_type}
                           onValueChange={(value) => {
-                            const newUnit = (value === 'rebar') ? 'per foot' : 'cubic yard';
+                            const newUnit = (value === 'rebar') ? 'per foot' : (value === 'forming_material' ? 'sqft' : 'cubic yard');
                             setFormData(prev => ({ ...prev, material_type: value, unit: newUnit }));
                           }}
                         >
@@ -712,6 +715,7 @@ export default function FoundationInventoryPage() {
                             <SelectItem value="concrete_service">Concrete Service</SelectItem>
                             <SelectItem value="bagged_concrete">Bagged Concrete</SelectItem>
                             <SelectItem value="rebar">Rebar</SelectItem>
+                            <SelectItem value="forming_material">Forming Material</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -752,7 +756,7 @@ export default function FoundationInventoryPage() {
 
                       <div>
                         <Label htmlFor="cost_per_unit">
-                          Cost Per {formData.material_type === 'rebar' ? 'Foot' : 'Cubic Yard'} *
+                          Cost Per {formData.material_type === 'rebar' ? 'Foot' : formData.material_type === 'forming_material' ? 'Sq. Ft.' : 'Cubic Yard'} *
                         </Label>
                         <Input
                           id="cost_per_unit"
@@ -767,6 +771,8 @@ export default function FoundationInventoryPage() {
                         <p className="text-xs text-slate-500 mt-1">
                           {formData.material_type === 'rebar' 
                             ? 'Price per linear foot of rebar' 
+                            : formData.material_type === 'forming_material'
+                            ? 'Price per square foot of forming material'
                             : 'Price per cubic yard of concrete'}
                         </p>
                       </div>
