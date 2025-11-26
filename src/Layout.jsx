@@ -184,7 +184,7 @@ export default function Layout({ children, currentPageName }) {
 
   return (
   <SidebarProvider>
-    <div className="flex h-screen w-full">
+    <div className="flex min-h-screen w-full">
       <Sidebar className="border-r border-slate-200 bg-white z-[100] sticky top-0 h-screen shadow-xl">
           <SidebarHeader className="border-b border-slate-200 p-6">
             <Link to={createPageUrl("Dashboard")} className="flex items-center space-x-3">
@@ -333,8 +333,8 @@ export default function Layout({ children, currentPageName }) {
           </SidebarFooter>
         </Sidebar>
 
-        <div className="flex-1 flex flex-col min-h-0">
-          <header className="border-b border-slate-200 bg-white px-6 py-4">
+        <div className="flex-1 flex flex-col">
+          <header className="border-b border-slate-200 bg-white px-6 py-4 sticky top-0 z-10">
             <div className="flex items-center gap-4">
               <SidebarTrigger className="lg:hidden" />
               <h2 className="text-xl font-semibold text-slate-900 capitalize">
@@ -343,7 +343,7 @@ export default function Layout({ children, currentPageName }) {
             </div>
           </header>
           
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1">
             {children}
           </main>
         </div>
