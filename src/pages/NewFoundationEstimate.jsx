@@ -891,11 +891,13 @@ export default function NewFoundationEstimate() {
       items: updatedItems,
       total_concrete_cost: totalConcreteCost,
       total_rebar_cost: totalRebarCost,
-      total_excavation_cost: totalNonLaborExcavationCost, // This now explicitly represents the non-labor portion
+      total_forming_materials_cost: totalFormingMaterialsCost,
+      total_excavation_cost: totalNonLaborExcavationCost,
       total_labor_cost: totalLaborCost,
       total_equipment_cost: totalEquipmentCost
     };
   }, [project.items, project.selected_equipment, project.concrete_cost_per_cy, project.rebar_cost_per_ft,
+      project.forming_materials_cost_spread_foot, project.forming_materials_cost_pillar, project.min_excavation_time_hours,
       project.hand_dig_excavation_cost_per_cy, project.equipment_excavation_cost_per_cy,
       project.forming_labor_rate, project.pouring_labor_rate,
       project.finishing_labor_rate, project.hand_dig_labor_rate, project.equipment_excavation_labor_rate,
@@ -909,6 +911,7 @@ export default function NewFoundationEstimate() {
         items: calculated.items,
         total_concrete_cost: calculated.total_concrete_cost,
         total_rebar_cost: calculated.total_rebar_cost,
+        total_forming_materials_cost: calculated.total_forming_materials_cost,
         total_excavation_cost: calculated.total_excavation_cost,
         total_labor_cost: calculated.total_labor_cost,
         total_equipment_cost: calculated.total_equipment_cost
@@ -916,7 +919,8 @@ export default function NewFoundationEstimate() {
     }
   }, [calculateTotals, isLoading, project.items.length, project.selected_equipment?.length, 
       project.excavation_method, project.hand_dig_labor_rate, project.equipment_excavation_labor_rate,
-      project.hand_dig_excavation_cost_per_cy, project.equipment_excavation_cost_per_cy 
+      project.hand_dig_excavation_cost_per_cy, project.equipment_excavation_cost_per_cy,
+      project.forming_materials_cost_spread_foot, project.forming_materials_cost_pillar, project.min_excavation_time_hours
     ]);
 
   const saveProject = async () => {
@@ -943,6 +947,7 @@ export default function NewFoundationEstimate() {
         items: calculated.items,
         total_concrete_cost: calculated.total_concrete_cost,
         total_rebar_cost: calculated.total_rebar_cost,
+        total_forming_materials_cost: calculated.total_forming_materials_cost,
         total_excavation_cost: calculated.total_excavation_cost,
         total_labor_cost: calculated.total_labor_cost,
         total_equipment_cost: calculated.total_equipment_cost,
@@ -1584,9 +1589,15 @@ export default function NewFoundationEstimate() {
                 <div className="p-3 bg-blue-50 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-medium text-blue-800">Materials</span>
-                    <span className="text-base font-bold text-blue-900">${((project.total_concrete_cost || 0) + (project.total_rebar_cost || 0)).toFixed(2)}</span>
+                    <span className="text-base font-bold text-blue-900">${((project.total_concrete_cost || 0) + (project.total_rebar_cost || 0) + (project.total_forming_materials_cost || 0)).toFixed(2)}</span>
                   </div>
-                  <p className="text-xs text-blue-600 mt-0.5">Concrete & rebar</p>
+                  <p className="text-xs text-blue-600 mt-0.5">Concrete, rebar & forms</p>
+                  {(project.total_forming_materials_cost > 0) && (
+                    <div className="flex justify-between items-center mt-1 text-xs text-blue-700 border-t border-blue-200 pt-1">
+                      <span>Forms:</span>
+                      <span>${project.total_forming_materials_cost.toFixed(2)}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-3 bg-amber-50 rounded-lg">
@@ -1630,7 +1641,7 @@ export default function NewFoundationEstimate() {
                   )}
                   <div className="flex justify-between text-base font-bold border-t pt-2">
                     <span>TOTAL:</span>
-                    <span className="text-green-600">${((project.total_concrete_cost || 0) + (project.total_rebar_cost || 0) + (project.total_excavation_cost || 0) + (project.total_labor_cost || 0) + (project.total_equipment_cost || 0)).toFixed(2)}</span>
+                    <span className="text-green-600">${((project.total_concrete_cost || 0) + (project.total_rebar_cost || 0) + (project.total_forming_materials_cost || 0) + (project.total_excavation_cost || 0) + (project.total_labor_cost || 0) + (project.total_equipment_cost || 0)).toFixed(2)}</span>
                   </div>
                 </div>
 
