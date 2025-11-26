@@ -103,6 +103,8 @@ export default function FoundationInventoryPage() {
       pickup_delivery_cost: item.pickup_delivery_cost || 0,
       rebar_size: item.rebar_size || "N/A",
       foundation_usage: item.foundation_usage || "general",
+      lumber_size: item.lumber_size || "custom",
+      thickness_inches: item.thickness_inches || 0,
       notes: item.notes || ""
     });
     setShowModal(true);
@@ -139,6 +141,8 @@ export default function FoundationInventoryPage() {
       pickup_delivery_cost: 0,
       rebar_size: "N/A",
       foundation_usage: "general",
+      lumber_size: "custom",
+      thickness_inches: 0,
       notes: ""
     });
     setEditingItem(null);
@@ -164,6 +168,8 @@ export default function FoundationInventoryPage() {
       pickup_delivery_cost: 0,
       rebar_size: "N/A",
       foundation_usage: "general",
+      lumber_size: "custom",
+      thickness_inches: 0,
       notes: ""
     });
     setEditingItem(null);
@@ -189,6 +195,8 @@ export default function FoundationInventoryPage() {
       pickup_delivery_cost: 0,
       rebar_size: "N/A",
       foundation_usage: "general",
+      lumber_size: "custom",
+      thickness_inches: 0,
       notes: ""
     });
     setEditingItem(null);
@@ -213,6 +221,8 @@ export default function FoundationInventoryPage() {
       pickup_delivery_cost: 0,
       rebar_size: "N/A",
       foundation_usage: "general",
+      lumber_size: "custom",
+      thickness_inches: 0,
       notes: ""
     });
     setEditingItem(null);
@@ -366,6 +376,11 @@ export default function FoundationInventoryPage() {
                               {item.foundation_usage && item.foundation_usage !== 'general' && (
                                 <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800 capitalize">
                                   {item.foundation_usage.replace('_', ' ')}
+                                </span>
+                              )}
+                              {item.thickness_inches > 0 && (
+                                <span className="ml-1 text-slate-500 text-xs">
+                                  ({item.thickness_inches}" thick)
                                 </span>
                               )}
                             </span>
@@ -809,6 +824,60 @@ export default function FoundationInventoryPage() {
                             </SelectContent>
                           </Select>
                           <p className="text-xs text-slate-500 mt-1">Specify if this material is for a specific foundation type</p>
+                        </div>
+                      )}
+
+                      {formData.material_type === 'forming_material' && formData.foundation_usage === 'spread_foot' && (
+                        <div>
+                          <Label htmlFor="lumber_size">Lumber Size</Label>
+                          <Select
+                            value={formData.lumber_size || "custom"}
+                            onValueChange={(value) => {
+                              let thickness = 0;
+                              if (value.startsWith('2x')) thickness = 1.5;
+                              else if (value === 'plywood_3/4') thickness = 0.75;
+                              
+                              setFormData(prev => ({ 
+                                ...prev, 
+                                lumber_size: value,
+                                thickness_inches: thickness 
+                              }));
+                            }}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="2x4">2x4 (1.5" x 3.5")</SelectItem>
+                              <SelectItem value="2x6">2x6 (1.5" x 5.5")</SelectItem>
+                              <SelectItem value="2x8">2x8 (1.5" x 7.25")</SelectItem>
+                              <SelectItem value="2x10">2x10 (1.5" x 9.25")</SelectItem>
+                              <SelectItem value="2x12">2x12 (1.5" x 11.25")</SelectItem>
+                              <SelectItem value="plywood_3/4">Plywood 3/4"</SelectItem>
+                              <SelectItem value="custom">Custom</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {formData.material_type === 'forming_material' && (
+                        <div>
+                          <Label htmlFor="thickness_inches">Material Thickness (inches)</Label>
+                          <Input
+                            id="thickness_inches"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.thickness_inches}
+                            onChange={(e) => setFormData(prev => ({ ...prev, thickness_inches: parseFloat(e.target.value) || 0 }))}
+                            className="mt-1"
+                            disabled={formData.lumber_size && formData.lumber_size !== 'custom' && formData.foundation_usage === 'spread_foot'}
+                          />
+                          <p className="text-xs text-slate-500 mt-1">
+                            {formData.foundation_usage === 'pillar' 
+                              ? 'Wall thickness of the form (e.g. 0.25" for Sonotube)' 
+                              : 'Thickness of the board/material'}
+                          </p>
                         </div>
                       )}
 
