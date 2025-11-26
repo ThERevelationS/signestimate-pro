@@ -328,7 +328,11 @@ export default function FoundationInventoryPage() {
                     <React.Fragment key={item.id}>
                       <tr className="border-b border-slate-100 hover:bg-slate-25">
                         <td className="p-3 font-medium">{item.material_name}</td>
-                        <td className="p-3 capitalize">{item.equipment_type || item.material_type.replace(/_/g, ' ')}</td>
+                        <td className="p-3 capitalize">
+                          {item.material_type === 'excavation_equipment' && item.equipment_type 
+                            ? item.equipment_type 
+                            : item.material_type.replace(/_/g, ' ')}
+                        </td>
                         {!isAttachmentSection && (
                           <td className="p-3 text-sm text-slate-600">
                             {item.material_type === 'excavation_equipment' 
