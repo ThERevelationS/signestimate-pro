@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { Camera } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 export default function Foundation3DViewer({
   foundationType = 'spread_foot',
@@ -39,7 +41,7 @@ export default function Foundation3DViewer({
     cameraRef.current = camera;
 
     // Renderer setup
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -331,5 +333,28 @@ export default function Foundation3DViewer({
     };
   }, [foundationType, lengthInches, widthInches, depthInches, diameter, rebarSize, rebarSpacingLength, rebarSpacingWidth, includeRebar, quantity, gradeOffsetInches]);
 
-  return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />;
+  const handleSaveImage = () => {
+    if (rendererRef.current) {
+      const image = rendererRef.current.domElement.toDataURL("image/jpeg");
+      const link = document.createElement("a");
+      link.href = image;
+      link.download = "foundation-view.jpg";
+      link.click();
+    }
+  };
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
+      <Button 
+        onClick={handleSaveImage}
+        variant="secondary"
+        size="sm"
+        className="absolute top-4 right-4 bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm"
+      >
+        <Camera className="w-4 h-4 mr-2" />
+        Save View
+      </Button>
+    </div>
+  );
 }
