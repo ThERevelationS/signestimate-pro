@@ -54,6 +54,7 @@ export default function NewFoundationEstimate() {
   const [equipment, setEquipment] = useState([]);
   const [allAttachments, setAllAttachments] = useState([]);
   const [concreteOptions, setConcreteOptions] = useState([]);
+  const [formingMaterials, setFormingMaterials] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -99,6 +100,9 @@ export default function NewFoundationEstimate() {
         item.material_type === 'concrete_service' || item.material_type === 'bagged_concrete'
       );
       setConcreteOptions(concreteItems);
+
+      const formingItems = allInventory.filter(item => item.material_type === 'forming_material');
+      setFormingMaterials(formingItems);
 
       const attachmentItems = allInventory.filter(item => item.material_type === 'attachment');
       setAllAttachments(attachmentItems);
@@ -279,6 +283,7 @@ export default function NewFoundationEstimate() {
       item_total_cost: 0,
       custom_concrete_cost_per_cy: undefined,
       custom_rebar_cost_per_ft: undefined,
+      selected_forming_material_id: null
     };
     setProject(prev => {
       const updatedItems = [...prev.items, newItem];
@@ -742,7 +747,23 @@ export default function NewFoundationEstimate() {
       const finishingHoursPerItem = item.include_finishing ? finishingSqFt * finishingHoursPerSqFt : 0;
 
       // Calculate Forming Materials Cost if forming is included
-      const formingMaterialsCost = item.include_forming ? (formingSqFt * formingMaterialsRate * item.quantity) : 0;
+      let formingMaterialsCost = 0;
+      let selectedFormingMaterial = null;
+      if (item.include_forming) {
+        if (item.selected_forming_material_id) {
+          selectedFormingMaterial = formingMaterials.find(fm => fm.id === item.selected_forming_material_id);
+          if (selectedFormingMaterial) {
+            // If cost_per_unit is per sqft
+            formingMaterialsCost = formingSqFt * (selectedFormingMaterial.cost_per_unit || 0) * item.quantity;
+          } else {
+            // Fallback
+            formingMaterialsCost = formingSqFt * formingMaterialsRate * item.quantity;
+          }
+        } else {
+          // Use default rates from settings if no material selected
+          formingMaterialsCost = formingSqFt * formingMaterialsRate * item.quantity;
+        }
+      }
 
       const formingCost = formingHoursPerItem * project.forming_labor_rate * item.quantity;
       const pouringCost = pouringHoursPerItem * project.pouring_labor_rate * item.quantity;
@@ -809,6 +830,7 @@ export default function NewFoundationEstimate() {
         rebar_cost: rebarCost,
         excavation_cost: nonLaborExcavationCost + itemExcavationLaborCost, 
         forming_materials_cost: formingMaterialsCost,
+        forming_material_details: selectedFormingMaterial, // Pass details for visualization
         forming_hours: formingHoursPerItem,
         forming_cost: formingCost,
         pouring_hours: pouringHoursPerItem,
@@ -901,7 +923,7 @@ export default function NewFoundationEstimate() {
       project.hand_dig_excavation_cost_per_cy, project.equipment_excavation_cost_per_cy,
       project.forming_labor_rate, project.pouring_labor_rate,
       project.finishing_labor_rate, project.hand_dig_labor_rate, project.equipment_excavation_labor_rate,
-      project.excavation_method, project.selected_concrete_id, globalSettings, concreteOptions]);
+      project.excavation_method, project.selected_concrete_id, globalSettings, concreteOptions, formingMaterials]);
 
   useEffect(() => {
     if (!isLoading && project.items.length >= 0) {
@@ -1249,6 +1271,8 @@ export default function NewFoundationEstimate() {
                             rebarSpacingLength={item.rebar_spacing_length || 18}
                             rebarSpacingWidth={item.rebar_spacing_width || 18}
                             includeRebar={item.include_rebar || false}
+                            includeForming={item.include_forming || false}
+                            formingMaterial={item.forming_material_details}
                             quantity={item.quantity || 1}
                             gradeOffsetInches={item.grade_offset_inches || 0}
                           />
@@ -1279,6 +1303,31 @@ export default function NewFoundationEstimate() {
                               className="w-4 h-4 text-blue-600"
                             />
                           </div>
+                          
+                          {item.include_forming && (
+                            <div className="col-span-2">
+                              <Label className="text-xs">Forming Material</Label>
+                              <Select 
+                                value={item.selected_forming_material_id || ""} 
+                                onValueChange={(value) => updateItem(index, 'selected_forming_material_id', value === "default" ? null : value)}
+                              >
+                                <SelectTrigger className="mt-1 h-8 text-xs">
+                                  <SelectValue placeholder="Select forming material" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="default">Use Default Rate</SelectItem>
+                                  {formingMaterials
+                                    .filter(fm => fm.foundation_usage === 'general' || fm.foundation_usage === item.foundation_type)
+                                    .map(fm => (
+                                      <SelectItem key={fm.id} value={fm.id}>
+                                        {fm.material_name} {fm.lumber_size && fm.lumber_size !== 'custom' ? `(${fm.lumber_size})` : ''} - ${fm.cost_per_unit.toFixed(2)}/sqft
+                                      </SelectItem>
+                                    ))
+                                  }
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
                           <div className="flex items-center justify-between py-2 px-3 bg-green-50 rounded border border-green-200">
                             <Label htmlFor={`finishing-${index}`} className="text-xs font-medium">Include Finishing</Label>
                             <Checkbox

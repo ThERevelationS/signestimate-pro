@@ -14,6 +14,8 @@ export default function Foundation3DViewer({
   rebarSpacingLength = 18,
   rebarSpacingWidth = 18,
   includeRebar = false,
+  includeForming = false,
+  formingMaterial = null,
   quantity = 1,
   gradeOffsetInches = 0 // New prop for grade adjustment
 }) {
@@ -148,6 +150,58 @@ export default function Foundation3DViewer({
         wireframe.position.copy(concrete.position);
         foundationGroup.add(wireframe);
 
+        // Add forming material if enabled
+        if (includeForming) {
+          // Default thickness if not specified in material
+          let formThickness = 1.5 / 12; // Default 1.5" (2x lumber) in feet
+          if (formingMaterial && formingMaterial.thickness_inches) {
+            formThickness = formingMaterial.thickness_inches / 12;
+          } else if (formingMaterial && formingMaterial.lumber_size && formingMaterial.lumber_size.startsWith('2x')) {
+            formThickness = 1.5 / 12;
+          } else if (formingMaterial && formingMaterial.lumber_size === 'plywood_3/4') {
+            formThickness = 0.75 / 12;
+          }
+
+          // Standard embedment: extends 2 inches below the concrete bottom
+          // Form height = concrete depth + 2"
+          const embedmentFeet = 2 / 12;
+          const formHeight = depthFeet + embedmentFeet;
+          const formY = concrete.position.y - (embedmentFeet / 2); // Centered relative to new height
+
+          const formMaterial = new THREE.MeshStandardMaterial({
+            color: 0x8b4513, // Wood color
+            roughness: 0.9,
+            side: THREE.DoubleSide
+          });
+
+          // 4 sides
+          const formGroup = new THREE.Group();
+          
+          // Side 1 (Length) - Front
+          const side1Geo = new THREE.BoxGeometry(lengthFeet + (2 * formThickness), formHeight, formThickness);
+          const side1 = new THREE.Mesh(side1Geo, formMaterial);
+          side1.position.set(0, formY, (widthFeet / 2) + (formThickness / 2));
+          formGroup.add(side1);
+
+          // Side 2 (Length) - Back
+          const side2 = new THREE.Mesh(side1Geo, formMaterial);
+          side2.position.set(0, formY, -(widthFeet / 2) - (formThickness / 2));
+          formGroup.add(side2);
+
+          // Side 3 (Width) - Left
+          const side3Geo = new THREE.BoxGeometry(formThickness, formHeight, widthFeet);
+          const side3 = new THREE.Mesh(side3Geo, formMaterial);
+          side3.position.set(-(lengthFeet / 2) - (formThickness / 2), formY, 0);
+          formGroup.add(side3);
+
+          // Side 4 (Width) - Right
+          const side4 = new THREE.Mesh(side3Geo, formMaterial);
+          side4.position.set((lengthFeet / 2) + (formThickness / 2), formY, 0);
+          formGroup.add(side4);
+
+          foundationGroup.add(formGroup);
+        }
+
         // Add rebar if enabled - with validation
         if (includeRebar) {
           const rebarSpacingLengthFeet = rebarSpacingLength / 12;
@@ -237,6 +291,41 @@ export default function Foundation3DViewer({
         const wireframe = new THREE.LineSegments(edgesGeometry, edgesMaterial);
         wireframe.position.copy(concrete.position);
         foundationGroup.add(wireframe);
+
+        // Add forming material if enabled (Pillar)
+        if (includeForming) {
+          // Default thickness 0.25" for Sonotube
+          let formThickness = 0.25 / 12;
+          if (formingMaterial && formingMaterial.thickness_inches) {
+            formThickness = formingMaterial.thickness_inches / 12;
+          }
+
+          // Standard embedment: extends 2 inches below
+          const embedmentFeet = 2 / 12;
+          const formHeight = depthFeet + embedmentFeet;
+          const formY = concrete.position.y - (embedmentFeet / 2);
+
+          // Tube geometry: Inner radius matches concrete, Outer radius = inner + thickness
+          const innerRadius = diameterFeet / 2;
+          const outerRadius = innerRadius + formThickness;
+          
+          const formGeometry = new THREE.CylinderGeometry(outerRadius, outerRadius, formHeight, 32, 1, true); // Open ended tube usually
+          // But simple cylinder logic for thickness requires subtraction or RingGeometry extruded?
+          // Easiest is to just make a slightly larger cylinder and use side: DoubleSide if it's thin, 
+          // or make a Tube. Three.js CylinderGeometry is solid or open-ended surface.
+          // To show thickness, we need a TubeGeometry or construct it. 
+          // For visual simplicity: A cylinder slightly larger than concrete, side: DoubleSide.
+          
+          const formMaterial = new THREE.MeshStandardMaterial({
+            color: 0xd2b48c, // Cardboard/Sonotube color
+            roughness: 0.8,
+            side: THREE.DoubleSide
+          });
+
+          const form = new THREE.Mesh(formGeometry, formMaterial);
+          form.position.set(0, formY, 0);
+          foundationGroup.add(form);
+        }
       }
 
       scene.add(foundationGroup);
@@ -331,7 +420,7 @@ export default function Foundation3DViewer({
       renderer.dispose();
       controls.dispose();
     };
-  }, [foundationType, lengthInches, widthInches, depthInches, diameter, rebarSize, rebarSpacingLength, rebarSpacingWidth, includeRebar, quantity, gradeOffsetInches]);
+  }, [foundationType, lengthInches, widthInches, depthInches, diameter, rebarSize, rebarSpacingLength, rebarSpacingWidth, includeRebar, includeForming, formingMaterial, quantity, gradeOffsetInches]);
 
   const handleSaveImage = () => {
     if (rendererRef.current) {
