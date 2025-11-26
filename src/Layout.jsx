@@ -231,6 +231,7 @@ export default function Layout({ children, currentPageName }) {
                           overflow: 'hidden',
                           pointerEvents: isExpanded ? 'auto' : 'none'
                         }}
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <Link
                           to={createPageUrl(module.projectsPage)}
