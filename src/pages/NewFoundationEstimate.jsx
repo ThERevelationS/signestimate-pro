@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { FoundationProject, Settings, FoundationInventory } from "@/entities/all";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -774,6 +773,14 @@ export default function NewFoundationEstimate() {
       totalEquipmentCost = project.selected_equipment.reduce((sum, eq) => sum + (eq.equipment_cost || 0), 0);
     }
 
+    // Apply minimum concrete cost if applicable
+    if (project.selected_concrete_id) {
+      const selectedConcrete = concreteOptions.find(c => c.id === project.selected_concrete_id);
+      if (selectedConcrete && selectedConcrete.minimum_cost && totalConcreteCost > 0 && totalConcreteCost < selectedConcrete.minimum_cost) {
+        totalConcreteCost = selectedConcrete.minimum_cost;
+      }
+    }
+
     return {
       items: updatedItems,
       total_concrete_cost: totalConcreteCost,
@@ -786,7 +793,7 @@ export default function NewFoundationEstimate() {
       project.hand_dig_excavation_cost_per_cy, project.equipment_excavation_cost_per_cy,
       project.forming_labor_rate, project.pouring_labor_rate,
       project.finishing_labor_rate, project.hand_dig_labor_rate, project.equipment_excavation_labor_rate,
-      project.excavation_method, globalSettings]);
+      project.excavation_method, project.selected_concrete_id, globalSettings, concreteOptions]);
 
   useEffect(() => {
     if (!isLoading && project.items.length >= 0) {
