@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Settings as SettingsEntity, User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,8 @@ export default function FoundationSettings() {
   useEffect(() => {
     const initializeAndLoad = async () => {
       const defaultSettings = {
-        foundation_concrete_cost_per_cy: "135",
+        foundation_forming_materials_cost_spread_foot: "0.50",
+        foundation_forming_materials_cost_pillar: "0.75",
         foundation_rebar_cost_per_ft: "0.75",
         foundation_hand_dig_excavation_cost_per_cy: "10",
         foundation_equipment_excavation_cost_per_cy: "15",
@@ -32,6 +32,7 @@ export default function FoundationSettings() {
         foundation_pouring_hours_per_cy: "0.5",
         foundation_finishing_hours_per_sqft: "0.10",
         foundation_excavation_hours_per_cy: "0.5",
+        foundation_min_excavation_time_hours: "1.0",
         company_name: "Sign Company",
         default_notes_template: ""
       };
@@ -56,7 +57,8 @@ export default function FoundationSettings() {
 
   const getSettingDefinitions = () => {
     return [
-      { name: "foundation_concrete_cost_per_cy", type: "number", category: "foundation_pricing", description: "Cost per cubic yard of concrete from Ernst Concrete" },
+      { name: "foundation_forming_materials_cost_spread_foot", type: "number", category: "foundation_pricing", description: "Cost per sqft for spread foot forming materials" },
+      { name: "foundation_forming_materials_cost_pillar", type: "number", category: "foundation_pricing", description: "Cost per sqft for pillar forming materials" },
       { name: "foundation_rebar_cost_per_ft", type: "number", category: "foundation_pricing", description: "Cost per linear foot of rebar" },
       { name: "foundation_hand_dig_excavation_cost_per_cy", type: "number", category: "foundation_pricing", description: "Non-labor excavation cost per cubic yard for hand digging (disposal, etc.)" },
       { name: "foundation_equipment_excavation_cost_per_cy", type: "number", category: "foundation_pricing", description: "Non-labor excavation cost per cubic yard for equipment excavation (disposal, etc.)" },
@@ -69,6 +71,7 @@ export default function FoundationSettings() {
       { name: "foundation_pouring_hours_per_cy", type: "number", category: "foundation_calc", description: "Pouring time per cubic yard" },
       { name: "foundation_finishing_hours_per_sqft", type: "number", category: "foundation_calc", description: "Finishing time per square foot" },
       { name: "foundation_excavation_hours_per_cy", type: "number", category: "foundation_calc", description: "Excavation labor time per cubic yard (applies to both hand dig and equipment)" },
+      { name: "foundation_min_excavation_time_hours", type: "number", category: "foundation_calc", description: "Minimum hours for excavation labor" },
       { name: "company_name", type: "text", category: "general", description: "Company name" },
       { name: "default_notes_template", type: "text", category: "general", description: "Default project notes template" }
     ];
@@ -123,15 +126,26 @@ export default function FoundationSettings() {
         <CardContent className="space-y-6 pt-6">
           <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <Label>Concrete Cost ($/cubic yard)</Label>
+              <Label>Forming Materials - Spread Foot ($/sqft)</Label>
               <Input 
                 type="number" 
-                step="1"
-                value={settings.foundation_concrete_cost_per_cy} 
-                onChange={(e) => updateSetting('foundation_concrete_cost_per_cy', e.target.value)} 
+                step="0.01"
+                value={settings.foundation_forming_materials_cost_spread_foot} 
+                onChange={(e) => updateSetting('foundation_forming_materials_cost_spread_foot', e.target.value)} 
                 disabled={isLocked}
               />
-              <p className="text-xs text-slate-500 mt-1">Typical range: $120-150/cy</p>
+              <p className="text-xs text-slate-500 mt-1">Cost for forming lumber/stakes per sqft of contact area</p>
+            </div>
+            <div>
+              <Label>Forming Materials - Pillar ($/sqft)</Label>
+              <Input 
+                type="number" 
+                step="0.01"
+                value={settings.foundation_forming_materials_cost_pillar} 
+                onChange={(e) => updateSetting('foundation_forming_materials_cost_pillar', e.target.value)} 
+                disabled={isLocked}
+              />
+              <p className="text-xs text-slate-500 mt-1">Cost for sonotube/forms per sqft of surface area</p>
             </div>
             <div>
               <Label>Rebar Cost ($/linear foot)</Label>
@@ -280,6 +294,17 @@ export default function FoundationSettings() {
                 disabled={isLocked}
               />
               <p className="text-xs text-slate-500 mt-1">For both hand dig and equipment methods</p>
+            </div>
+            <div>
+              <Label>Min. Excavation Time (hours)</Label>
+              <Input 
+                type="number" 
+                step="0.5"
+                value={settings.foundation_min_excavation_time_hours || "1.0"} 
+                onChange={(e) => updateSetting('foundation_min_excavation_time_hours', e.target.value)} 
+                disabled={isLocked}
+              />
+              <p className="text-xs text-slate-500 mt-1">Minimum time charged for excavation</p>
             </div>
           </div>
         </CardContent>
