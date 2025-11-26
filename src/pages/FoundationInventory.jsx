@@ -138,6 +138,7 @@ export default function FoundationInventoryPage() {
       cost_per_month: 0,
       pickup_delivery_cost: 0,
       rebar_size: "N/A",
+      foundation_usage: "general",
       notes: ""
     });
     setEditingItem(null);
@@ -162,6 +163,7 @@ export default function FoundationInventoryPage() {
       cost_per_month: 0,
       pickup_delivery_cost: 0,
       rebar_size: "N/A",
+      foundation_usage: "general",
       notes: ""
     });
     setEditingItem(null);
@@ -186,6 +188,7 @@ export default function FoundationInventoryPage() {
       cost_per_month: 0,
       pickup_delivery_cost: 0,
       rebar_size: "N/A",
+      foundation_usage: "general",
       notes: ""
     });
     setEditingItem(null);
