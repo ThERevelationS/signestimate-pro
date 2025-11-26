@@ -438,9 +438,10 @@ export default function NewFoundationEstimate() {
     
     if (selectedEquip) {
       const compatible = allAttachments.filter(att => 
-        !att.compatible_equipment_ids || // If the field doesn't exist
+        (!att.compatible_equipment_ids || // If the field doesn't exist
         att.compatible_equipment_ids.length === 0 || // or is empty, it's universally compatible
-        att.compatible_equipment_ids.includes(selectedEquip.id) // otherwise, check for equipment ID match
+        att.compatible_equipment_ids.includes(selectedEquip.id)) && // otherwise, check for equipment ID match
+        (!att.parent_attachment_ids || att.parent_attachment_ids.length === 0) // Exclude subsidiaries from top level
       );
       setAvailableAttachments(compatible);
       setCurrentEquipmentIndex(equipmentIndex);
