@@ -268,150 +268,121 @@ export default function BrickStone3DViewer({
       scene.add(brickMesh);
     }
 
-    // 2. CORE BLOCKS - OPTIMIZED FILLING WITH ROTATION
+    // 2. CORE BLOCKS - STRUCTURAL MASONRY WALL LOGIC (Backup Wall)
     if (inventory && inventory.length > 0 && selectedMaterial) {
-      const brickW = selectedMaterial.width * scale;
-      const innerLength = length - 2 * brickW;
-      const innerWidth = width - 2 * brickW;
-      const innerHeight = height;
+      // Find the best block (prefer standard block)
+      const block = inventory.find(m => m.material_type === 'block' && m.length && m.width && m.height) 
+                    || inventory.find(m => m.material_type === 'block');
 
-      const coreGroups = {}; // Key: "L_W_H"
-      
-      const availableBlocks = inventory
-        .filter(m => m.length && m.width && m.height)
-        .filter(m => m.material_type === 'block');
-
-      let currentBaseY = mortarGap;
-
-      // Fill until we hit the top
-      while (currentBaseY < innerHeight - EPSILON) {
-        const remainingHeight = innerHeight - currentBaseY;
+      if (block) {
+        const brickW = selectedMaterial.width * scale;
+        // Inner dimensions of the brick skin (Outer bounds for the core wall)
+        const coreOuterL = length - 2 * brickW - 2 * mortarGap;
+        const coreOuterW = width - 2 * brickW - 2 * mortarGap;
+        const coreH = height;
         
-        // Find best block configuration for this layer
-        // We want to maximize volume filled in this step
-        let bestConfig = null;
-        let maxLayerVolume = -1;
+        const blockL = block.length * scale;
+        const blockW = block.width * scale;
+        const blockH = block.height * scale;
 
-        for (const block of availableBlocks) {
-          const dims = [block.length * scale, block.width * scale, block.height * scale];
-          
-          // Try all 3 dimensions as height (rotation on any plane)
-          // Permutations: [H, L, W]
-          const orientations = [
-            { h: dims[0], l: dims[1], w: dims[2] }, // Height = Length
-            { h: dims[1], l: dims[0], w: dims[2] }, // Height = Width
-            { h: dims[2], l: dims[0], w: dims[1] }, // Height = Height (Standard)
-          ];
+        const coreGroups = {}; // Key: "L_H_W"
 
-          for (const orient of orientations) {
-            if (orient.h > remainingHeight + EPSILON) continue;
+        // Ensure we have at least one block type group
+        const key = `${blockL}_${blockH}_${blockW}`;
+        coreGroups[key] = {
+          geometry: new THREE.BoxGeometry(blockL, blockH, blockW),
+          matrices: [],
+        };
 
-            // Try packing in X-Z plane (normal and rotated 90 deg in plane)
-            // Option A: L along InnerLength, W along InnerWidth
-            const countL_A = Math.floor((innerLength + mortarGap) / (orient.l + mortarGap));
-            const countW_A = Math.floor((innerWidth + mortarGap) / (orient.w + mortarGap));
-            const totalA = countL_A * countW_A;
+        const dummy = new THREE.Object3D();
+        const courses = Math.ceil(coreH / (blockH + mortarGap));
 
-            // Option B: W along InnerLength, L along InnerWidth
-            const countL_B = Math.floor((innerLength + mortarGap) / (orient.w + mortarGap));
-            const countW_B = Math.floor((innerWidth + mortarGap) / (orient.l + mortarGap));
-            const totalB = countL_B * countW_B;
+        for (let course = 0; course < courses; course++) {
+          const y = course * (blockH + mortarGap) + blockH / 2;
+          if (y - blockH / 2 > coreH) break;
 
-            const bestCount = Math.max(totalA, totalB);
-            const volume = bestCount * (orient.l * orient.w * orient.h);
+          // Alternate corners for running bond / interlocking
+          const isEven = course % 2 === 0;
 
-            if (volume > maxLayerVolume) {
-              maxLayerVolume = volume;
-              bestConfig = {
-                block: block,
-                h: orient.h,
-                l: totalA >= totalB ? orient.l : orient.w, // Chosen X-dim
-                w: totalA >= totalB ? orient.w : orient.l, // Chosen Z-dim
-                countX: totalA >= totalB ? countL_A : countL_B,
-                countZ: totalA >= totalB ? countW_A : countW_B
-              };
+          // Define the 4 wall segments
+          // "Outer" segments span the full dimension (corners)
+          // "Inner" segments span the remaining gap
+          const segments = [];
+
+          if (isEven) {
+            // Front/Back are Outer (Long)
+            // Left/Right are Inner (Short)
+            segments.push({ axis: 'x', z: (coreOuterW - blockW)/2, len: coreOuterL, isOuter: true }); // Front
+            segments.push({ axis: 'x', z: -(coreOuterW - blockW)/2, len: coreOuterL, isOuter: true }); // Back
+            segments.push({ axis: 'z', x: -(coreOuterL - blockW)/2, len: coreOuterW - 2*blockW, isOuter: false }); // Left
+            segments.push({ axis: 'z', x: (coreOuterL - blockW)/2, len: coreOuterW - 2*blockW, isOuter: false }); // Right
+          } else {
+             // Left/Right are Outer (Long)
+             // Front/Back are Inner (Short)
+             segments.push({ axis: 'z', x: -(coreOuterL - blockW)/2, len: coreOuterW, isOuter: true }); // Left
+             segments.push({ axis: 'z', x: (coreOuterL - blockW)/2, len: coreOuterW, isOuter: true }); // Right
+             segments.push({ axis: 'x', z: (coreOuterW - blockW)/2, len: coreOuterL - 2*blockW, isOuter: false }); // Front
+             segments.push({ axis: 'x', z: -(coreOuterW - blockW)/2, len: coreOuterL - 2*blockW, isOuter: false }); // Back
+          }
+
+          segments.forEach(seg => {
+            if (seg.len <= 0) return; // Skip if no space (e.g. small column)
+
+            // Calculate number of blocks that fit
+            const numBlocks = Math.floor((seg.len + mortarGap) / (blockL + mortarGap));
+            
+            // If segment is too small for even one block but > 0, maybe skip or scale? 
+            // For now, only place if at least one fits or if it's an Outer segment (corners must exist)
+            // If it's an Outer segment and len > 0, we force at least one block to maintain corner structure.
+            const count = Math.max(seg.isOuter ? 1 : 0, numBlocks);
+            
+            if (count === 0) return;
+
+            // Simple Tiling (Centered)
+            // Real running bond would start from corner, but Centered looks balanced for visualization
+            const totalSpan = count * blockL + (count - 1) * mortarGap;
+            const startPos = -totalSpan / 2 + blockL / 2;
+
+            for (let i = 0; i < count; i++) {
+              const pos = startPos + i * (blockL + mortarGap);
+              
+              if (seg.axis === 'x') {
+                dummy.position.set(pos, y, seg.z);
+                dummy.rotation.set(0, 0, 0);
+              } else {
+                dummy.position.set(seg.x, y, pos);
+                dummy.rotation.set(0, Math.PI / 2, 0);
+              }
+              
+              dummy.updateMatrix();
+              coreGroups[key].matrices.push(dummy.matrix.clone());
             }
-          }
+          });
         }
 
-        if (!bestConfig || maxLayerVolume <= 0) {
-          break; // Cannot fit anything more
-        }
+        // Render the core wall
+        Object.values(coreGroups).forEach(group => {
+          if (group.matrices.length === 0) return;
 
-        // Place the layer
-        const { h, l, w, countX, countZ } = bestConfig;
-        
-        // Ensure group exists
-        // Key based on actual geometry dimensions used (L, H, W)
-        const key = `${l}_${w}_${h}`; // Note: Geometry is Box(l, h, w)
-        if (!coreGroups[key]) {
-          coreGroups[key] = {
-            geometry: new THREE.BoxGeometry(l, h, w),
-            matrices: [],
-          };
-        }
+          const mat = new THREE.MeshStandardMaterial({
+            map: blockTexture,
+            color: 0x9e9e9e,
+            roughness: 0.95
+          });
 
-        const currentBlockCenterY = currentBaseY + h / 2;
-        
-        // Distribute blocks evenly to ensure they touch the outer walls
-        const xPositions = [];
-        if (countX === 1) {
-          xPositions.push(0);
-        } else {
-          const startX = -innerLength / 2 + mortarGap + l / 2;
-          const endX = innerLength / 2 - mortarGap - l / 2;
-          const stepX = (endX - startX) / (countX - 1);
-          for (let i = 0; i < countX; i++) {
-            xPositions.push(startX + i * stepX);
-          }
-        }
+          const mesh = new THREE.InstancedMesh(group.geometry, mat, group.matrices.length);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
 
-        const zPositions = [];
-        if (countZ === 1) {
-          zPositions.push(0);
-        } else {
-          const startZ = -innerWidth / 2 + mortarGap + w / 2;
-          const endZ = innerWidth / 2 - mortarGap - w / 2;
-          const stepZ = (endZ - startZ) / (countZ - 1);
-          for (let i = 0; i < countZ; i++) {
-            zPositions.push(startZ + i * stepZ);
-          }
-        }
-
-        for (const z of zPositions) {
-          for (const x of xPositions) {
-            const dummy = new THREE.Object3D();
-            dummy.position.set(x, currentBlockCenterY, z);
-            dummy.updateMatrix();
-            coreGroups[key].matrices.push(dummy.matrix.clone());
-          }
-        }
-
-        currentBaseY += h + mortarGap;
+          group.matrices.forEach((matrix, i) => {
+            mesh.setMatrixAt(i, matrix);
+          });
+          
+          mesh.instanceMatrix.needsUpdate = true;
+          scene.add(mesh);
+        });
       }
-
-      // Render groups
-      Object.values(coreGroups).forEach(group => {
-        if (group.matrices.length === 0) return;
-
-        const mat = new THREE.MeshStandardMaterial({
-          map: blockTexture,
-          color: 0x9e9e9e,
-          roughness: 0.95
-        });
-
-        const mesh = new THREE.InstancedMesh(group.geometry, mat, group.matrices.length);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-
-        group.matrices.forEach((matrix, i) => {
-          mesh.setMatrixAt(i, matrix);
-        });
-        
-        mesh.instanceMatrix.needsUpdate = true;
-        scene.add(mesh);
-      });
     }
 
     // --- ANIMATION ---
