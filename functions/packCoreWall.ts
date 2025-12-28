@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
         // Calculate available interior space
         const interiorLength = wallLength - (2 * wallThickness) - (2 * mortarGap);
         const interiorWidth = wallWidth - (2 * wallThickness) - (2 * mortarGap);
-        const interiorHeight = wallHeight;
+        const interiorHeight = wallHeight; // Core CANNOT exceed this height
 
         const prompt = `You are a master mason building a STRUCTURAL CORE WALL inside a hollow brick structure.
 
@@ -56,11 +56,13 @@ STEP 4: CORNER INTERLOCKING
 • Corner blocks should alternate orientation between courses
 • Ensure mortar gap spacing at all corner intersections
 
-STEP 5: HEIGHT MANAGEMENT
+STEP 5: HEIGHT MANAGEMENT (CRITICAL CONSTRAINT)
+• ABSOLUTE MAX HEIGHT: ${interiorHeight.toFixed(2)}" - NO BLOCK CAN EXCEED THIS
 • Max courses = floor((interiorHeight + mortarGap) / (block_height + mortarGap))
 • Each course Y-position = course_number × (block_height + mortarGap) + (block_height/2)
-• If top course would exceed height, STOP at previous course
-• NO blocks can protrude above interiorHeight limit
+• Before placing each course, verify: (Y-position + block_height/2) ≤ ${interiorHeight.toFixed(2)}"
+• If top course would make blocks exceed ${interiorHeight.toFixed(2)}", STOP at previous course
+• The top of the highest block MUST be ≤ ${interiorHeight.toFixed(2)}" (the wall material height)
 
 STEP 6: CALCULATION PRECISION
 For standard course layout:
@@ -127,9 +129,16 @@ Build a structurally sound, cost-efficient masonry core wall following proper ru
             }
         });
 
+        // Validate that no blocks exceed wall height
+        const validPlacements = response.placements.filter(p => {
+            const topOfBlock = p.position.y + (p.dimensions.height / 2);
+            return topOfBlock <= interiorHeight;
+        });
+
         return Response.json({ 
             success: true,
-            placements: response.placements 
+            placements: validPlacements,
+            filtered: response.placements.length - validPlacements.length
         });
 
     } catch (error) {
