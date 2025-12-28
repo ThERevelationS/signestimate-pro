@@ -9,7 +9,19 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { wallLength, wallWidth, wallHeight, wallThickness, mortarGap, coreMaterials } = await req.json();
+        const { 
+            wallLength, 
+            wallWidth, 
+            wallHeight, 
+            wallThickness, 
+            mortarGap, 
+            coreMaterials,
+            orientationSettings = {
+                allowXRotation: false,
+                allowZRotation: false,
+                preferHorizontal: true
+            }
+        } = await req.json();
 
         // Calculate available interior space
         const interiorLength = wallLength - (2 * wallThickness) - (2 * mortarGap);
@@ -42,9 +54,11 @@ STEP 1: MATERIAL SELECTION STRATEGY
 
 STEP 2: ORIENTATION & ROTATION RULES
 • Standard orientation: Length along X-axis, Width along Z-axis, Height along Y-axis (rotation: {x:0, y:0, z:0})
-• For narrow spaces: Rotate 90° around Y-axis if block width < space requirement (rotation: {x:0, y:1.5708, z:0})
-• NEVER rotate around X or Z axes (blocks must remain horizontal)
-• Each course must use consistent orientation for structural integrity
+• Y-axis rotation (horizontal spin): Always allowed for fitting blocks (rotation: {x:0, y:1.5708, z:0})
+${orientationSettings.allowXRotation ? '• X-axis rotation: ALLOWED - blocks can stand on edge (rotation: {x:1.5708, y:0, z:0})' : '• X-axis rotation: DISABLED - blocks must remain flat'}
+${orientationSettings.allowZRotation ? '• Z-axis rotation: ALLOWED - blocks can be tilted (rotation: {x:0, y:0, z:1.5708})' : '• Z-axis rotation: DISABLED - blocks must remain flat'}
+${orientationSettings.preferHorizontal ? '• PREFERENCE: Horizontal orientation (standard flat placement) - use vertical only when necessary for gap filling' : '• PREFERENCE: Vertical orientation when possible - maximize height per block'}
+• Each course should use consistent orientation for structural integrity where possible
 
 STEP 3: RUNNING BOND PATTERN (CRITICAL)
 Course 0 (Even): Start X at -(interiorLength/2) + (block_length/2)
@@ -94,7 +108,10 @@ Return JSON array with EVERY block placement:
 {
   "material_id": "block_id_from_list",
   "position": {"x": 0.0, "y": 8.0, "z": 0.0}, // inches from center origin
-  "rotation": {"x": 0, "y": 0, "z": 0}, // radians (0 or 1.5708 for 90° Y-rotation only)
+  "rotation": {"x": 0, "y": 0, "z": 0}, // radians (0 or 1.5708 for 90°)
+    // Y-rotation: always allowed
+    // X-rotation: ${orientationSettings.allowXRotation ? 'allowed' : 'MUST stay 0'}
+    // Z-rotation: ${orientationSettings.allowZRotation ? 'allowed' : 'MUST stay 0'}
   "dimensions": {"length": 16, "width": 8, "height": 8} // actual block dims used
 }
 
@@ -142,16 +159,38 @@ Build a COMPLETELY FILLED, structurally sound masonry core wall. The entire inte
             }
         });
 
-        // Validate that all blocks stay within interior boundaries
+        // Validate that all blocks stay within interior boundaries and respect rotation rules
         const validPlacements = response.placements.filter(p => {
-            const topOfBlock = p.position.y + (p.dimensions.height / 2);
             const dims = p.dimensions;
-            const rot = p.rotation.y || 0;
+            const rotX = p.rotation.x || 0;
+            const rotY = p.rotation.y || 0;
+            const rotZ = p.rotation.z || 0;
             
-            // Account for rotation when checking boundaries
-            const effectiveLength = Math.abs(Math.cos(rot)) > 0.5 ? dims.length : dims.width;
-            const effectiveWidth = Math.abs(Math.cos(rot)) > 0.5 ? dims.width : dims.length;
+            // Enforce rotation restrictions
+            if (!orientationSettings.allowXRotation && Math.abs(rotX) > 0.01) return false;
+            if (!orientationSettings.allowZRotation && Math.abs(rotZ) > 0.01) return false;
             
+            // Calculate effective dimensions accounting for all rotations
+            let effectiveLength = dims.length;
+            let effectiveWidth = dims.width;
+            let effectiveHeight = dims.height;
+            
+            // Y-rotation swaps length/width
+            if (Math.abs(Math.sin(rotY)) > 0.5) {
+                [effectiveLength, effectiveWidth] = [effectiveWidth, effectiveLength];
+            }
+            
+            // X-rotation swaps width/height  
+            if (Math.abs(Math.sin(rotX)) > 0.5) {
+                [effectiveWidth, effectiveHeight] = [effectiveHeight, effectiveWidth];
+            }
+            
+            // Z-rotation swaps length/height
+            if (Math.abs(Math.sin(rotZ)) > 0.5) {
+                [effectiveLength, effectiveHeight] = [effectiveHeight, effectiveLength];
+            }
+            
+            const topOfBlock = p.position.y + (effectiveHeight / 2);
             const minX = p.position.x - (effectiveLength / 2);
             const maxX = p.position.x + (effectiveLength / 2);
             const minZ = p.position.z - (effectiveWidth / 2);
