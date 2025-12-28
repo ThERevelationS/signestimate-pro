@@ -34,10 +34,11 @@ ${coreMaterials.map((m, i) => `${i + 1}. ${m.material_name} [ID: ${m.id}]
 ━━━ CONSTRUCTION METHODOLOGY ━━━
 
 STEP 1: MATERIAL SELECTION STRATEGY
+• PRIMARY GOAL: Fill 100% of the interior space - NO GAPS ALLOWED
 • Prioritize first material (usually Standard Cinderblock) for 90%+ of structure
-• Use smaller/alternate blocks ONLY for tight corners or height adjustments
-• Choose blocks that minimize waste: prefer blocks that divide evenly into space dimensions
-• Calculate efficiency: (blocks_used × block_volume) / interior_volume should be >85%
+• Use smaller/alternate blocks to fill remaining gaps and edges
+• Calculate efficiency: (blocks_used × block_volume) / interior_volume must be >90%
+• DO NOT STOP until the entire floor area is covered in every course
 
 STEP 2: ORIENTATION & ROTATION RULES
 • Standard orientation: Length along X-axis, Width along Z-axis, Height along Y-axis (rotation: {x:0, y:0, z:0})
@@ -66,22 +67,27 @@ STEP 5: HEIGHT MANAGEMENT (CRITICAL CONSTRAINT)
 • If top course would make blocks exceed ${interiorHeight.toFixed(2)}", STOP at previous course
 • The top of the highest block MUST be ≤ ${interiorHeight.toFixed(2)}" (the wall material height)
 
-STEP 6: CALCULATION PRECISION & BOUNDARY ENFORCEMENT
-For standard course layout:
-• Blocks in X: floor((interiorLength + mortarGap) / (primary_block_length + mortarGap))
-• Blocks in Z: floor((interiorWidth + mortarGap) / (primary_block_width + mortarGap))
-• Center first block at calculated start position
-• Space subsequent blocks with exact (block_dimension + mortarGap) increments
-• VALIDATE: Every block edge must stay within interior bounds:
-  - Min X: position.x - (block_length/2) ≥ ${(-interiorLength/2).toFixed(2)}"
-  - Max X: position.x + (block_length/2) ≤ ${(interiorLength/2).toFixed(2)}"
-  - Min Z: position.z - (block_width/2) ≥ ${(-interiorWidth/2).toFixed(2)}"
-  - Max Z: position.z + (block_width/2) ≤ ${(interiorWidth/2).toFixed(2)}"
+STEP 6: COMPLETE SPACE FILLING (MANDATORY)
+For EACH course from bottom to top:
+1. Calculate how many primary blocks fit in X direction
+2. Calculate how many primary blocks fit in Z direction  
+3. Place ALL blocks in a complete grid pattern covering the entire floor
+4. After primary blocks, check for remaining gaps along edges
+5. Fill any gaps >3" with smaller blocks or rotated blocks
+6. VERIFY: Every course must have blocks covering the ENTIRE interior floor area
+7. Repeat for next course up until height limit reached
 
-━━━ MINIMIZE WASTE ━━━
-• Calculate remaining space after standard blocks: if remainder >6", consider half-blocks or alternate sizes
-• Cost optimization: fewer large blocks beats many small blocks (less labor, less mortar)
-• Structural priority: full blocks at edges/corners, fillers only in interior if needed
+BOUNDARY VALIDATION (All blocks must stay within):
+  - X range: ${(-interiorLength/2).toFixed(2)}" to ${(interiorLength/2).toFixed(2)}"
+  - Z range: ${(-interiorWidth/2).toFixed(2)}" to ${(interiorWidth/2).toFixed(2)}"
+  - Y range: 0" to ${interiorHeight.toFixed(2)}"
+
+━━━ COMPLETE FILLING REQUIREMENTS ━━━
+• EVERY course must be a solid layer of blocks covering the full interior floor
+• Fill edge gaps: if remaining space >3" after primary blocks, add filler blocks
+• Use all available block types to achieve complete coverage
+• Each course = complete floor coverage from wall to wall
+• Continue stacking courses until height limit is reached
 
 ━━━ OUTPUT REQUIREMENTS ━━━
 Return JSON array with EVERY block placement:
@@ -92,7 +98,7 @@ Return JSON array with EVERY block placement:
   "dimensions": {"length": 16, "width": 8, "height": 8} // actual block dims used
 }
 
-Build a structurally sound, cost-efficient masonry core wall following proper running bond technique.`;
+Build a COMPLETELY FILLED, structurally sound masonry core wall. The entire interior space must be packed solid with blocks from floor to ceiling, wall to wall. NO GAPS.`;
 
         const response = await base44.integrations.Core.InvokeLLM({
             prompt,
