@@ -18,11 +18,13 @@ Deno.serve(async (req) => {
 
         const prompt = `You are a master mason building a STRUCTURAL CORE WALL inside a hollow brick structure.
 
-━━━ INTERIOR SPACE DIMENSIONS ━━━
-X-axis (Length): ${interiorLength.toFixed(2)}"
-Z-axis (Width): ${interiorWidth.toFixed(2)}"
-Y-axis (Height): ${interiorHeight.toFixed(2)}"
+━━━ INTERIOR SPACE DIMENSIONS (CORE BOUNDARIES) ━━━
+X-axis (Length): ${interiorLength.toFixed(2)}" [Range: ${(-interiorLength/2).toFixed(2)}" to ${(interiorLength/2).toFixed(2)}"]
+Z-axis (Width): ${interiorWidth.toFixed(2)}" [Range: ${(-interiorWidth/2).toFixed(2)}" to ${(interiorWidth/2).toFixed(2)}"]
+Y-axis (Height): ${interiorHeight.toFixed(2)}" [Range: 0" to ${interiorHeight.toFixed(2)}"]
 Mortar Joint: ${mortarGap}" between all blocks
+
+⚠️ CRITICAL: ALL BLOCKS MUST STAY INSIDE THESE BOUNDARIES - this is the hollow interior space
 
 ━━━ AVAILABLE CONCRETE BLOCKS ━━━
 ${coreMaterials.map((m, i) => `${i + 1}. ${m.material_name} [ID: ${m.id}]
@@ -64,12 +66,17 @@ STEP 5: HEIGHT MANAGEMENT (CRITICAL CONSTRAINT)
 • If top course would make blocks exceed ${interiorHeight.toFixed(2)}", STOP at previous course
 • The top of the highest block MUST be ≤ ${interiorHeight.toFixed(2)}" (the wall material height)
 
-STEP 6: CALCULATION PRECISION
+STEP 6: CALCULATION PRECISION & BOUNDARY ENFORCEMENT
 For standard course layout:
 • Blocks in X: floor((interiorLength + mortarGap) / (primary_block_length + mortarGap))
 • Blocks in Z: floor((interiorWidth + mortarGap) / (primary_block_width + mortarGap))
 • Center first block at calculated start position
 • Space subsequent blocks with exact (block_dimension + mortarGap) increments
+• VALIDATE: Every block edge must stay within interior bounds:
+  - Min X: position.x - (block_length/2) ≥ ${(-interiorLength/2).toFixed(2)}"
+  - Max X: position.x + (block_length/2) ≤ ${(interiorLength/2).toFixed(2)}"
+  - Min Z: position.z - (block_width/2) ≥ ${(-interiorWidth/2).toFixed(2)}"
+  - Max Z: position.z + (block_width/2) ≤ ${(interiorWidth/2).toFixed(2)}"
 
 ━━━ MINIMIZE WASTE ━━━
 • Calculate remaining space after standard blocks: if remainder >6", consider half-blocks or alternate sizes
@@ -129,10 +136,26 @@ Build a structurally sound, cost-efficient masonry core wall following proper ru
             }
         });
 
-        // Validate that no blocks exceed wall height
+        // Validate that all blocks stay within interior boundaries
         const validPlacements = response.placements.filter(p => {
             const topOfBlock = p.position.y + (p.dimensions.height / 2);
-            return topOfBlock <= interiorHeight;
+            const dims = p.dimensions;
+            const rot = p.rotation.y || 0;
+            
+            // Account for rotation when checking boundaries
+            const effectiveLength = Math.abs(Math.cos(rot)) > 0.5 ? dims.length : dims.width;
+            const effectiveWidth = Math.abs(Math.cos(rot)) > 0.5 ? dims.width : dims.length;
+            
+            const minX = p.position.x - (effectiveLength / 2);
+            const maxX = p.position.x + (effectiveLength / 2);
+            const minZ = p.position.z - (effectiveWidth / 2);
+            const maxZ = p.position.z + (effectiveWidth / 2);
+            
+            return topOfBlock <= interiorHeight &&
+                   minX >= -(interiorLength/2) &&
+                   maxX <= (interiorLength/2) &&
+                   minZ >= -(interiorWidth/2) &&
+                   maxZ <= (interiorWidth/2);
         });
 
         return Response.json({ 
