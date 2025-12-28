@@ -268,72 +268,114 @@ export default function BrickStone3DViewer({
       scene.add(brickMesh);
     }
 
-    // 2. CORE BLOCKS
+    // 2. CORE BLOCKS - OPTIMIZED FILLING WITH ROTATION
     if (inventory && inventory.length > 0 && selectedMaterial) {
       const brickW = selectedMaterial.width * scale;
       const innerLength = length - 2 * brickW;
       const innerWidth = width - 2 * brickW;
       const innerHeight = height;
 
-      const coreGroups = {};
+      const coreGroups = {}; // Key: "L_W_H"
       
-      const sortedInventory = [...inventory]
+      const availableBlocks = inventory
         .filter(m => m.length && m.width && m.height)
-        .filter(m => m.material_type === 'block')
-        .sort((a, b) => a.height - b.height);
+        .filter(m => m.material_type === 'block');
 
       let currentBaseY = mortarGap;
-      let materialIndex = 0;
 
-      while (currentBaseY < innerHeight - EPSILON && materialIndex < sortedInventory.length) {
-        const material = sortedInventory[materialIndex];
-        const blockL = material.length * scale;
-        const blockW = material.width * scale;
-        const blockH = material.height * scale;
+      // Fill until we hit the top
+      while (currentBaseY < innerHeight - EPSILON) {
+        const remainingHeight = innerHeight - currentBaseY;
+        
+        // Find best block configuration for this layer
+        // We want to maximize volume filled in this step
+        let bestConfig = null;
+        let maxLayerVolume = -1;
 
-        if (currentBaseY + blockH > innerHeight + EPSILON) {
-          materialIndex++;
-          continue;
+        for (const block of availableBlocks) {
+          const dims = [block.length * scale, block.width * scale, block.height * scale];
+          
+          // Try all 3 dimensions as height (rotation on any plane)
+          // Permutations: [H, L, W]
+          const orientations = [
+            { h: dims[0], l: dims[1], w: dims[2] }, // Height = Length
+            { h: dims[1], l: dims[0], w: dims[2] }, // Height = Width
+            { h: dims[2], l: dims[0], w: dims[1] }, // Height = Height (Standard)
+          ];
+
+          for (const orient of orientations) {
+            if (orient.h > remainingHeight + EPSILON) continue;
+
+            // Try packing in X-Z plane (normal and rotated 90 deg in plane)
+            // Option A: L along InnerLength, W along InnerWidth
+            const countL_A = Math.floor((innerLength + mortarGap) / (orient.l + mortarGap));
+            const countW_A = Math.floor((innerWidth + mortarGap) / (orient.w + mortarGap));
+            const totalA = countL_A * countW_A;
+
+            // Option B: W along InnerLength, L along InnerWidth
+            const countL_B = Math.floor((innerLength + mortarGap) / (orient.w + mortarGap));
+            const countW_B = Math.floor((innerWidth + mortarGap) / (orient.l + mortarGap));
+            const totalB = countL_B * countW_B;
+
+            const bestCount = Math.max(totalA, totalB);
+            const volume = bestCount * (orient.l * orient.w * orient.h);
+
+            if (volume > maxLayerVolume) {
+              maxLayerVolume = volume;
+              bestConfig = {
+                block: block,
+                h: orient.h,
+                l: totalA >= totalB ? orient.l : orient.w, // Chosen X-dim
+                w: totalA >= totalB ? orient.w : orient.l, // Chosen Z-dim
+                countX: totalA >= totalB ? countL_A : countL_B,
+                countZ: totalA >= totalB ? countW_A : countW_B
+              };
+            }
+          }
         }
 
-        const key = `${blockL}_${blockW}_${blockH}`;
+        if (!bestConfig || maxLayerVolume <= 0) {
+          break; // Cannot fit anything more
+        }
+
+        // Place the layer
+        const { h, l, w, countX, countZ } = bestConfig;
+        
+        // Ensure group exists
+        // Key based on actual geometry dimensions used (L, H, W)
+        const key = `${l}_${w}_${h}`; // Note: Geometry is Box(l, h, w)
         if (!coreGroups[key]) {
           coreGroups[key] = {
-            geometry: new THREE.BoxGeometry(blockL, blockH, blockW),
+            geometry: new THREE.BoxGeometry(l, h, w),
             matrices: [],
-            material: material
           };
         }
 
-        const currentBlockCenterY = currentBaseY + blockH / 2;
-        let layerPlaced = false;
+        const currentBlockCenterY = currentBaseY + h / 2;
+        
+        // Center the grid in the hole
+        const totalRowLength = countX * l + (countX - 1) * mortarGap;
+        const totalColWidth = countZ * w + (countZ - 1) * mortarGap;
+        
+        const startX = -totalRowLength / 2 + l / 2;
+        const startZ = -totalColWidth / 2 + w / 2;
 
-        let z = -innerWidth/2 + blockW/2 + mortarGap;
-        const maxZ = innerWidth/2 - blockW/2 - mortarGap;
-
-        while (z <= maxZ + EPSILON) {
-          let x = -innerLength/2 + blockL/2 + mortarGap;
-          const maxX = innerLength/2 - blockL/2 - mortarGap;
-
-          while (x <= maxX + EPSILON) {
+        for (let iz = 0; iz < countZ; iz++) {
+          for (let ix = 0; ix < countX; ix++) {
+            const x = startX + ix * (l + mortarGap);
+            const z = startZ + iz * (w + mortarGap);
+            
             const dummy = new THREE.Object3D();
             dummy.position.set(x, currentBlockCenterY, z);
             dummy.updateMatrix();
             coreGroups[key].matrices.push(dummy.matrix.clone());
-            
-            layerPlaced = true;
-            x += blockL + mortarGap;
           }
-          z += blockW + mortarGap;
         }
 
-        if (layerPlaced) {
-          currentBaseY += blockH + mortarGap;
-        } else {
-          materialIndex++;
-        }
+        currentBaseY += h + mortarGap;
       }
 
+      // Render groups
       Object.values(coreGroups).forEach(group => {
         if (group.matrices.length === 0) return;
 
@@ -352,7 +394,7 @@ export default function BrickStone3DViewer({
           mesh.setMatrixAt(i, matrix);
         });
         
-        mesh.instanceMatrix.needsUpdate = true; // Critical fix!
+        mesh.instanceMatrix.needsUpdate = true;
         scene.add(mesh);
       });
     }
