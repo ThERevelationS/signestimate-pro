@@ -30,6 +30,8 @@ Deno.serve(async (req) => {
 
         const prompt = `You are a master mason building a STRUCTURAL CORE WALL inside a hollow brick structure.
 
+🚨 CRITICAL REQUIREMENT: You MUST fill the ENTIRE interior space completely. Generate hundreds of block placements if needed to achieve FULL coverage from floor to ceiling, wall to wall. NO EMPTY SPACES.
+
 ━━━ INTERIOR SPACE DIMENSIONS (CORE BOUNDARIES) ━━━
 X-axis (Length): ${interiorLength.toFixed(2)}" [Range: ${(-interiorLength/2).toFixed(2)}" to ${(interiorLength/2).toFixed(2)}"]
 Z-axis (Width): ${interiorWidth.toFixed(2)}" [Range: ${(-interiorWidth/2).toFixed(2)}" to ${(interiorWidth/2).toFixed(2)}"]
@@ -81,20 +83,22 @@ STEP 5: HEIGHT MANAGEMENT (CRITICAL CONSTRAINT)
 • If top course would make blocks exceed ${interiorHeight.toFixed(2)}", STOP at previous course
 • The top of the highest block MUST be ≤ ${interiorHeight.toFixed(2)}" (the wall material height)
 
-STEP 6: COMPLETE SPACE FILLING (MANDATORY)
-For EACH course from bottom to top:
-1. Calculate how many primary blocks fit in X direction
-2. Calculate how many primary blocks fit in Z direction  
-3. Place ALL blocks in a complete grid pattern covering the entire floor
-4. After primary blocks, check for remaining gaps along edges
-5. Fill any gaps >3" with smaller blocks or rotated blocks
-6. VERIFY: Every course must have blocks covering the ENTIRE interior floor area
-7. Repeat for next course up until height limit reached
+STEP 6: COMPLETE SPACE FILLING (MANDATORY - GENERATE MANY BLOCKS)
+Calculate EXACT number of blocks needed:
+• Blocks per course in X: ceil(${interiorLength.toFixed(2)} / (block_length + ${mortarGap}))
+• Blocks per course in Z: ceil(${interiorWidth.toFixed(2)} / (block_width + ${mortarGap}))
+• Number of courses: floor(${interiorHeight.toFixed(2)} / (block_height + ${mortarGap}))
+• MINIMUM TOTAL BLOCKS = X_blocks × Z_blocks × num_courses
 
-BOUNDARY VALIDATION (All blocks must stay within):
-  - X range: ${(-interiorLength/2).toFixed(2)}" to ${(interiorLength/2).toFixed(2)}"
-  - Z range: ${(-interiorWidth/2).toFixed(2)}" to ${(interiorWidth/2).toFixed(2)}"
-  - Y range: 0" to ${interiorHeight.toFixed(2)}"
+For EACH course (0 to max):
+1. Start at X = ${(-interiorLength/2).toFixed(2)}" + (block_length/2)
+2. Place blocks in X direction incrementing by (block_length + ${mortarGap}) until reaching ${(interiorLength/2).toFixed(2)}"
+3. For each X position, place blocks in Z direction from ${(-interiorWidth/2).toFixed(2)}" to ${(interiorWidth/2).toFixed(2)}"
+4. This creates a COMPLETE SOLID LAYER covering the entire floor
+5. Move to next course: Y = course_num × (block_height + ${mortarGap}) + (block_height/2)
+6. Repeat until Y exceeds ${interiorHeight.toFixed(2)}"
+
+GENERATE AT LEAST ${Math.floor((interiorLength / 16) * (interiorWidth / 8) * (interiorHeight / 8))} BLOCK PLACEMENTS to achieve solid fill.
 
 ━━━ COMPLETE FILLING REQUIREMENTS ━━━
 • EVERY course must be a solid layer of blocks covering the full interior floor
@@ -115,7 +119,9 @@ Return JSON array with EVERY block placement:
   "dimensions": {"length": 16, "width": 8, "height": 8} // actual block dims used
 }
 
-Build a COMPLETELY FILLED, structurally sound masonry core wall. The entire interior space must be packed solid with blocks from floor to ceiling, wall to wall. NO GAPS.`;
+Build a COMPLETELY FILLED, structurally sound masonry core wall. The entire interior space must be packed SOLID with blocks from floor to ceiling, wall to wall. 
+
+⚠️ YOU MUST GENERATE ENOUGH BLOCKS TO FILL THE SPACE - likely requiring 100+ placements for a typical wall. DO NOT STOP after placing just a few blocks. Create a DENSE, COMPLETE array of blocks filling every available inch of the ${interiorLength.toFixed(2)}" × ${interiorWidth.toFixed(2)}" × ${interiorHeight.toFixed(2)}" interior volume.`;
 
         const response = await base44.integrations.Core.InvokeLLM({
             prompt,
