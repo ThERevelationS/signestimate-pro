@@ -391,7 +391,7 @@ export default function BrickStone3DViewer({
       renderer.dispose();
       controls.dispose();
     };
-  }, [actualLength, actualWidth, actualHeight, wallThickness, selectedMaterial, inventory, brickTexture, blockTexture]);
+  }, [actualLength, actualWidth, actualHeight, wallThickness, selectedMaterial, inventory, brickTexture, blockTexture, aiPlacements]);
 
   return (
     <div 
