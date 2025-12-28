@@ -270,9 +270,25 @@ export default function BrickStone3DViewer({
 
     // 2. CORE BLOCKS - STRUCTURAL MASONRY WALL LOGIC (Backup Wall)
     if (inventory && inventory.length > 0 && selectedMaterial) {
-      // Find the best block (prefer standard block)
-      const block = inventory.find(m => m.material_type === 'block' && m.length && m.width && m.height) 
-                    || inventory.find(m => m.material_type === 'block');
+      // Prioritize "Standard Cinderblock" as the base material, then fall back to core breakdown or any block
+      let block = inventory.find(m => m.material_type === 'block' && /standard.*cinderblock/i.test(m.material_name));
+
+      if (!block && coreBreakdown && coreBreakdown.length > 0) {
+          // If no standard cinderblock found, try to use the most used block from the estimate
+          const sortedBreakdown = [...coreBreakdown].sort((a, b) => b.quantity - a.quantity);
+          for (const item of sortedBreakdown) {
+             const match = inventory.find(m => m.id === item.material_id && m.material_type === 'block');
+             if (match) {
+                 block = match;
+                 break;
+             }
+          }
+      }
+
+      if (!block) {
+          // Fallback to the first available block with dimensions
+          block = inventory.find(m => m.material_type === 'block' && m.length && m.width && m.height);
+      }
 
       if (block) {
         const brickW = selectedMaterial.width * scale;
