@@ -299,7 +299,8 @@ export default function BrickStone3DViewer({
 
         for (let course = 0; course < courses; course++) {
           const y = course * (blockH + mortarGap) + blockH / 2;
-          if (y - blockH / 2 > coreH) break;
+          // Ensure block top does not exceed the wall height
+          if (y + blockH / 2 > coreH + 0.001) break;
 
           // Alternate corners for running bond / interlocking
           const isEven = course % 2 === 0;
