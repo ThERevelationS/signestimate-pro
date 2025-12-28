@@ -353,16 +353,30 @@ export default function BrickStone3DViewer({
 
         const currentBlockCenterY = currentBaseY + h / 2;
         
-        // Fill from walls inward (gap in middle)
+        // Distribute blocks evenly to ensure they touch the outer walls
         const xPositions = [];
-        const xLeft = Math.ceil(countX / 2);
-        for (let i = 0; i < xLeft; i++) xPositions.push(-innerLength / 2 + mortarGap + l / 2 + i * (l + mortarGap));
-        for (let i = 0; i < countX - xLeft; i++) xPositions.push(innerLength / 2 - mortarGap - l / 2 - i * (l + mortarGap));
+        if (countX === 1) {
+          xPositions.push(0);
+        } else {
+          const startX = -innerLength / 2 + mortarGap + l / 2;
+          const endX = innerLength / 2 - mortarGap - l / 2;
+          const stepX = (endX - startX) / (countX - 1);
+          for (let i = 0; i < countX; i++) {
+            xPositions.push(startX + i * stepX);
+          }
+        }
 
         const zPositions = [];
-        const zTop = Math.ceil(countZ / 2);
-        for (let i = 0; i < zTop; i++) zPositions.push(-innerWidth / 2 + mortarGap + w / 2 + i * (w + mortarGap));
-        for (let i = 0; i < countZ - zTop; i++) zPositions.push(innerWidth / 2 - mortarGap - w / 2 - i * (w + mortarGap));
+        if (countZ === 1) {
+          zPositions.push(0);
+        } else {
+          const startZ = -innerWidth / 2 + mortarGap + w / 2;
+          const endZ = innerWidth / 2 - mortarGap - w / 2;
+          const stepZ = (endZ - startZ) / (countZ - 1);
+          for (let i = 0; i < countZ; i++) {
+            zPositions.push(startZ + i * stepZ);
+          }
+        }
 
         for (const z of zPositions) {
           for (const x of xPositions) {
