@@ -353,18 +353,19 @@ export default function BrickStone3DViewer({
 
         const currentBlockCenterY = currentBaseY + h / 2;
         
-        // Center the grid in the hole
-        const totalRowLength = countX * l + (countX - 1) * mortarGap;
-        const totalColWidth = countZ * w + (countZ - 1) * mortarGap;
-        
-        const startX = -totalRowLength / 2 + l / 2;
-        const startZ = -totalColWidth / 2 + w / 2;
+        // Fill from walls inward (gap in middle)
+        const xPositions = [];
+        const xLeft = Math.ceil(countX / 2);
+        for (let i = 0; i < xLeft; i++) xPositions.push(-innerLength / 2 + mortarGap + l / 2 + i * (l + mortarGap));
+        for (let i = 0; i < countX - xLeft; i++) xPositions.push(innerLength / 2 - mortarGap - l / 2 - i * (l + mortarGap));
 
-        for (let iz = 0; iz < countZ; iz++) {
-          for (let ix = 0; ix < countX; ix++) {
-            const x = startX + ix * (l + mortarGap);
-            const z = startZ + iz * (w + mortarGap);
-            
+        const zPositions = [];
+        const zTop = Math.ceil(countZ / 2);
+        for (let i = 0; i < zTop; i++) zPositions.push(-innerWidth / 2 + mortarGap + w / 2 + i * (w + mortarGap));
+        for (let i = 0; i < countZ - zTop; i++) zPositions.push(innerWidth / 2 - mortarGap - w / 2 - i * (w + mortarGap));
+
+        for (const z of zPositions) {
+          for (const x of xPositions) {
             const dummy = new THREE.Object3D();
             dummy.position.set(x, currentBlockCenterY, z);
             dummy.updateMatrix();
