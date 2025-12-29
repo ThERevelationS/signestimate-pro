@@ -30,15 +30,15 @@ Deno.serve(async (req) => {
 
         const prompt = `You are a master mason building a STRUCTURAL CORE WALL inside a hollow brick structure.
 
-🚨 CRITICAL REQUIREMENT: You MUST fill the ENTIRE interior space completely. Generate hundreds of block placements if needed to achieve FULL coverage from floor to ceiling, wall to wall. NO EMPTY SPACES.
+🚨 CRITICAL REQUIREMENT: You MUST fill the ENTIRE interior space completely from EDGE TO EDGE. Generate hundreds of block placements to achieve FULL coverage.
 
-━━━ INTERIOR SPACE DIMENSIONS (CORE BOUNDARIES) ━━━
-X-axis (Length): ${interiorLength.toFixed(2)}" [Range: ${(-interiorLength/2).toFixed(2)}" to ${(interiorLength/2).toFixed(2)}"]
-Z-axis (Width): ${interiorWidth.toFixed(2)}" [Range: ${(-interiorWidth/2).toFixed(2)}" to ${(interiorWidth/2).toFixed(2)}"]
-Y-axis (Height): ${interiorHeight.toFixed(2)}" [Range: 0" to ${interiorHeight.toFixed(2)}"]
-Mortar Joint: ${mortarGap}" between all blocks
+━━━ INTERIOR SPACE DIMENSIONS ━━━
+X-axis (Length): ${interiorLength.toFixed(2)}" [FROM ${(-interiorLength/2).toFixed(2)}" TO ${(interiorLength/2).toFixed(2)}"]
+Z-axis (Width): ${interiorWidth.toFixed(2)}" [FROM ${(-interiorWidth/2).toFixed(2)}" TO ${(interiorWidth/2).toFixed(2)}"]
+Y-axis (Height): ${interiorHeight.toFixed(2)}" [FROM 0" TO ${interiorHeight.toFixed(2)}"]
+Mortar Gap: ${mortarGap}" between blocks
 
-⚠️ CRITICAL: ALL BLOCKS MUST STAY INSIDE THESE BOUNDARIES - this is the hollow interior space
+⚠️ DO NOT place all blocks at center (0,0)! You must spread blocks across the ENTIRE X and Z range!
 
 ━━━ AVAILABLE CONCRETE BLOCKS ━━━
 ${coreMaterials.map((m, i) => `${i + 1}. ${m.material_name} [ID: ${m.id}]
@@ -83,22 +83,28 @@ STEP 5: HEIGHT MANAGEMENT (CRITICAL CONSTRAINT)
 • If top course would make blocks exceed ${interiorHeight.toFixed(2)}", STOP at previous course
 • The top of the highest block MUST be ≤ ${interiorHeight.toFixed(2)}" (the wall material height)
 
-STEP 6: COMPLETE SPACE FILLING (MANDATORY - GENERATE MANY BLOCKS)
-Calculate EXACT number of blocks needed:
-• Blocks per course in X: ceil(${interiorLength.toFixed(2)} / (block_length + ${mortarGap}))
-• Blocks per course in Z: ceil(${interiorWidth.toFixed(2)} / (block_width + ${mortarGap}))
-• Number of courses: floor(${interiorHeight.toFixed(2)} / (block_height + ${mortarGap}))
-• MINIMUM TOTAL BLOCKS = X_blocks × Z_blocks × num_courses
+STEP 6: COMPLETE SPACE FILLING - CRITICAL INSTRUCTIONS
+YOU MUST CREATE A COMPLETE 3D GRID OF BLOCKS FILLING THE ENTIRE SPACE!
 
-For EACH course (0 to max):
-1. Start at X = ${(-interiorLength/2).toFixed(2)}" + (block_length/2)
-2. Place blocks in X direction incrementing by (block_length + ${mortarGap}) until reaching ${(interiorLength/2).toFixed(2)}"
-3. For each X position, place blocks in Z direction from ${(-interiorWidth/2).toFixed(2)}" to ${(interiorWidth/2).toFixed(2)}"
-4. This creates a COMPLETE SOLID LAYER covering the entire floor
-5. Move to next course: Y = course_num × (block_height + ${mortarGap}) + (block_height/2)
-6. Repeat until Y exceeds ${interiorHeight.toFixed(2)}"
+Example calculation for primary block (16"L × 8"W × 8"H):
+• X-direction blocks per course: floor(${interiorLength.toFixed(2)} / (16 + ${mortarGap})) = ${Math.floor(interiorLength / (16 + mortarGap))} blocks
+• Z-direction blocks per course: floor(${interiorWidth.toFixed(2)} / (8 + ${mortarGap})) = ${Math.floor(interiorWidth / (8 + mortarGap))} blocks  
+• Total courses (height): floor(${interiorHeight.toFixed(2)} / (8 + ${mortarGap})) = ${Math.floor(interiorHeight / (8 + mortarGap))} courses
+• MINIMUM BLOCKS NEEDED: ${Math.floor(interiorLength / (16 + mortarGap))} × ${Math.floor(interiorWidth / (8 + mortarGap))} × ${Math.floor(interiorHeight / (8 + mortarGap))} = ${Math.floor(interiorLength / (16 + mortarGap)) * Math.floor(interiorWidth / (8 + mortarGap)) * Math.floor(interiorHeight / (8 + mortarGap))} blocks minimum!
 
-GENERATE AT LEAST ${Math.floor((interiorLength / 16) * (interiorWidth / 8) * (interiorHeight / 8))} BLOCK PLACEMENTS to achieve solid fill.
+PLACEMENT ALGORITHM - FOLLOW EXACTLY:
+For course = 0 to ${Math.floor(interiorHeight / (8 + mortarGap))}:
+  Y_position = course × (8 + ${mortarGap}) + 4
+  
+  For X_index = 0 to ${Math.floor(interiorLength / (16 + mortarGap)) - 1}:
+    X_position = ${(-interiorLength/2).toFixed(2)} + 8 + (X_index × (16 + ${mortarGap}))
+    
+    For Z_index = 0 to ${Math.floor(interiorWidth / (8 + mortarGap)) - 1}:
+      Z_position = ${(-interiorWidth/2).toFixed(2)} + 4 + (Z_index × (8 + ${mortarGap}))
+      
+      Place block at {x: X_position, y: Y_position, z: Z_position}
+
+This creates ${Math.floor(interiorLength / (16 + mortarGap)) * Math.floor(interiorWidth / (8 + mortarGap)) * Math.floor(interiorHeight / (8 + mortarGap))} blocks covering the ENTIRE space!
 
 ━━━ COMPLETE FILLING REQUIREMENTS ━━━
 • EVERY course must be a solid layer of blocks covering the full interior floor
@@ -121,7 +127,12 @@ Return JSON array with EVERY block placement:
 
 Build a COMPLETELY FILLED, structurally sound masonry core wall. The entire interior space must be packed SOLID with blocks from floor to ceiling, wall to wall. 
 
-⚠️ YOU MUST GENERATE ENOUGH BLOCKS TO FILL THE SPACE - likely requiring 100+ placements for a typical wall. DO NOT STOP after placing just a few blocks. Create a DENSE, COMPLETE array of blocks filling every available inch of the ${interiorLength.toFixed(2)}" × ${interiorWidth.toFixed(2)}" × ${interiorHeight.toFixed(2)}" interior volume.`;
+⚠️ CRITICAL ERRORS TO AVOID:
+1. DO NOT place all blocks at center (X=0, Z=0) - spread them across FULL X and Z ranges!
+2. DO NOT stop after 10-20 blocks - you need ${Math.floor(interiorLength / (16 + mortarGap)) * Math.floor(interiorWidth / (8 + mortarGap)) * Math.floor(interiorHeight / (8 + mortarGap))}+ blocks!
+3. DO NOT leave empty spaces - fill from X=${(-interiorLength/2).toFixed(2)}" to X=${(interiorLength/2).toFixed(2)}" AND Z=${(-interiorWidth/2).toFixed(2)}" to Z=${(interiorWidth/2).toFixed(2)}"!
+
+GENERATE A COMPLETE 3D GRID filling the entire ${interiorLength.toFixed(2)}" × ${interiorWidth.toFixed(2)}" × ${interiorHeight.toFixed(2)}" volume.`;
 
         const response = await base44.integrations.Core.InvokeLLM({
             prompt,
