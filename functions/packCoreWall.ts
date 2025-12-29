@@ -28,17 +28,15 @@ Deno.serve(async (req) => {
         const interiorWidth = wallWidth - (2 * wallThickness) - (2 * mortarGap);
         const interiorHeight = wallHeight; // Core CANNOT exceed this height
 
-        const prompt = `You are a master mason building a STRUCTURAL CORE WALL inside a hollow brick structure.
+        const prompt = `You are filling a rectangular box with concrete blocks. You MUST create a complete 3D grid of blocks.
 
-🚨 CRITICAL REQUIREMENT: You MUST fill the ENTIRE interior space completely from EDGE TO EDGE. Generate hundreds of block placements to achieve FULL coverage.
+━━━ SPACE TO FILL ━━━
+X-axis: ${(-interiorLength/2).toFixed(2)}" to ${(interiorLength/2).toFixed(2)}" (total: ${interiorLength.toFixed(2)}")
+Z-axis: ${(-interiorWidth/2).toFixed(2)}" to ${(interiorWidth/2).toFixed(2)}" (total: ${interiorWidth.toFixed(2)}")
+Y-axis: 0" to ${interiorHeight.toFixed(2)}" (total: ${interiorHeight.toFixed(2)}")
+Gap between blocks: ${mortarGap}"
 
-━━━ INTERIOR SPACE DIMENSIONS ━━━
-X-axis (Length): ${interiorLength.toFixed(2)}" [FROM ${(-interiorLength/2).toFixed(2)}" TO ${(interiorLength/2).toFixed(2)}"]
-Z-axis (Width): ${interiorWidth.toFixed(2)}" [FROM ${(-interiorWidth/2).toFixed(2)}" TO ${(interiorWidth/2).toFixed(2)}"]
-Y-axis (Height): ${interiorHeight.toFixed(2)}" [FROM 0" TO ${interiorHeight.toFixed(2)}"]
-Mortar Gap: ${mortarGap}" between blocks
-
-⚠️ DO NOT place all blocks at center (0,0)! You must spread blocks across the ENTIRE X and Z range!
+🚨 CRITICAL: You MUST place blocks at MANY different X and Z positions, not just at X=0, Z=0!
 
 ━━━ AVAILABLE CONCRETE BLOCKS ━━━
 ${coreMaterials.map((m, i) => `${i + 1}. ${m.material_name} [ID: ${m.id}]
@@ -83,28 +81,37 @@ STEP 5: HEIGHT MANAGEMENT (CRITICAL CONSTRAINT)
 • If top course would make blocks exceed ${interiorHeight.toFixed(2)}", STOP at previous course
 • The top of the highest block MUST be ≤ ${interiorHeight.toFixed(2)}" (the wall material height)
 
-STEP 6: COMPLETE SPACE FILLING - CRITICAL INSTRUCTIONS
-YOU MUST CREATE A COMPLETE 3D GRID OF BLOCKS FILLING THE ENTIRE SPACE!
+STEP 3: BLOCK PLACEMENT GRID - FOLLOW THIS ALGORITHM EXACTLY
 
-Example calculation for primary block (16"L × 8"W × 8"H):
-• X-direction blocks per course: floor(${interiorLength.toFixed(2)} / (16 + ${mortarGap})) = ${Math.floor(interiorLength / (16 + mortarGap))} blocks
-• Z-direction blocks per course: floor(${interiorWidth.toFixed(2)} / (8 + ${mortarGap})) = ${Math.floor(interiorWidth / (8 + mortarGap))} blocks  
-• Total courses (height): floor(${interiorHeight.toFixed(2)} / (8 + ${mortarGap})) = ${Math.floor(interiorHeight / (8 + mortarGap))} courses
-• MINIMUM BLOCKS NEEDED: ${Math.floor(interiorLength / (16 + mortarGap))} × ${Math.floor(interiorWidth / (8 + mortarGap))} × ${Math.floor(interiorHeight / (8 + mortarGap))} = ${Math.floor(interiorLength / (16 + mortarGap)) * Math.floor(interiorWidth / (8 + mortarGap)) * Math.floor(interiorHeight / (8 + mortarGap))} blocks minimum!
+Using primary block (typically 16"L × 8"W × 8"H):
 
-PLACEMENT ALGORITHM - FOLLOW EXACTLY:
-For course = 0 to ${Math.floor(interiorHeight / (8 + mortarGap))}:
-  Y_position = course × (8 + ${mortarGap}) + 4
-  
-  For X_index = 0 to ${Math.floor(interiorLength / (16 + mortarGap)) - 1}:
-    X_position = ${(-interiorLength/2).toFixed(2)} + 8 + (X_index × (16 + ${mortarGap}))
+CALCULATE GRID SIZE:
+- Blocks in X direction: ${Math.floor(interiorLength / (16 + mortarGap))}
+- Blocks in Z direction: ${Math.floor(interiorWidth / (8 + mortarGap))}
+- Courses (Y direction): ${Math.floor(interiorHeight / (8 + mortarGap))}
+- TOTAL BLOCKS TO GENERATE: ${Math.floor(interiorLength / (16 + mortarGap)) * Math.floor(interiorWidth / (8 + mortarGap)) * Math.floor(interiorHeight / (8 + mortarGap))}
+
+NESTED LOOP STRUCTURE:
+for course_num in range(0, ${Math.floor(interiorHeight / (8 + mortarGap))}):
+    y_pos = course_num * (8 + ${mortarGap}) + 4.0
     
-    For Z_index = 0 to ${Math.floor(interiorWidth / (8 + mortarGap)) - 1}:
-      Z_position = ${(-interiorWidth/2).toFixed(2)} + 4 + (Z_index × (8 + ${mortarGap}))
-      
-      Place block at {x: X_position, y: Y_position, z: Z_position}
+    for x_index in range(0, ${Math.floor(interiorLength / (16 + mortarGap))}):
+        x_pos = ${(-interiorLength/2 + 8).toFixed(2)} + (x_index * ${(16 + mortarGap).toFixed(2)})
+        
+        for z_index in range(0, ${Math.floor(interiorWidth / (8 + mortarGap))}):
+            z_pos = ${(-interiorWidth/2 + 4).toFixed(2)} + (z_index * ${(8 + mortarGap).toFixed(2)})
+            
+            CREATE BLOCK: {
+              "position": {"x": x_pos, "y": y_pos, "z": z_pos},
+              "rotation": {"x": 0, "y": 0, "z": 0},
+              "dimensions": {"length": 16, "width": 8, "height": 8}
+            }
 
-This creates ${Math.floor(interiorLength / (16 + mortarGap)) * Math.floor(interiorWidth / (8 + mortarGap)) * Math.floor(interiorHeight / (8 + mortarGap))} blocks covering the ENTIRE space!
+EXAMPLE BLOCKS YOU MUST GENERATE:
+Block 1: X=${(-interiorLength/2 + 8).toFixed(2)}, Y=4.0, Z=${(-interiorWidth/2 + 4).toFixed(2)}
+Block 2: X=${(-interiorLength/2 + 8 + 16 + mortarGap).toFixed(2)}, Y=4.0, Z=${(-interiorWidth/2 + 4).toFixed(2)}
+Block 3: X=${(-interiorLength/2 + 8).toFixed(2)}, Y=4.0, Z=${(-interiorWidth/2 + 4 + 8 + mortarGap).toFixed(2)}
+...continue for ALL ${Math.floor(interiorLength / (16 + mortarGap)) * Math.floor(interiorWidth / (8 + mortarGap)) * Math.floor(interiorHeight / (8 + mortarGap))} positions!
 
 ━━━ COMPLETE FILLING REQUIREMENTS ━━━
 • EVERY course must be a solid layer of blocks covering the full interior floor
@@ -127,12 +134,14 @@ Return JSON array with EVERY block placement:
 
 Build a COMPLETELY FILLED, structurally sound masonry core wall. The entire interior space must be packed SOLID with blocks from floor to ceiling, wall to wall. 
 
-⚠️ CRITICAL ERRORS TO AVOID:
-1. DO NOT place all blocks at center (X=0, Z=0) - spread them across FULL X and Z ranges!
-2. DO NOT stop after 10-20 blocks - you need ${Math.floor(interiorLength / (16 + mortarGap)) * Math.floor(interiorWidth / (8 + mortarGap)) * Math.floor(interiorHeight / (8 + mortarGap))}+ blocks!
-3. DO NOT leave empty spaces - fill from X=${(-interiorLength/2).toFixed(2)}" to X=${(interiorLength/2).toFixed(2)}" AND Z=${(-interiorWidth/2).toFixed(2)}" to Z=${(interiorWidth/2).toFixed(2)}"!
+⚠️ MANDATORY REQUIREMENTS:
+1. Generate EXACTLY ${Math.floor(interiorLength / (16 + mortarGap)) * Math.floor(interiorWidth / (8 + mortarGap)) * Math.floor(interiorHeight / (8 + mortarGap))} blocks minimum
+2. X positions must range from ${(-interiorLength/2 + 8).toFixed(2)}" to ${(interiorLength/2 - 8).toFixed(2)}"
+3. Z positions must range from ${(-interiorWidth/2 + 4).toFixed(2)}" to ${(interiorWidth/2 - 4).toFixed(2)}"
+4. Y positions must range from 4.0" to ${(interiorHeight - 4).toFixed(2)}"
+5. Each block must have different X, Y, or Z coordinates (create a GRID, not a single stack!)
 
-GENERATE A COMPLETE 3D GRID filling the entire ${interiorLength.toFixed(2)}" × ${interiorWidth.toFixed(2)}" × ${interiorHeight.toFixed(2)}" volume.`;
+If you generate fewer than ${Math.floor(interiorLength / (16 + mortarGap)) * Math.floor(interiorWidth / (8 + mortarGap)) * Math.floor(interiorHeight / (8 + mortarGap))} blocks, you have FAILED. Generate the complete grid!`;
 
         const response = await base44.integrations.Core.InvokeLLM({
             prompt,
