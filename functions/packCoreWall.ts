@@ -23,19 +23,31 @@ Deno.serve(async (req) => {
             }
         } = await req.json();
 
-        // Calculate available interior space
+        // Calculate available interior space (INSIDE the brick walls)
         const interiorLength = wallLength - (2 * wallThickness) - (2 * mortarGap);
         const interiorWidth = wallWidth - (2 * wallThickness) - (2 * mortarGap);
-        const interiorHeight = wallHeight; // Core CANNOT exceed this height
+        const interiorHeight = wallHeight; // Core blocks CANNOT exceed this height
+        
+        // These are ABSOLUTE boundaries - blocks MUST stay inside
+        const minX = -interiorLength / 2;
+        const maxX = interiorLength / 2;
+        const minZ = -interiorWidth / 2;
+        const maxZ = interiorWidth / 2;
+        const minY = 0;
+        const maxY = interiorHeight;
 
-        const prompt = `TASK: Fill a rectangular box with concrete blocks in a 3D grid pattern.
+        const prompt = `You are filling the HOLLOW INTERIOR of a brick wall with concrete blocks.
 
-━━━ BOX DIMENSIONS ━━━
-X-axis: ${(-interiorLength/2).toFixed(2)}" to +${(interiorLength/2).toFixed(2)}" (width: ${interiorLength.toFixed(2)}")
-Z-axis: ${(-interiorWidth/2).toFixed(2)}" to +${(interiorWidth/2).toFixed(2)}" (depth: ${interiorWidth.toFixed(2)}")  
-Y-axis: 0" to ${interiorHeight.toFixed(2)}" (height: ${interiorHeight.toFixed(2)}")
+━━━ INTERIOR SPACE (where blocks go) ━━━
+X-axis: ${(-interiorLength/2).toFixed(2)}" to ${(interiorLength/2).toFixed(2)}" (interior width: ${interiorLength.toFixed(2)}")
+Z-axis: ${(-interiorWidth/2).toFixed(2)}" to ${(interiorWidth/2).toFixed(2)}" (interior depth: ${interiorWidth.toFixed(2)}")  
+Y-axis: 0" to ${interiorHeight.toFixed(2)}" (interior height: ${interiorHeight.toFixed(2)}")
 
-🚨 CRITICAL HEIGHT LIMIT: Block tops CANNOT exceed Y=${interiorHeight.toFixed(2)}"
+🚨 CRITICAL BOUNDARIES - BLOCKS CANNOT GO OUTSIDE THESE:
+• Every block center X must be between ${(-interiorLength/2).toFixed(2)}" and ${(interiorLength/2).toFixed(2)}"
+• Every block center Z must be between ${(-interiorWidth/2).toFixed(2)}" and ${(interiorWidth/2).toFixed(2)}"
+• Every block top (Y + height/2) must be ≤ ${interiorHeight.toFixed(2)}"
+• If a block would extend outside these boundaries, DO NOT place it
 
 ━━━ AVAILABLE BLOCKS ━━━
 ${coreMaterials.map((m, i) => `${i + 1}. ${m.material_name} [ID: ${m.id}] - ${m.length}"L × ${m.width}"W × ${m.height}"H`).join('\n')}
@@ -53,18 +65,35 @@ GRID CALCULATIONS:
 • Number of layers (Y): ${Math.floor(interiorHeight / ((coreMaterials[0]?.height || 8) + mortarGap))}
 • TOTAL BLOCKS: ${Math.floor(interiorLength / ((coreMaterials[0]?.length || 16) + mortarGap)) * Math.floor(interiorWidth / ((coreMaterials[0]?.width || 8) + mortarGap)) * Math.floor(interiorHeight / ((coreMaterials[0]?.height || 8) + mortarGap))}
 
-PLACEMENT FORMULA (generate block at each grid position):
+STEP-BY-STEP PLACEMENT (follow exactly):
+
+1. Start at bottom layer (layer 0)
+2. Place blocks in rows and columns to fill the floor
+3. Move up to next layer
+4. Repeat until height limit reached
+
+DETAILED FORMULA:
 For layer = 0 to ${Math.floor(interiorHeight / ((coreMaterials[0]?.height || 8) + mortarGap)) - 1}:
-  Y = layer × (${(coreMaterials[0]?.height || 8)} + ${mortarGap}) + ${((coreMaterials[0]?.height || 8) / 2).toFixed(1)}
+  Y_center = layer × (${(coreMaterials[0]?.height || 8)} + ${mortarGap}) + ${((coreMaterials[0]?.height || 8) / 2).toFixed(1)}
+  Y_top = Y_center + ${((coreMaterials[0]?.height || 8) / 2).toFixed(1)}
+  
+  SKIP this layer if Y_top > ${interiorHeight.toFixed(2)}
   
   For row = 0 to ${Math.floor(interiorLength / ((coreMaterials[0]?.length || 16) + mortarGap)) - 1}:
-    X = ${(-interiorLength/2 + (coreMaterials[0]?.length || 16)/2).toFixed(2)} + (row × ${((coreMaterials[0]?.length || 16) + mortarGap).toFixed(2)})
+    X_center = ${(-interiorLength/2 + (coreMaterials[0]?.length || 16)/2).toFixed(2)} + (row × ${((coreMaterials[0]?.length || 16) + mortarGap).toFixed(2)})
+    X_min = X_center - ${((coreMaterials[0]?.length || 16) / 2).toFixed(1)}
+    X_max = X_center + ${((coreMaterials[0]?.length || 16) / 2).toFixed(1)}
+    
+    SKIP this block if X_min < ${(-interiorLength/2).toFixed(2)} OR X_max > ${(interiorLength/2).toFixed(2)}
     
     For col = 0 to ${Math.floor(interiorWidth / ((coreMaterials[0]?.width || 8) + mortarGap)) - 1}:
-      Z = ${(-interiorWidth/2 + (coreMaterials[0]?.width || 8)/2).toFixed(2)} + (col × ${((coreMaterials[0]?.width || 8) + mortarGap).toFixed(2)})
+      Z_center = ${(-interiorWidth/2 + (coreMaterials[0]?.width || 8)/2).toFixed(2)} + (col × ${((coreMaterials[0]?.width || 8) + mortarGap).toFixed(2)})
+      Z_min = Z_center - ${((coreMaterials[0]?.width || 8) / 2).toFixed(1)}
+      Z_max = Z_center + ${((coreMaterials[0]?.width || 8) / 2).toFixed(1)}
       
-      IF (Y + ${((coreMaterials[0]?.height || 8) / 2).toFixed(1)}) <= ${interiorHeight.toFixed(2)}:
-        OUTPUT: {"material_id": "${coreMaterials[0]?.id}", "position": {"x": X, "y": Y, "z": Z}, "rotation": {"x": 0, "y": 0, "z": 0}, "dimensions": {"length": ${coreMaterials[0]?.length || 16}, "width": ${coreMaterials[0]?.width || 8}, "height": ${coreMaterials[0]?.height || 8}}}
+      SKIP this block if Z_min < ${(-interiorWidth/2).toFixed(2)} OR Z_max > ${(interiorWidth/2).toFixed(2)}
+      
+      PLACE BLOCK: {"material_id": "${coreMaterials[0]?.id}", "position": {"x": X_center, "y": Y_center, "z": Z_center}, "rotation": {"x": 0, "y": 0, "z": 0}, "dimensions": {"length": ${coreMaterials[0]?.length || 16}, "width": ${coreMaterials[0]?.width || 8}, "height": ${coreMaterials[0]?.height || 8}}}
 
 ROTATION RULES:
 • Y-rotation (0 or 1.5708): Always allowed
@@ -76,12 +105,12 @@ ${orientationSettings.preferHorizontal ? '• Prefer horizontal (rotation all 0)
 Return array of block placements in this exact format:
 {"material_id": "id", "position": {"x": num, "y": num, "z": num}, "rotation": {"x": 0, "y": 0, "z": 0}, "dimensions": {"length": num, "width": num, "height": num}}
 
-⚠️ REQUIREMENTS:
-1. Generate AT LEAST ${Math.floor(interiorLength / ((coreMaterials[0]?.length || 16) + mortarGap)) * Math.floor(interiorWidth / ((coreMaterials[0]?.width || 8) + mortarGap)) * Math.floor(interiorHeight / ((coreMaterials[0]?.height || 8) + mortarGap))} blocks
-2. X values must span from ${(-interiorLength/2 + (coreMaterials[0]?.length || 16)/2).toFixed(2)}" to ${(interiorLength/2 - (coreMaterials[0]?.length || 16)/2).toFixed(2)}"
-3. Z values must span from ${(-interiorWidth/2 + (coreMaterials[0]?.width || 8)/2).toFixed(2)}" to ${(interiorWidth/2 - (coreMaterials[0]?.width || 8)/2).toFixed(2)}"
-4. Stack blocks as high as possible, but Y + (height/2) MUST be ≤ ${interiorHeight.toFixed(2)}"
-5. Create a COMPLETE GRID - not just a single column at X=0, Z=0!`;
+⚠️ VALIDATION RULES (CRITICAL):
+1. EVERY block must have: (position.x - length/2) >= ${(-interiorLength/2).toFixed(2)} AND (position.x + length/2) <= ${(interiorLength/2).toFixed(2)}
+2. EVERY block must have: (position.z - width/2) >= ${(-interiorWidth/2).toFixed(2)} AND (position.z + width/2) <= ${(interiorWidth/2).toFixed(2)}
+3. EVERY block must have: (position.y + height/2) <= ${interiorHeight.toFixed(2)}
+4. Generate ${Math.floor(interiorLength / ((coreMaterials[0]?.length || 16) + mortarGap)) * Math.floor(interiorWidth / ((coreMaterials[0]?.width || 8) + mortarGap)) * Math.floor(interiorHeight / ((coreMaterials[0]?.height || 8) + mortarGap))} blocks to fill the space
+5. Blocks OUTSIDE these boundaries will be rejected - they are outside the wall!`;
 
         const response = await base44.integrations.Core.InvokeLLM({
             prompt,
