@@ -65,41 +65,52 @@ GRID CALCULATIONS:
 • Number of layers (Y): ${Math.floor(interiorHeight / ((coreMaterials[0]?.height || 8) + mortarGap))}
 • TOTAL BLOCKS: ${Math.floor(interiorLength / ((coreMaterials[0]?.length || 16) + mortarGap)) * Math.floor(interiorWidth / ((coreMaterials[0]?.width || 8) + mortarGap)) * Math.floor(interiorHeight / ((coreMaterials[0]?.height || 8) + mortarGap))}
 
-STEP-BY-STEP PLACEMENT (follow exactly):
+MULTI-BLOCK PLACEMENT STRATEGY:
 
-1. Start at bottom layer (layer 0)
-2. Place blocks in rows and columns to fill the floor
-3. Move up to next layer
-4. Repeat until height limit reached
+Phase 1: PRIMARY GRID (largest/most cost-effective blocks)
+• Use ${coreMaterials[0]?.material_name} for main coverage
+• Place in regular grid pattern with standard rotation (X:0, Y:0)
+• Calculate grid spacing based on primary block dimensions
 
-DETAILED FORMULA:
-For layer = 0 to ${Math.floor(interiorHeight / ((coreMaterials[0]?.height || 8) + mortarGap)) - 1}:
-  Y_center = layer × (${(coreMaterials[0]?.height || 8)} + ${mortarGap}) + ${((coreMaterials[0]?.height || 8) / 2).toFixed(1)}
-  Y_top = Y_center + ${((coreMaterials[0]?.height || 8) / 2).toFixed(1)}
-  
-  SKIP this layer if Y_top > ${interiorHeight.toFixed(2)}
-  
-  For row = 0 to ${Math.floor(interiorLength / ((coreMaterials[0]?.length || 16) + mortarGap)) - 1}:
-    X_center = ${(-interiorLength/2 + (coreMaterials[0]?.length || 16)/2).toFixed(2)} + (row × ${((coreMaterials[0]?.length || 16) + mortarGap).toFixed(2)})
-    X_min = X_center - ${((coreMaterials[0]?.length || 16) / 2).toFixed(1)}
-    X_max = X_center + ${((coreMaterials[0]?.length || 16) / 2).toFixed(1)}
-    
-    SKIP this block if X_min < ${(-interiorLength/2).toFixed(2)} OR X_max > ${(interiorLength/2).toFixed(2)}
-    
-    For col = 0 to ${Math.floor(interiorWidth / ((coreMaterials[0]?.width || 8) + mortarGap)) - 1}:
-      Z_center = ${(-interiorWidth/2 + (coreMaterials[0]?.width || 8)/2).toFixed(2)} + (col × ${((coreMaterials[0]?.width || 8) + mortarGap).toFixed(2)})
-      Z_min = Z_center - ${((coreMaterials[0]?.width || 8) / 2).toFixed(1)}
-      Z_max = Z_center + ${((coreMaterials[0]?.width || 8) / 2).toFixed(1)}
-      
-      SKIP this block if Z_min < ${(-interiorWidth/2).toFixed(2)} OR Z_max > ${(interiorWidth/2).toFixed(2)}
-      
-      PLACE BLOCK: {"material_id": "${coreMaterials[0]?.id}", "position": {"x": X_center, "y": Y_center, "z": Z_center}, "rotation": {"x": 0, "y": 0, "z": 0}, "dimensions": {"length": ${coreMaterials[0]?.length || 16}, "width": ${coreMaterials[0]?.width || 8}, "height": ${coreMaterials[0]?.height || 8}}}
+Phase 2: ROTATION OPTIMIZATION
+• For each position in main grid, consider Y-axis rotation (90°)
+• Test if rotation reduces gaps at edges
+• Rotate blocks near boundaries if they fit better
+
+Phase 3: GAP FILLING (secondary/tertiary blocks)
+• Identify remaining unfilled spaces after primary grid
+• Use smaller blocks (from available materials) to fill gaps
+• Prioritize lowest cost per cubic inch for gap blocks
+• For each gap, try all allowed rotations on candidate blocks
+
+Phase 4: EDGE OPTIMIZATION
+• Evaluate walls and corners for partial blocks
+• Use secondary materials if they fit remaining space better
+• Consider X-axis rotation (standing blocks on edge) if allowed
+
+PLACEMENT ALGORITHM:
+1. Create primary grid with main block type (${coreMaterials[0]?.material_name})
+2. For EACH grid position, evaluate:
+   - Standard placement (y_rot=0°)
+   - Y-rotated placement (y_rot=90°)
+   ${orientationSettings.allowXRotation ? '   - X-rotated placement (x_rot=90°)\n   - Combined X+Y rotated placement (x_rot=90°, y_rot=90°)' : ''}
+3. Select rotation that minimizes waste and stays in bounds
+4. After primary grid, scan remaining space for secondary blocks
+5. Fill gaps with smallest blocks from available materials
+
+GENERATE ALL BLOCKS needed to fill the entire interior space. Use multiple block types where beneficial.
 
 ROTATION RULES:
-• Y-rotation (0 or 1.5708): Always allowed
-• X-rotation: ${orientationSettings.allowXRotation ? 'Allowed' : 'FORBIDDEN - keep at 0'}
-• Z-rotation: ${orientationSettings.allowZRotation ? 'Allowed' : 'FORBIDDEN - keep at 0'}
-${orientationSettings.preferHorizontal ? '• Prefer horizontal (rotation all 0)' : '• Prefer vertical when possible'}
+• Y-axis rotation (90° = 1.5708 rad): Always allowed. Rotates block around vertical axis. Swaps Length↔Width.
+  - 0°: Length along X-axis, Width along Z-axis (standard)
+  - 90°: Width along X-axis, Length along Z-axis (flipped)
+• X-axis rotation (90° = 1.5708 rad): ${orientationSettings.allowXRotation ? 'ALLOWED - stands block on edge, swaps Width↔Height' : 'FORBIDDEN - keep at 0'}
+• Z-axis rotation: FORBIDDEN - always keep at 0
+• Strategy: Test different rotations to minimize gaps and maximize coverage
+• For each position, try all allowed rotations and select the one that:
+  1. Fits within boundaries
+  2. Minimizes wasted space
+  3. Has lowest cost per cubic inch
 
 ━━━ OUTPUT FORMAT ━━━
 Return array of block placements in this exact format:
