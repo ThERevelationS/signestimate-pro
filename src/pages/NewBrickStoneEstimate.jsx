@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { BrickStoneProject, BrickStoneInventory, Settings } from "@/entities/all";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -11,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Save, ArrowLeft, Box, Eye, EyeOff, Plus, Trash2, Sparkles, Loader2 } from "lucide-react";
+import AIFillResultModal from "@/components/AIFillResultModal";
 
 export default function NewBrickStoneEstimate() {
   const navigate = useNavigate();
@@ -46,7 +46,9 @@ export default function NewBrickStoneEstimate() {
   const [showDimensions, setShowDimensions] = useState(true);
   const [isAIFilling, setIsAIFilling] = useState(false);
   const [hasAutoFilledCore, setHasAutoFilledCore] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false); // New state variable
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [aiResultModalOpen, setAiResultModalOpen] = useState(false);
+  const [lastAIResult, setLastAIResult] = useState(null);
 
   useEffect(() => {
     // Inventory needs to be loaded first for loadProjectForEdit to convert old dimensions
@@ -273,7 +275,8 @@ Return your response as a JSON object with the optimal block selection and quant
           core_materials: coreMaterials
         }));
 
-        alert(`AI filled core with ${response.core_materials.length} block type(s).\n\n${response.calculation_notes || 'Blocks calculated based on optimal fit.'}`);
+        setLastAIResult(response);
+        setAiResultModalOpen(true);
       } else {
         alert('AI could not determine optimal block fill. Please add blocks manually.');
       }
