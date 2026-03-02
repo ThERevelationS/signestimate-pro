@@ -987,6 +987,12 @@ Return your response as a JSON object with the optimal block selection and quant
 
   return (
     <div className="p-3 md:p-4 bg-slate-50 min-h-screen">
+      <AIFillResultModal
+        isOpen={aiResultModalOpen}
+        onClose={() => setAiResultModalOpen(false)}
+        result={lastAIResult}
+        inventory={inventory}
+      />
       <div className="w-full mx-auto" style={{ maxWidth: '100%' }}>
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 mb-4">
           <div>
