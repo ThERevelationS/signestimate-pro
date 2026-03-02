@@ -355,23 +355,24 @@ export default function NewBrickStoneEstimate() {
               const rowStartIndex = blockIndex;
               let rowHeight = 0;
               
-              while (currentX < innerXEnd && blockIndex < blockQueue.length) {
+              while (currentX + 0.5 < innerXEnd && blockIndex < blockQueue.length) {
                 const block = blockQueue[blockIndex];
                 const blockL = block.material.length;
                 const blockW = block.material.width;
                 
-                let useWidth = blockL, useHeight = blockW;
-                const normalFits = (currentX + blockL <= innerXEnd + 0.01) && (currentY + blockW <= innerYEnd + 0.01);
-                const rotatedFits = (currentX + blockW <= innerXEnd + 0.01) && (currentY + blockL <= innerYEnd + 0.01);
+                const normalFits = (currentX + blockL <= innerXEnd + 0.1);
+                const rotatedFits = (currentX + blockW <= innerXEnd + 0.1);
                 
-                if (!normalFits && rotatedFits) {
+                let useWidth, useHeight;
+                if (normalFits && (currentY + blockW <= innerYEnd + 0.1)) {
+                  useWidth = blockL;
+                  useHeight = blockW;
+                } else if (rotatedFits && (currentY + blockL <= innerYEnd + 0.1)) {
                   useWidth = blockW;
                   useHeight = blockL;
-                } else if (!normalFits && !rotatedFits) {
+                } else {
                   break;
                 }
-                
-                if (currentX + useWidth > innerXEnd + 0.01 || currentY + useHeight > innerYEnd + 0.01) break;
                 
                 ctx.fillStyle = block.color;
                 ctx.fillRect(currentX * scale, currentY * scale, useWidth * scale, useHeight * scale);
@@ -384,7 +385,7 @@ export default function NewBrickStoneEstimate() {
                 blockIndex++;
               }
               
-              if (blockIndex === rowStartIndex) break;
+              if (blockIndex === rowStartIndex || rowHeight === 0) break;
               currentY += rowHeight + mortarGap;
             }
           }

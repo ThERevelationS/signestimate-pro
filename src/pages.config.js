@@ -69,6 +69,7 @@ import LaserSettings from './pages/LaserSettings';
 import MetalProjects from './pages/MetalProjects';
 import MetalSettings from './pages/MetalSettings';
 import MyProfile from './pages/MyProfile';
+import NewBrickStoneEstimate from './pages/NewBrickStoneEstimate';
 import NewBrickStoneEstimate2 from './pages/NewBrickStoneEstimate2';
 import NewCNCEstimate from './pages/NewCNCEstimate';
 import NewChannelLetterInstallation from './pages/NewChannelLetterInstallation';
@@ -79,7 +80,6 @@ import NewPaintEstimate from './pages/NewPaintEstimate';
 import PaintProjects from './pages/PaintProjects';
 import PaintSettings from './pages/PaintSettings';
 import UserManagement from './pages/UserManagement';
-import NewBrickStoneEstimate from './pages/NewBrickStoneEstimate';
 import __Layout from './Layout.jsx';
 
 
@@ -106,6 +106,7 @@ export const PAGES = {
     "MetalProjects": MetalProjects,
     "MetalSettings": MetalSettings,
     "MyProfile": MyProfile,
+    "NewBrickStoneEstimate": NewBrickStoneEstimate,
     "NewBrickStoneEstimate2": NewBrickStoneEstimate2,
     "NewCNCEstimate": NewCNCEstimate,
     "NewChannelLetterInstallation": NewChannelLetterInstallation,
@@ -116,7 +117,6 @@ export const PAGES = {
     "PaintProjects": PaintProjects,
     "PaintSettings": PaintSettings,
     "UserManagement": UserManagement,
-    "NewBrickStoneEstimate": NewBrickStoneEstimate,
 }
 
 export const pagesConfig = {
