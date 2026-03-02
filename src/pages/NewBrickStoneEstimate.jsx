@@ -18,7 +18,7 @@ export default function NewBrickStoneEstimate() {
   const editId = searchParams.get('edit');
   const topViewRef = useRef(null);
   const sideViewRef = useRef(null);
-  const coreSideViewRef = useRef(null); // New ref for core materials side view
+  const coreSideViewRef = useRef(null);
 
   const [project, setProject] = useState({
     project_name: "",
@@ -29,11 +29,11 @@ export default function NewBrickStoneEstimate() {
     bricks_along_length: 6,
     bricks_along_width: 9,
     courses_high: 5,
-    layers: 1, // Fixed at 1 for walls
+    layers: 1,
     mortar_gap: 0.375,
     waste_factor: 1.1,
     selected_material_id: "",
-    core_materials: [], // Array of {material_id, quantity}
+    core_materials: [],
     notes: ""
   });
 
@@ -51,7 +51,6 @@ export default function NewBrickStoneEstimate() {
   const [lastAIResult, setLastAIResult] = useState(null);
 
   useEffect(() => {
-    // Inventory needs to be loaded first for loadProjectForEdit to convert old dimensions
     const fetchData = async () => {
       setIsLoading(true);
       try {
@@ -66,7 +65,7 @@ export default function NewBrickStoneEstimate() {
         setSettings(settingsObj);
 
         if (editId) {
-          await loadProjectForEdit(editId, inventoryData); // Pass inventoryData
+          await loadProjectForEdit(editId, inventoryData);
         } else {
           setProject(prev => ({
             ...prev,
@@ -83,7 +82,6 @@ export default function NewBrickStoneEstimate() {
   }, [editId]);
 
   useEffect(() => {
-    // Dependency array updated to project.core_materials
     if (selectedMaterial && project.bricks_along_length && project.bricks_along_width && project.courses_high) {
       performCalculations();
     }
@@ -91,8 +89,6 @@ export default function NewBrickStoneEstimate() {
 
   useEffect(() => {
     drawVisualizations();
-    
-    // Add resize listener for responsive canvas
     const handleResize = () => drawVisualizations();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -102,40 +98,26 @@ export default function NewBrickStoneEstimate() {
     try {
       const projectData = await BrickStoneProject.get(projectId);
       if (projectData) {
-        // Convert saved dimensions back to brick counts if needed for old projects
         if (projectData.base_length && !projectData.bricks_along_length && inventoryData.length > 0) {
           const material = inventoryData.find(m => m.id === projectData.selected_material_id);
           if (material && projectData.mortar_gap !== undefined) {
             const effectiveBrickL = material.length + projectData.mortar_gap;
             const effectiveBrickW = material.width + projectData.mortar_gap;
             const effectiveBrickH = material.height + projectData.mortar_gap;
-
-            // Calculate brick counts based on old base_length/width/height
-            // Formula: N = (total_dim + mortar_gap) / (brick_dim + mortar_gap)
             projectData.bricks_along_length = Math.max(1, Math.round((projectData.base_length + projectData.mortar_gap) / effectiveBrickL));
             projectData.bricks_along_width = Math.max(1, Math.round((projectData.base_width + projectData.mortar_gap) / effectiveBrickW));
             projectData.courses_high = Math.max(1, Math.round((projectData.base_height + projectData.mortar_gap) / effectiveBrickH));
           }
         }
-        // Remove old base_length/width/height fields if they exist, as they are now derived.
         delete projectData.base_length;
         delete projectData.base_width;
         delete projectData.base_height;
-
-        // NEW: Convert old core_material_id to new core_materials array format if it exists
-        // This ensures backward compatibility for projects saved with a single core_material_id
         if (projectData.core_material_id && !projectData.core_materials) {
-          projectData.core_materials = [{
-            material_id: projectData.core_material_id,
-            // Old projects didn't store quantity for core material explicitly.
-            // Setting to 0, user will have to manually adjust for existing projects if they wish to include core blocks.
-            quantity: 0
-          }];
-          delete projectData.core_material_id; // Remove the old field
+          projectData.core_materials = [{ material_id: projectData.core_material_id, quantity: 0 }];
+          delete projectData.core_material_id;
         } else if (!projectData.core_materials) {
-          projectData.core_materials = []; // Ensure it's an array if missing
+          projectData.core_materials = [];
         }
-
         setProject(projectData);
         if (projectData.selected_material_id) {
           const material = inventoryData.find(m => m.id === projectData.selected_material_id);
@@ -150,237 +132,86 @@ export default function NewBrickStoneEstimate() {
   const handleMaterialSelect = async (materialId) => {
     const material = inventory.find(m => m.id === materialId);
     setSelectedMaterial(material);
-    
     setProject(prev => ({
       ...prev,
       selected_material_id: materialId,
       material_name: material ? material.material_name : "",
-      material_dimensions: material ? {
-        length: material.length,
-        width: material.width,
-        height: material.height
-      } : null
+      material_dimensions: material ? { length: material.length, width: material.width, height: material.height } : null
     }));
-
-    // Auto-fill core on first material selection
     if (material && !hasAutoFilledCore) {
       setHasAutoFilledCore(true);
-      // Wait a bit for state to update before filling
       setTimeout(() => fillCoreWithAI(materialId), 100);
     }
   };
 
   const fillCoreWithAI = async (wallMaterialId = null) => {
-    const currentWallMaterial = wallMaterialId ? 
-      inventory.find(m => m.id === wallMaterialId) : 
-      selectedMaterial;
-    
-    if (!currentWallMaterial) {
+    const material = wallMaterialId ? inventory.find(m => m.id === wallMaterialId) : selectedMaterial;
+    if (!material) {
       alert('Please select a wall material first');
       return;
     }
 
-    const wallMaterialForCalc = currentWallMaterial;
-    const bricksAlongLength = project.bricks_along_length;
-    const bricksAlongWidth = project.bricks_along_width;
-    const coursesHigh = project.courses_high;
-    const mortarGap = project.mortar_gap;
-    
-    const brickL = wallMaterialForCalc.length;
-    const brickW = wallMaterialForCalc.width;
-    const brickH = wallMaterialForCalc.height;
+    const brickL = material.length, brickW = material.width, brickH = material.height;
     const wallThickness = brickW;
-    
-    const actualLength = bricksAlongLength * brickL + (bricksAlongLength - 1) * mortarGap;
-    // `bricksAlongWidth` defines the number of bricks along the *inner* side walls.
-    // So, the total width is two wall thicknesses plus the length of the inner side wall.
-    const innerSideWallLength = bricksAlongWidth * brickL + (bricksAlongWidth - 1) * mortarGap;
+    const actualLength = project.bricks_along_length * brickL + (project.bricks_along_length - 1) * project.mortar_gap;
+    const innerSideWallLength = project.bricks_along_width * brickL + (project.bricks_along_width - 1) * project.mortar_gap;
     const actualWidth = (wallThickness * 2) + innerSideWallLength;
-    const actualHeight = coursesHigh * brickH + (coursesHigh - 1) * mortarGap;
-    
-    // Calculate inner dimensions of the hollow space
-    const innerXStart = wallThickness;
-    const innerYStart = wallThickness; // Assuming wallThickness is same for length/width (due to brick orientation)
+    const actualHeight = project.courses_high * brickH + (project.courses_high - 1) * project.mortar_gap;
     const innerLength = actualLength - 2 * wallThickness;
     const innerWidth = actualWidth - 2 * wallThickness;
     const innerHeight = actualHeight;
 
     const blockMaterials = inventory.filter(m => m.material_type === 'block');
-    
     if (blockMaterials.length === 0) {
-      alert('No block materials found in inventory. Please add blocks to inventory first.');
+      alert('No block materials in inventory. Please add blocks first.');
       return;
     }
 
     setIsAIFilling(true);
-    
     try {
-      // Calculate exact grid dimensions for primary block
       const primaryBlock = blockMaterials[0];
-      const blocksAlongLength = Math.floor((innerLength + mortarGap) / (primaryBlock.length + mortarGap));
-      const blocksAlongWidth = Math.floor((innerWidth + mortarGap) / (primaryBlock.width + mortarGap));
-      const blocksAlongHeight = Math.floor((innerHeight + mortarGap) / (primaryBlock.height + mortarGap));
-      const totalBlocksNeeded = blocksAlongLength * blocksAlongWidth * blocksAlongHeight;
-
-      const prompt = `Fill a hollow interior space with blocks using this exact grid math.
-
-INTERIOR SPACE: Length ${innerLength.toFixed(2)}" × Width ${innerWidth.toFixed(2)}" × Height ${innerHeight.toFixed(2)}", Mortar gap ${mortarGap}"
-
-PRIMARY BLOCK: ${primaryBlock.material_name}
-Dimensions: ${primaryBlock.length}" L × ${primaryBlock.width}" W × ${primaryBlock.height}" H
-Cost: $${primaryBlock.cost_per_unit} per unit
-
-CALCULATION:
-- Blocks along length: floor((${innerLength.toFixed(2)} + ${mortarGap}) / (${primaryBlock.length} + ${mortarGap})) = ${blocksAlongLength}
-- Blocks along width: floor((${innerWidth.toFixed(2)} + ${mortarGap}) / (${primaryBlock.width} + ${mortarGap})) = ${blocksAlongWidth}
-- Layers high: floor((${innerHeight.toFixed(2)} + ${mortarGap}) / (${primaryBlock.height} + ${mortarGap})) = ${blocksAlongHeight}
-- TOTAL: ${blocksAlongLength} × ${blocksAlongWidth} × ${blocksAlongHeight} = ${totalBlocksNeeded} blocks
-
-{
-  "core_materials": [
-    {
-      "material_id": "${primaryBlock.id}",
-      "quantity": ${totalBlocksNeeded}
-    }
-  ],
-  "total_coverage_percentage": 100,
-  "calculation_notes": "Complete 3D grid fill: ${blocksAlongLength} blocks (length) × ${blocksAlongWidth} blocks (width) × ${blocksAlongHeight} layers (height) = ${totalBlocksNeeded} total ${primaryBlock.material_name} blocks"
-}`;
+      const blocksL = Math.floor((innerLength + project.mortar_gap) / (primaryBlock.length + project.mortar_gap));
+      const blocksW = Math.floor((innerWidth + project.mortar_gap) / (primaryBlock.width + project.mortar_gap));
+      const blocksH = Math.floor((innerHeight + project.mortar_gap) / (primaryBlock.height + project.mortar_gap));
+      const totalBlocks = blocksL * blocksW * blocksH;
 
       const response = await base44.integrations.Core.InvokeLLM({
-- Outer Length: ${actualLength.toFixed(2)}"
-- Outer Width: ${actualWidth.toFixed(2)}"
-- Outer Height: ${actualHeight.toFixed(2)}"
-- Wall Thickness: ${wallThickness.toFixed(2)}"
-
-INTERIOR HOLLOW SPACE (where blocks go):
-- Interior Length: ${innerLength.toFixed(2)}" (from inner wall edge to inner wall edge along length)
-- Interior Width: ${innerWidth.toFixed(2)}" (from inner wall edge to inner wall edge along width)
-- Interior Height: ${innerHeight.toFixed(2)}" (full height, floor to ceiling)
-- Interior Origin: X starts at ${innerXStart.toFixed(2)}" from outer edge, Z starts at ${innerYStart.toFixed(2)}" from outer edge
-- Mortar Gap Between Blocks: ${mortarGap}"
-
-AVAILABLE BLOCK MATERIALS (sorted by cost-effectiveness):
-${blockMaterials.map((block, i) => {
-  const vol = block.length * block.width * block.height;
-  const costPerVol = block.cost_per_unit / vol;
-  return `${i + 1}. ${block.material_name} (ID: ${block.id})
-     - Size: ${block.length}" L × ${block.width}" W × ${block.height}" H
-     - Cost: $${block.cost_per_unit.toFixed(2)} per unit
-     - Volume: ${vol} cu.in
-     - Cost Efficiency: $${costPerVol.toFixed(4)}/cu.in`;
-}).join('\n')}
-
-SYSTEMATIC BLOCK PLACEMENT ALGORITHM:
-
-Step 1: CHOOSE PRIMARY BLOCK TYPE
-Select the ${blockMaterials[0]?.material_name || 'smallest/most efficient'} block for main grid fill.
-
-Step 2: CALCULATE GRID COVERAGE
-For primary block (${blockMaterials[0]?.length || 16}" × ${blockMaterials[0]?.width || 8}" × ${blockMaterials[0]?.height || 8}"):
-- Blocks along length: floor((${innerLength.toFixed(2)} + ${mortarGap}) / (${blockMaterials[0]?.length || 16} + ${mortarGap})) = ${Math.floor((innerLength + mortarGap) / ((blockMaterials[0]?.length || 16) + mortarGap))}
-- Blocks along width: floor((${innerWidth.toFixed(2)} + ${mortarGap}) / (${blockMaterials[0]?.width || 8} + ${mortarGap})) = ${Math.floor((innerWidth + mortarGap) / ((blockMaterials[0]?.width || 8) + mortarGap))}
-- Blocks per layer (height): floor((${innerHeight.toFixed(2)} + ${mortarGap}) / (${blockMaterials[0]?.height || 8} + ${mortarGap})) = ${Math.floor((innerHeight + mortarGap) / ((blockMaterials[0]?.height || 8) + mortarGap))}
-
-Step 3: FILL COMPLETELY WITH PRIMARY BLOCK
-- Start from corner (${innerXStart.toFixed(2)}", 0", ${innerYStart.toFixed(2)}")
-- Place blocks in a grid pattern:
-  * X-direction (length): place blocks spaced by (block_length + ${mortarGap}")
-  * Z-direction (width): place blocks spaced by (block_width + ${mortarGap}")
-  * Y-direction (height): stack layers from bottom (Y=0) to top, spaced by (block_height + ${mortarGap}")
-- This creates a complete rectilinear fill from wall to wall, floor to ceiling
-
-Step 4: IDENTIFY REMAINING GAPS
-After primary grid, check edge zones that don't fit full blocks:
-- Remaining length gap: ${innerLength.toFixed(2)} % (${blockMaterials[0]?.length || 16} + ${mortarGap}) inches
-- Remaining width gap: ${innerWidth.toFixed(2)} % (${blockMaterials[0]?.width || 8} + ${mortarGap}) inches
-- Remaining height gap: ${innerHeight.toFixed(2)} % (${blockMaterials[0]?.height || 8} + ${mortarGap}) inches
-
-Step 5: FILL GAPS WITH SECONDARY BLOCKS
-- Use smaller block types to fill edge voids
-- Place secondary blocks with optimal rotation
-- Ensure no gaps remain
-
-MANDATORY OUTPUT FORMAT (JSON):
-{
-  "primary_block_id": "ID of main fill block",
-  "core_materials": [
-    {
-      "material_id": "block ID",
-      "quantity": integer (total blocks needed),
-      "placement_strategy": "description of how these blocks are placed"
-    }
-  ],
-  "total_coverage_percentage": number (0-100, percentage of interior filled),
-  "calculation_notes": "Summary of placement approach, total blocks per layer, layers, and final coverage"
-}
-
-CRITICAL REQUIREMENTS:
-1. MUST fill the ENTIRE interior space - NO empty areas allowed
-2. Blocks must start from the interior wall edges: X from ${innerXStart.toFixed(2)}" to ${(innerXStart + innerLength).toFixed(2)}", Z from ${innerYStart.toFixed(2)}" to ${(innerYStart + innerWidth).toFixed(2)}"
-3. Must stack from Y=0 (floor) to Y=${innerHeight.toFixed(2)}" (ceiling)
-4. Calculate EXACT block counts needed for complete fill using grid math
-5. Return TOTAL QUANTITY per material type, not per position`;
-
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt: prompt,
+        prompt: `Fill a hollow core. Interior: ${innerLength.toFixed(2)}" × ${innerWidth.toFixed(2)}" × ${innerHeight.toFixed(2)}" with ${project.mortar_gap}" gaps. Block: ${primaryBlock.length}" × ${primaryBlock.width}" × ${primaryBlock.height}". Grid: ${blocksL}×${blocksW}×${blocksH} = ${totalBlocks} blocks. Return: {"core_materials":[{"material_id":"${primaryBlock.id}","quantity":${totalBlocks}}],"total_coverage_percentage":100,"calculation_notes":"${blocksL}×${blocksW}×${blocksH} = ${totalBlocks} blocks"}`,
         response_json_schema: {
           type: "object",
           properties: {
-            core_materials: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  material_id: { type: "string", description: "ID of the block material" },
-                  quantity: { type: "integer", description: "Number of blocks needed" }
-                },
-                required: ["material_id", "quantity"]
-              }
-            },
-            total_coverage_percentage: { type: "number", description: "Percentage of space filled" },
-            calculation_notes: { type: "string", description: "Notes about the calculation, e.g., which blocks were chosen and why" }
+            core_materials: { type: "array", items: { type: "object", properties: { material_id: { type: "string" }, quantity: { type: "integer" } }, required: ["material_id", "quantity"] } },
+            total_coverage_percentage: { type: "number" },
+            calculation_notes: { type: "string" }
           },
           required: ["core_materials"]
         }
       });
 
-      if (response && response.core_materials && response.core_materials.length > 0) {
-        const coreMaterials = response.core_materials.map(item => ({
-          material_id: item.material_id,
-          quantity: item.quantity || 0
-        }));
-
-        setProject(prev => ({
-          ...prev,
-          core_materials: coreMaterials
-        }));
-
+      if (response?.core_materials?.length > 0) {
+        setProject(prev => ({ ...prev, core_materials: response.core_materials.map(item => ({ material_id: item.material_id, quantity: item.quantity || 0 })) }));
         setLastAIResult(response);
         setAiResultModalOpen(true);
       } else {
-        alert('AI could not determine optimal block fill. Please add blocks manually.');
+        alert('AI failed. Please add blocks manually.');
       }
     } catch (error) {
-      console.error('Error filling core with AI:', error);
-      alert('Error calculating core fill. Please check LLM integration or add blocks manually.');
+      console.error('Error:', error);
+      alert('Error calculating core. Please add blocks manually.');
     }
-    
     setIsAIFilling(false);
   };
 
   const performCalculations = () => {
     if (!selectedMaterial) {
-      setCalculations(null); // Clear calculations if no main material is selected
+      setCalculations(null);
       return;
     }
 
     const material = selectedMaterial;
-    
     const bricksAlongLength = project.bricks_along_length;
     const bricksAlongWidth = project.bricks_along_width;
     const coursesHigh = project.courses_high;
-    const layers = 1; // Always 1 for walls
     const mortarGap = project.mortar_gap;
     const wasteFactor = project.waste_factor;
     
@@ -388,54 +219,37 @@ CRITICAL REQUIREMENTS:
     const brickW = material.width;
     const brickH = material.height;
     const costPerUnit = material.cost_per_unit;
-
-    // Wall thickness - single layer
     const wallThickness = brickW;
     
-    // Calculate actual dimensions
     const actualLength = bricksAlongLength * brickL + (bricksAlongLength - 1) * mortarGap;
-    // `bricksAlongWidth` defines the number of bricks along the *inner* side walls.
-    // So, the total width is two wall thicknesses plus the length of the inner side wall.
     const innerSideWallLength = bricksAlongWidth * brickL + (bricksAlongWidth - 1) * mortarGap;
     const actualWidth = (wallThickness * 2) + innerSideWallLength;
     const actualHeight = coursesHigh * brickH + (coursesHigh - 1) * mortarGap;
     
-    // Calculate brick counts for main walls
-    const frontBackBricks = coursesHigh * bricksAlongLength * layers * 2;
-    const leftRightBricks = coursesHigh * bricksAlongWidth * layers * 2;
+    const frontBackBricks = coursesHigh * bricksAlongLength * 2;
+    const leftRightBricks = coursesHigh * bricksAlongWidth * 2;
     const totalWallBricks = frontBackBricks + leftRightBricks;
 
-    // Calculate core materials cost
     let totalCoreMaterialCost = 0;
     const coreBreakdown = project.core_materials.map(coreItem => {
       const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
       if (!coreMaterial) {
-        return {
-          material_id: coreItem.material_id,
-          material_name: "Unknown Material",
-          quantity: coreItem.quantity || 0,
-          cost_per_unit: 0,
-          total_cost: 0
-        };
+        return { material_id: coreItem.material_id, material_name: "Unknown", quantity: 0, cost_per_unit: 0, total_cost: 0 };
       }
-      
       const quantity = coreItem.quantity || 0;
-      // Per outline, waste factor is not applied to individual core material quantities for cost calculation.
       const cost = quantity * coreMaterial.cost_per_unit;
       totalCoreMaterialCost += cost;
-      
       return {
         material_id: coreItem.material_id,
         material_name: coreMaterial.material_name,
-        quantity: quantity, // Storing user-defined quantity (without waste for cost)
+        quantity: quantity,
         cost_per_unit: coreMaterial.cost_per_unit,
         total_cost: cost
       };
     });
 
     const exteriorPerimeter = 2 * (actualLength + actualWidth);
-    const exteriorSurfaceArea = (exteriorPerimeter * actualHeight) / 144; // Total surface area in sq ft
-
+    const exteriorSurfaceArea = (exteriorPerimeter * actualHeight) / 144;
     const totalWallBricksWithWaste = Math.ceil(totalWallBricks * wasteFactor);
     const mortarBagsPerSqFt = parseFloat(settings.brick_mortar_bags_per_100sqft || 3) / 100;
     const mortarBags = Math.ceil(exteriorSurfaceArea * mortarBagsPerSqFt);
@@ -447,11 +261,11 @@ CRITICAL REQUIREMENTS:
     setCalculations({
       totalWallBricks: Math.round(totalWallBricks),
       totalWallBricksWithWaste: totalWallBricksWithWaste,
-      coreBreakdown: coreBreakdown, // New field for detailed core material breakdown
+      coreBreakdown: coreBreakdown,
       surfaceArea: exteriorSurfaceArea.toFixed(2),
       mortarBags: mortarBags,
       wallMaterialCost: wallMaterialCost,
-      coreMaterialCost: totalCoreMaterialCost, // Total cost for all core materials
+      coreMaterialCost: totalCoreMaterialCost,
       mortarCost: mortarCost,
       totalCost: totalCost,
       actualLength: actualLength.toFixed(2),
@@ -478,17 +292,13 @@ CRITICAL REQUIREMENTS:
       const canvas = topViewRef.current;
       const container = canvas.parentElement;
       const containerWidth = container.clientWidth;
-      const containerHeight = containerWidth; // Keep square aspect
-      
-      // Set canvas size to match container
+      const containerHeight = containerWidth;
       canvas.width = containerWidth;
       canvas.height = containerHeight;
       
       const ctx = canvas.getContext('2d');
       const padding = Math.max(40, containerWidth * 0.1);
-      const availableWidth = containerWidth - (padding * 2);
-      const availableHeight = containerHeight - (padding * 2);
-      const scale = Math.min(availableWidth / actualLength, availableHeight / actualWidth);
+      const scale = Math.min((containerWidth - padding * 2) / actualLength, (containerHeight - padding * 2) / actualWidth);
 
       ctx.clearRect(0, 0, containerWidth, containerHeight);
       ctx.save();
@@ -497,237 +307,124 @@ CRITICAL REQUIREMENTS:
       if (!showDimensions) {
         ctx.fillStyle = selectedMaterial ? '#dc2626' : '#cbd5e1';
         ctx.fillRect(0, 0, actualLength * scale, actualWidth * scale);
-
         if (selectedMaterial) {
           const wallThickness = calculations.wallThickness;
-          const innerX = wallThickness * scale;
-          const innerY = wallThickness * scale;
-          const innerW = (actualLength - 2 * wallThickness) * scale;
-          const innerH = (actualWidth - 2 * wallThickness) * scale;
           ctx.fillStyle = '#ffffff';
-          ctx.fillRect(innerX, innerY, innerW, innerH);
+          ctx.fillRect(wallThickness * scale, wallThickness * scale, (actualLength - 2 * wallThickness) * scale, (actualWidth - 2 * wallThickness) * scale);
         }
-
         ctx.strokeStyle = '#1e293b';
         ctx.lineWidth = 2;
         ctx.strokeRect(0, 0, actualLength * scale, actualWidth * scale);
       } else {
-          ctx.fillStyle = '#e8ddd1';
-          ctx.fillRect(0, 0, actualLength * scale, actualWidth * scale);
+        ctx.fillStyle = '#e8ddd1';
+        ctx.fillRect(0, 0, actualLength * scale, actualWidth * scale);
+        const brickL = selectedMaterial.length;
+        const brickW = selectedMaterial.width;
+        const wallThickness = calculations.wallThickness;
+        const innerXStart = wallThickness;
+        const innerYStart = wallThickness;
+        const innerXEnd = actualLength - wallThickness;
+        const innerYEnd = actualWidth - wallThickness;
+        const innerLength = innerXEnd - innerXStart;
+        const innerWidth = innerYEnd - innerYStart;
 
-          const brickL = selectedMaterial.length;
-          const brickW = selectedMaterial.width;
-          
-          const numBricksLength = calculations.bricksAlongLength;
-          const numBricksWidth = calculations.bricks_along_width; // Changed from project.bricks_along_width to calculations.bricks_along_width to match pattern
-          
-          const wallThickness = calculations.wallThickness;
-          
-          ctx.fillStyle = '#a8332e';
+        ctx.fillStyle = '#f5f5f5';
+        ctx.fillRect(innerXStart * scale, innerYStart * scale, innerLength * scale, innerWidth * scale);
 
-          // FRONT WALL
-          const yStartFront = 0;
-          for (let col = 0; col < numBricksLength; col++) {
-            let xStart = col * (brickL + mortarGap);
-            ctx.fillRect(xStart * scale, yStartFront * scale, brickL * scale, brickW * scale);
-          }
+        if (project.core_materials && project.core_materials.length > 0) {
+          const validCoreMaterials = project.core_materials.filter(item => {
+            const mat = inventory.find(m => m.id === item.material_id);
+            return mat && item.quantity > 0;
+          });
           
-          // BACK WALL
-          const yStartBack = actualWidth - brickW;
-          for (let col = 0; col < numBricksLength; col++) {
-            let xStart = col * (brickL + mortarGap);
-            ctx.fillRect(xStart * scale, yStartBack * scale, brickL * scale, brickW * scale);
-          }
-          
-          const frontWallEnd = wallThickness;
-          const backWallStart = actualWidth - wallThickness;
-          
-          // LEFT WALL
-          const xStartLeft = 0;
-          for (let row = 0; row < numBricksWidth; row++) {
-            let yStart = frontWallEnd + row * (brickL + mortarGap); // Assuming bricks are laid flat along the length
-            const brickYStart = Math.max(frontWallEnd, yStart);
-            const brickYEnd = Math.min(backWallStart, yStart + brickL); // This implies the bricks along width are length-wise
-            const visibleLength = brickYEnd - brickYStart;
-            
-            if (visibleLength > 0.05) { // Ensure a meaningful segment
-              ctx.fillRect(xStartLeft * scale, brickYStart * scale, brickW * scale, visibleLength * scale); // Brick width for wall thickness, visibleLength for height
-            }
-          }
-          
-          // RIGHT WALL
-          const xStartRight = actualLength - brickW;
-          for (let row = 0; row < numBricksWidth; row++) {
-            let yStart = frontWallEnd + row * (brickL + mortarGap);
-            const brickYStart = Math.max(frontWallEnd, yStart);
-            const brickYEnd = Math.min(backWallStart, yStart + brickL);
-            const visibleLength = brickYEnd - brickYStart;
-            
-            if (visibleLength > 0.05) {
-              ctx.fillRect(xStartRight * scale, brickYStart * scale, brickW * scale, visibleLength * scale);
-            }
-          }
-          
-          // Calculate hollow center boundaries
-          const innerXStart = wallThickness;
-          const innerYStart = wallThickness;
-          const innerXEnd = actualLength - wallThickness;
-          const innerYEnd = actualWidth - wallThickness;
-          
-          const innerLength = innerXEnd - innerXStart;
-          const innerWidth = innerYEnd - innerYStart;
-
-          // Fill with light gray background for the core area
-          ctx.fillStyle = '#f5f5f5';
-          ctx.fillRect(innerXStart * scale, innerYStart * scale, innerLength * scale, innerWidth * scale);
-
-          // Draw core blocks filling ENTIRE hollow space with smart rotation (NO CENTERING)
-          if (project.core_materials && project.core_materials.length > 0) {
-            const validCoreMaterials = project.core_materials.filter(item => {
-              const mat = inventory.find(m => m.id === item.material_id);
-              return mat && item.quantity > 0;
+          if (validCoreMaterials.length > 0) {
+            const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
+            const blockQueue = [];
+            validCoreMaterials.forEach((coreItem, matIndex) => {
+              const material = inventory.find(m => m.id === coreItem.material_id);
+              if (material) {
+                for (let i = 0; i < coreItem.quantity; i++) {
+                  blockQueue.push({ material, color: colors[matIndex % colors.length] });
+                }
+              }
             });
             
-            if (validCoreMaterials.length > 0) {
-              const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
+            let blockIndex = 0, currentY = innerYStart;
+            while (currentY < innerYEnd && blockIndex < blockQueue.length) {
+              let currentX = innerXStart;
+              const rowStartIndex = blockIndex;
+              let rowHeight = 0;
               
-              // Create a queue of all blocks with their material info
-              const blockQueue = [];
-              validCoreMaterials.forEach((coreItem, matIndex) => {
-                const material = inventory.find(m => m.id === coreItem.material_id);
-                if (material) {
-                  for (let i = 0; i < coreItem.quantity; i++) {
-                    blockQueue.push({
-                      material: material,
-                      color: colors[matIndex % colors.length],
-                      materialIndex: matIndex
-                    });
-                  }
-                }
-              });
-              
-              // Fill from top-left, no centering
-              let blockIndex = 0;
-              let currentY = innerYStart;
-              
-              while (currentY < innerYEnd && blockIndex < blockQueue.length) {
-                let currentX = innerXStart;
-                const rowStartIndex = blockIndex;
-                let rowHeight = 0;
+              while (currentX < innerXEnd && blockIndex < blockQueue.length) {
+                const block = blockQueue[blockIndex];
+                const blockL = block.material.length;
+                const blockW = block.material.width;
                 
-                while (currentX < innerXEnd && blockIndex < blockQueue.length) {
-                  const block = blockQueue[blockIndex];
-                  const blockL = block.material.length;
-                  const blockW = block.material.width;
-                  
-                  const remainingWidth = innerXEnd - currentX;
-                  const remainingHeight = innerYEnd - currentY;
-                  
-                  let useWidth = blockL;
-                  let useHeight = blockW;
-                  
-                  const normalFits = (currentX + blockL <= innerXEnd + 0.01) && (currentY + blockW <= innerYEnd + 0.01);
-                  const rotatedFits = (currentX + blockW <= innerXEnd + 0.01) && (currentY + blockL <= innerYEnd + 0.01);
-                  
-                  if (!normalFits && rotatedFits) {
-                    useWidth = blockW;
-                    useHeight = blockL;
-                  } else if (normalFits && rotatedFits) {
-                    const normalWaste = remainingWidth - blockL;
-                    const rotatedWaste = remainingWidth - blockW;
-                    
-                    if (rotatedWaste < normalWaste && rotatedWaste >= 0) {
-                      useWidth = blockW;
-                      useHeight = blockL;
-                    }
-                  } else if (!normalFits && !rotatedFits) {
-                    break;
-                  }
-                  
-                  if (currentX + useWidth > innerXEnd + 0.01 || currentY + useHeight > innerYEnd + 0.01) {
-                    break;
-                  }
-                  
-                  // Draw the block
-                  ctx.fillStyle = block.color;
-                  ctx.fillRect(currentX * scale, currentY * scale, useWidth * scale, useHeight * scale);
-                  ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-                  ctx.lineWidth = 1;
-                  ctx.strokeRect(currentX * scale, currentY * scale, useWidth * scale, useHeight * scale);
-                  
-                  rowHeight = Math.max(rowHeight, useHeight);
-                  currentX += useWidth + mortarGap;
-                  blockIndex++;
+                let useWidth = blockL, useHeight = blockW;
+                const normalFits = (currentX + blockL <= innerXEnd + 0.01) && (currentY + blockW <= innerYEnd + 0.01);
+                const rotatedFits = (currentX + blockW <= innerXEnd + 0.01) && (currentY + blockL <= innerYEnd + 0.01);
+                
+                if (!normalFits && rotatedFits) {
+                  useWidth = blockW;
+                  useHeight = blockL;
+                } else if (!normalFits && !rotatedFits) {
+                  break;
                 }
                 
-                if (blockIndex === rowStartIndex) break;
-                currentY += rowHeight + mortarGap;
+                if (currentX + useWidth > innerXEnd + 0.01 || currentY + useHeight > innerYEnd + 0.01) break;
+                
+                ctx.fillStyle = block.color;
+                ctx.fillRect(currentX * scale, currentY * scale, useWidth * scale, useHeight * scale);
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(currentX * scale, currentY * scale, useWidth * scale, useHeight * scale);
+                
+                rowHeight = Math.max(rowHeight, useHeight);
+                currentX += useWidth + mortarGap;
+                blockIndex++;
               }
               
-              // Fill remaining space with light gray
-              if (currentY < innerYEnd - 0.5) {
-                ctx.fillStyle = 'rgba(220, 220, 220, 0.3)';
-                ctx.fillRect(innerXStart * scale, currentY * scale, innerLength * scale, (innerYEnd - currentY) * scale);
-              }
+              if (blockIndex === rowStartIndex) break;
+              currentY += rowHeight + mortarGap;
             }
           }
-
-          // Draw borders
-          ctx.strokeStyle = '#1e293b';
-          ctx.lineWidth = 3;
-          ctx.strokeRect(0, 0, actualLength * scale, actualWidth * scale);
-          
-          ctx.strokeStyle = '#1e293b';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(innerXStart * scale, innerYStart * scale,
-                        innerLength * scale,
-                        innerWidth * scale);
         }
+
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(0, 0, actualLength * scale, actualWidth * scale);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(innerXStart * scale, innerYStart * scale, innerLength * scale, innerWidth * scale);
+      }
 
       if (showDimensions) {
         const fontSize = Math.max(12, containerWidth * 0.04);
         ctx.fillStyle = '#1e293b';
         ctx.font = `bold ${fontSize}px sans-serif`;
         ctx.textAlign = 'center';
-
         ctx.fillText(calculations.actualLength + '"', (actualLength * scale) / 2, -fontSize * 1.2);
-
         ctx.save();
         ctx.translate(-fontSize * 1.2, (actualWidth * scale) / 2);
         ctx.rotate(-Math.PI / 2);
         ctx.fillText(calculations.actualWidth + '"', 0, 0);
         ctx.restore();
-
-        const labelFontSize = Math.max(10, containerWidth * 0.035);
-        ctx.font = `${labelFontSize}px sans-serif`;
         ctx.fillStyle = '#64748b';
+        ctx.font = `${Math.max(10, containerWidth * 0.035)}px sans-serif`;
         ctx.fillText('TOP VIEW', (actualLength * scale) / 2, actualWidth * scale + fontSize * 2);
-
-        if (selectedMaterial) {
-          const detailFontSize = Math.max(8, containerWidth * 0.03);
-          ctx.font = `${detailFontSize}px sans-serif`;
-          ctx.fillText(`${calculations.bricksAlongLength} × ${calculations.bricksAlongWidth} bricks (1 layer)`,
-                      (actualLength * scale) / 2, actualWidth * scale + fontSize * 3);
-        }
       }
-
       ctx.restore();
     };
 
     const drawSideView = () => {
       const canvas = sideViewRef.current;
-      const container = canvas.parentElement;
-      const containerWidth = container.clientWidth;
+      const containerWidth = canvas.parentElement.clientWidth;
       const containerHeight = containerWidth;
-      
       canvas.width = containerWidth;
       canvas.height = containerHeight;
       
       const ctx = canvas.getContext('2d');
       const padding = Math.max(40, containerWidth * 0.1);
-      const availableWidth = containerWidth - (padding * 2);
-      const availableHeight = containerHeight - (padding * 2);
-      const scale = Math.min(availableWidth / actualLength, availableHeight / actualHeight);
+      const scale = Math.min((containerWidth - padding * 2) / actualLength, (containerHeight - padding * 2) / actualHeight);
 
       ctx.clearRect(0, 0, containerWidth, containerHeight);
       ctx.save();
@@ -749,33 +446,17 @@ CRITICAL REQUIREMENTS:
         for (let courseIndex = 0; courseIndex < calculations.coursesHigh; courseIndex++) {
           const y = courseIndex * (brickH + mortarGapScaled);
           if (y + brickH > actualHeight * scale + 0.1) break;
-
           ctx.beginPath();
           ctx.moveTo(0, y);
           ctx.lineTo(actualLength * scale, y);
           ctx.stroke();
-
           const offset = (courseIndex % 2) * (brickL / 2);
-
           for (let x = -offset; x < actualLength * scale; x += brickL + mortarGapScaled) {
-            const brickStart = x;
-            const brickEnd = x + brickL;
-            
-            if (brickStart < actualLength * scale - 0.1) {
-              if (brickStart >= -0.1) {
-                ctx.beginPath();
-                ctx.moveTo(brickStart, y);
-                ctx.lineTo(brickStart, y + brickH);
-                ctx.stroke();
-              }
-              
-              if (brickEnd > actualLength * scale + 0.1) {
-                ctx.beginPath();
-                ctx.moveTo(actualLength * scale, y);
-                ctx.lineTo(actualLength * scale, y + brickH);
-                ctx.stroke();
-                break;
-              }
+            if (x >= -0.1 && x < actualLength * scale - 0.1) {
+              ctx.beginPath();
+              ctx.moveTo(x, y);
+              ctx.lineTo(x, y + brickH);
+              ctx.stroke();
             }
           }
         }
@@ -786,100 +467,53 @@ CRITICAL REQUIREMENTS:
         ctx.fillStyle = '#1e293b';
         ctx.font = `bold ${fontSize}px sans-serif`;
         ctx.textAlign = 'center';
-
         ctx.fillText(calculations.actualLength + '"', (actualLength * scale) / 2, -fontSize * 1.2);
-
-        ctx.save();
-        ctx.translate(-fontSize * 1.2, (actualHeight * scale) / 2);
-        ctx.rotate(-Math.PI / 2);
-        ctx.fillText(actualHeight + '"', 0, 0);
-        ctx.restore();
-
-        const labelFontSize = Math.max(10, containerWidth * 0.035);
-        ctx.font = `${labelFontSize}px sans-serif`;
         ctx.fillStyle = '#64748b';
+        ctx.font = `${Math.max(10, containerWidth * 0.035)}px sans-serif`;
         ctx.fillText('SIDE VIEW - Wall Material', (actualLength * scale) / 2, actualHeight * scale + fontSize * 2);
-
-        if (selectedMaterial && calculations) {
-          const detailFontSize = Math.max(8, containerWidth * 0.03);
-          ctx.font = `${detailFontSize}px sans-serif`;
-          ctx.fillText(`${calculations.bricksAlongLength} × ${calculations.coursesHigh} courses`,
-                      (actualLength * scale) / 2, actualHeight * scale + fontSize * 3);
-        }
       }
-
       ctx.restore();
     };
 
     const drawCoreSideView = () => {
       const canvas = coreSideViewRef.current;
-      const container = canvas.parentElement;
-      const containerWidth = container.clientWidth;
+      const containerWidth = canvas.parentElement.clientWidth;
       const containerHeight = containerWidth;
-      
       canvas.width = containerWidth;
       canvas.height = containerHeight;
       
       const ctx = canvas.getContext('2d');
       const padding = Math.max(40, containerWidth * 0.1);
-      const availableWidth = containerWidth - (padding * 2);
-      const availableHeight = containerHeight - (padding * 2);
-      
-      const scale = Math.min(availableWidth / actualLength, availableHeight / actualHeight);
+      const scale = Math.min((containerWidth - padding * 2) / actualLength, (containerHeight - padding * 2) / actualHeight);
 
       ctx.clearRect(0, 0, containerWidth, containerHeight);
       ctx.save();
       ctx.translate(padding, padding);
 
-      // Draw background
       ctx.fillStyle = '#e8ddd1';
       ctx.fillRect(0, 0, actualLength * scale, actualHeight * scale);
 
-      // Draw the brick wall structure (wireframe with transparency)
       if (selectedMaterial) {
         const brickL = selectedMaterial.length;
         const brickH = selectedMaterial.height;
-        const brickW = selectedMaterial.width; // Wall thickness
-        
+        const brickW = selectedMaterial.width;
         const wallThickness = brickW;
         const innerXStart = wallThickness;
         const innerLength = actualLength - (2 * wallThickness);
 
-        // Draw wall bricks with transparency to show core
         ctx.strokeStyle = '#a8332e';
         ctx.lineWidth = 1.5;
-        ctx.fillStyle = 'rgba(168, 51, 46, 0.15)'; // Semi-transparent brick
+        ctx.fillStyle = 'rgba(168, 51, 46, 0.15)';
 
         for (let courseIndex = 0; courseIndex < calculations.coursesHigh; courseIndex++) {
           const y = courseIndex * (brickH + mortarGap);
           if (y + brickH > actualHeight + 0.1) break;
-
-          const offset = (courseIndex % 2) * (brickL / 2);
-
-          // Left wall brick (solid portion of the wall thickness)
           ctx.fillRect(0, y * scale, brickW * scale, brickH * scale);
           ctx.strokeRect(0, y * scale, brickW * scale, brickH * scale);
-          
-          // Right wall brick (solid portion of the wall thickness)
           ctx.fillRect((actualLength - brickW) * scale, y * scale, brickW * scale, brickH * scale);
           ctx.strokeRect((actualLength - brickW) * scale, y * scale, brickW * scale, brickH * scale);
-
-          // Front wall bricks (wireframe showing through) - Draw only within the inner core's horizontal bounds
-          ctx.strokeStyle = 'rgba(168, 51, 46, 0.5)'; // Wireframe color
-          ctx.lineWidth = 1; // Thinner lines
-          for (let x_actual = -offset; x_actual < actualLength; x_actual += (brickL + mortarGap)) {
-            const brickStartActual = x_actual;
-            const brickEndActual = x_actual + brickL;
-            
-            // Check if this brick segment is within the inner core region
-            if (brickStartActual >= innerXStart - 0.01 && brickEndActual <= innerXStart + innerLength + 0.01) {
-              // Draw only the wireframe rectangle for bricks in the core area
-              ctx.strokeRect(brickStartActual * scale, y * scale, brickL * scale, brickH * scale);
-            }
-          }
         }
 
-        // Draw core blocks stacked from bottom to top
         if (project.core_materials && project.core_materials.length > 0) {
           const validCoreMaterials = project.core_materials.filter(item => {
             const mat = inventory.find(m => m.id === item.material_id);
@@ -888,28 +522,19 @@ CRITICAL REQUIREMENTS:
           
           if (validCoreMaterials.length > 0) {
             const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
-            
-            // Create a queue of all blocks
             const blockQueue = [];
             validCoreMaterials.forEach((coreItem, matIndex) => {
               const material = inventory.find(m => m.id === coreItem.material_id);
               if (material) {
                 for (let i = 0; i < coreItem.quantity; i++) {
-                  blockQueue.push({
-                    material: material,
-                    color: colors[matIndex % colors.length],
-                    materialIndex: matIndex
-                  });
+                  blockQueue.push({ material, color: colors[matIndex % colors.length] });
                 }
               }
             });
             
-            // Stack blocks from bottom to top within the wall boundaries of the core
-            let blockIndex = 0;
-            let currentY = actualHeight; // Start from bottom of the *total wall height*
-            
+            let blockIndex = 0, currentY = actualHeight;
             while (currentY > 0 && blockIndex < blockQueue.length) {
-              let currentX = innerXStart; // Start drawing core blocks from the inner wall edge
+              let currentX = innerXStart;
               const rowStartIndex = blockIndex;
               let rowHeight = 0;
               
@@ -918,35 +543,20 @@ CRITICAL REQUIREMENTS:
                 const blockL = block.material.length;
                 const blockH = block.material.height;
                 
-                const remainingWidth = (innerXStart + innerLength) - currentX;
-                
-                let useWidth = blockL;
-                let useHeight = blockH;
-                
+                let useWidth = blockL, useHeight = blockH;
                 const normalFits = (currentX + blockL <= innerXStart + innerLength + 0.01) && (currentY - blockH >= -0.01);
                 const rotatedFits = (currentX + blockH <= innerXStart + innerLength + 0.01) && (currentY - blockL >= -0.01);
                 
                 if (!normalFits && rotatedFits) {
                   useWidth = blockH;
                   useHeight = blockL;
-                } else if (normalFits && rotatedFits) {
-                  const normalWaste = remainingWidth - blockL;
-                  const rotatedWaste = remainingWidth - blockH;
-                  
-                  if (rotatedWaste < normalWaste && rotatedWaste >= 0) {
-                    useWidth = blockH;
-                    useHeight = blockL;
-                  }
                 } else if (!normalFits && !rotatedFits) {
                   break;
                 }
                 
-                if (currentX + useWidth > innerXStart + innerLength + 0.01 || currentY - useHeight < -0.01) {
-                  break;
-                }
+                if (currentX + useWidth > innerXStart + innerLength + 0.01 || currentY - useHeight < -0.01) break;
                 
-                // Draw block from bottom up
-                const blockY = currentY - useHeight; // Y coordinate for the top of the block
+                const blockY = currentY - useHeight;
                 ctx.fillStyle = block.color;
                 ctx.fillRect(currentX * scale, blockY * scale, useWidth * scale, useHeight * scale);
                 ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
@@ -962,17 +572,14 @@ CRITICAL REQUIREMENTS:
               currentY -= rowHeight + mortarGap;
             }
             
-            // Show unfilled core space at top if any
-            if (currentY > 0.5) { // Check if there's significant unfilled vertical space remaining
+            if (currentY > 0.5) {
               ctx.fillStyle = 'rgba(220, 220, 220, 0.4)';
-              // Fill from the currentY (top of last placed block row) up to the top of the canvas (0)
               ctx.fillRect(innerXStart * scale, 0, innerLength * scale, currentY * scale);
             }
           }
         }
       }
 
-      // Draw outer border for the entire wall
       ctx.strokeStyle = '#1e293b';
       ctx.lineWidth = 2;
       ctx.strokeRect(0, 0, actualLength * scale, actualHeight * scale);
@@ -982,21 +589,11 @@ CRITICAL REQUIREMENTS:
         ctx.fillStyle = '#1e293b';
         ctx.font = `bold ${fontSize}px sans-serif`;
         ctx.textAlign = 'center';
-
         ctx.fillText(actualLength.toFixed(2) + '"', (actualLength * scale) / 2, -fontSize * 1.2);
-
-        ctx.save();
-        ctx.translate(-fontSize * 1.2, (actualHeight * scale) / 2);
-        ctx.rotate(-Math.PI / 2);
-        ctx.fillText(actualHeight.toFixed(2) + '"', 0, 0);
-        ctx.restore();
-
-        const labelFontSize = Math.max(10, containerWidth * 0.035);
-        ctx.font = `${labelFontSize}px sans-serif`;
         ctx.fillStyle = '#64748b';
+        ctx.font = `${Math.max(10, containerWidth * 0.035)}px sans-serif`;
         ctx.fillText('SIDE VIEW - Wall with Core', (actualLength * scale) / 2, actualHeight * scale + fontSize * 2);
       }
-
       ctx.restore();
     };
 
@@ -1006,10 +603,7 @@ CRITICAL REQUIREMENTS:
   };
 
   const updateBrickCount = (dimension, delta) => {
-    setProject(prev => ({
-      ...prev,
-      [dimension]: Math.max(1, (prev[dimension] || 0) + delta)
-    }));
+    setProject(prev => ({ ...prev, [dimension]: Math.max(1, (prev[dimension] || 0) + delta) }));
   };
 
   const saveProject = async () => {
@@ -1017,7 +611,6 @@ CRITICAL REQUIREMENTS:
       alert('Please fill in all required project fields');
       return;
     }
-
     if (!selectedMaterial) {
       alert('Please select a material from inventory');
       return;
@@ -1027,17 +620,14 @@ CRITICAL REQUIREMENTS:
     try {
       const dataToSave = {
         ...project,
-        // Store the calculated actual dimensions based on brick counts and mortar
         base_length: parseFloat(calculations.actualLength),
         base_width: parseFloat(calculations.actualWidth),
         base_height: parseFloat(calculations.actualHeight),
         calculated_bricks: calculations.totalWallBricksWithWaste,
-        // `core_bricks` field is removed, as `project.core_materials` now holds detailed info.
-        // `project.core_materials` is already part of `...project`.
         calculated_surface_area: parseFloat(calculations.surfaceArea),
         mortar_bags_needed: calculations.mortarBags,
         material_cost: calculations.wallMaterialCost,
-        core_material_cost: calculations.coreMaterialCost, // This is the total cost of all core materials
+        core_material_cost: calculations.coreMaterialCost,
         mortar_cost: calculations.mortarCost,
         total_cost: calculations.totalCost,
         status: 'calculated'
@@ -1059,11 +649,7 @@ CRITICAL REQUIREMENTS:
   };
 
   if (isLoading) {
-    return (
-      <div className="p-8 flex items-center justify-center min-h-screen">
-        <p>Loading...</p>
-      </div>
-    );
+    return (<div className="p-8 flex items-center justify-center min-h-screen"><p>Loading...</p></div>);
   }
 
   return (
@@ -1116,31 +702,19 @@ CRITICAL REQUIREMENTS:
                   <div className="flex flex-col">
                     <h4 className="font-medium mb-2 text-center text-sm">Top View</h4>
                     <div className="relative w-full" style={{ paddingBottom: '100%' }}>
-                      <canvas 
-                        ref={topViewRef} 
-                        className="absolute inset-0 border border-slate-200 rounded-lg bg-white w-full h-full"
-                        style={{ width: '100%', height: '100%' }}
-                      ></canvas>
+                      <canvas ref={topViewRef} className="absolute inset-0 border border-slate-200 rounded-lg bg-white" style={{ width: '100%', height: '100%' }}></canvas>
                     </div>
                   </div>
                   <div className="flex flex-col">
                     <h4 className="font-medium mb-2 text-center text-sm">Side View - Walls</h4>
                     <div className="relative w-full" style={{ paddingBottom: '100%' }}>
-                      <canvas 
-                        ref={sideViewRef} 
-                        className="absolute inset-0 border border-slate-200 rounded-lg bg-white w-full h-full"
-                        style={{ width: '100%', height: '100%' }}
-                      ></canvas>
+                      <canvas ref={sideViewRef} className="absolute inset-0 border border-slate-200 rounded-lg bg-white" style={{ width: '100%', height: '100%' }}></canvas>
                     </div>
                   </div>
                   <div className="flex flex-col">
                     <h4 className="font-medium mb-2 text-center text-sm">Side View - Core</h4>
                     <div className="relative w-full" style={{ paddingBottom: '100%' }}>
-                      <canvas 
-                        ref={coreSideViewRef} 
-                        className="absolute inset-0 border border-slate-200 rounded-lg bg-white w-full h-full"
-                        style={{ width: '100%', height: '100%' }}
-                      ></canvas>
+                      <canvas ref={coreSideViewRef} className="absolute inset-0 border border-slate-200 rounded-lg bg-white" style={{ width: '100%', height: '100%' }}></canvas>
                     </div>
                   </div>
                 </div>
@@ -1150,7 +724,7 @@ CRITICAL REQUIREMENTS:
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-lg">Base Configuration</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <div> 
+                <div>
                   <Label className="text-sm">Wall Material</Label>
                   <Select value={project.selected_material_id} onValueChange={handleMaterialSelect}>
                     <SelectTrigger className="h-9"><SelectValue placeholder="Choose from inventory" /></SelectTrigger>
@@ -1164,7 +738,7 @@ CRITICAL REQUIREMENTS:
                   </Select>
                 </div>
 
-                <div> 
+                <div>
                   <div className="flex justify-between items-center mb-2">
                     <Label className="text-sm">Core Materials (Optional)</Label>
                     <Button
@@ -1192,61 +766,59 @@ CRITICAL REQUIREMENTS:
                     Add blocks to fill the hollow core - blocks only
                   </p>
                   <div className="space-y-2">
-                    {project.core_materials.map((coreItem, index) => {
-                      return (
-                        <div key={index} className="flex gap-2 items-start p-2 bg-amber-50 rounded-lg border border-amber-200">
-                          <div className="flex-1">
-                            <Select 
-                              value={coreItem.material_id} 
-                              onValueChange={(value) => {
-                                const newCoreMaterials = [...project.core_materials];
-                                newCoreMaterials[index] = { ...newCoreMaterials[index], material_id: value };
-                                setProject(prev => ({ ...prev, core_materials: newCoreMaterials }));
-                              }}
-                            >
-                              <SelectTrigger className="h-8 text-sm">
-                                <SelectValue placeholder="Select block" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {inventory
-                                  .filter(mat => mat.material_type === 'block')
-                                  .map(mat => (
-                                    <SelectItem key={mat.id} value={mat.id}>
-                                      {mat.material_name} ({mat.length}×{mat.width}×{mat.height}")
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="w-20">
-                            <Input
-                              type="number"
-                              placeholder="Qty"
-                              min="0"
-                              value={coreItem.quantity || 0}
-                              onChange={(e) => {
-                                const newCoreMaterials = [...project.core_materials];
-                                newCoreMaterials[index] = { ...newCoreMaterials[index], quantity: parseInt(e.target.value) || 0 };
-                                setProject(prev => ({ ...prev, core_materials: newCoreMaterials }));
-                              }}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              const newCoreMaterials = project.core_materials.filter((_, i) => i !== index);
+                    {project.core_materials.map((coreItem, index) => (
+                      <div key={index} className="flex gap-2 items-start p-2 bg-amber-50 rounded-lg border border-amber-200">
+                        <div className="flex-1">
+                          <Select 
+                            value={coreItem.material_id} 
+                            onValueChange={(value) => {
+                              const newCoreMaterials = [...project.core_materials];
+                              newCoreMaterials[index] = { ...newCoreMaterials[index], material_id: value };
                               setProject(prev => ({ ...prev, core_materials: newCoreMaterials }));
                             }}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8"
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="Select block" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {inventory
+                                .filter(mat => mat.material_type === 'block')
+                                .map(mat => (
+                                  <SelectItem key={mat.id} value={mat.id}>
+                                    {mat.material_name} ({mat.length}×{mat.width}×{mat.height}")
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
                         </div>
-                      );
-                    })}
+                        <div className="w-20">
+                          <Input
+                            type="number"
+                            placeholder="Qty"
+                            min="0"
+                            value={coreItem.quantity || 0}
+                            onChange={(e) => {
+                              const newCoreMaterials = [...project.core_materials];
+                              newCoreMaterials[index] = { ...newCoreMaterials[index], quantity: parseInt(e.target.value) || 0 };
+                              setProject(prev => ({ ...prev, core_materials: newCoreMaterials }));
+                            }}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const newCoreMaterials = project.core_materials.filter((_, i) => i !== index);
+                            setProject(prev => ({ ...prev, core_materials: newCoreMaterials }));
+                          }}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
                     <Button
                       type="button"
                       variant="outline"
@@ -1269,97 +841,25 @@ CRITICAL REQUIREMENTS:
                   <div>
                     <Label className="text-sm">Bricks Along Length</Label>
                     <div className="flex items-center gap-1 mt-1">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => updateBrickCount('bricks_along_length', -1)}
-                        disabled={!selectedMaterial || project.bricks_along_length <= 1}
-                        className="h-8 w-8"
-                      >
-                        -
-                      </Button>
-                      <Input
-                        type="number"
-                        value={project.bricks_along_length}
-                        onChange={(e) => setProject(prev => ({ ...prev, bricks_along_length: Math.max(1, parseInt(e.target.value) || 1) }))}
-                        className="text-center h-8"
-                        disabled={!selectedMaterial}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => updateBrickCount('bricks_along_length', 1)}
-                        disabled={!selectedMaterial}
-                        className="h-8 w-8"
-                      >
-                        +
-                      </Button>
+                      <Button type="button" variant="outline" size="icon" onClick={() => updateBrickCount('bricks_along_length', -1)} disabled={!selectedMaterial || project.bricks_along_length <= 1} className="h-8 w-8">-</Button>
+                      <Input type="number" value={project.bricks_along_length} onChange={(e) => setProject(prev => ({ ...prev, bricks_along_length: Math.max(1, parseInt(e.target.value) || 1) }))} className="text-center h-8" disabled={!selectedMaterial} />
+                      <Button type="button" variant="outline" size="icon" onClick={() => updateBrickCount('bricks_along_length', 1)} disabled={!selectedMaterial} className="h-8 w-8">+</Button>
                     </div>
                   </div>
                   <div>
                     <Label className="text-sm">Bricks Along Width</Label>
                     <div className="flex items-center gap-1 mt-1">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => updateBrickCount('bricks_along_width', -1)}
-                        disabled={!selectedMaterial || project.bricks_along_width <= 1}
-                        className="h-8 w-8"
-                      >
-                        -
-                      </Button>
-                      <Input
-                        type="number"
-                        value={project.bricks_along_width}
-                        onChange={(e) => setProject(prev => ({ ...prev, bricks_along_width: Math.max(1, parseInt(e.target.value) || 1) }))}
-                        className="text-center h-8"
-                        disabled={!selectedMaterial}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => updateBrickCount('bricks_along_width', 1)}
-                        disabled={!selectedMaterial}
-                        className="h-8 w-8"
-                      >
-                        +
-                      </Button>
+                      <Button type="button" variant="outline" size="icon" onClick={() => updateBrickCount('bricks_along_width', -1)} disabled={!selectedMaterial || project.bricks_along_width <= 1} className="h-8 w-8">-</Button>
+                      <Input type="number" value={project.bricks_along_width} onChange={(e) => setProject(prev => ({ ...prev, bricks_along_width: Math.max(1, parseInt(e.target.value) || 1) }))} className="text-center h-8" disabled={!selectedMaterial} />
+                      <Button type="button" variant="outline" size="icon" onClick={() => updateBrickCount('bricks_along_width', 1)} disabled={!selectedMaterial} className="h-8 w-8">+</Button>
                     </div>
                   </div>
                   <div>
                     <Label className="text-sm">Courses High</Label>
                     <div className="flex items-center gap-1 mt-1">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => updateBrickCount('courses_high', -1)}
-                        disabled={!selectedMaterial || project.courses_high <= 1}
-                        className="h-8 w-8"
-                      >
-                        -
-                      </Button>
-                      <Input
-                        type="number"
-                        value={project.courses_high}
-                        onChange={(e) => setProject(prev => ({ ...prev, courses_high: Math.max(1, parseInt(e.target.value) || 1) }))}
-                        className="text-center h-8"
-                        disabled={!selectedMaterial}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => updateBrickCount('courses_high', 1)}
-                        disabled={!selectedMaterial}
-                        className="h-8 w-8"
-                      >
-                        +
-                      </Button>
+                      <Button type="button" variant="outline" size="icon" onClick={() => updateBrickCount('courses_high', -1)} disabled={!selectedMaterial || project.courses_high <= 1} className="h-8 w-8">-</Button>
+                      <Input type="number" value={project.courses_high} onChange={(e) => setProject(prev => ({ ...prev, courses_high: Math.max(1, parseInt(e.target.value) || 1) }))} className="text-center h-8" disabled={!selectedMaterial} />
+                      <Button type="button" variant="outline" size="icon" onClick={() => updateBrickCount('courses_high', 1)} disabled={!selectedMaterial} className="h-8 w-8">+</Button>
                     </div>
                   </div>
                 </div>
@@ -1367,47 +867,20 @@ CRITICAL REQUIREMENTS:
                 <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                   <h4 className="font-semibold text-blue-900 mb-1 text-sm">Final Built Dimensions</h4>
                   <div className="grid grid-cols-3 gap-3 text-sm">
-                    <div>
-                      <span className="text-blue-700 text-xs">Length:</span>
-                      <p className="font-bold text-blue-900">{calculations?.actualLength || '0'}"</p>
-                    </div>
-                    <div>
-                      <span className="text-blue-700 text-xs">Width:</span>
-                      <p className="font-bold text-blue-900">{calculations?.actualWidth || '0'}"</p>
-                    </div>
-                    <div>
-                      <span className="text-blue-700 text-xs">Height:</span>
-                      <p className="font-bold text-blue-900">{calculations?.actualHeight || '0'}"</p>
-                    </div>
+                    <div><span className="text-blue-700 text-xs">Length:</span><p className="font-bold text-blue-900">{calculations?.actualLength || '0'}"</p></div>
+                    <div><span className="text-blue-700 text-xs">Width:</span><p className="font-bold text-blue-900">{calculations?.actualWidth || '0'}"</p></div>
+                    <div><span className="text-blue-700 text-xs">Height:</span><p className="font-bold text-blue-900">{calculations?.actualHeight || '0'}"</p></div>
                   </div>
-                  <p className="text-xs text-blue-700 mt-1">These are the actual dimensions considering brick counts and mortar gaps.</p>
+                  <p className="text-xs text-blue-700 mt-1">Actual dimensions considering brick counts and mortar gaps.</p>
                 </div>
 
-                <div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowAdvanced(!showAdvanced)}
-                    className="w-full h-8 text-sm"
-                  >
-                    {showAdvanced ? 'Hide' : 'Show'} Advanced Settings
-                  </Button>
-                </div>
-
+                <div><Button type="button" variant="outline" size="sm" onClick={() => setShowAdvanced(!showAdvanced)} className="w-full h-8 text-sm">{showAdvanced ? 'Hide' : 'Show'} Advanced Settings</Button></div>
                 {showAdvanced && (
                   <div className="grid md:grid-cols-2 gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <div>
-                      <Label className="text-sm">Mortar Gap (inches)</Label>
-                      <Input type="number" step="0.125" value={project.mortar_gap} onChange={(e) => setProject(prev => ({ ...prev, mortar_gap: parseFloat(e.target.value) || 0 }))} disabled={!selectedMaterial} className="h-8 mt-1" />
-                    </div>
-                    <div>
-                      <Label className="text-sm">Waste Factor</Label>
-                      <Input type="number" step="0.05" value={project.waste_factor} onChange={(e) => setProject(prev => ({ ...prev, waste_factor: parseFloat(e.target.value) || 1 }))} disabled={!selectedMaterial} className="h-8 mt-1" />
-                    </div>
+                    <div><Label className="text-sm">Mortar Gap (inches)</Label><Input type="number" step="0.125" value={project.mortar_gap} onChange={(e) => setProject(prev => ({ ...prev, mortar_gap: parseFloat(e.target.value) || 0 }))} disabled={!selectedMaterial} className="h-8 mt-1" /></div>
+                    <div><Label className="text-sm">Waste Factor</Label><Input type="number" step="0.05" value={project.waste_factor} onChange={(e) => setProject(prev => ({ ...prev, waste_factor: parseFloat(e.target.value) || 1 }))} disabled={!selectedMaterial} className="h-8 mt-1" /></div>
                   </div>
                 )}
-
                 <div><Label className="text-sm">Notes</Label><Textarea value={project.notes} onChange={(e) => setProject(prev => ({ ...prev, notes: e.target.value }))} className="h-16 mt-1 text-sm" /></div>
               </CardContent>
             </Card>
@@ -1421,9 +894,7 @@ CRITICAL REQUIREMENTS:
                   <div className="p-3 bg-rose-50 rounded-lg border border-rose-200">
                     <h4 className="font-medium text-rose-900 mb-1 text-sm">Wall Material</h4>
                     <p className="text-sm text-rose-800">{selectedMaterial.material_name}</p>
-                    <p className="text-xs text-rose-600">
-                      {selectedMaterial.length}" × {selectedMaterial.width}" × {selectedMaterial.height}"
-                    </p>
+                    <p className="text-xs text-rose-600">{selectedMaterial.length}" × {selectedMaterial.width}" × {selectedMaterial.height}"</p>
                     <p className="text-sm font-medium text-rose-900 mt-1">${selectedMaterial.cost_per_unit.toFixed(2)} per unit</p>
                   </div>
                 )}
@@ -1437,12 +908,8 @@ CRITICAL REQUIREMENTS:
                       return (
                         <div key={index} className="p-2 bg-amber-50 rounded-lg border border-amber-200">
                           <p className="text-sm font-medium text-amber-900">{coreMaterial.material_name}</p>
-                          <p className="text-xs text-amber-600">
-                            {coreMaterial.length}" × {coreMaterial.width}" × {coreMaterial.height}"
-                          </p>
-                          <p className="text-xs text-amber-600 mt-0.5">
-                            ${coreMaterial.cost_per_unit.toFixed(2)} per unit
-                          </p>
+                          <p className="text-xs text-amber-600">{coreMaterial.length}" × {coreMaterial.width}" × {coreMaterial.height}"</p>
+                          <p className="text-xs text-amber-600 mt-0.5">${coreMaterial.cost_per_unit.toFixed(2)} per unit</p>
                           <div className="flex justify-between mt-1 text-xs">
                             <span className="text-amber-700">Qty: {coreItem.quantity}</span>
                             <span className="font-medium text-amber-900">${coreItem.total_cost.toFixed(2)}</span>
@@ -1456,45 +923,21 @@ CRITICAL REQUIREMENTS:
                 {calculations && (
                   <>
                     <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span>Wall Bricks (no waste):</span>
-                        <span className="font-medium">{calculations.totalWallBricks}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Wall Bricks with {((project.waste_factor - 1) * 100).toFixed(0)}% Waste:</span>
-                        <span className="font-medium text-blue-600">{calculations.totalWallBricksWithWaste}</span>
-                      </div>
-                      <div className="flex justify-between border-t pt-2">
-                        <span>Surface Area:</span>
-                        <span className="font-medium">{calculations.surfaceArea} sq ft</span>
-                      </div>
+                      <div className="flex justify-between"><span>Wall Bricks (no waste):</span><span className="font-medium">{calculations.totalWallBricks}</span></div>
+                      <div className="flex justify-between"><span>Wall Bricks with {((project.waste_factor - 1) * 100).toFixed(0)}% Waste:</span><span className="font-medium text-blue-600">{calculations.totalWallBricksWithWaste}</span></div>
+                      <div className="flex justify-between border-t pt-2"><span>Surface Area:</span><span className="font-medium">{calculations.surfaceArea} sq ft</span></div>
                       <div className="bg-purple-50 p-3 rounded-lg border border-purple-200 mt-2">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="font-medium text-purple-900">Mortar Bags (60lb):</span>
-                          <span className="text-2xl font-bold text-purple-900">{calculations.mortarBags}</span>
-                        </div>
-                        <div className="flex justify-between text-xs text-purple-700">
-                          <span>Cost per bag: ${parseFloat(settings.brick_mortar_cost_per_bag || 12).toFixed(2)}</span>
-                          <span>Total: ${calculations.mortarCost.toFixed(2)}</span>
-                        </div>
+                        <div className="flex justify-between items-center mb-1"><span className="font-medium text-purple-900">Mortar Bags (60lb):</span><span className="text-2xl font-bold text-purple-900">{calculations.mortarBags}</span></div>
+                        <div className="flex justify-between text-xs text-purple-700"><span>Cost per bag: ${parseFloat(settings.brick_mortar_cost_per_bag || 12).toFixed(2)}</span><span>Total: ${calculations.mortarCost.toFixed(2)}</span></div>
                       </div>
                     </div>
 
                     <div className="border-t pt-3 space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span>Wall Material Cost:</span>
-                        <span className="font-medium">${calculations.wallMaterialCost.toFixed(2)}</span>
-                      </div>
+                      <div className="flex justify-between"><span>Wall Material Cost:</span><span className="font-medium">${calculations.wallMaterialCost.toFixed(2)}</span></div>
                       {calculations.coreMaterialCost > 0 && (
-                        <div className="flex justify-between">
-                          <span>Core Material Cost:</span>
-                          <span className="font-medium">${calculations.coreMaterialCost.toFixed(2)}</span>
-                        </div>
+                        <div className="flex justify-between"><span>Core Material Cost:</span><span className="font-medium">${calculations.coreMaterialCost.toFixed(2)}</span></div>
                       )}
-                      <div className="flex justify-between font-bold border-t pt-2">
-                        <span>TOTAL:</span>
-                        <span className="text-green-600">${calculations.totalCost.toFixed(2)}</span>
-                      </div>
+                      <div className="flex justify-between font-bold border-t pt-2"><span>TOTAL:</span><span className="text-green-600">${calculations.totalCost.toFixed(2)}</span></div>
                     </div>
                   </>
                 )}
