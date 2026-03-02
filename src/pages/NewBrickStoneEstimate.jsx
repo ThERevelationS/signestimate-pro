@@ -236,9 +236,18 @@ CALCULATION:
 - Layers high: floor((${innerHeight.toFixed(2)} + ${mortarGap}) / (${primaryBlock.height} + ${mortarGap})) = ${blocksAlongHeight}
 - TOTAL: ${blocksAlongLength} × ${blocksAlongWidth} × ${blocksAlongHeight} = ${totalBlocksNeeded} blocks
 
-Return this JSON exactly:
+{
+  "core_materials": [
+    {
+      "material_id": "${primaryBlock.id}",
+      "quantity": ${totalBlocksNeeded}
+    }
+  ],
+  "total_coverage_percentage": 100,
+  "calculation_notes": "Complete 3D grid fill: ${blocksAlongLength} blocks (length) × ${blocksAlongWidth} blocks (width) × ${blocksAlongHeight} layers (height) = ${totalBlocksNeeded} total ${primaryBlock.material_name} blocks"
+}`;
 
-WALL STRUCTURE:
+      const response = await base44.integrations.Core.InvokeLLM({
 - Outer Length: ${actualLength.toFixed(2)}"
 - Outer Width: ${actualWidth.toFixed(2)}"
 - Outer Height: ${actualHeight.toFixed(2)}"
