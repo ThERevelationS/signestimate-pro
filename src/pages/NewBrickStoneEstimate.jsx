@@ -215,31 +215,82 @@ export default function NewBrickStoneEstimate() {
     setIsAIFilling(true);
     
     try {
-      const prompt = `You are a construction materials calculator. Calculate the optimal way to fill a hollow rectangular space with concrete blocks.
+      const prompt = `You are a construction engineer calculating block placement to COMPLETELY FILL a hollow interior space.
 
-HOLLOW SPACE DIMENSIONS:
-- Inner Length: ${innerLength.toFixed(2)} inches
-- Inner Width: ${innerWidth.toFixed(2)} inches  
-- Inner Height: ${innerHeight.toFixed(2)} inches
-- Mortar Gap: ${mortarGap} inches (space between blocks)
+WALL STRUCTURE:
+- Outer Length: ${actualLength.toFixed(2)}"
+- Outer Width: ${actualWidth.toFixed(2)}"
+- Outer Height: ${actualHeight.toFixed(2)}"
+- Wall Thickness: ${wallThickness.toFixed(2)}"
 
-AVAILABLE BLOCK MATERIALS:
-${blockMaterials.map((block, i) => 
-  `${i + 1}. ${block.material_name} (ID: ${block.id})
-     - Dimensions: ${block.length}" × ${block.width}" × ${block.height}"
-     - Cost: $${block.cost_per_unit.toFixed(2)} per unit`
-).join('\n')}
+INTERIOR HOLLOW SPACE (where blocks go):
+- Interior Length: ${innerLength.toFixed(2)}" (from inner wall edge to inner wall edge along length)
+- Interior Width: ${innerWidth.toFixed(2)}" (from inner wall edge to inner wall edge along width)
+- Interior Height: ${innerHeight.toFixed(2)}" (full height, floor to ceiling)
+- Interior Origin: X starts at ${innerXStart.toFixed(2)}" from outer edge, Z starts at ${innerYStart.toFixed(2)}" from outer edge
+- Mortar Gap Between Blocks: ${mortarGap}"
 
-REQUIREMENTS:
-1. Fill the entire hollow space efficiently using a grid pattern.
-2. Blocks cannot overlap.
-3. Account for ${mortarGap}" mortar gaps between all blocks.
-4. For each block type, calculate how many blocks fit in each dimension using: floor((total_dimension + mortar_gap) / (block_dimension + mortar_gap))
-5. Total blocks = blocks_along_length × blocks_along_width × blocks_along_height
-6. Maximize space utilization (fill as much of the hollow space as possible).
-7. Minimize cost, considering the total volume filled.
+AVAILABLE BLOCK MATERIALS (sorted by cost-effectiveness):
+${blockMaterials.map((block, i) => {
+  const vol = block.length * block.width * block.height;
+  const costPerVol = block.cost_per_unit / vol;
+  return `${i + 1}. ${block.material_name} (ID: ${block.id})
+     - Size: ${block.length}" L × ${block.width}" W × ${block.height}" H
+     - Cost: $${block.cost_per_unit.toFixed(2)} per unit
+     - Volume: ${vol} cu.in
+     - Cost Efficiency: $${costPerVol.toFixed(4)}/cu.in`;
+}).join('\n')}
 
-Return your response as a JSON object with the optimal block selection and quantities.`;
+SYSTEMATIC BLOCK PLACEMENT ALGORITHM:
+
+Step 1: CHOOSE PRIMARY BLOCK TYPE
+Select the ${blockMaterials[0]?.material_name || 'smallest/most efficient'} block for main grid fill.
+
+Step 2: CALCULATE GRID COVERAGE
+For primary block (${blockMaterials[0]?.length || 16}" × ${blockMaterials[0]?.width || 8}" × ${blockMaterials[0]?.height || 8}"):
+- Blocks along length: floor((${innerLength.toFixed(2)} + ${mortarGap}) / (${blockMaterials[0]?.length || 16} + ${mortarGap})) = ${Math.floor((innerLength + mortarGap) / ((blockMaterials[0]?.length || 16) + mortarGap))}
+- Blocks along width: floor((${innerWidth.toFixed(2)} + ${mortarGap}) / (${blockMaterials[0]?.width || 8} + ${mortarGap})) = ${Math.floor((innerWidth + mortarGap) / ((blockMaterials[0]?.width || 8) + mortarGap))}
+- Blocks per layer (height): floor((${innerHeight.toFixed(2)} + ${mortarGap}) / (${blockMaterials[0]?.height || 8} + ${mortarGap})) = ${Math.floor((innerHeight + mortarGap) / ((blockMaterials[0]?.height || 8) + mortarGap))}
+
+Step 3: FILL COMPLETELY WITH PRIMARY BLOCK
+- Start from corner (${innerXStart.toFixed(2)}", 0", ${innerYStart.toFixed(2)}")
+- Place blocks in a grid pattern:
+  * X-direction (length): place blocks spaced by (block_length + ${mortarGap}")
+  * Z-direction (width): place blocks spaced by (block_width + ${mortarGap}")
+  * Y-direction (height): stack layers from bottom (Y=0) to top, spaced by (block_height + ${mortarGap}")
+- This creates a complete rectilinear fill from wall to wall, floor to ceiling
+
+Step 4: IDENTIFY REMAINING GAPS
+After primary grid, check edge zones that don't fit full blocks:
+- Remaining length gap: ${innerLength.toFixed(2)} % (${blockMaterials[0]?.length || 16} + ${mortarGap}) inches
+- Remaining width gap: ${innerWidth.toFixed(2)} % (${blockMaterials[0]?.width || 8} + ${mortarGap}) inches
+- Remaining height gap: ${innerHeight.toFixed(2)} % (${blockMaterials[0]?.height || 8} + ${mortarGap}) inches
+
+Step 5: FILL GAPS WITH SECONDARY BLOCKS
+- Use smaller block types to fill edge voids
+- Place secondary blocks with optimal rotation
+- Ensure no gaps remain
+
+MANDATORY OUTPUT FORMAT (JSON):
+{
+  "primary_block_id": "ID of main fill block",
+  "core_materials": [
+    {
+      "material_id": "block ID",
+      "quantity": integer (total blocks needed),
+      "placement_strategy": "description of how these blocks are placed"
+    }
+  ],
+  "total_coverage_percentage": number (0-100, percentage of interior filled),
+  "calculation_notes": "Summary of placement approach, total blocks per layer, layers, and final coverage"
+}
+
+CRITICAL REQUIREMENTS:
+1. MUST fill the ENTIRE interior space - NO empty areas allowed
+2. Blocks must start from the interior wall edges: X from ${innerXStart.toFixed(2)}" to ${(innerXStart + innerLength).toFixed(2)}", Z from ${innerYStart.toFixed(2)}" to ${(innerYStart + innerWidth).toFixed(2)}"
+3. Must stack from Y=0 (floor) to Y=${innerHeight.toFixed(2)}" (ceiling)
+4. Calculate EXACT block counts needed for complete fill using grid math
+5. Return TOTAL QUANTITY per material type, not per position`;
 
       const response = await base44.integrations.Core.InvokeLLM({
         prompt: prompt,
