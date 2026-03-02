@@ -116,12 +116,19 @@ ROTATION RULES:
 Return array of block placements in this exact format:
 {"material_id": "id", "position": {"x": num, "y": num, "z": num}, "rotation": {"x": 0, "y": 0, "z": 0}, "dimensions": {"length": num, "width": num, "height": num}}
 
-⚠️ VALIDATION RULES (CRITICAL):
-1. EVERY block must have: (position.x - length/2) >= ${(-interiorLength/2).toFixed(2)} AND (position.x + length/2) <= ${(interiorLength/2).toFixed(2)}
-2. EVERY block must have: (position.z - width/2) >= ${(-interiorWidth/2).toFixed(2)} AND (position.z + width/2) <= ${(interiorWidth/2).toFixed(2)}
-3. EVERY block must have: (position.y + height/2) <= ${interiorHeight.toFixed(2)}
-4. Generate ${Math.floor(interiorLength / ((coreMaterials[0]?.length || 16) + mortarGap)) * Math.floor(interiorWidth / ((coreMaterials[0]?.width || 8) + mortarGap)) * Math.floor(interiorHeight / ((coreMaterials[0]?.height || 8) + mortarGap))} blocks to fill the space
-5. Blocks OUTSIDE these boundaries will be rejected - they are outside the wall!`;
+⚠️ CRITICAL FILLING REQUIREMENTS:
+1. You MUST fill the ENTIRE interior space from floor to ceiling
+2. Every position must have a block - NO EMPTY SPACES ALLOWED
+3. Stack blocks in multiple layers (Y direction) until you reach the height limit
+4. Spread blocks across full X and Z range - use all available space
+5. Generate EXACTLY ${Math.floor(interiorLength / ((coreMaterials[0]?.length || 16) + mortarGap)) * Math.floor(interiorWidth / ((coreMaterials[0]?.width || 8) + mortarGap)) * Math.floor(interiorHeight / ((coreMaterials[0]?.height || 8) + mortarGap))} blocks minimum
+6. Each block position (x, y, z) must be unique - no overlapping blocks
+7. Boundary validation:
+   - (position.x - length/2) >= ${(-interiorLength/2).toFixed(2)} AND (position.x + length/2) <= ${(interiorLength/2).toFixed(2)}
+   - (position.z - width/2) >= ${(-interiorWidth/2).toFixed(2)} AND (position.z + width/2) <= ${(interiorWidth/2).toFixed(2)}
+   - (position.y + height/2) <= ${interiorHeight.toFixed(2)}
+
+🚨 LAYER STACKING IS MANDATORY: After filling the first layer completely, move to Y = ${(8 + mortarGap).toFixed(1)} and fill again. Continue until height limit.`;
 
         const response = await base44.integrations.Core.InvokeLLM({
             prompt,
