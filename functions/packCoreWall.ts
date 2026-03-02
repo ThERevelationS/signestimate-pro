@@ -67,38 +67,45 @@ GRID CALCULATIONS:
 
 MULTI-BLOCK PLACEMENT STRATEGY:
 
-Phase 1: PRIMARY GRID (largest/most cost-effective blocks)
-• Use ${coreMaterials[0]?.material_name} for main coverage
-• Place in regular grid pattern with standard rotation (X:0, Y:0)
-• Calculate grid spacing based on primary block dimensions
+Phase 1: PRIMARY GRID WITH DYNAMIC ROTATION
+• Fill entire interior with ${coreMaterials[0]?.material_name} using grid algorithm
+• For each grid position, evaluate all allowed rotations:
+  - Rotation A (x:0°, y:0°): Length→X, Width→Z, Height→Y
+  - Rotation B (x:0°, y:90°): Width→X, Length→Z, Height→Y (swapped X-Z)
+  ${orientationSettings.allowXRotation ? '  - Rotation C (x:90°, y:0°): Length→X, Width→Y, Height→Z (block on edge)\n  - Rotation D (x:90°, y:90°): Width→X, Length→Y, Height→Z' : ''}
+• For each position, calculate gap to boundary/next block for each rotation
+• Select rotation that MINIMIZES wasted space
 
-Phase 2: ROTATION OPTIMIZATION
-• For each position in main grid, consider Y-axis rotation (90°)
-• Test if rotation reduces gaps at edges
-• Rotate blocks near boundaries if they fit better
+Phase 2: INTELLIGENT VOID DETECTION
+• After primary grid, scan entire interior for unfilled spaces
+• Identify voids by checking 3D space between blocks and walls
+• Categorize voids: small (<50cu.in), medium (50-200cu.in), large (>200cu.in)
+• Store void coordinates: X_range [min,max], Y_range [min,max], Z_range [min,max]
 
-Phase 3: GAP FILLING (secondary/tertiary blocks)
-• Identify remaining unfilled spaces after primary grid
-• Use smaller blocks (from available materials) to fill gaps
-• Prioritize lowest cost per cubic inch for gap blocks
-• For each gap, try all allowed rotations on candidate blocks
+Phase 3: PRECISION GAP-FILLING WITH MULTI-BLOCK STRATEGY
+• For each void, find optimal filler block:
+  1. Sort available blocks by cost-per-cubic-inch (lowest first)
+  2. For each block candidate, test ALL allowed rotations
+  3. Calculate exact fit: how much void volume does each rotation fill?
+  4. Track best rotation for each block type
+  5. Select block+rotation combo with highest fill efficiency
+• Place filler blocks in voids with their optimal rotations
+• If void remains after one filler block, recursively fill remainder with smaller blocks
+• Continue until void is maximally filled or becomes too small
 
-Phase 4: EDGE OPTIMIZATION
-• Evaluate walls and corners for partial blocks
-• Use secondary materials if they fit remaining space better
-• Consider X-axis rotation (standing blocks on edge) if allowed
+Phase 4: STRUCTURAL INTERLOCKING & CORNERS
+• For blocks touching walls/corners, test rotations that create interlocking
+• Use running bond pattern where possible (offset alternating layers)
+• At corners, use smaller blocks to achieve tight fit with varied rotations
+• Ensure mortar gaps are consistent at all intersections
 
-PLACEMENT ALGORITHM:
-1. Create primary grid with main block type (${coreMaterials[0]?.material_name})
-2. For EACH grid position, evaluate:
-   - Standard placement (y_rot=0°)
-   - Y-rotated placement (y_rot=90°)
-   ${orientationSettings.allowXRotation ? '   - X-rotated placement (x_rot=90°)\n   - Combined X+Y rotated placement (x_rot=90°, y_rot=90°)' : ''}
-3. Select rotation that minimizes waste and stays in bounds
-4. After primary grid, scan remaining space for secondary blocks
-5. Fill gaps with smallest blocks from available materials
+Phase 5: HEIGHT TRANSITION OPTIMIZATION
+• Analyze blocks at layer transitions (Y-level changes)
+• Test X-rotations for blocks that bridge vertical gaps
+• Select rotation that maximizes structural continuity
 
-GENERATE ALL BLOCKS needed to fill the entire interior space. Use multiple block types where beneficial.
+OUTPUT REQUIREMENT:
+Generate EVERY block with its optimized rotation (x and y values). Prioritize multi-type usage for cost efficiency and gap-filling.
 
 ROTATION RULES:
 • Y-axis rotation (90° = 1.5708 rad): Always allowed. Rotates block around vertical axis. Swaps Length↔Width.
