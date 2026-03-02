@@ -215,7 +215,28 @@ export default function NewBrickStoneEstimate() {
     setIsAIFilling(true);
     
     try {
-      const prompt = `You are a construction engineer calculating block placement to COMPLETELY FILL a hollow interior space.
+      // Calculate exact grid dimensions for primary block
+      const primaryBlock = blockMaterials[0];
+      const blocksAlongLength = Math.floor((innerLength + mortarGap) / (primaryBlock.length + mortarGap));
+      const blocksAlongWidth = Math.floor((innerWidth + mortarGap) / (primaryBlock.width + mortarGap));
+      const blocksAlongHeight = Math.floor((innerHeight + mortarGap) / (primaryBlock.height + mortarGap));
+      const totalBlocksNeeded = blocksAlongLength * blocksAlongWidth * blocksAlongHeight;
+
+      const prompt = `Fill a hollow interior space with blocks using this exact grid math.
+
+INTERIOR SPACE: Length ${innerLength.toFixed(2)}" × Width ${innerWidth.toFixed(2)}" × Height ${innerHeight.toFixed(2)}", Mortar gap ${mortarGap}"
+
+PRIMARY BLOCK: ${primaryBlock.material_name}
+Dimensions: ${primaryBlock.length}" L × ${primaryBlock.width}" W × ${primaryBlock.height}" H
+Cost: $${primaryBlock.cost_per_unit} per unit
+
+CALCULATION:
+- Blocks along length: floor((${innerLength.toFixed(2)} + ${mortarGap}) / (${primaryBlock.length} + ${mortarGap})) = ${blocksAlongLength}
+- Blocks along width: floor((${innerWidth.toFixed(2)} + ${mortarGap}) / (${primaryBlock.width} + ${mortarGap})) = ${blocksAlongWidth}
+- Layers high: floor((${innerHeight.toFixed(2)} + ${mortarGap}) / (${primaryBlock.height} + ${mortarGap})) = ${blocksAlongHeight}
+- TOTAL: ${blocksAlongLength} × ${blocksAlongWidth} × ${blocksAlongHeight} = ${totalBlocksNeeded} blocks
+
+Return this JSON exactly:
 
 WALL STRUCTURE:
 - Outer Length: ${actualLength.toFixed(2)}"
