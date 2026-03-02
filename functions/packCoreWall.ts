@@ -179,33 +179,26 @@ Return array of block placements in this exact format:
             }
         });
 
-        // Validate that all blocks stay within interior boundaries and respect rotation rules
+        // Validate and process placements with sophisticated gap-filling
         const validPlacements = response.placements.filter(p => {
             const dims = p.dimensions;
             const rotX = p.rotation.x || 0;
             const rotY = p.rotation.y || 0;
             const rotZ = p.rotation.z || 0;
             
-            // Enforce rotation restrictions
             if (!orientationSettings.allowXRotation && Math.abs(rotX) > 0.01) return false;
             if (!orientationSettings.allowZRotation && Math.abs(rotZ) > 0.01) return false;
             
-            // Calculate effective dimensions accounting for all rotations
             let effectiveLength = dims.length;
             let effectiveWidth = dims.width;
             let effectiveHeight = dims.height;
             
-            // Y-rotation swaps length/width
             if (Math.abs(Math.sin(rotY)) > 0.5) {
                 [effectiveLength, effectiveWidth] = [effectiveWidth, effectiveLength];
             }
-            
-            // X-rotation swaps width/height  
             if (Math.abs(Math.sin(rotX)) > 0.5) {
                 [effectiveWidth, effectiveHeight] = [effectiveHeight, effectiveWidth];
             }
-            
-            // Z-rotation swaps length/height
             if (Math.abs(Math.sin(rotZ)) > 0.5) {
                 [effectiveLength, effectiveHeight] = [effectiveHeight, effectiveLength];
             }
@@ -223,10 +216,143 @@ Return array of block placements in this exact format:
                    maxZ <= (interiorWidth/2);
         });
 
+        // Post-processing: Sophisticated gap-filling analysis
+        const filledVolume = new Set();
+        const GRID_SIZE = 1; // 1-inch grid for void detection
+        
+        // Track all voxels occupied by placed blocks
+        validPlacements.forEach(p => {
+            const dims = p.dimensions;
+            const rotX = p.rotation.x || 0;
+            const rotY = p.rotation.y || 0;
+            
+            let effL = dims.length, effW = dims.width, effH = dims.height;
+            if (Math.abs(Math.sin(rotY)) > 0.5) [effL, effW] = [effW, effL];
+            if (Math.abs(Math.sin(rotX)) > 0.5) [effW, effH] = [effH, effW];
+            
+            const x1 = Math.ceil((p.position.x - effL/2) / GRID_SIZE);
+            const x2 = Math.floor((p.position.x + effL/2) / GRID_SIZE);
+            const y1 = Math.ceil((p.position.y - effH/2) / GRID_SIZE);
+            const y2 = Math.floor((p.position.y + effH/2) / GRID_SIZE);
+            const z1 = Math.ceil((p.position.z - effW/2) / GRID_SIZE);
+            const z2 = Math.floor((p.position.z + effW/2) / GRID_SIZE);
+            
+            for (let x = x1; x <= x2; x++) {
+                for (let y = y1; y <= y2; y++) {
+                    for (let z = z1; z <= z2; z++) {
+                        filledVolume.add(`${x},${y},${z}`);
+                    }
+                }
+            }
+        });
+
+        // Detect unfilled voids within interior space
+        const voids = [];
+        const ix1 = Math.ceil((-interiorLength/2) / GRID_SIZE);
+        const ix2 = Math.floor((interiorLength/2) / GRID_SIZE);
+        const iy1 = Math.ceil((0) / GRID_SIZE);
+        const iy2 = Math.floor((interiorHeight) / GRID_SIZE);
+        const iz1 = Math.ceil((-interiorWidth/2) / GRID_SIZE);
+        const iz2 = Math.floor((interiorWidth/2) / GRID_SIZE);
+        
+        for (let x = ix1; x <= ix2; x++) {
+            for (let y = iy1; y <= iy2; y++) {
+                for (let z = iz1; z <= iz2; z++) {
+                    if (!filledVolume.has(`${x},${y},${z}`)) {
+                        voids.push({ x: x * GRID_SIZE, y: y * GRID_SIZE, z: z * GRID_SIZE });
+                    }
+                }
+            }
+        }
+
+        // Cluster voids into contiguous regions and fill with smallest blocks
+        const sortedMaterials = coreMaterials
+            .filter(m => m.length && m.width && m.height && m.cost_per_unit)
+            .sort((a, b) => {
+                const volA = a.length * a.width * a.height;
+                const volB = b.length * b.width * b.height;
+                const costEffA = a.cost_per_unit / volA;
+                const costEffB = b.cost_per_unit / volB;
+                return costEffA - costEffB;
+            });
+
+        // Attempt to fill voids with available block materials
+        const gapPlacements = [];
+        const usedVoids = new Set();
+        
+        for (const material of sortedMaterials) {
+            for (const void of voids) {
+                if (usedVoids.has(`${void.x},${void.y},${void.z}`)) continue;
+                
+                // Try all allowed rotations for this void
+                const rotations = [
+                    { x: 0, y: 0 },
+                    { x: 0, y: Math.PI/2 },
+                    ...(orientationSettings.allowXRotation ? [{ x: Math.PI/2, y: 0 }, { x: Math.PI/2, y: Math.PI/2 }] : [])
+                ];
+                
+                let bestFit = null;
+                let bestWaste = Infinity;
+                
+                for (const rot of rotations) {
+                    let effL = material.length, effW = material.width, effH = material.height;
+                    if (Math.abs(Math.sin(rot.y)) > 0.5) [effL, effW] = [effW, effL];
+                    if (Math.abs(Math.sin(rot.x)) > 0.5) [effW, effH] = [effH, effW];
+                    
+                    const blockX = void.x + effL/2;
+                    const blockY = void.y + effH/2;
+                    const blockZ = void.z + effW/2;
+                    
+                    // Check if block fits within boundaries
+                    if (blockX - effL/2 >= -(interiorLength/2) && blockX + effL/2 <= interiorLength/2 &&
+                        blockZ - effW/2 >= -(interiorWidth/2) && blockZ + effW/2 <= interiorWidth/2 &&
+                        blockY + effH/2 <= interiorHeight) {
+                        
+                        const waste = effL + effW + effH; // Simpler waste metric
+                        if (waste < bestWaste) {
+                            bestWaste = waste;
+                            bestFit = { pos: { x: blockX, y: blockY, z: blockZ }, rot, dims: { l: effL, w: effW, h: effH } };
+                        }
+                    }
+                }
+                
+                if (bestFit) {
+                    gapPlacements.push({
+                        material_id: material.id,
+                        position: bestFit.pos,
+                        rotation: { x: bestFit.rot.x, y: bestFit.rot.y, z: 0 },
+                        dimensions: { length: bestFit.dims.l, width: bestFit.dims.w, height: bestFit.dims.h }
+                    });
+                    
+                    // Mark voxels as filled
+                    const x1 = Math.ceil((bestFit.pos.x - bestFit.dims.l/2) / GRID_SIZE);
+                    const x2 = Math.floor((bestFit.pos.x + bestFit.dims.l/2) / GRID_SIZE);
+                    const y1 = Math.ceil((bestFit.pos.y - bestFit.dims.h/2) / GRID_SIZE);
+                    const y2 = Math.floor((bestFit.pos.y + bestFit.dims.h/2) / GRID_SIZE);
+                    const z1 = Math.ceil((bestFit.pos.z - bestFit.dims.w/2) / GRID_SIZE);
+                    const z2 = Math.floor((bestFit.pos.z + bestFit.dims.w/2) / GRID_SIZE);
+                    
+                    for (let x = x1; x <= x2; x++) {
+                        for (let y = y1; y <= y2; y++) {
+                            for (let z = z1; z <= z2; z++) {
+                                usedVoids.add(`${x},${y},${z}`);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        const allPlacements = [...validPlacements, ...gapPlacements];
+        const fillDensity = ((filledVolume.size + usedVoids.size) / (voids.length + filledVolume.size)) * 100;
+
         return Response.json({ 
             success: true,
-            placements: validPlacements,
-            filtered: response.placements.length - validPlacements.length
+            placements: allPlacements,
+            filtered: response.placements.length - validPlacements.length,
+            gap_fills: gapPlacements.length,
+            fill_density: fillDensity.toFixed(1),
+            total_voids_detected: voids.length
         });
 
     } catch (error) {
