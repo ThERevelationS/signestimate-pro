@@ -534,42 +534,43 @@ export default function NewBrickStoneEstimate() {
             });
             
             let blockIndex = 0, currentY = actualHeight;
-            while (currentY > 0 && blockIndex < blockQueue.length) {
+            while (currentY > 0.5 && blockIndex < blockQueue.length) {
               let currentX = innerXStart;
               const rowStartIndex = blockIndex;
               let rowHeight = 0;
-              
-              while (currentX < (innerXStart + innerLength) && blockIndex < blockQueue.length) {
+
+              while (currentX + 0.5 < (innerXStart + innerLength) && blockIndex < blockQueue.length) {
                 const block = blockQueue[blockIndex];
                 const blockL = block.material.length;
                 const blockH = block.material.height;
-                
-                let useWidth = blockL, useHeight = blockH;
-                const normalFits = (currentX + blockL <= innerXStart + innerLength + 0.01) && (currentY - blockH >= -0.01);
-                const rotatedFits = (currentX + blockH <= innerXStart + innerLength + 0.01) && (currentY - blockL >= -0.01);
-                
-                if (!normalFits && rotatedFits) {
+
+                const normalFits = (currentX + blockL <= innerXStart + innerLength + 0.1);
+                const rotatedFits = (currentX + blockH <= innerXStart + innerLength + 0.1);
+
+                let useWidth, useHeight;
+                if (normalFits && (currentY - blockH >= -0.1)) {
+                  useWidth = blockL;
+                  useHeight = blockH;
+                } else if (rotatedFits && (currentY - blockL >= -0.1)) {
                   useWidth = blockH;
                   useHeight = blockL;
-                } else if (!normalFits && !rotatedFits) {
+                } else {
                   break;
                 }
-                
-                if (currentX + useWidth > innerXStart + innerLength + 0.01 || currentY - useHeight < -0.01) break;
-                
+
                 const blockY = currentY - useHeight;
                 ctx.fillStyle = block.color;
                 ctx.fillRect(currentX * scale, blockY * scale, useWidth * scale, useHeight * scale);
                 ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
                 ctx.lineWidth = 1;
                 ctx.strokeRect(currentX * scale, blockY * scale, useWidth * scale, useHeight * scale);
-                
+
                 rowHeight = Math.max(rowHeight, useHeight);
                 currentX += useWidth + mortarGap;
                 blockIndex++;
               }
-              
-              if (blockIndex === rowStartIndex) break;
+
+              if (blockIndex === rowStartIndex || rowHeight === 0) break;
               currentY -= rowHeight + mortarGap;
             }
             
