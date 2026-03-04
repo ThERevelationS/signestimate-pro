@@ -307,7 +307,7 @@ export default function NewBrickStoneEstimate() {
           const coreActualWidth = coreBricksW * coreBlockW + (coreBricksW - 1) * mortarGap;
           
           const coreStartX = innerXStart + (innerLength - coreActualLength) / 2;
-          const coreStartY = innerYStart + (innerWidth - coreActualWidth) / 2;
+          const coreStartY = innerYStart + (innerWidth - coreActualWidth) / 2 + wallThickness;
           
           ctx.fillStyle = '#9CA3AF';
           for (let bx = 0; bx < coreBricksL; bx++) {
