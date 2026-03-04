@@ -43,16 +43,13 @@ export default function NewBrickStoneEstimate() {
 
   const [inventory, setInventory] = useState([]);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
+  const [selectedCoreMaterial, setSelectedCoreMaterial] = useState(null);
   const [calculations, setCalculations] = useState(null);
   const [settings, setSettings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showDimensions, setShowDimensions] = useState(true);
-  const [isAIFilling, setIsAIFilling] = useState(false);
-  const [hasAutoFilledCore, setHasAutoFilledCore] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [aiResultModalOpen, setAiResultModalOpen] = useState(false);
-  const [lastAIResult, setLastAIResult] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
