@@ -86,7 +86,7 @@ export default function NewBrickStoneEstimate() {
     if (selectedMaterial && project.bricks_along_length && project.bricks_along_width && project.courses_high) {
       performCalculations();
     }
-  }, [selectedMaterial, project.core_materials, project.base_type, project.bricks_along_length, project.bricks_along_width, project.courses_high, project.mortar_gap, project.waste_factor]);
+  }, [selectedMaterial, selectedCoreMaterial, project.base_type, project.bricks_along_length, project.bricks_along_width, project.courses_high, project.core_bricks_along_length, project.core_bricks_along_width, project.core_courses_high, project.mortar_gap, project.waste_factor, project.core_material_id]);
 
   useEffect(() => {
     drawVisualizations();
