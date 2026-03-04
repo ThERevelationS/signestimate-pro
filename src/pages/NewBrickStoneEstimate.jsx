@@ -734,24 +734,18 @@ export default function NewBrickStoneEstimate() {
                   </div>
                 )}
 
-                {calculations && calculations.coreBreakdown && calculations.coreBreakdown.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-slate-900 text-sm">Core Materials</h4>
-                    {calculations.coreBreakdown.map((coreItem, index) => {
-                      const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
-                      if (!coreMaterial) return null;
-                      return (
-                        <div key={index} className="p-2 bg-amber-50 rounded-lg border border-amber-200">
-                          <p className="text-sm font-medium text-amber-900">{coreMaterial.material_name}</p>
-                          <p className="text-xs text-amber-600">{coreMaterial.length}" × {coreMaterial.width}" × {coreMaterial.height}"</p>
-                          <p className="text-xs text-amber-600 mt-0.5">${coreMaterial.cost_per_unit.toFixed(2)} per unit</p>
-                          <div className="flex justify-between mt-1 text-xs">
-                            <span className="text-amber-700">Qty: {coreItem.quantity}</span>
-                            <span className="font-medium text-amber-900">${coreItem.total_cost.toFixed(2)}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
+                {calculations && selectedCoreMaterial && (
+                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                    <h4 className="font-medium text-amber-900 mb-1 text-sm">Core Material</h4>
+                    <p className="text-sm text-amber-800">{selectedCoreMaterial.material_name}</p>
+                    <p className="text-xs text-amber-600">{selectedCoreMaterial.length}" × {selectedCoreMaterial.width}" × {selectedCoreMaterial.height}"</p>
+                    <p className="text-xs text-amber-600 mt-0.5">${selectedCoreMaterial.cost_per_unit.toFixed(2)} per unit</p>
+                    {calculations.coreBreakdown.length > 0 && (
+                      <div className="flex justify-between mt-2 pt-2 border-t border-amber-200 text-sm">
+                        <span className="text-amber-700 font-medium">Qty: {calculations.coreBreakdown[0].quantity}</span>
+                        <span className="font-bold text-amber-900">${calculations.coreBreakdown[0].total_cost.toFixed(2)}</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
