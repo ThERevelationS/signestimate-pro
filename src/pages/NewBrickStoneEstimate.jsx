@@ -33,6 +33,10 @@ export default function NewBrickStoneEstimate() {
     mortar_gap: 0.375,
     waste_factor: 1.1,
     selected_material_id: "",
+    core_material_id: "",
+    core_bricks_along_length: 3,
+    core_bricks_along_width: 5,
+    core_courses_high: 3,
     core_materials: [],
     notes: ""
   });
