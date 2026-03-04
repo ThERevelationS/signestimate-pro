@@ -182,23 +182,34 @@ export default function NewBrickStoneEstimate() {
     const leftRightBricks = coursesHigh * bricksAlongWidth * 2;
     const totalWallBricks = frontBackBricks + leftRightBricks;
 
+    // Calculate core materials deterministically
     let totalCoreMaterialCost = 0;
-    const coreBreakdown = project.core_materials.map(coreItem => {
-      const coreMaterial = inventory.find(m => m.id === coreItem.material_id);
-      if (!coreMaterial) {
-        return { material_id: coreItem.material_id, material_name: "Unknown", quantity: 0, cost_per_unit: 0, total_cost: 0 };
-      }
-      const quantity = coreItem.quantity || 0;
-      const cost = quantity * coreMaterial.cost_per_unit;
-      totalCoreMaterialCost += cost;
-      return {
-        material_id: coreItem.material_id,
+    const coreBreakdown = [];
+    
+    if (selectedCoreMaterial && project.core_material_id) {
+      const coreMaterial = selectedCoreMaterial;
+      const coreL = coreMaterial.length;
+      const coreW = coreMaterial.width;
+      const coreH = coreMaterial.height;
+      const coreCostPerUnit = coreMaterial.cost_per_unit;
+      
+      const coreBricksL = project.core_bricks_along_length;
+      const coreBricksW = project.core_bricks_along_width;
+      const coreCoursesH = project.core_courses_high;
+      
+      const totalCoreBlocks = coreBricksL * coreBricksW * coreCoursesH;
+      const coreCost = totalCoreBlocks * coreCostPerUnit;
+      
+      coreBreakdown.push({
+        material_id: project.core_material_id,
         material_name: coreMaterial.material_name,
-        quantity: quantity,
-        cost_per_unit: coreMaterial.cost_per_unit,
-        total_cost: cost
-      };
-    });
+        quantity: totalCoreBlocks,
+        cost_per_unit: coreCostPerUnit,
+        total_cost: coreCost
+      });
+      
+      totalCoreMaterialCost = coreCost;
+    }
 
     const exteriorPerimeter = 2 * (actualLength + actualWidth);
     const exteriorSurfaceArea = (exteriorPerimeter * actualHeight) / 144;
