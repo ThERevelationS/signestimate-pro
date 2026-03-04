@@ -701,102 +701,46 @@ export default function NewBrickStoneEstimate() {
                 </div>
 
                 <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <Label className="text-sm">Core Materials (Optional)</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fillCoreWithAI()}
-                      disabled={!selectedMaterial || isAIFilling}
-                      className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 h-8 text-xs"
-                    >
-                      {isAIFilling ? (
-                        <>
-                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                          AI Filling...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-3 h-3 mr-1" />
-                          Fill with AI
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-slate-500 mb-2">
-                    Add blocks to fill the hollow core - blocks only
-                  </p>
-                  <div className="space-y-2">
-                    {project.core_materials.map((coreItem, index) => (
-                      <div key={index} className="flex gap-2 items-start p-2 bg-amber-50 rounded-lg border border-amber-200">
-                        <div className="flex-1">
-                          <Select 
-                            value={coreItem.material_id} 
-                            onValueChange={(value) => {
-                              const newCoreMaterials = [...project.core_materials];
-                              newCoreMaterials[index] = { ...newCoreMaterials[index], material_id: value };
-                              setProject(prev => ({ ...prev, core_materials: newCoreMaterials }));
-                            }}
-                          >
-                            <SelectTrigger className="h-8 text-sm">
-                              <SelectValue placeholder="Select block" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {inventory
-                                .filter(mat => mat.material_type === 'block')
-                                .map(mat => (
-                                  <SelectItem key={mat.id} value={mat.id}>
-                                    {mat.material_name} ({mat.length}×{mat.width}×{mat.height}")
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
+                  <Label className="text-sm">Core Material (Creates interior wall)</Label>
+                  <Select value={project.core_material_id} onValueChange={handleCoreMaterialSelect}>
+                    <SelectTrigger className="h-9 mt-1"><SelectValue placeholder="Choose block from inventory" /></SelectTrigger>
+                    <SelectContent>
+                      {inventory.filter(mat => mat.material_type === 'block').map(mat => (
+                        <SelectItem key={mat.id} value={mat.id}>
+                          {mat.material_name} ({mat.length}×{mat.width}×{mat.height}")
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {selectedCoreMaterial && (
+                    <div className="mt-3 grid md:grid-cols-3 gap-3">
+                      <div>
+                        <Label className="text-sm">Blocks Along Length</Label>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Button type="button" variant="outline" size="icon" onClick={() => updateCoreBrickCount('core_bricks_along_length', -1)} disabled={project.core_bricks_along_length <= 1} className="h-8 w-8">-</Button>
+                          <Input type="number" value={project.core_bricks_along_length} onChange={(e) => setProject(prev => ({ ...prev, core_bricks_along_length: Math.max(1, parseInt(e.target.value) || 1) }))} className="text-center h-8" />
+                          <Button type="button" variant="outline" size="icon" onClick={() => updateCoreBrickCount('core_bricks_along_length', 1)} className="h-8 w-8">+</Button>
                         </div>
-                        <div className="w-20">
-                          <Input
-                            type="number"
-                            placeholder="Qty"
-                            min="0"
-                            value={coreItem.quantity || 0}
-                            onChange={(e) => {
-                              const newCoreMaterials = [...project.core_materials];
-                              newCoreMaterials[index] = { ...newCoreMaterials[index], quantity: parseInt(e.target.value) || 0 };
-                              setProject(prev => ({ ...prev, core_materials: newCoreMaterials }));
-                            }}
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            const newCoreMaterials = project.core_materials.filter((_, i) => i !== index);
-                            setProject(prev => ({ ...prev, core_materials: newCoreMaterials }));
-                          }}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
                       </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setProject(prev => ({
-                          ...prev,
-                          core_materials: [...prev.core_materials, { material_id: "", quantity: 0 }]
-                        }));
-                      }}
-                      className="w-full h-8 text-sm"
-                    >
-                      <Plus className="w-3 h-3 mr-1" />
-                      Add Core Material
-                    </Button>
-                  </div>
+                      <div>
+                        <Label className="text-sm">Blocks Along Width</Label>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Button type="button" variant="outline" size="icon" onClick={() => updateCoreBrickCount('core_bricks_along_width', -1)} disabled={project.core_bricks_along_width <= 1} className="h-8 w-8">-</Button>
+                          <Input type="number" value={project.core_bricks_along_width} onChange={(e) => setProject(prev => ({ ...prev, core_bricks_along_width: Math.max(1, parseInt(e.target.value) || 1) }))} className="text-center h-8" />
+                          <Button type="button" variant="outline" size="icon" onClick={() => updateCoreBrickCount('core_bricks_along_width', 1)} className="h-8 w-8">+</Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-sm">Courses High</Label>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Button type="button" variant="outline" size="icon" onClick={() => updateCoreBrickCount('core_courses_high', -1)} disabled={project.core_courses_high <= 1} className="h-8 w-8">-</Button>
+                          <Input type="number" value={project.core_courses_high} onChange={(e) => setProject(prev => ({ ...prev, core_courses_high: Math.max(1, parseInt(e.target.value) || 1) }))} className="text-center h-8" />
+                          <Button type="button" variant="outline" size="icon" onClick={() => updateCoreBrickCount('core_courses_high', 1)} className="h-8 w-8">+</Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-3">
