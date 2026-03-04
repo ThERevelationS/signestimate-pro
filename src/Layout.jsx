@@ -153,18 +153,6 @@ export default function Layout({ children, currentPageName }) {
       hoverColor: 'hover:bg-amber-100'
     },
     {
-      id: 'brick_stone',
-      name: 'Brick & Stone',
-      icon: Server,
-      projectsPage: 'BrickStoneProjects',
-      newEstimatePage: 'NewBrickStoneEstimate',
-      settingsPage: 'BrickStoneSettings',
-      inventoryPage: 'BrickStoneInventory',
-      color: 'text-rose-600',
-      bgColor: 'bg-rose-50',
-      hoverColor: 'hover:bg-rose-100'
-    },
-    {
       id: 'brick_stone_2',
       name: 'Brick & Stone 2',
       icon: Server,
