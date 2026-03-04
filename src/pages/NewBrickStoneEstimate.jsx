@@ -510,8 +510,13 @@ export default function NewBrickStoneEstimate() {
 
     setIsSaving(true);
     try {
+      const coreMaterialsToSave = selectedCoreMaterial && project.core_material_id 
+        ? [{ material_id: project.core_material_id, quantity: project.core_bricks_along_length * project.core_bricks_along_width * project.core_courses_high }]
+        : [];
+
       const dataToSave = {
         ...project,
+        core_materials: coreMaterialsToSave,
         base_length: parseFloat(calculations.actualLength),
         base_width: parseFloat(calculations.actualWidth),
         base_height: parseFloat(calculations.actualHeight),
