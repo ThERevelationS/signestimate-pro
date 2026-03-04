@@ -297,62 +297,27 @@ export default function NewBrickStoneEstimate() {
         ctx.fillStyle = '#f5f5f5';
         ctx.fillRect(innerXStart * scale, innerYStart * scale, innerLength * scale, innerWidth * scale);
 
-        if (project.core_materials && project.core_materials.length > 0) {
-          const validCoreMaterials = project.core_materials.filter(item => {
-            const mat = inventory.find(m => m.id === item.material_id);
-            return mat && item.quantity > 0;
-          });
+        if (selectedCoreMaterial && project.core_material_id) {
+          const coreBlockL = selectedCoreMaterial.length;
+          const coreBlockW = selectedCoreMaterial.width;
+          const coreBricksL = project.core_bricks_along_length;
+          const coreBricksW = project.core_bricks_along_width;
           
-          if (validCoreMaterials.length > 0) {
-            const colors = ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F4A460'];
-            const blockQueue = [];
-            validCoreMaterials.forEach((coreItem, matIndex) => {
-              const material = inventory.find(m => m.id === coreItem.material_id);
-              if (material) {
-                for (let i = 0; i < coreItem.quantity; i++) {
-                  blockQueue.push({ material, color: colors[matIndex % colors.length] });
-                }
-              }
-            });
-            
-            let blockIndex = 0, currentY = innerYStart;
-            while (currentY < innerYEnd && blockIndex < blockQueue.length) {
-              let currentX = innerXStart;
-              const rowStartIndex = blockIndex;
-              let rowHeight = 0;
-              
-              while (currentX + 0.5 < innerXEnd && blockIndex < blockQueue.length) {
-                const block = blockQueue[blockIndex];
-                const blockL = block.material.length;
-                const blockW = block.material.width;
-                
-                const normalFits = (currentX + blockL <= innerXEnd + 0.1);
-                const rotatedFits = (currentX + blockW <= innerXEnd + 0.1);
-                
-                let useWidth, useHeight;
-                if (normalFits && (currentY + blockW <= innerYEnd + 0.1)) {
-                  useWidth = blockL;
-                  useHeight = blockW;
-                } else if (rotatedFits && (currentY + blockL <= innerYEnd + 0.1)) {
-                  useWidth = blockW;
-                  useHeight = blockL;
-                } else {
-                  break;
-                }
-                
-                ctx.fillStyle = block.color;
-                ctx.fillRect(currentX * scale, currentY * scale, useWidth * scale, useHeight * scale);
-                ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(currentX * scale, currentY * scale, useWidth * scale, useHeight * scale);
-                
-                rowHeight = Math.max(rowHeight, useHeight);
-                currentX += useWidth + mortarGap;
-                blockIndex++;
-              }
-              
-              if (blockIndex === rowStartIndex || rowHeight === 0) break;
-              currentY += rowHeight + mortarGap;
+          const coreActualLength = coreBricksL * coreBlockL + (coreBricksL - 1) * mortarGap;
+          const coreActualWidth = coreBricksW * coreBlockW + (coreBricksW - 1) * mortarGap;
+          
+          const coreStartX = innerXStart + (innerLength - coreActualLength) / 2;
+          const coreStartY = innerYStart + (innerWidth - coreActualWidth) / 2;
+          
+          ctx.fillStyle = '#9CA3AF';
+          for (let bx = 0; bx < coreBricksL; bx++) {
+            for (let by = 0; by < coreBricksW; by++) {
+              const x = coreStartX + bx * (coreBlockL + mortarGap);
+              const y = coreStartY + by * (coreBlockW + mortarGap);
+              ctx.fillRect(x * scale, y * scale, coreBlockL * scale, coreBlockW * scale);
+              ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+              ctx.lineWidth = 1;
+              ctx.strokeRect(x * scale, y * scale, coreBlockL * scale, coreBlockW * scale);
             }
           }
         }
