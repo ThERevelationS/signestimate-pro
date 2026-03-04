@@ -130,7 +130,7 @@ export default function NewBrickStoneEstimate() {
     }
   };
 
-  const handleMaterialSelect = async (materialId) => {
+  const handleMaterialSelect = (materialId) => {
     const material = inventory.find(m => m.id === materialId);
     setSelectedMaterial(material);
     setProject(prev => ({
@@ -139,10 +139,15 @@ export default function NewBrickStoneEstimate() {
       material_name: material ? material.material_name : "",
       material_dimensions: material ? { length: material.length, width: material.width, height: material.height } : null
     }));
-    if (material && !hasAutoFilledCore) {
-      setHasAutoFilledCore(true);
-      setTimeout(() => fillCoreWithAI(materialId), 100);
-    }
+  };
+
+  const handleCoreMaterialSelect = (materialId) => {
+    const material = inventory.find(m => m.id === materialId);
+    setSelectedCoreMaterial(material);
+    setProject(prev => ({
+      ...prev,
+      core_material_id: materialId
+    }));
   };
 
   const fillCoreWithAI = async (wallMaterialId = null) => {
