@@ -150,62 +150,8 @@ export default function NewBrickStoneEstimate() {
     }));
   };
 
-  const fillCoreWithAI = async (wallMaterialId = null) => {
-    const material = wallMaterialId ? inventory.find(m => m.id === wallMaterialId) : selectedMaterial;
-    if (!material) {
-      alert('Please select a wall material first');
-      return;
-    }
-
-    const brickL = material.length, brickW = material.width, brickH = material.height;
-    const wallThickness = brickW;
-    const actualLength = project.bricks_along_length * brickL + (project.bricks_along_length - 1) * project.mortar_gap;
-    const innerSideWallLength = project.bricks_along_width * brickL + (project.bricks_along_width - 1) * project.mortar_gap;
-    const actualWidth = (wallThickness * 2) + innerSideWallLength;
-    const actualHeight = project.courses_high * brickH + (project.courses_high - 1) * project.mortar_gap;
-    const innerLength = actualLength - 2 * wallThickness;
-    const innerWidth = actualWidth - 2 * wallThickness;
-    const innerHeight = actualHeight;
-
-    const blockMaterials = inventory.filter(m => m.material_type === 'block');
-    if (blockMaterials.length === 0) {
-      alert('No block materials in inventory. Please add blocks first.');
-      return;
-    }
-
-    setIsAIFilling(true);
-    try {
-      const primaryBlock = blockMaterials[0];
-      const blocksL = Math.floor((innerLength + project.mortar_gap) / (primaryBlock.length + project.mortar_gap));
-      const blocksW = Math.floor((innerWidth + project.mortar_gap) / (primaryBlock.width + project.mortar_gap));
-      const blocksH = Math.floor((innerHeight + project.mortar_gap) / (primaryBlock.height + project.mortar_gap));
-      const totalBlocks = blocksL * blocksW * blocksH;
-
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `Fill a hollow core. Interior: ${innerLength.toFixed(2)}" × ${innerWidth.toFixed(2)}" × ${innerHeight.toFixed(2)}" with ${project.mortar_gap}" gaps. Block: ${primaryBlock.length}" × ${primaryBlock.width}" × ${primaryBlock.height}". Grid: ${blocksL}×${blocksW}×${blocksH} = ${totalBlocks} blocks. Return: {"core_materials":[{"material_id":"${primaryBlock.id}","quantity":${totalBlocks}}],"total_coverage_percentage":100,"calculation_notes":"${blocksL}×${blocksW}×${blocksH} = ${totalBlocks} blocks"}`,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            core_materials: { type: "array", items: { type: "object", properties: { material_id: { type: "string" }, quantity: { type: "integer" } }, required: ["material_id", "quantity"] } },
-            total_coverage_percentage: { type: "number" },
-            calculation_notes: { type: "string" }
-          },
-          required: ["core_materials"]
-        }
-      });
-
-      if (response?.core_materials?.length > 0) {
-        setProject(prev => ({ ...prev, core_materials: response.core_materials.map(item => ({ material_id: item.material_id, quantity: item.quantity || 0 })) }));
-        setLastAIResult(response);
-        setAiResultModalOpen(true);
-      } else {
-        alert('AI failed. Please add blocks manually.');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error calculating core. Please add blocks manually.');
-    }
-    setIsAIFilling(false);
+  const updateCoreBrickCount = (dimension, delta) => {
+    setProject(prev => ({ ...prev, [dimension]: Math.max(1, (prev[dimension] || 0) + delta) }));
   };
 
   const performCalculations = () => {
