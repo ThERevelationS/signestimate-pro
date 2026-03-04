@@ -124,6 +124,10 @@ export default function NewBrickStoneEstimate() {
           const material = inventoryData.find(m => m.id === projectData.selected_material_id);
           setSelectedMaterial(material);
         }
+        if (projectData.core_material_id) {
+          const coreMaterial = inventoryData.find(m => m.id === projectData.core_material_id);
+          setSelectedCoreMaterial(coreMaterial);
+        }
       }
     } catch (error) {
       console.error('Error loading project:', error);
