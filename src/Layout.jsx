@@ -44,6 +44,13 @@ export default function Layout({ children, currentPageName }) {
   const [moduleStatuses, setModuleStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [expandedModule, setExpandedModule] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
+
+  const blocker = useBlocker(
+    useCallback(({ currentLocation, nextLocation }) => {
+      return isDirty && currentLocation.pathname !== nextLocation.pathname;
+    }, [isDirty])
+  );
 
   const handleToggle = (moduleId) => {
     setExpandedModule(prev => prev === moduleId ? null : moduleId);
