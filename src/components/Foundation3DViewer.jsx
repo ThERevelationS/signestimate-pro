@@ -421,7 +421,50 @@ export default function Foundation3DViewer({
       renderer.dispose();
       controls.dispose();
     };
-  }, [foundationType, lengthInches, widthInches, depthInches, diameter, rebarSize, rebarSpacingLength, rebarSpacingWidth, includeRebar, includeForming, formingMaterial, quantity, gradeOffsetInches]);
+
+    // Draw poles
+    if (poleData && poleData.totalHeightInches > 0) {
+      const poleHeightFt = poleData.totalHeightInches / 12;
+      const poleWidthFt = (poleData.widthInches || 4) / 12;
+      const poleOffsetFt = (poleData.offsetFromBottomInches || 0) / 12;
+      // Bottom of pole is at -(depthFeet) + poleOffsetFt (relative to grade=0)
+      const poleBottomY = -depthFeet + poleOffsetFt;
+      const poleCenterY = poleBottomY + poleHeightFt / 2;
+
+      const poleMaterial = new THREE.MeshStandardMaterial({
+        color: 0x475569,
+        roughness: 0.5,
+        metalness: 0.3
+      });
+
+      for (let i = 0; i < quantity; i++) {
+        const row = Math.floor(i / gridSize);
+        const col = i % gridSize;
+        const offsetX = (col - (gridSize - 1) / 2) * spacing;
+        const offsetZ = (row - (gridSize - 1) / 2) * spacing;
+
+        let poleGeometry;
+        if (poleData.shape === 'round') {
+          poleGeometry = new THREE.CylinderGeometry(poleWidthFt / 2, poleWidthFt / 2, poleHeightFt, 16);
+        } else {
+          poleGeometry = new THREE.BoxGeometry(poleWidthFt, poleHeightFt, poleWidthFt);
+        }
+
+        const pole = new THREE.Mesh(poleGeometry, poleMaterial);
+        pole.position.set(offsetX, poleCenterY, offsetZ);
+        pole.castShadow = true;
+        scene.add(pole);
+
+        // Wireframe edge
+        const poleEdges = new THREE.EdgesGeometry(poleGeometry);
+        const poleEdgeMat = new THREE.LineBasicMaterial({ color: 0x1e293b });
+        const poleWire = new THREE.LineSegments(poleEdges, poleEdgeMat);
+        poleWire.position.copy(pole.position);
+        scene.add(poleWire);
+      }
+    }
+
+  }, [foundationType, lengthInches, widthInches, depthInches, diameter, rebarSize, rebarSpacingLength, rebarSpacingWidth, includeRebar, includeForming, formingMaterial, quantity, gradeOffsetInches, poleData]);
 
   const handleSaveImage = () => {
     if (rendererRef.current) {
