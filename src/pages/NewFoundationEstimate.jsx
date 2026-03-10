@@ -859,7 +859,9 @@ export default function NewFoundationEstimate() {
         rebar_cost: rebarCost,
         excavation_cost: nonLaborExcavationCost + itemExcavationLaborCost, 
         forming_materials_cost: formingMaterialsCost,
-        forming_material_details: selectedFormingMaterial, // Pass details for visualization
+        forming_material_details: selectedFormingMaterial,
+        pole_cost: poleCost,
+        pole_painting_cost: polePaintingCost,
         forming_hours: formingHoursPerItem,
         forming_cost: formingCost,
         pouring_hours: pouringHoursPerItem,
