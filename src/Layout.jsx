@@ -376,5 +376,6 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </div>
     </SidebarProvider>
+  </UnsavedChangesContext.Provider>
   );
 }
