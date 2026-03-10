@@ -513,7 +513,7 @@ export default function FoundationInventoryPage() {
             </Button>
             <Button onClick={() => {
               setModalType('pole');
-              setFormData({ material_name: "", material_type: "pole", pole_shape: "round", pole_width_inches: 4, cost_per_unit: 0, paint_rate_per_linear_ft: 0, supplier: "", notes: "" });
+              setFormData({ material_name: "", material_type: "pole", pole_shape: "round", pole_width_inches: 0, pole_depth_inches: 0, pole_wall_thickness_inches: 0, pole_pricing_mode: "per_foot", pole_stock_length_ft: 0, pole_stock_price: 0, cost_per_unit: 0, paint_rate_per_linear_ft: 0, supplier: "", notes: "" });
               setEditingItem(null);
               setShowModal(true);
             }} className="bg-teal-600 hover:bg-teal-700">
