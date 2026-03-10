@@ -53,12 +53,24 @@ export default function Layout({ children, currentPageName }) {
 
   const handleNavClick = (e, path) => {
     if (isDirty && location.pathname !== path) {
-      if (!window.confirm('You have unsaved changes. Are you sure you want to leave? Your changes will be lost.')) {
-        e.preventDefault();
-      } else {
-        setIsDirty(false);
-      }
+      e.preventDefault();
+      setPendingNavPath(path);
+      setShowNavWarning(true);
     }
+  };
+
+  const handleConfirmNav = () => {
+    setIsDirty(false);
+    setShowNavWarning(false);
+    if (pendingNavPath) {
+      window.location.href = pendingNavPath;
+    }
+    setPendingNavPath(null);
+  };
+
+  const handleCancelNav = () => {
+    setShowNavWarning(false);
+    setPendingNavPath(null);
   };
 
   const handleToggle = (moduleId) => {
