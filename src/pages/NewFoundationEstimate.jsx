@@ -969,7 +969,9 @@ export default function NewFoundationEstimate() {
         total_forming_materials_cost: calculated.total_forming_materials_cost,
         total_excavation_cost: calculated.total_excavation_cost,
         total_labor_cost: calculated.total_labor_cost,
-        total_equipment_cost: calculated.total_equipment_cost
+        total_equipment_cost: calculated.total_equipment_cost,
+        total_pole_cost: calculated.total_pole_cost,
+        total_pole_painting_cost: calculated.total_pole_painting_cost
       }));
     }
   }, [calculateTotals, isLoading, project.items.length, project.selected_equipment?.length, 
