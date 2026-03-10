@@ -1008,6 +1008,8 @@ export default function NewFoundationEstimate() {
         total_excavation_cost: calculated.total_excavation_cost,
         total_labor_cost: calculated.total_labor_cost,
         total_equipment_cost: calculated.total_equipment_cost,
+        total_pole_cost: calculated.total_pole_cost,
+        total_pole_painting_cost: calculated.total_pole_painting_cost,
         status: 'calculated'
       };
 
