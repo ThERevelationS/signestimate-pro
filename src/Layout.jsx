@@ -196,25 +196,6 @@ export default function Layout({ children, currentPageName }) {
 
   return (
   <UnsavedChangesContext.Provider value={{ isDirty, setIsDirty }}>
-  <AlertDialog open={blocker.state === "blocked"}>
-    <AlertDialogContent>
-      <AlertDialogHeader>
-        <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
-        <AlertDialogDescription>
-          You have unsaved changes. Are you sure you want to leave? Your changes will be lost.
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogCancel onClick={() => blocker.reset?.()}>Stay</AlertDialogCancel>
-        <AlertDialogAction
-          className="bg-red-600 hover:bg-red-700"
-          onClick={() => { setIsDirty(false); blocker.proceed?.(); }}
-        >
-          Leave Without Saving
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog>
   <SidebarProvider>
     <div className="flex min-h-screen w-full">
       <Sidebar className="border-r border-slate-200 bg-white z-[100] sticky top-0 h-screen shadow-xl">
