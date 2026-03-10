@@ -1091,7 +1091,7 @@ export default function NewFoundationEstimate() {
                     <Label className="text-xs">Client Name *</Label>
                     <Input
                       value={project.client_name}
-                      onChange={(e) => { setProject(prev => ({ ...prev, client_name: e.target.value })); setIsDirty(true); }}
+                      onChange={(e) => setProject(prev => ({ ...prev, client_name: e.target.value }))}
                                          placeholder="Enter client"
                       className="mt-1 h-8 text-sm"
                     />
