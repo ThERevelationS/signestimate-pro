@@ -397,7 +397,9 @@ export default function FoundationInventoryPage() {
                           ) : (
                             <span className="text-sm">
                               {item.unit || 'N/A'}
-                              {item.minimum_cost > 0 && ` • Min: $${item.minimum_cost.toFixed(2)}`}
+                              {item.material_type === 'concrete_service' && item.minimum_order_yards > 0 && (
+                                <span className="ml-1 text-amber-600">Min: {item.minimum_order_yards} CY</span>
+                              )}
                             </span>
                           )}
                         </td>
@@ -411,6 +413,9 @@ export default function FoundationInventoryPage() {
                           ) : (
                             <div className="text-sm">
                               <div className="font-medium text-green-600 text-lg">${(item.cost_per_unit || 0).toFixed(2)}/{item.unit}</div>
+                              {item.material_type === 'concrete_service' && item.minimum_order_yards > 0 && item.below_minimum_cost_per_cy > 0 && (
+                                <div className="text-amber-600 text-xs">&lt;{item.minimum_order_yards}CY: ${item.below_minimum_cost_per_cy.toFixed(2)}/cy</div>
+                              )}
                             </div>
                           )}
                         </td>
