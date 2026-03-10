@@ -825,7 +825,23 @@ export default function NewFoundationEstimate() {
       let excavationLaborRate = (project.excavation_method === 'hand_dig') ? handDigLaborRate : equipmentExcavationLaborRate;
       let itemExcavationLaborCost = rawExcavationHours * excavationLaborRate;
 
-      const itemTotalCost = concreteCost + rebarCost + nonLaborExcavationCost + formingCost + pouringCost + finishingCost + itemExcavationLaborCost + formingMaterialsCost;
+      // Pole costs
+      let poleCost = 0;
+      let polePaintingCost = 0;
+      if (item.selected_pole_id && item.pole_total_height_inches > 0) {
+        const poleItem = poleInventory.find(p => p.id === item.selected_pole_id);
+        if (poleItem) {
+          const poleLinearFt = item.pole_total_height_inches / 12;
+          poleCost = poleLinearFt * (poleItem.cost_per_unit || 0) * item.quantity;
+          if (item.include_pole_painting && poleItem.paint_rate_per_linear_ft > 0) {
+            polePaintingCost = poleLinearFt * poleItem.paint_rate_per_linear_ft * item.quantity;
+          }
+        }
+      }
+      totalPoleCost += poleCost;
+      totalPolePaintingCost += polePaintingCost;
+
+      const itemTotalCost = concreteCost + rebarCost + nonLaborExcavationCost + formingCost + pouringCost + finishingCost + itemExcavationLaborCost + formingMaterialsCost + poleCost + polePaintingCost;
 
       totalConcreteCost += concreteCost;
       totalRebarCost += rebarCost;
