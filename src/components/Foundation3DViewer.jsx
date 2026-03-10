@@ -17,7 +17,8 @@ export default function Foundation3DViewer({
   includeForming = false,
   formingMaterial = null,
   quantity = 1,
-  gradeOffsetInches = 0 // New prop for grade adjustment
+  gradeOffsetInches = 0,
+  poleData = null // { shape, widthInches, totalHeightInches, offsetFromBottomInches }
 }) {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
