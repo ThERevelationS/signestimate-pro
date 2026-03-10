@@ -335,7 +335,8 @@ export default function Layout({ children, currentPageName }) {
                 )}
                 <SidebarMenuItem>
                     <Link 
-                      to={createPageUrl("MyProfile")} 
+                      to={createPageUrl("MyProfile")}
+                      onClick={(e) => handleNavClick(e, createPageUrl("MyProfile"))}
                       className={`flex items-center gap-2 px-3 py-2 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200 rounded-xl ${
                         location.pathname === createPageUrl("MyProfile") ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600'
                       }`}
