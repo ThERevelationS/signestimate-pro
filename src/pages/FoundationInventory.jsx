@@ -498,6 +498,15 @@ export default function FoundationInventoryPage() {
               <Plus className="w-4 h-4 mr-2" />
               Add Equipment
             </Button>
+            <Button onClick={() => {
+              setModalType('pole');
+              setFormData({ material_name: "", material_type: "pole", pole_shape: "round", pole_width_inches: 4, cost_per_unit: 0, paint_rate_per_linear_ft: 0, supplier: "", notes: "" });
+              setEditingItem(null);
+              setShowModal(true);
+            }} className="bg-teal-600 hover:bg-teal-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Pole
+            </Button>
             <Button onClick={openAttachmentModal} className="bg-purple-600 hover:bg-purple-700">
               <Plus className="w-4 h-4 mr-2" />
               Add Attachment
