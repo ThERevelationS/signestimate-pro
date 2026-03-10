@@ -200,7 +200,7 @@ export default function Layout({ children, currentPageName }) {
     <div className="flex min-h-screen w-full">
       <Sidebar className="border-r border-slate-200 bg-white z-[100] sticky top-0 h-screen shadow-xl">
           <SidebarHeader className="border-b border-slate-200 p-6">
-            <Link to={createPageUrl("Dashboard")} className="flex items-center space-x-3">
+            <Link to={createPageUrl("Dashboard")} onClick={(e) => handleNavClick(e, createPageUrl("Dashboard"))} className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl flex items-center justify-center">
                 <span className="text-white font-bold text-lg">SE</span>
               </div>
