@@ -109,6 +109,9 @@ export default function NewFoundationEstimate() {
       const attachmentItems = allInventory.filter(item => item.material_type === 'attachment');
       setAllAttachments(attachmentItems);
 
+      const poleItems = allInventory.filter(item => item.material_type === 'pole');
+      setPoleInventory(poleItems);
+
       if (!editId) {
         const newDefaults = {
           // foundation_concrete_cost_per_cy removed from settings
