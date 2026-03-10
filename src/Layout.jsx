@@ -322,7 +322,8 @@ export default function Layout({ children, currentPageName }) {
                 {currentUser?.role === 'admin' && (
                   <SidebarMenuItem>
                     <Link 
-                      to={createPageUrl("UserManagement")} 
+                      to={createPageUrl("UserManagement")}
+                      onClick={(e) => handleNavClick(e, createPageUrl("UserManagement"))}
                       className={`flex items-center gap-2 px-3 py-2 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200 rounded-xl ${
                         location.pathname === createPageUrl("UserManagement") ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600'
                       }`}
