@@ -533,7 +533,7 @@ export default function FoundationInventoryPage() {
               <CardHeader className="border-b">
                 <div className="flex justify-between items-center">
                   <CardTitle>
-                    {editingItem ? 'Edit' : 'Add'} {isEquipment ? 'Equipment' : isAttachment ? 'Attachment' : 'Material'}
+                    {editingItem ? 'Edit' : 'Add'} {isEquipment ? 'Equipment' : isAttachment ? 'Attachment' : isPole ? 'Pole' : 'Material'}
                   </CardTitle>
                   <Button variant="ghost" size="icon" onClick={resetForm}>
                     <X className="w-4 h-4" />
