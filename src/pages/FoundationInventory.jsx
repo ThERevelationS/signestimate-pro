@@ -110,7 +110,12 @@ export default function FoundationInventoryPage() {
       lumber_size: item.lumber_size || "custom",
       thickness_inches: item.thickness_inches || 0,
       pole_shape: item.pole_shape || "round",
-      pole_width_inches: item.pole_width_inches || 4,
+      pole_width_inches: item.pole_width_inches || 0,
+      pole_depth_inches: item.pole_depth_inches || 0,
+      pole_wall_thickness_inches: item.pole_wall_thickness_inches || 0,
+      pole_pricing_mode: item.pole_pricing_mode || "per_foot",
+      pole_stock_length_ft: item.pole_stock_length_ft || 0,
+      pole_stock_price: item.pole_stock_price || 0,
       paint_rate_per_linear_ft: item.paint_rate_per_linear_ft || 0,
       notes: item.notes || ""
     });
