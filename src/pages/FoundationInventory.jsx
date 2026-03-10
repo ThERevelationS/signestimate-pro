@@ -259,6 +259,7 @@ export default function FoundationInventoryPage() {
 
   const isEquipment = modalType === 'equipment';
   const isAttachment = modalType === 'attachment';
+  const isPole = modalType === 'pole';
   const isConcrete = formData.material_type === 'concrete_service' || formData.material_type === 'bagged_concrete';
 
   const concreteItems = inventory.filter(item => 
