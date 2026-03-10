@@ -107,6 +107,9 @@ export default function FoundationInventoryPage() {
       foundation_usage: item.foundation_usage || "general",
       lumber_size: item.lumber_size || "custom",
       thickness_inches: item.thickness_inches || 0,
+      pole_shape: item.pole_shape || "round",
+      pole_width_inches: item.pole_width_inches || 4,
+      paint_rate_per_linear_ft: item.paint_rate_per_linear_ft || 0,
       notes: item.notes || ""
     });
     setShowModal(true);
