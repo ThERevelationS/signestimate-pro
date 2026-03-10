@@ -84,6 +84,10 @@ export default function NewPaintEstimate() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { setIsDirty } = useUnsavedChanges();
+  const [hasLoaded, setHasLoaded] = useState(false);
+  useEffect(() => { if (!isLoading) setHasLoaded(true); }, [isLoading]);
+  useEffect(() => { if (hasLoaded) setIsDirty(true); }, [project]);
 
   const toggleCostOverride = (index) => {
     setExpandedCostOverride((prev) => ({
