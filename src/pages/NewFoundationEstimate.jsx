@@ -1610,10 +1610,9 @@ export default function NewFoundationEstimate() {
                                       }
                                     }}
                                     className="text-xs"
-                                    disabled={isSubsidiaryAdded}
-                                  >
-                                    {isSubsidiaryAdded ? 'Added' : 'Add Sub'}
-                                  </Button>
+                                    >
+                                    Add Sub
+                                    </Button>
                                 </div>
                               );
                             })}
