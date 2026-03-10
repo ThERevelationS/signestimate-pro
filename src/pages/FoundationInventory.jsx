@@ -764,19 +764,94 @@ export default function FoundationInventoryPage() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div>
-                        <Label>Width / Diameter (inches) *</Label>
-                        <Input type="number" step="0.25" min="0" value={formData.pole_width_inches || 0}
-                          onChange={(e) => setFormData(prev => ({ ...prev, pole_width_inches: parseFloat(e.target.value) || 0 }))}
-                          className="mt-1" placeholder="e.g., 4" />
-                        <p className="text-xs text-slate-500 mt-1">Width for square poles or diameter for round poles</p>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <Label>Width (inches)</Label>
+                          <Input type="number" step="0.25" min="0" value={formData.pole_width_inches || 0}
+                            onChange={(e) => setFormData(prev => ({ ...prev, pole_width_inches: parseFloat(e.target.value) || 0 }))}
+                            className="mt-1" placeholder="e.g., 4" />
+                          <p className="text-xs text-slate-500 mt-1">Diameter if round</p>
+                        </div>
+                        <div>
+                          <Label>Depth (inches)</Label>
+                          <Input type="number" step="0.25" min="0" value={formData.pole_depth_inches || 0}
+                            onChange={(e) => setFormData(prev => ({ ...prev, pole_depth_inches: parseFloat(e.target.value) || 0 }))}
+                            className="mt-1" placeholder="e.g., 4" />
+                          <p className="text-xs text-slate-500 mt-1">Height of cross-section</p>
+                        </div>
+                        <div>
+                          <Label>Wall Thickness (inches)</Label>
+                          <Input type="number" step="0.0625" min="0" value={formData.pole_wall_thickness_inches || 0}
+                            onChange={(e) => setFormData(prev => ({ ...prev, pole_wall_thickness_inches: parseFloat(e.target.value) || 0 }))}
+                            className="mt-1" placeholder="e.g., 0.25" />
+                          <p className="text-xs text-slate-500 mt-1">Material thickness</p>
+                        </div>
                       </div>
-                      <div>
-                        <Label>Cost Per Linear Foot *</Label>
-                        <Input type="number" step="0.01" min="0" value={formData.cost_per_unit || 0}
-                          onChange={(e) => setFormData(prev => ({ ...prev, cost_per_unit: parseFloat(e.target.value) || 0 }))}
-                          required className="mt-1" />
+
+                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
+                        <p className="text-sm font-semibold text-slate-700">Pricing</p>
+                        <div>
+                          <Label>Pricing Mode</Label>
+                          <Select
+                            value={formData.pole_pricing_mode || "per_foot"}
+                            onValueChange={(v) => setFormData(prev => ({ ...prev, pole_pricing_mode: v }))}
+                          >
+                            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="per_foot">Enter Price Per Foot Directly</SelectItem>
+                              <SelectItem value="stock_price">Enter Stock Length & Price (auto-calculate $/ft)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {(formData.pole_pricing_mode || "per_foot") === "per_foot" ? (
+                          <div>
+                            <Label>Cost Per Linear Foot *</Label>
+                            <Input type="number" step="0.01" min="0" value={formData.cost_per_unit || 0}
+                              onChange={(e) => setFormData(prev => ({ ...prev, cost_per_unit: parseFloat(e.target.value) || 0 }))}
+                              required className="mt-1" placeholder="e.g., 12.50" />
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label>Stock Length (ft)</Label>
+                                <Input type="number" step="0.5" min="0"
+                                  value={formData.pole_stock_length_ft || 0}
+                                  onChange={(e) => {
+                                    const len = parseFloat(e.target.value) || 0;
+                                    const price = formData.pole_stock_price || 0;
+                                    const perFt = len > 0 ? price / len : 0;
+                                    setFormData(prev => ({ ...prev, pole_stock_length_ft: len, cost_per_unit: parseFloat(perFt.toFixed(4)) }));
+                                  }}
+                                  className="mt-1" placeholder="e.g., 20" />
+                              </div>
+                              <div>
+                                <Label>Stock Price ($)</Label>
+                                <Input type="number" step="0.01" min="0"
+                                  value={formData.pole_stock_price || 0}
+                                  onChange={(e) => {
+                                    const price = parseFloat(e.target.value) || 0;
+                                    const len = formData.pole_stock_length_ft || 0;
+                                    const perFt = len > 0 ? price / len : 0;
+                                    setFormData(prev => ({ ...prev, pole_stock_price: price, cost_per_unit: parseFloat(perFt.toFixed(4)) }));
+                                  }}
+                                  className="mt-1" placeholder="e.g., 250.00" />
+                              </div>
+                            </div>
+                            <div className="bg-white rounded border border-slate-200 p-2 text-sm text-slate-700">
+                              Calculated: <strong>${(formData.cost_per_unit || 0).toFixed(4)}/ft</strong>
+                              {formData.pole_stock_length_ft > 0 && formData.pole_stock_price > 0 && (
+                                <span className="text-slate-500 ml-2">
+                                  (${formData.pole_stock_price} ÷ {formData.pole_stock_length_ft} ft)
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
+
                       <div>
                         <Label>Paint Rate Per Linear Foot</Label>
                         <Input type="number" step="0.01" min="0" value={formData.paint_rate_per_linear_ft || 0}
