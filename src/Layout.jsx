@@ -248,6 +248,7 @@ export default function Layout({ children, currentPageName }) {
                       >
                         <Link
                           to={createPageUrl(module.projectsPage)}
+                          onClick={(e) => handleNavClick(e, createPageUrl(module.projectsPage))}
                           className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
                             location.pathname === createPageUrl(module.projectsPage)
                               ? 'bg-white text-slate-900 font-medium shadow-sm'
@@ -259,6 +260,7 @@ export default function Layout({ children, currentPageName }) {
                         
                         <Link
                           to={createPageUrl(module.newEstimatePage)}
+                          onClick={(e) => handleNavClick(e, createPageUrl(module.newEstimatePage))}
                           className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
                             location.pathname === createPageUrl(module.newEstimatePage)
                               ? 'bg-white text-slate-900 font-medium shadow-sm'
@@ -271,6 +273,7 @@ export default function Layout({ children, currentPageName }) {
                         {module.inventoryPage && (
                           <Link
                             to={createPageUrl(module.inventoryPage)}
+                            onClick={(e) => handleNavClick(e, createPageUrl(module.inventoryPage))}
                             className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
                               location.pathname === createPageUrl(module.inventoryPage)
                                 ? 'bg-white text-slate-900 font-medium shadow-sm'
@@ -284,6 +287,7 @@ export default function Layout({ children, currentPageName }) {
                         
                         <Link
                           to={createPageUrl(module.settingsPage)}
+                          onClick={(e) => handleNavClick(e, createPageUrl(module.settingsPage))}
                           className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
                             location.pathname === createPageUrl(module.settingsPage)
                               ? 'bg-white text-slate-900 font-medium shadow-sm'
