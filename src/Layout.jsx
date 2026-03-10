@@ -37,6 +37,8 @@ export default function Layout({ children, currentPageName }) {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedModule, setExpandedModule] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [showNavWarning, setShowNavWarning] = useState(false);
+  const [pendingNavPath, setPendingNavPath] = useState(null);
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
