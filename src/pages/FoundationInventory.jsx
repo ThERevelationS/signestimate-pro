@@ -263,6 +263,8 @@ export default function FoundationInventoryPage() {
     item.material_type === 'forming_material'
   );
   
+  const poleItems = inventory.filter(item => item.material_type === 'pole');
+
   const equipmentItems = inventory.filter(item => 
     item.material_type === 'excavation_equipment'
   );
