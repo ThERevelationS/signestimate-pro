@@ -975,8 +975,8 @@ export default function FoundationInventoryPage() {
                       Cancel
                     </Button>
                     <Button type="submit" className="bg-green-600 hover:bg-green-700">
-                      <Save className="w-4 h-4 mr-2" />
-                      {editingItem ? 'Update' : 'Add'} {isEquipment ? 'Equipment' : isAttachment ? 'Attachment' : 'Material'}
+                    <Save className="w-4 h-4 mr-2" />
+                    {editingItem ? 'Update' : 'Add'} {isEquipment ? 'Equipment' : isAttachment ? 'Attachment' : isPole ? 'Pole' : 'Material'}
                     </Button>
                   </div>
                 </form>
