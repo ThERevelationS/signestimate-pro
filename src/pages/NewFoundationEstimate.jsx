@@ -56,6 +56,7 @@ export default function NewFoundationEstimate() {
   const [allAttachments, setAllAttachments] = useState([]);
   const [concreteOptions, setConcreteOptions] = useState([]);
   const [formingMaterials, setFormingMaterials] = useState([]);
+  const [poleInventory, setPoleInventory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
