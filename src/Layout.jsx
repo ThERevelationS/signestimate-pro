@@ -46,11 +46,26 @@ export default function Layout({ children, currentPageName }) {
   const [expandedModule, setExpandedModule] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
 
-  const blocker = useBlocker(
-    useCallback(({ currentLocation, nextLocation }) => {
-      return isDirty && currentLocation.pathname !== nextLocation.pathname;
-    }, [isDirty])
-  );
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  const handleNavClick = (e, path) => {
+    if (isDirty && location.pathname !== path) {
+      if (!window.confirm('You have unsaved changes. Are you sure you want to leave? Your changes will be lost.')) {
+        e.preventDefault();
+      } else {
+        setIsDirty(false);
+      }
+    }
+  };
 
   const handleToggle = (moduleId) => {
     setExpandedModule(prev => prev === moduleId ? null : moduleId);
