@@ -309,7 +309,8 @@ export default function Layout({ children, currentPageName }) {
             <SidebarMenu>
                 <SidebarMenuItem>
                     <Link 
-                      to={createPageUrl("FormulaViewer")} 
+                      to={createPageUrl("FormulaViewer")}
+                      onClick={(e) => handleNavClick(e, createPageUrl("FormulaViewer"))}
                       className={`flex items-center gap-2 px-3 py-2 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200 rounded-xl ${
                         location.pathname === createPageUrl("FormulaViewer") ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600'
                       }`}
