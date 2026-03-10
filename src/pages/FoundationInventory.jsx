@@ -82,6 +82,8 @@ export default function FoundationInventoryPage() {
       setModalType('equipment');
     } else if (item.material_type === 'attachment') {
       setModalType('attachment');
+    } else if (item.material_type === 'pole') {
+      setModalType('pole');
     } else {
       setModalType('material');
     }
