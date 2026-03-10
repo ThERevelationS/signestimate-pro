@@ -935,23 +935,27 @@ export default function NewFoundationEstimate() {
       totalEquipmentCost = project.selected_equipment.reduce((sum, eq) => sum + (eq.equipment_cost || 0), 0);
     }
 
-    // Apply tiered concrete pricing if applicable (concrete_service only)
+    // Round total CY up to nearest 0.5 yard (concrete is ordered by the half yard)
+    const rawTotalCY = updatedItems.reduce((sum, item) => sum + (item.concrete_volume_cy * item.quantity), 0);
+    const orderedCY = Math.ceil(rawTotalCY * 2) / 2;
+
+    // Recalculate total concrete cost based on orderedCY (handles tiered pricing too)
     if (project.selected_concrete_id) {
       const selectedConcrete = concreteOptions.find(c => c.id === project.selected_concrete_id);
-      if (selectedConcrete && selectedConcrete.material_type === 'concrete_service' &&
-          selectedConcrete.minimum_order_yards > 0 && selectedConcrete.below_minimum_cost_per_cy > 0) {
-        // Calculate total CY across all items
-        const totalCY = updatedItems.reduce((sum, item) => sum + (item.concrete_volume_cy * item.quantity), 0);
-        if (totalCY < selectedConcrete.minimum_order_yards) {
-          // Recalculate at the higher below-minimum rate
-          totalConcreteCost = updatedItems.reduce((sum, item) => {
-            const rate = (item.custom_concrete_cost_per_cy !== undefined && item.custom_concrete_cost_per_cy !== null)
-              ? item.custom_concrete_cost_per_cy
-              : selectedConcrete.below_minimum_cost_per_cy;
-            return sum + (item.concrete_volume_cy * rate * item.quantity);
-          }, 0);
+      if (selectedConcrete) {
+        let rate;
+        if (selectedConcrete.material_type === 'concrete_service' &&
+            selectedConcrete.minimum_order_yards > 0 && selectedConcrete.below_minimum_cost_per_cy > 0 &&
+            orderedCY < selectedConcrete.minimum_order_yards) {
+          rate = selectedConcrete.below_minimum_cost_per_cy;
+        } else {
+          rate = selectedConcrete.cost_per_unit || 0;
         }
+        totalConcreteCost = orderedCY * rate;
       }
+    } else if (rawTotalCY > 0) {
+      // No specific concrete selected — scale existing total proportionally
+      totalConcreteCost = totalConcreteCost * (orderedCY / rawTotalCY);
     }
 
     return {
