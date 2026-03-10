@@ -1152,7 +1152,7 @@ export default function NewFoundationEstimate() {
                         </p>
                         {selectedConcrete.material_type === 'concrete_service' && selectedConcrete.minimum_order_yards > 0 && selectedConcrete.below_minimum_cost_per_cy > 0 && (
                           <p className="text-xs text-amber-600 font-medium">
-                            ⚠ Below {selectedConcrete.minimum_order_yards} CY: ${selectedConcrete.below_minimum_cost_per_cy}/cy
+                            ⚠ Under {selectedConcrete.minimum_order_yards} CY: ${selectedConcrete.below_minimum_cost_per_cy}/cy (standard: ${(selectedConcrete.cost_per_unit || 0).toFixed(2)}/cy)
                           </p>
                         )}
                       </div>
