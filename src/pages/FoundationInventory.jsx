@@ -516,6 +516,7 @@ export default function FoundationInventoryPage() {
 
         <div className="space-y-6">
           {renderInventoryTable(concreteItems, "Concrete & Materials", <Anchor className="w-5 h-5" />)}
+          {renderInventoryTable(poleItems, "Poles", <Wrench className="w-5 h-5 text-teal-600" />)}
           {renderInventoryTable(equipmentItems, "Excavation Equipment", <Drill className="w-5 h-5" />)}
           {renderInventoryTable(attachmentItems, "Attachments", <Wrench className="w-5 h-5" />, true)}
         </div>
