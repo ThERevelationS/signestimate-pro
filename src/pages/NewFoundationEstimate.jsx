@@ -951,7 +951,7 @@ export default function NewFoundationEstimate() {
       total_pole_cost: totalPoleCost,
       total_pole_painting_cost: totalPolePaintingCost
     };
-  }, [project.items, project.selected_equipment, project.concrete_cost_per_cy, project.rebar_cost_per_ft,
+  }, [project.items, project.selected_equipment, project.concrete_cost_per_cy, project.rebar_cost_per_ft, poleInventory,
       project.forming_materials_cost_spread_foot, project.forming_materials_cost_pillar, project.min_excavation_time_hours,
       project.hand_dig_excavation_cost_per_cy, project.equipment_excavation_cost_per_cy,
       project.forming_labor_rate, project.pouring_labor_rate,
