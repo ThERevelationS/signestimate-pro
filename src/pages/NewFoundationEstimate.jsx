@@ -1430,6 +1430,19 @@ export default function NewFoundationEstimate() {
                   </div>
                 )}
 
+                {((project.total_pole_cost || 0) + (project.total_pole_painting_cost || 0)) > 0 && (
+                  <div className="p-3 bg-teal-50 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-medium text-teal-800">Poles</span>
+                      <span className="text-base font-bold text-teal-900">${((project.total_pole_cost || 0) + (project.total_pole_painting_cost || 0)).toFixed(2)}</span>
+                    </div>
+                    <div className="text-xs text-teal-600 mt-0.5 space-y-0.5">
+                      {(project.total_pole_cost || 0) > 0 && <div className="flex justify-between"><span>Material:</span><span>${(project.total_pole_cost || 0).toFixed(2)}</span></div>}
+                      {(project.total_pole_painting_cost || 0) > 0 && <div className="flex justify-between"><span>Painting:</span><span>${(project.total_pole_painting_cost || 0).toFixed(2)}</span></div>}
+                    </div>
+                  </div>
+                )}
+
                 <div className="border-t pt-3">
                   <div className="flex justify-between text-xs text-slate-600 mb-1">
                     <span>Items:</span>
