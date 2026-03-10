@@ -20,6 +20,7 @@ export default function NewFoundationEstimate() {
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('edit');
   const [isEditing, setIsEditing] = useState(false);
+  const { setIsDirty } = useUnsavedChanges();
   const [expandedAdvanced, setExpandedAdvanced] = useState({});
   const [showAttachmentModal, setShowAttachmentModal] = useState(false);
   const [currentEquipmentIndex, setCurrentEquipmentIndex] = useState(null);

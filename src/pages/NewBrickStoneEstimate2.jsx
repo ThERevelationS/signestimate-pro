@@ -17,6 +17,7 @@ export default function NewBrickStoneEstimate2() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('edit');
+  const { setIsDirty } = useUnsavedChanges();
 
   const [project, setProject] = useState({
     project_name: "",

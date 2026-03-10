@@ -16,6 +16,7 @@ const materials = ["Acrylic", "Wood", "MDF", "Plywood", "PVC", "HDPE", "Aluminum
 
 export default function NewCNCEstimate() {
   const navigate = useNavigate();
+  const { setIsDirty } = useUnsavedChanges();
   const [project, setProject] = useState({
     project_name: "",
     client_name: "",

@@ -41,6 +41,7 @@ export default function NewLaserEstimate() {
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('edit');
   const [isEditing, setIsEditing] = useState(false);
+  const { setIsDirty } = useUnsavedChanges();
 
   const [project, setProject] = useState({
     project_name: "",
