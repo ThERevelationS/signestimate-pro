@@ -1143,9 +1143,16 @@ export default function NewFoundationEstimate() {
                       </p>
                     )}
                     {selectedConcrete && (
-                      <p className="text-xs text-green-600 mt-1 font-medium">
-                        Using: {selectedConcrete.material_name} @ ${project.concrete_cost_per_cy.toFixed(2)}/cy
-                      </p>
+                      <div className="mt-1">
+                        <p className="text-xs text-green-600 font-medium">
+                          Using: {selectedConcrete.material_name} @ ${(project.concrete_cost_per_cy || 0).toFixed(2)}/cy
+                        </p>
+                        {selectedConcrete.material_type === 'concrete_service' && selectedConcrete.minimum_order_yards > 0 && selectedConcrete.below_minimum_cost_per_cy > 0 && (
+                          <p className="text-xs text-amber-600 font-medium">
+                            ⚠ Below {selectedConcrete.minimum_order_yards} CY: ${selectedConcrete.below_minimum_cost_per_cy}/cy
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

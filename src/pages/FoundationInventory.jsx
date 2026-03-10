@@ -98,6 +98,8 @@ export default function FoundationInventoryPage() {
       rental_company: item.rental_company || "",
       unit: item.unit || "cubic yard",
       cost_per_unit: item.cost_per_unit || 0,
+      minimum_order_yards: item.minimum_order_yards || 0,
+      below_minimum_cost_per_cy: item.below_minimum_cost_per_cy || 0,
       minimum_cost: item.minimum_cost || 0,
       cost_per_day: item.cost_per_day || 0,
       cost_per_week: item.cost_per_week || 0,
