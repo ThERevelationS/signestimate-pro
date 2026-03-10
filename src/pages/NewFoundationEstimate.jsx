@@ -288,7 +288,13 @@ export default function NewFoundationEstimate() {
       item_total_cost: 0,
       custom_concrete_cost_per_cy: undefined,
       custom_rebar_cost_per_ft: undefined,
-      selected_forming_material_id: null
+      selected_forming_material_id: null,
+      selected_pole_id: null,
+      pole_offset_from_bottom_inches: 0,
+      pole_total_height_inches: 0,
+      include_pole_painting: false,
+      pole_cost: 0,
+      pole_painting_cost: 0
     };
     setProject(prev => {
       const updatedItems = [...prev.items, newItem];
