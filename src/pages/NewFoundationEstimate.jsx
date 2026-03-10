@@ -507,10 +507,6 @@ export default function NewFoundationEstimate() {
             if (aIdx !== attachmentIndex) return att; // Ensure we modify the correct parent attachment
 
             const existingSubs = att.subsidiaries || [];
-            // Prevent adding duplicate subsidiaries
-            if (existingSubs.some(s => s.subsidiary_id === subsidiaryId)) {
-              return att;
-            }
             return {
               ...att,
               subsidiaries: [...existingSubs, { subsidiary_id: subsidiaryId }]
