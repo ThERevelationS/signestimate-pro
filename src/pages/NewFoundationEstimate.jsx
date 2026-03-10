@@ -1544,9 +1544,8 @@ export default function NewFoundationEstimate() {
                             size="sm"
                             onClick={() => addAttachmentToEquipment(currentEquipmentIndex, att.id)}
                             className="bg-purple-600 hover:bg-purple-700"
-                            disabled={isAttachmentAdded}
                           >
-                            {isAttachmentAdded ? 'Added' : 'Add'}
+                            Add
                           </Button>
                         </div>
                         
