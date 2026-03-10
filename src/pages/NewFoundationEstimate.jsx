@@ -933,11 +933,22 @@ export default function NewFoundationEstimate() {
       totalEquipmentCost = project.selected_equipment.reduce((sum, eq) => sum + (eq.equipment_cost || 0), 0);
     }
 
-    // Apply minimum concrete cost if applicable
+    // Apply tiered concrete pricing if applicable (concrete_service only)
     if (project.selected_concrete_id) {
       const selectedConcrete = concreteOptions.find(c => c.id === project.selected_concrete_id);
-      if (selectedConcrete && selectedConcrete.minimum_cost && totalConcreteCost > 0 && totalConcreteCost < selectedConcrete.minimum_cost) {
-        totalConcreteCost = selectedConcrete.minimum_cost;
+      if (selectedConcrete && selectedConcrete.material_type === 'concrete_service' &&
+          selectedConcrete.minimum_order_yards > 0 && selectedConcrete.below_minimum_cost_per_cy > 0) {
+        // Calculate total CY across all items
+        const totalCY = updatedItems.reduce((sum, item) => sum + (item.concrete_volume_cy * item.quantity), 0);
+        if (totalCY < selectedConcrete.minimum_order_yards) {
+          // Recalculate at the higher below-minimum rate
+          totalConcreteCost = updatedItems.reduce((sum, item) => {
+            const rate = (item.custom_concrete_cost_per_cy !== undefined && item.custom_concrete_cost_per_cy !== null)
+              ? item.custom_concrete_cost_per_cy
+              : selectedConcrete.below_minimum_cost_per_cy;
+            return sum + (item.concrete_volume_cy * rate * item.quantity);
+          }, 0);
+        }
       }
     }
 

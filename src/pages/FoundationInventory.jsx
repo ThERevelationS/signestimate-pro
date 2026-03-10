@@ -939,21 +939,47 @@ export default function FoundationInventoryPage() {
                         </div>
                       )}
 
-                      {isConcrete && (
-                        <div>
-                          <Label htmlFor="minimum_cost">Minimum Order Cost</Label>
-                          <Input
-                            id="minimum_cost"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={formData.minimum_cost}
-                            onChange={(e) => setFormData(prev => ({ ...prev, minimum_cost: parseFloat(e.target.value) || 0 }))}
-                            className="mt-1"
-                          />
-                          <p className="text-xs text-slate-500 mt-1">
-                            Minimum charge for concrete orders (e.g., delivery minimum)
+                      {formData.material_type === 'concrete_service' && (
+                        <div className="p-4 bg-amber-50 rounded-lg border border-amber-200 space-y-3">
+                          <p className="text-sm font-semibold text-amber-800">Tiered Pricing (Concrete Service)</p>
+                          <p className="text-xs text-amber-700">
+                            If the total order is below the minimum yards, the company charges a higher rate per CY.
                           </p>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label htmlFor="minimum_order_yards">Minimum Order (CY)</Label>
+                              <Input
+                                id="minimum_order_yards"
+                                type="number"
+                                step="0.25"
+                                min="0"
+                                value={formData.minimum_order_yards || 0}
+                                onChange={(e) => setFormData(prev => ({ ...prev, minimum_order_yards: parseFloat(e.target.value) || 0 }))}
+                                className="mt-1"
+                                placeholder="e.g., 5"
+                              />
+                              <p className="text-xs text-slate-500 mt-1">CY threshold for regular price</p>
+                            </div>
+                            <div>
+                              <Label htmlFor="below_minimum_cost_per_cy">Below-Min Price ($/CY)</Label>
+                              <Input
+                                id="below_minimum_cost_per_cy"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={formData.below_minimum_cost_per_cy || 0}
+                                onChange={(e) => setFormData(prev => ({ ...prev, below_minimum_cost_per_cy: parseFloat(e.target.value) || 0 }))}
+                                className="mt-1"
+                                placeholder="e.g., 175"
+                              />
+                              <p className="text-xs text-slate-500 mt-1">Higher rate when under minimum</p>
+                            </div>
+                          </div>
+                          {formData.minimum_order_yards > 0 && formData.below_minimum_cost_per_cy > 0 && formData.cost_per_unit > 0 && (
+                            <div className="text-xs text-amber-800 bg-amber-100 rounded p-2">
+                              &lt; {formData.minimum_order_yards} CY → ${formData.below_minimum_cost_per_cy}/CY &nbsp;|&nbsp; ≥ {formData.minimum_order_yards} CY → ${formData.cost_per_unit}/CY
+                            </div>
+                          )}
                         </div>
                       )}
                     </>
