@@ -851,7 +851,13 @@ export default function FoundationInventoryPage() {
 
                       <div>
                         <Label htmlFor="cost_per_unit">
-                          Cost Per {formData.material_type === 'rebar' ? 'Foot' : formData.material_type === 'forming_material' ? 'Sq. Ft.' : 'Cubic Yard'} *
+                          {formData.material_type === 'concrete_service'
+                            ? 'Standard Cost Per Yard ($/CY) *'
+                            : formData.material_type === 'rebar'
+                            ? 'Cost Per Foot *'
+                            : formData.material_type === 'forming_material'
+                            ? 'Cost Per Sq. Ft. *'
+                            : 'Cost Per Cubic Yard *'}
                         </Label>
                         <Input
                           id="cost_per_unit"
@@ -864,8 +870,10 @@ export default function FoundationInventoryPage() {
                           className="mt-1"
                         />
                         <p className="text-xs text-slate-500 mt-1">
-                          {formData.material_type === 'rebar' 
-                            ? 'Price per linear foot of rebar' 
+                          {formData.material_type === 'concrete_service'
+                            ? 'Price per CY when order is at or above the minimum yards'
+                            : formData.material_type === 'rebar'
+                            ? 'Price per linear foot of rebar'
                             : formData.material_type === 'forming_material'
                             ? 'Price per square foot of forming material'
                             : 'Price per cubic yard of concrete'}
