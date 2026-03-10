@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Save, Plus, Trash2, ArrowLeft, Anchor, ChevronDown, ChevronUp, Wrench, X, AlertCircle } from "lucide-react";
 import Foundation3DViewer from "@/components/Foundation3DViewer";
 import FoundationItemCard from "@/components/FoundationItemCard";
+import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 
 export default function NewFoundationEstimate() {
   const navigate = useNavigate();

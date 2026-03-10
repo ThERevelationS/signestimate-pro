@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Save, Plus, ArrowLeft, Wrench } from "lucide-react";
+import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 
 export default function NewChannelLetterInstallation() {
   const navigate = useNavigate();

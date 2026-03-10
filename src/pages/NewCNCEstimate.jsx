@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { CNCProject, Settings } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Plus, Trash2, Save, Router } from "lucide-react";
+import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
