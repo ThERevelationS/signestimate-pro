@@ -35,6 +35,13 @@ export default function NewMetalEstimate() {
   const [inventory, setInventory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  useEffect(() => {
+    if (!isLoading) setHasLoaded(true);
+  }, [isLoading]);
+  useEffect(() => {
+    if (hasLoaded) setIsDirty(true);
+  }, [project]);
 
   const loadPrerequisites = useCallback(async () => {
     try {

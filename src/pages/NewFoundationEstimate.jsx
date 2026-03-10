@@ -262,10 +262,15 @@ export default function NewFoundationEstimate() {
   }, [equipment, project.excavation_method]);
 
 
-  const markDirty = () => setIsDirty(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  useEffect(() => {
+    if (!isLoading) setHasLoaded(true);
+  }, [isLoading]);
+  useEffect(() => {
+    if (hasLoaded) setIsDirty(true);
+  }, [project]);
 
   const addItem = () => {
-    markDirty();
     const newItem = {
       foundation_type: "spread_foot",
       description: "",

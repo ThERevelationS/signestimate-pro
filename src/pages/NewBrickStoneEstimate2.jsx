@@ -42,6 +42,13 @@ export default function NewBrickStoneEstimate2() {
   const [settings, setSettings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  useEffect(() => {
+    if (!isLoading) setHasLoaded(true);
+  }, [isLoading]);
+  useEffect(() => {
+    if (hasLoaded) setIsDirty(true);
+  }, [project]);
   // showDimensions state removed
   // Removed: const [isAIFilling, setIsAIFilling] = useState(false);
   // Removed: const [hasAutoFilledCore, setHasAutoFilledCore] = useState(false);

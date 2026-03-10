@@ -41,6 +41,13 @@ export default function NewChannelLetterInstallation() {
   const [settings, setSettings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  useEffect(() => {
+    if (!isLoading) setHasLoaded(true);
+  }, [isLoading]);
+  useEffect(() => {
+    if (hasLoaded) setIsDirty(true);
+  }, [project]);
 
   const loadSettings = useCallback(async () => {
     try {
