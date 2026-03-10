@@ -262,7 +262,10 @@ export default function NewFoundationEstimate() {
   }, [equipment, project.excavation_method]);
 
 
+  const markDirty = () => setIsDirty(true);
+
   const addItem = () => {
+    markDirty();
     const newItem = {
       foundation_type: "spread_foot",
       description: "",
@@ -1011,6 +1014,7 @@ export default function NewFoundationEstimate() {
     }
 
     setIsSaving(true);
+    setIsDirty(false);
     try {
       const calculated = calculateTotals();
       const dataToSave = {
@@ -1087,8 +1091,8 @@ export default function NewFoundationEstimate() {
                     <Label className="text-xs">Client Name *</Label>
                     <Input
                       value={project.client_name}
-                      onChange={(e) => setProject(prev => ({ ...prev, client_name: e.target.value }))}
-                      placeholder="Enter client"
+                      onChange={(e) => { setProject(prev => ({ ...prev, client_name: e.target.value })); setIsDirty(true); }}
+                                         placeholder="Enter client"
                       className="mt-1 h-8 text-sm"
                     />
                   </div>
