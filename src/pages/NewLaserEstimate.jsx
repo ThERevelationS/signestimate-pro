@@ -317,6 +317,7 @@ export default function NewLaserEstimate() {
     }
 
     setIsSaving(true);
+    setIsDirty(false);
     try {
       const calculated = calculateTotals();
       const dataToSave = {

@@ -225,6 +225,7 @@ export default function NewMetalEstimate() {
     }
     
     setIsSaving(true);
+    setIsDirty(false);
     try {
       const { 
           totalMaterialsCost, totalSuppliesCost, 

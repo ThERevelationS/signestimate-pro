@@ -185,6 +185,7 @@ export default function NewChannelLetterInstallation() {
     }
 
     setIsSaving(true);
+    setIsDirty(false);
     try {
       const dataToSave = {
         ...project,

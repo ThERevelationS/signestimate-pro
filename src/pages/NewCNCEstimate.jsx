@@ -171,6 +171,7 @@ export default function NewCNCEstimate() {
     }
     
     setIsSaving(true);
+    setIsDirty(false);
     try {
       const { totalMachine, totalLabor } = calculateTotals();
       const finalProject = { ...project, total_machine_cost: totalMachine, total_labor_cost: totalLabor, status: 'calculated' }

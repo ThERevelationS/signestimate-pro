@@ -263,6 +263,7 @@ export default function NewBrickStoneEstimate2() {
     }
 
     setIsSaving(true);
+    setIsDirty(false);
     try {
       const dataToSave = {
         ...project,
