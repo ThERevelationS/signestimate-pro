@@ -681,6 +681,8 @@ export default function NewFoundationEstimate() {
     let totalNonLaborExcavationCost = 0; 
     let totalLaborCost = 0;
     let totalFormingMaterialsCost = 0;
+    let totalPoleCost = 0;
+    let totalPolePaintingCost = 0;
 
     const updatedItems = project.items.map(item => {
       // Determine rates, using item-specific override if present, otherwise project default
