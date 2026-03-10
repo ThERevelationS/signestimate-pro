@@ -745,7 +745,47 @@ export default function FoundationInventoryPage() {
                     </>
                   )}
 
-                  {!isEquipment && !isAttachment && (
+                  {isPole && (
+                    <>
+                      <div>
+                        <Label>Pole Shape *</Label>
+                        <Select value={formData.pole_shape || "round"} onValueChange={(v) => setFormData(prev => ({ ...prev, pole_shape: v }))}>
+                          <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="round">Round</SelectItem>
+                            <SelectItem value="square">Square</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Width / Diameter (inches) *</Label>
+                        <Input type="number" step="0.25" min="0" value={formData.pole_width_inches || 0}
+                          onChange={(e) => setFormData(prev => ({ ...prev, pole_width_inches: parseFloat(e.target.value) || 0 }))}
+                          className="mt-1" placeholder="e.g., 4" />
+                        <p className="text-xs text-slate-500 mt-1">Width for square poles or diameter for round poles</p>
+                      </div>
+                      <div>
+                        <Label>Cost Per Linear Foot *</Label>
+                        <Input type="number" step="0.01" min="0" value={formData.cost_per_unit || 0}
+                          onChange={(e) => setFormData(prev => ({ ...prev, cost_per_unit: parseFloat(e.target.value) || 0 }))}
+                          required className="mt-1" />
+                      </div>
+                      <div>
+                        <Label>Paint Rate Per Linear Foot</Label>
+                        <Input type="number" step="0.01" min="0" value={formData.paint_rate_per_linear_ft || 0}
+                          onChange={(e) => setFormData(prev => ({ ...prev, paint_rate_per_linear_ft: parseFloat(e.target.value) || 0 }))}
+                          className="mt-1" placeholder="0 = no painting charge" />
+                        <p className="text-xs text-slate-500 mt-1">Charge per linear foot to paint the pole</p>
+                      </div>
+                      <div>
+                        <Label>Supplier</Label>
+                        <Input value={formData.supplier || ""} onChange={(e) => setFormData(prev => ({ ...prev, supplier: e.target.value }))}
+                          placeholder="e.g., Steel Technologies, Local Supplier" className="mt-1" />
+                      </div>
+                    </>
+                  )}
+
+                  {!isEquipment && !isAttachment && !isPole && (
                     <>
                       <div>
                         <Label htmlFor="material_type">Material Type *</Label>
