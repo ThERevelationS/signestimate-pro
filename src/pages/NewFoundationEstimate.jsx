@@ -442,10 +442,6 @@ export default function NewFoundationEstimate() {
         if (idx !== equipmentIdx) return eq; // Use equipmentIdx
         
         const existingAttachments = eq.attachments || [];
-        // Prevent adding duplicate attachments
-        if (existingAttachments.some(a => a.attachment_id === attachmentId)) {
-          return eq;
-        }
 
         const newAttachment = {
           attachment_id: attachmentId,
