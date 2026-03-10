@@ -956,13 +956,13 @@ export default function FoundationInventoryPage() {
 
                       {formData.material_type === 'concrete_service' && (
                         <div className="p-4 bg-amber-50 rounded-lg border border-amber-200 space-y-3">
-                          <p className="text-sm font-semibold text-amber-800">Tiered Pricing (Concrete Service)</p>
+                          <p className="text-sm font-semibold text-amber-800">Minimum Order Pricing</p>
                           <p className="text-xs text-amber-700">
-                            If the total order is below the minimum yards, the company charges a higher rate per CY.
+                            Set a minimum order in yards. Orders below that quantity are charged a higher rate per yard.
                           </p>
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <Label htmlFor="minimum_order_yards">Minimum Order (CY)</Label>
+                              <Label htmlFor="minimum_order_yards">Minimum Order Yards</Label>
                               <Input
                                 id="minimum_order_yards"
                                 type="number"
@@ -973,10 +973,10 @@ export default function FoundationInventoryPage() {
                                 className="mt-1"
                                 placeholder="e.g., 5"
                               />
-                              <p className="text-xs text-slate-500 mt-1">CY threshold for regular price</p>
+                              <p className="text-xs text-slate-500 mt-1">Orders at or above this # use the standard rate</p>
                             </div>
                             <div>
-                              <Label htmlFor="below_minimum_cost_per_cy">Below-Min Price ($/CY)</Label>
+                              <Label htmlFor="below_minimum_cost_per_cy">Under Minimum Order Cost Per Yard ($/CY)</Label>
                               <Input
                                 id="below_minimum_cost_per_cy"
                                 type="number"
@@ -987,12 +987,12 @@ export default function FoundationInventoryPage() {
                                 className="mt-1"
                                 placeholder="e.g., 175"
                               />
-                              <p className="text-xs text-slate-500 mt-1">Higher rate when under minimum</p>
+                              <p className="text-xs text-slate-500 mt-1">Higher rate charged when order is under the minimum</p>
                             </div>
                           </div>
                           {formData.minimum_order_yards > 0 && formData.below_minimum_cost_per_cy > 0 && formData.cost_per_unit > 0 && (
                             <div className="text-xs text-amber-800 bg-amber-100 rounded p-2">
-                              &lt; {formData.minimum_order_yards} CY → ${formData.below_minimum_cost_per_cy}/CY &nbsp;|&nbsp; ≥ {formData.minimum_order_yards} CY → ${formData.cost_per_unit}/CY
+                              Under {formData.minimum_order_yards} CY → ${formData.below_minimum_cost_per_cy}/CY &nbsp;|&nbsp; {formData.minimum_order_yards}+ CY → ${formData.cost_per_unit}/CY (standard)
                             </div>
                           )}
                         </div>
