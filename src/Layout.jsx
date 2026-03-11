@@ -193,7 +193,7 @@ export default function Layout({ children, currentPageName }) {
     },
     {
       id: 'brick_stone_2',
-      name: 'Brick & Stone 2',
+      name: 'Brick & Stone',
       icon: Server,
       projectsPage: 'BrickStoneProjects2',
       newEstimatePage: 'NewBrickStoneEstimate2',
