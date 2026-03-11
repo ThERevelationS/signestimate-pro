@@ -313,7 +313,20 @@ export default function NewFoundationEstimate() {
       pole_total_height_inches: 0,
       include_pole_painting: false,
       pole_cost: 0,
-      pole_painting_cost: 0
+      pole_painting_cost: 0,
+      include_wall_material: false,
+      wall_length_inches: 0,
+      wall_width_inches: 8,
+      wall_height_inches: 0,
+      selected_brick_id: null,
+      mortar_gap_inches: 0.375,
+      brick_layer_offset_inches: 4,
+      include_fill_material: false,
+      selected_fill_material_id: null,
+      brick_count: 0,
+      brick_cost: 0,
+      fill_volume_cy: 0,
+      fill_cost: 0
     };
     setProject(prev => {
       const updatedItems = [...prev.items, newItem];
