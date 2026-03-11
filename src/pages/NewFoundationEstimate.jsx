@@ -60,6 +60,8 @@ export default function NewFoundationEstimate() {
   const [concreteOptions, setConcreteOptions] = useState([]);
   const [formingMaterials, setFormingMaterials] = useState([]);
   const [poleInventory, setPoleInventory] = useState([]);
+  const [brickStoneInventory, setBrickStoneInventory] = useState([]);
+  const [fillMaterialInventory, setFillMaterialInventory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -114,6 +116,12 @@ export default function NewFoundationEstimate() {
 
       const poleItems = allInventory.filter(item => item.material_type === 'pole');
       setPoleInventory(poleItems);
+
+      const brickItems = allInventory.filter(item => item.material_type === 'brick_stone');
+      setBrickStoneInventory(brickItems);
+
+      const fillItems = allInventory.filter(item => item.material_type === 'fill_material');
+      setFillMaterialInventory(fillItems);
 
       if (!editId) {
         const newDefaults = {
