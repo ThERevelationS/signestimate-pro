@@ -867,7 +867,40 @@ export default function NewFoundationEstimate() {
       totalPoleCost += poleCost;
       totalPolePaintingCost += polePaintingCost;
 
-      const itemTotalCost = concreteCost + rebarCost + nonLaborExcavationCost + formingCost + pouringCost + finishingCost + itemExcavationLaborCost + formingMaterialsCost + poleCost + polePaintingCost;
+      // Brick / Stone wall costs
+      let brickCount = 0;
+      let brickCost = 0;
+      let fillVolumeCy = 0;
+      let fillCost = 0;
+      if (item.include_wall_material && item.selected_brick_id && item.wall_height_inches > 0) {
+        const brickItem = brickStoneInventory.find(b => b.id === item.selected_brick_id);
+        if (brickItem) {
+          const mortarGap = item.mortar_gap_inches ?? 0.375;
+          const bL = (brickItem.brick_length_inches || 8) + mortarGap;
+          const bH = (brickItem.brick_height_inches || 2.625) + mortarGap;
+          const wL = Math.min(item.wall_length_inches || 0, item.foundation_type === 'spread_foot' ? item.length_inches : item.diameter);
+          const wW = Math.min(item.wall_width_inches || 8, item.foundation_type === 'spread_foot' ? item.width_inches : item.diameter);
+          const bricksPerCourse = Math.ceil(wL / bL) * 2 + Math.ceil(wW / bL) * 2;
+          const numCourses = Math.ceil(item.wall_height_inches / bH);
+          brickCount = bricksPerCourse * numCourses * item.quantity;
+          brickCost = brickCount * (brickItem.cost_per_unit || 0);
+        }
+      }
+      if (item.include_fill_material && item.selected_fill_material_id && item.wall_height_inches > 0 && item.wall_length_inches > 0 && item.wall_width_inches > 0) {
+        const fillItem = fillMaterialInventory.find(f => f.id === item.selected_fill_material_id);
+        if (fillItem) {
+          const brickWFt = 0.333; // approximate brick width in ft
+          const innerL = Math.max(0, (item.wall_length_inches - 2 * brickWFt * 12) / 12);
+          const innerW = Math.max(0, (item.wall_width_inches - 2 * brickWFt * 12) / 12);
+          const wallH = item.wall_height_inches / 12;
+          fillVolumeCy = (innerL * innerW * wallH / 27) * item.quantity;
+          fillCost = fillVolumeCy * (fillItem.cost_per_unit || 0);
+        }
+      }
+      totalBrickCost += brickCost;
+      totalFillCost += fillCost;
+
+      const itemTotalCost = concreteCost + rebarCost + nonLaborExcavationCost + formingCost + pouringCost + finishingCost + itemExcavationLaborCost + formingMaterialsCost + poleCost + polePaintingCost + brickCost + fillCost;
 
       totalConcreteCost += concreteCost;
       totalRebarCost += rebarCost;
