@@ -429,6 +429,85 @@ export default function FoundationInventoryPage() {
   );
 }
 
+function FillMaterialForm({ item, onSave, onCancel }) {
+  const [form, setForm] = useState({
+    material_name: '',
+    material_type: 'fill_material',
+    fill_material_subtype: 'gravel',
+    unit: 'cy',
+    cost_per_unit: 0,
+    supplier: '',
+    notes: '',
+    ...item,
+  });
+  const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2">
+          <Label className="text-xs">Material Name *</Label>
+          <Input className="h-8" value={form.material_name} onChange={e => set('material_name', e.target.value)} placeholder="e.g. Pea Gravel" />
+        </div>
+        <div>
+          <Label className="text-xs">Type</Label>
+          <Select value={form.material_type} onValueChange={v => set('material_type', v)}>
+            <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="fill_material">Fill Material</SelectItem>
+              <SelectItem value="brick_stone">Brick / Stone</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {form.material_type === 'fill_material' && (
+          <div>
+            <Label className="text-xs">Subtype</Label>
+            <Select value={form.fill_material_subtype || 'gravel'} onValueChange={v => set('fill_material_subtype', v)}>
+              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cinder_block">Cinder Block</SelectItem>
+                <SelectItem value="poured_concrete">Poured Concrete</SelectItem>
+                <SelectItem value="gravel">Gravel</SelectItem>
+                <SelectItem value="foam">Foam</SelectItem>
+                <SelectItem value="sand">Sand</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <div>
+          <Label className="text-xs">Unit</Label>
+          <Select value={form.unit || 'cy'} onValueChange={v => set('unit', v)}>
+            <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cy">Cubic Yard (CY)</SelectItem>
+              <SelectItem value="bag">Bag</SelectItem>
+              <SelectItem value="each">Each</SelectItem>
+              <SelectItem value="sqft">Sq Ft</SelectItem>
+              <SelectItem value="lf">Linear Ft</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Cost Per Unit ($)</Label>
+          <Input type="number" className="h-8" value={form.cost_per_unit} onChange={e => set('cost_per_unit', parseFloat(e.target.value) || 0)} step="0.01" min="0" />
+        </div>
+        <div>
+          <Label className="text-xs">Supplier</Label>
+          <Input className="h-8" value={form.supplier || ''} onChange={e => set('supplier', e.target.value)} />
+        </div>
+        <div>
+          <Label className="text-xs">Notes</Label>
+          <Input className="h-8" value={form.notes || ''} onChange={e => set('notes', e.target.value)} />
+        </div>
+      </div>
+      <div className="flex justify-end gap-2 pt-2">
+        <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
+        <Button size="sm" onClick={() => onSave(form)} disabled={!form.material_name}>Save</Button>
+      </div>
+    </div>
+  );
+}
+
 function LegacyItemsTable({ items, onDelete, label }) {
   if (items.length === 0) {
     return (
