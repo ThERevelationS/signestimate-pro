@@ -242,6 +242,12 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
     });
 
     // ── WALLS ──
+    // The WallShapeBuilder emits points in inches with an offset (origin at canvas offset ~40px = 10in).
+    // We center the wall points around the first foundation's center so walls sit on top of it.
+    const firstItemForWall = items[0];
+    const foundCenterXInches = firstItemForWall ? (firstItemForWall.length_inches || 48) / 2 : 24;
+    const foundCenterZInches = firstItemForWall ? (firstItemForWall.width_inches || 48) / 2 : 24;
+
     walls.forEach((wall) => {
       const shape = wall.shape;
       const mat = wall.selectedMaterial;
@@ -250,20 +256,37 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
       const heightInches = wall.heightInches || 24;
       const heightFt = heightInches / 12;
       const wallWidthFt = (mat.wall_unit_width_inches || 8) / 12;
-      const color = mat.wall_color ? parseInt(mat.wall_color.replace('#', ''), 16) : 0xb5451b;
 
-      const wallMat3D = new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.05 });
+      let colorInt = 0xb5451b;
+      if (mat.wall_color) {
+        const hex = mat.wall_color.replace('#', '');
+        const parsed = parseInt(hex, 16);
+        if (!isNaN(parsed)) colorInt = parsed;
+      }
+
+      const wallMat3D = new THREE.MeshStandardMaterial({ color: colorInt, roughness: 0.85, metalness: 0.05 });
+
+      // Compute bounding box of the wall shape to find its center in inches
+      const allPoints = shape.segments.flatMap(s => [s.p1, s.p2]).filter(Boolean);
+      const xs = allPoints.map(p => p.x);
+      const ys = allPoints.map(p => p.y);
+      const shapeCenterX = (Math.min(...xs) + Math.max(...xs)) / 2;
+      const shapeCenterY = (Math.min(...ys) + Math.max(...ys)) / 2;
+
+      // Offset so wall shape center aligns with foundation center
+      const offX = (foundCenterXInches - shapeCenterX) / 12;
+      const offZ = (foundCenterZInches - shapeCenterY) / 12;
 
       shape.segments.forEach((seg) => {
         const p1 = seg.p1;
         const p2 = seg.p2;
         if (!p1 || !p2) return;
 
-        // Convert from canvas coords (inches) to feet
-        const x1 = p1.x / 12;
-        const z1 = p1.y / 12;
-        const x2 = p2.x / 12;
-        const z2 = p2.y / 12;
+        // Points are in inches → convert to feet and apply centering offset
+        const x1 = p1.x / 12 + offX;
+        const z1 = p1.y / 12 + offZ;
+        const x2 = p2.x / 12 + offX;
+        const z2 = p2.y / 12 + offZ;
 
         const dx = x2 - x1;
         const dz = z2 - z1;
@@ -281,7 +304,6 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
         mesh.receiveShadow = true;
         scene.add(mesh);
 
-        // Edges
         const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.5 }));
         edges.position.copy(mesh.position);
         edges.rotation.copy(mesh.rotation);
