@@ -84,6 +84,7 @@ export default function NewFoundationEstimate() {
   });
   const [items, setItems] = useState([newItem()]);
   const [walls, setWalls] = useState([]);
+  const [selectedEquipmentList, setSelectedEquipmentList] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [wallMaterials, setWallMaterials] = useState([]);
   const [settings, setSettings] = useState({});
