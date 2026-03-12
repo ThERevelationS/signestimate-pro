@@ -297,6 +297,53 @@ export default function NewFoundationEstimate() {
 
               {/* FOUNDATION ITEMS */}
               <TabsContent value="foundation" className="space-y-4 pt-4">
+                {/* Excavation Settings Card */}
+                <Card className="border-slate-200 bg-slate-50">
+                  <CardContent className="py-3 px-4">
+                    <div className="flex flex-wrap items-end gap-4">
+                      <div className="min-w-[200px]">
+                        <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Excavation Method</Label>
+                        <Select value={project.excavation_method} onValueChange={v => updateProject('excavation_method', v)}>
+                          <SelectTrigger className="h-9 mt-1"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="hand_dig">Hand Dig</SelectItem>
+                            <SelectItem value="equipment_excavation">Equipment Excavation</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {project.excavation_method === 'equipment_excavation' && (
+                        <div className="min-w-[220px]">
+                          <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Equipment</Label>
+                          <Select
+                            value={project.selected_equipment_id || ''}
+                            onValueChange={v => updateProject('selected_equipment_id', v)}
+                          >
+                            <SelectTrigger className="h-9 mt-1"><SelectValue placeholder="Select equipment (optional)" /></SelectTrigger>
+                            <SelectContent>
+                              {inventory.filter(i => i.material_type === 'excavation_equipment').length === 0 && (
+                                <SelectItem value="_none" disabled>No equipment in inventory</SelectItem>
+                              )}
+                              {inventory.filter(i => i.material_type === 'excavation_equipment').map(eq => (
+                                <SelectItem key={eq.id} value={eq.id}>{eq.material_name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      {project.excavation_method === 'equipment_excavation' && project.selected_equipment_id && (() => {
+                        const eq = inventory.find(i => i.id === project.selected_equipment_id);
+                        return eq ? (
+                          <div className="text-xs text-slate-500 pb-2">
+                            {eq.cost_per_day && <span>Day: ${eq.cost_per_day}</span>}
+                            {eq.cost_per_week && <span className="ml-3">Week: ${eq.cost_per_week}</span>}
+                            {eq.pickup_delivery_cost && <span className="ml-3">Delivery: ${eq.pickup_delivery_cost}</span>}
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {items.map((item, idx) => (
                   <FoundationItemRow
                     key={item._id}
