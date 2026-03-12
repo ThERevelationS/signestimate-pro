@@ -1,57 +1,52 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Undo2, Check, Plus, Move, RotateCcw } from 'lucide-react';
+import { Trash2, Undo2, Plus, Move, RotateCcw } from 'lucide-react';
 
 const SCALE_PX_PER_INCH = 4; // 4 pixels per inch
-const SNAP_DISTANCE = 10; // px
-const GRID_INCH = 6; // grid every 6 inches
+const SNAP_DISTANCE = 14;    // px - for closing shape
+const GRID_INCH = 6;         // grid every 6 inches
 
-function snapToGrid(val) {
-  const snapTo = GRID_INCH * SCALE_PX_PER_INCH;
-  return Math.round(val / snapTo) * snapTo;
+function snapToGrid(val, gridPx) {
+  return Math.round(val / gridPx) * gridPx;
 }
 
-function pxToInches(px) {
-  return px / SCALE_PX_PER_INCH;
+// Convert canvas pixel to world inches (accounting for pan offset and scale)
+function canvasToInches(px, offset) {
+  return (px - offset) / SCALE_PX_PER_INCH;
 }
 
-function inchesToPx(inches) {
-  return inches * SCALE_PX_PER_INCH;
+// Convert world inches to canvas pixel
+function inchesToCanvas(inches, offset) {
+  return inches * SCALE_PX_PER_INCH + offset;
 }
 
 function dist(p1, p2) {
   return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
 }
 
-function segmentLength(p1, p2) {
-  return pxToInches(dist(p1, p2));
+// Points stored in WORLD INCHES; this computes px distance between two world-inch points on canvas
+function segmentLengthInches(p1, p2) {
+  return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
 }
 
-// Check if a point is within the foundation bounds
-function isWithinBounds(pt, foundationBounds) {
-  if (!foundationBounds) return true;
-  const { x: bx, y: by, w: bw, h: bh } = foundationBounds;
-  return pt.x >= bx && pt.x <= bx + bw && pt.y >= by && pt.y <= by + bh;
-}
-
-export default function WallShapeBuilder({ 
-  foundationLengthInches, 
-  foundationWidthInches, 
+export default function WallShapeBuilder({
+  foundationLengthInches,
+  foundationWidthInches,
   onShapeChange,
   initialShape = null,
   useExistingFoundation = false
 }) {
   const canvasRef = useRef(null);
-  // initialShape points are in inches; convert back to canvas pixels for editing
-  const initPoints = initialShape?._rawPoints || (initialShape?.points
-    ? initialShape.points.map(p => ({ x: inchesToPx(p.x), y: inchesToPx(p.y) }))
-    : []);
+
+  // All points stored in WORLD INCHES (not canvas pixels)
+  const initPoints = initialShape?.points || [];
   const [points, setPoints] = useState(initPoints);
   const [closed, setClosed] = useState(initialShape?.closed || false);
-  const [hoverPt, setHoverPt] = useState(null);
-  const [mode, setMode] = useState('draw'); // 'draw' | 'pan'
-  const [offset, setOffset] = useState({ x: 40, y: 40 });
+  const [hoverInches, setHoverInches] = useState(null);  // world inches
+  const [nearFirstPoint, setNearFirstPoint] = useState(false);
+  const [mode, setMode] = useState('draw');
+  const [offset, setOffset] = useState({ x: 40, y: 40 }); // pan offset in px
   const [panning, setPanning] = useState(false);
   const [panStart, setPanStart] = useState(null);
   const [selectedPointIndex, setSelectedPointIndex] = useState(null);
@@ -60,12 +55,22 @@ export default function WallShapeBuilder({
   const canvasW = 700;
   const canvasH = 450;
 
-  const foundBoundsInPx = useCallback(() => {
-    if (useExistingFoundation) return null;
-    const w = inchesToPx(foundationLengthInches || 0);
-    const h = inchesToPx(foundationWidthInches || 0);
-    return { x: offset.x, y: offset.y, w, h };
-  }, [foundationLengthInches, foundationWidthInches, offset, useExistingFoundation]);
+  // Convert world-inch point to canvas pixel
+  const toCanvas = useCallback((pt) => ({
+    x: inchesToCanvas(pt.x, offset.x),
+    y: inchesToCanvas(pt.y, offset.y),
+  }), [offset]);
+
+  // Convert raw canvas pixel to snapped world inches
+  const fromCanvas = useCallback((rawX, rawY) => {
+    const gridPx = GRID_INCH * SCALE_PX_PER_INCH;
+    const snappedX = snapToGrid(rawX, gridPx);
+    const snappedY = snapToGrid(rawY, gridPx);
+    return {
+      x: canvasToInches(snappedX, offset.x),
+      y: canvasToInches(snappedY, offset.y),
+    };
+  }, [offset]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -77,32 +82,35 @@ export default function WallShapeBuilder({
     ctx.fillStyle = '#f8fafc';
     ctx.fillRect(0, 0, canvasW, canvasH);
 
-    // Grid
+    // Grid — follows offset so it pans correctly
     ctx.strokeStyle = '#e2e8f0';
     ctx.lineWidth = 0.5;
     const gridPx = GRID_INCH * SCALE_PX_PER_INCH;
-    for (let x = (offset.x % gridPx); x < canvasW; x += gridPx) {
+    const startX = ((offset.x % gridPx) + gridPx) % gridPx;
+    const startY = ((offset.y % gridPx) + gridPx) % gridPx;
+    for (let x = startX; x < canvasW; x += gridPx) {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvasH); ctx.stroke();
     }
-    for (let y = (offset.y % gridPx); y < canvasH; y += gridPx) {
+    for (let y = startY; y < canvasH; y += gridPx) {
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvasW, y); ctx.stroke();
     }
 
-    // Foundation bounds
+    // Foundation bounds (world space, pans with offset)
     if (!useExistingFoundation && foundationLengthInches && foundationWidthInches) {
-      const fb = foundBoundsInPx();
+      // Foundation sits at world origin (0,0) to (L, W)
+      const topLeft = toCanvas({ x: 0, y: 0 });
+      const w = foundationLengthInches * SCALE_PX_PER_INCH;
+      const h = foundationWidthInches * SCALE_PX_PER_INCH;
       ctx.strokeStyle = '#f59e0b';
       ctx.lineWidth = 2;
       ctx.setLineDash([8, 4]);
-      ctx.strokeRect(fb.x, fb.y, fb.w, fb.h);
+      ctx.strokeRect(topLeft.x, topLeft.y, w, h);
       ctx.setLineDash([]);
       ctx.fillStyle = 'rgba(245,158,11,0.07)';
-      ctx.fillRect(fb.x, fb.y, fb.w, fb.h);
-
-      // Label
+      ctx.fillRect(topLeft.x, topLeft.y, w, h);
       ctx.fillStyle = '#92400e';
       ctx.font = '11px sans-serif';
-      ctx.fillText(`Foundation: ${foundationLengthInches}"L x ${foundationWidthInches}"W`, fb.x + 4, fb.y - 6);
+      ctx.fillText(`Foundation: ${foundationLengthInches}"L x ${foundationWidthInches}"W`, topLeft.x + 4, topLeft.y - 6);
     } else if (useExistingFoundation) {
       ctx.fillStyle = '#6b7280';
       ctx.font = '12px sans-serif';
@@ -111,17 +119,18 @@ export default function WallShapeBuilder({
 
     // Drawn wall outline
     if (points.length > 0) {
+      const cpFirst = toCanvas(points[0]);
       ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
+      ctx.moveTo(cpFirst.x, cpFirst.y);
       for (let i = 1; i < points.length; i++) {
-        ctx.lineTo(points[i].x, points[i].y);
+        const cp = toCanvas(points[i]);
+        ctx.lineTo(cp.x, cp.y);
       }
       if (closed) ctx.closePath();
       ctx.strokeStyle = '#1e40af';
       ctx.lineWidth = 2.5;
       ctx.stroke();
 
-      // Fill if closed
       if (closed) {
         ctx.fillStyle = 'rgba(30,64,175,0.12)';
         ctx.fill();
@@ -134,9 +143,11 @@ export default function WallShapeBuilder({
       for (let i = 0; i < segs; i++) {
         const p1 = points[i];
         const p2 = points[(i + 1) % points.length];
-        const mx = (p1.x + p2.x) / 2;
-        const my = (p1.y + p2.y) / 2;
-        const lenIn = segmentLength(p1, p2);
+        const cp1 = toCanvas(p1);
+        const cp2 = toCanvas(p2);
+        const mx = (cp1.x + cp2.x) / 2;
+        const my = (cp1.y + cp2.y) / 2;
+        const lenIn = segmentLengthInches(p1, p2);
         const ft = Math.floor(lenIn / 12);
         const inch = Math.round(lenIn % 12);
         const label = ft > 0 ? `${ft}'-${inch}"` : `${inch}"`;
@@ -145,78 +156,92 @@ export default function WallShapeBuilder({
 
       // Points
       points.forEach((pt, i) => {
+        const cp = toCanvas(pt);
+        const isFirst = i === 0;
+        const isSnappable = isFirst && nearFirstPoint && !closed && points.length >= 3;
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, selectedPointIndex === i ? 7 : 5, 0, Math.PI * 2);
-        ctx.fillStyle = i === 0 ? '#ef4444' : '#1e40af';
+        ctx.arc(cp.x, cp.y, isSnappable ? 10 : (selectedPointIndex === i ? 7 : 5), 0, Math.PI * 2);
+        ctx.fillStyle = isFirst ? (isSnappable ? '#22c55e' : '#ef4444') : '#1e40af';
         ctx.fill();
         ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = isSnappable ? 2.5 : 1.5;
         ctx.stroke();
       });
     }
 
-    // Hover point preview
-    if (hoverPt && mode === 'draw' && !closed) {
+    // Hover preview line
+    if (hoverInches && mode === 'draw' && !closed) {
+      const hcp = toCanvas(hoverInches);
+
+      if (nearFirstPoint && points.length >= 3) {
+        // Show snap-to-close indicator
+        const cp0 = toCanvas(points[0]);
+        ctx.beginPath();
+        ctx.arc(cp0.x, cp0.y, 12, 0, Math.PI * 2);
+        ctx.strokeStyle = '#22c55e';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(34,197,94,0.15)';
+        ctx.fill();
+      }
+
       ctx.beginPath();
-      ctx.arc(hoverPt.x, hoverPt.y, 4, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(30,64,175,0.4)';
+      ctx.arc(hcp.x, hcp.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = nearFirstPoint && points.length >= 3 ? 'rgba(34,197,94,0.6)' : 'rgba(30,64,175,0.4)';
       ctx.fill();
 
-      // Line from last point to hover
       if (points.length > 0) {
-        const last = points[points.length - 1];
+        const last = toCanvas(points[points.length - 1]);
         ctx.beginPath();
         ctx.moveTo(last.x, last.y);
-        ctx.lineTo(hoverPt.x, hoverPt.y);
-        ctx.strokeStyle = 'rgba(30,64,175,0.4)';
+        ctx.lineTo(hcp.x, hcp.y);
+        ctx.strokeStyle = nearFirstPoint && points.length >= 3 ? 'rgba(34,197,94,0.6)' : 'rgba(30,64,175,0.4)';
         ctx.lineWidth = 1.5;
         ctx.setLineDash([4, 4]);
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Show potential length
-        const lenIn = segmentLength(last, hoverPt);
+        const lenIn = segmentLengthInches(points[points.length - 1], hoverInches);
         const ft = Math.floor(lenIn / 12);
         const inch = Math.round(lenIn % 12);
-        const label = ft > 0 ? `${ft}'-${inch}"` : `${inch}"`;
-        ctx.fillStyle = '#475569';
-        ctx.font = '11px sans-serif';
-        ctx.fillText(label, (last.x + hoverPt.x) / 2 + 4, (last.y + hoverPt.y) / 2 - 4);
+        const label = nearFirstPoint && points.length >= 3 ? 'Close shape' : (ft > 0 ? `${ft}'-${inch}"` : `${inch}"`);
+        ctx.fillStyle = nearFirstPoint ? '#16a34a' : '#475569';
+        ctx.font = nearFirstPoint ? 'bold 11px sans-serif' : '11px sans-serif';
+        ctx.fillText(label, (last.x + hcp.x) / 2 + 4, (last.y + hcp.y) / 2 - 4);
       }
     }
-  }, [points, hoverPt, mode, offset, closed, foundBoundsInPx, foundationLengthInches, foundationWidthInches, useExistingFoundation, selectedPointIndex]);
+  }, [points, hoverInches, nearFirstPoint, mode, offset, closed, foundationLengthInches, foundationWidthInches, useExistingFoundation, selectedPointIndex, toCanvas]);
 
   useEffect(() => { draw(); }, [draw]);
 
   useEffect(() => {
     if (onShapeChange) {
-      // Convert points from canvas pixels to inches for downstream consumers
-      const pointsInInches = points.map(p => ({ x: pxToInches(p.x), y: pxToInches(p.y) }));
       const segments = [];
       const n = closed ? points.length : points.length - 1;
       for (let i = 0; i < n; i++) {
-        const p1 = pointsInInches[i];
-        const p2 = pointsInInches[(i + 1) % pointsInInches.length];
+        const p1 = points[i];
+        const p2 = points[(i + 1) % points.length];
         const dx = p2.x - p1.x;
         const dy = p2.y - p1.y;
         segments.push({ p1, p2, length: Math.sqrt(dx * dx + dy * dy) });
       }
-      onShapeChange({ points: pointsInInches, closed, segments, _rawPoints: points });
+      onShapeChange({ points: [...points], closed, segments });
     }
   }, [points, closed]);
 
-  const getCanvasPoint = (e) => {
+  const getRawCanvasPoint = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    const rawX = e.clientX - rect.left;
-    const rawY = e.clientY - rect.top;
-    const snappedX = snapToGrid(rawX);
-    const snappedY = snapToGrid(rawY);
-    return { x: snappedX, y: snappedY };
+    return {
+      rawX: e.clientX - rect.left,
+      rawY: e.clientY - rect.top,
+    };
   };
 
   const handleMouseMove = (e) => {
     if (!canvasRef.current) return;
-    const pt = getCanvasPoint(e);
+    const { rawX, rawY } = getRawCanvasPoint(e);
 
     if (panning && panStart) {
       const dx = e.clientX - panStart.x;
@@ -227,17 +252,26 @@ export default function WallShapeBuilder({
     }
 
     if (draggingPoint !== null) {
-      const fb = foundBoundsInPx();
-      if (!useExistingFoundation && fb && !isWithinBounds(pt, fb)) return;
+      const worldPt = fromCanvas(rawX, rawY);
       setPoints(prev => {
         const arr = [...prev];
-        arr[draggingPoint] = pt;
+        arr[draggingPoint] = worldPt;
         return arr;
       });
       return;
     }
 
-    setHoverPt(pt);
+    const worldPt = fromCanvas(rawX, rawY);
+    setHoverInches(worldPt);
+
+    // Check proximity to first point (in canvas pixels)
+    if (points.length >= 3 && !closed) {
+      const cp0 = { x: inchesToCanvas(points[0].x, offset.x), y: inchesToCanvas(points[0].y, offset.y) };
+      const dPx = dist({ x: rawX, y: rawY }, cp0);
+      setNearFirstPoint(dPx < SNAP_DISTANCE);
+    } else {
+      setNearFirstPoint(false);
+    }
   };
 
   const handleMouseDown = (e) => {
@@ -247,11 +281,13 @@ export default function WallShapeBuilder({
       return;
     }
 
-    const pt = getCanvasPoint(e);
+    const { rawX, rawY } = getRawCanvasPoint(e);
+    const worldPt = fromCanvas(rawX, rawY);
 
-    // Check if clicking near existing point for drag
+    // Check if clicking near existing point (canvas px distance)
     for (let i = 0; i < points.length; i++) {
-      if (dist(pt, points[i]) < 10) {
+      const cp = { x: inchesToCanvas(points[i].x, offset.x), y: inchesToCanvas(points[i].y, offset.y) };
+      if (dist({ x: rawX, y: rawY }, cp) < 10) {
         setDraggingPoint(i);
         setSelectedPointIndex(i);
         return;
@@ -260,29 +296,20 @@ export default function WallShapeBuilder({
 
     if (closed) return;
 
-    // Check if closing the shape (clicking near first point)
-    if (points.length >= 3) {
-      if (dist(pt, points[0]) < SNAP_DISTANCE) {
-        setClosed(true);
-        return;
-      }
-    }
-
-    // Validate bounds
-    const fb = foundBoundsInPx();
-    if (!useExistingFoundation && fb && !isWithinBounds(pt, fb)) {
+    // Close shape if near first point
+    if (points.length >= 3 && nearFirstPoint) {
+      setClosed(true);
+      setNearFirstPoint(false);
       return;
     }
 
-    setPoints(prev => [...prev, pt]);
+    setPoints(prev => [...prev, worldPt]);
   };
 
   const handleMouseUp = () => {
     setPanning(false);
     setPanStart(null);
-    if (draggingPoint !== null) {
-      setDraggingPoint(null);
-    }
+    if (draggingPoint !== null) setDraggingPoint(null);
   };
 
   const handleUndo = () => {
@@ -297,10 +324,7 @@ export default function WallShapeBuilder({
     setPoints([]);
     setClosed(false);
     setSelectedPointIndex(null);
-  };
-
-  const handleClose = () => {
-    if (points.length >= 3) setClosed(true);
+    setNearFirstPoint(false);
   };
 
   const deleteSelectedPoint = () => {
@@ -310,13 +334,12 @@ export default function WallShapeBuilder({
     if (closed && points.length <= 3) setClosed(false);
   };
 
-  // Total perimeter
   const totalPerimeterInches = (() => {
     if (points.length < 2) return 0;
     const n = closed ? points.length : points.length - 1;
     let sum = 0;
     for (let i = 0; i < n; i++) {
-      sum += segmentLength(points[i], points[(i + 1) % points.length]);
+      sum += segmentLengthInches(points[i], points[(i + 1) % points.length]);
     }
     return sum;
   })();
@@ -327,28 +350,15 @@ export default function WallShapeBuilder({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
-        <Button
-          size="sm"
-          variant={mode === 'draw' ? 'default' : 'outline'}
-          onClick={() => setMode('draw')}
-        >
+        <Button size="sm" variant={mode === 'draw' ? 'default' : 'outline'} onClick={() => setMode('draw')}>
           <Plus className="w-3 h-3 mr-1" /> Draw
         </Button>
-        <Button
-          size="sm"
-          variant={mode === 'pan' ? 'default' : 'outline'}
-          onClick={() => setMode('pan')}
-        >
+        <Button size="sm" variant={mode === 'pan' ? 'default' : 'outline'} onClick={() => setMode('pan')}>
           <Move className="w-3 h-3 mr-1" /> Pan
         </Button>
         <Button size="sm" variant="outline" onClick={handleUndo} disabled={points.length === 0}>
           <Undo2 className="w-3 h-3 mr-1" /> Undo
         </Button>
-        {points.length >= 3 && !closed && (
-          <Button size="sm" variant="outline" onClick={handleClose}>
-            <Check className="w-3 h-3 mr-1" /> Close Shape
-          </Button>
-        )}
         {selectedPointIndex !== null && (
           <Button size="sm" variant="outline" onClick={deleteSelectedPoint}>
             <Trash2 className="w-3 h-3 mr-1" /> Del Point
@@ -362,7 +372,7 @@ export default function WallShapeBuilder({
             Perimeter: {totalFt > 0 ? `${totalFt}' ` : ''}{totalInch}"
           </Badge>
         )}
-        {closed && <Badge className="bg-green-600">Shape Closed</Badge>}
+        {closed && <Badge className="bg-green-600">Shape Closed ✓</Badge>}
       </div>
 
       <div className="border rounded-lg overflow-hidden" style={{ width: canvasW, maxWidth: '100%' }}>
@@ -370,19 +380,18 @@ export default function WallShapeBuilder({
           ref={canvasRef}
           width={canvasW}
           height={canvasH}
-          style={{ cursor: mode === 'pan' ? 'grab' : 'crosshair', display: 'block', maxWidth: '100%' }}
+          style={{ cursor: mode === 'pan' ? 'grab' : (nearFirstPoint && points.length >= 3 && !closed ? 'pointer' : 'crosshair'), display: 'block', maxWidth: '100%' }}
           onMouseMove={handleMouseMove}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
-          onMouseLeave={() => { setHoverPt(null); setPanning(false); }}
+          onMouseLeave={() => { setHoverInches(null); setPanning(false); setNearFirstPoint(false); }}
         />
       </div>
 
       <p className="text-xs text-slate-500">
         {!closed
-          ? 'Click to place points. Snap to grid (6" intervals). Click near first point (red) to close. Drag points to adjust.'
-          : 'Shape is closed. Drag points to refine. Click "Reset" to start over.'}
-        {!useExistingFoundation && foundationLengthInches && ' Points must stay within the foundation outline (amber border).'}
+          ? 'Click to place points (6" grid). Move cursor near the first point (red) to auto-close. Pan mode moves the view. Drag points to adjust.'
+          : 'Shape closed. Drag points to refine. Click "Reset" to start over.'}
       </p>
     </div>
   );
