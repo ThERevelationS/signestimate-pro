@@ -208,6 +208,7 @@ export default function NewFoundationEstimate() {
       ...project,
       items: items.map(({ _id, ...rest }) => rest),
       walls: walls.map(({ _id, ...rest }) => rest),
+      selected_equipment_list: selectedEquipmentList.map(({ _id, ...rest }) => rest),
       total_labor_cost: totals.grand,
     };
     if (editId) { await FoundationProjectEntity.update(editId, data); }
