@@ -129,10 +129,6 @@ export default function WallSection({
             )}
           </div>
           <div className="flex items-center gap-1">
-            <Button size="sm" variant="ghost" onClick={() => setShow3D(s => !s)}>
-              {show3D ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              {show3D ? ' Hide 3D' : ' Show 3D'}
-            </Button>
             <Button size="sm" variant="ghost" onClick={() => setExpanded(s => !s)}>
               {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </Button>
