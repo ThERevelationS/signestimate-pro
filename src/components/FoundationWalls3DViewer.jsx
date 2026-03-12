@@ -309,9 +309,6 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
             const brick = new THREE.Mesh(brickGeo, brickMat);
 
             // localX is along the segment direction; transform into world space
-            // segment direction vector (unit)
-            const segDirX = dx / segLen;
-            const segDirZ = dz / segLen;
             const worldX = cx + localX * segDirX;
             const worldZ = cz + localX * segDirZ;
 
