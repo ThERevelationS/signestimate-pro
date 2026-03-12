@@ -257,6 +257,7 @@ export default function NewFoundationEstimate() {
                 <TabsTrigger value="info">Project Info</TabsTrigger>
                 <TabsTrigger value="foundation">Foundation ({items.length})</TabsTrigger>
                 <TabsTrigger value="walls">Walls ({walls.length})</TabsTrigger>
+                <TabsTrigger value="equipment">Equipment {selectedEquipmentList.length > 0 ? `(${selectedEquipmentList.length})` : ''}</TabsTrigger>
                 <TabsTrigger value="summary">Summary</TabsTrigger>
               </TabsList>
 
