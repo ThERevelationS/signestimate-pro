@@ -60,8 +60,6 @@ export default function NewFoundationEstimate() {
   const [concreteOptions, setConcreteOptions] = useState([]);
   const [formingMaterials, setFormingMaterials] = useState([]);
   const [poleInventory, setPoleInventory] = useState([]);
-  const [brickStoneInventory, setBrickStoneInventory] = useState([]);
-  const [fillMaterialInventory, setFillMaterialInventory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -116,12 +114,6 @@ export default function NewFoundationEstimate() {
 
       const poleItems = allInventory.filter(item => item.material_type === 'pole');
       setPoleInventory(poleItems);
-
-      const brickItems = allInventory.filter(item => item.material_type === 'brick_stone');
-      setBrickStoneInventory(brickItems);
-
-      const fillItems = allInventory.filter(item => item.material_type === 'fill_material');
-      setFillMaterialInventory(fillItems);
 
       if (!editId) {
         const newDefaults = {
@@ -313,20 +305,7 @@ export default function NewFoundationEstimate() {
       pole_total_height_inches: 0,
       include_pole_painting: false,
       pole_cost: 0,
-      pole_painting_cost: 0,
-      include_wall_material: false,
-      wall_length_inches: 0,
-      wall_width_inches: 8,
-      wall_height_inches: 0,
-      selected_brick_id: null,
-      mortar_gap_inches: 0.375,
-      brick_layer_offset_inches: 4,
-      include_fill_material: false,
-      selected_fill_material_id: null,
-      brick_count: 0,
-      brick_cost: 0,
-      fill_volume_cy: 0,
-      fill_cost: 0
+      pole_painting_cost: 0
     };
     setProject(prev => {
       const updatedItems = [...prev.items, newItem];
@@ -707,8 +686,6 @@ export default function NewFoundationEstimate() {
     let totalFormingMaterialsCost = 0;
     let totalPoleCost = 0;
     let totalPolePaintingCost = 0;
-    let totalBrickCost = 0;
-    let totalFillCost = 0;
 
     const updatedItems = project.items.map(item => {
       // Determine rates, using item-specific override if present, otherwise project default
@@ -867,40 +844,7 @@ export default function NewFoundationEstimate() {
       totalPoleCost += poleCost;
       totalPolePaintingCost += polePaintingCost;
 
-      // Brick / Stone wall costs
-      let brickCount = 0;
-      let brickCost = 0;
-      let fillVolumeCy = 0;
-      let fillCost = 0;
-      if (item.include_wall_material && item.selected_brick_id && item.wall_height_inches > 0) {
-        const brickItem = brickStoneInventory.find(b => b.id === item.selected_brick_id);
-        if (brickItem) {
-          const mortarGap = item.mortar_gap_inches ?? 0.375;
-          const bL = (brickItem.brick_length_inches || 8) + mortarGap;
-          const bH = (brickItem.brick_height_inches || 2.625) + mortarGap;
-          const wL = Math.min(item.wall_length_inches || 0, item.foundation_type === 'spread_foot' ? item.length_inches : item.diameter);
-          const wW = Math.min(item.wall_width_inches || 8, item.foundation_type === 'spread_foot' ? item.width_inches : item.diameter);
-          const bricksPerCourse = Math.ceil(wL / bL) * 2 + Math.ceil(wW / bL) * 2;
-          const numCourses = Math.ceil(item.wall_height_inches / bH);
-          brickCount = bricksPerCourse * numCourses * item.quantity;
-          brickCost = brickCount * (brickItem.cost_per_unit || 0);
-        }
-      }
-      if (item.include_fill_material && item.selected_fill_material_id && item.wall_height_inches > 0 && item.wall_length_inches > 0 && item.wall_width_inches > 0) {
-        const fillItem = fillMaterialInventory.find(f => f.id === item.selected_fill_material_id);
-        if (fillItem) {
-          const brickWFt = 0.333; // approximate brick width in ft
-          const innerL = Math.max(0, (item.wall_length_inches - 2 * brickWFt * 12) / 12);
-          const innerW = Math.max(0, (item.wall_width_inches - 2 * brickWFt * 12) / 12);
-          const wallH = item.wall_height_inches / 12;
-          fillVolumeCy = (innerL * innerW * wallH / 27) * item.quantity;
-          fillCost = fillVolumeCy * (fillItem.cost_per_unit || 0);
-        }
-      }
-      totalBrickCost += brickCost;
-      totalFillCost += fillCost;
-
-      const itemTotalCost = concreteCost + rebarCost + nonLaborExcavationCost + formingCost + pouringCost + finishingCost + itemExcavationLaborCost + formingMaterialsCost + poleCost + polePaintingCost + brickCost + fillCost;
+      const itemTotalCost = concreteCost + rebarCost + nonLaborExcavationCost + formingCost + pouringCost + finishingCost + itemExcavationLaborCost + formingMaterialsCost + poleCost + polePaintingCost;
 
       totalConcreteCost += concreteCost;
       totalRebarCost += rebarCost;
