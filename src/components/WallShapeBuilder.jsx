@@ -186,14 +186,18 @@ export default function WallShapeBuilder({
 
   useEffect(() => {
     if (onShapeChange) {
+      // Convert points from canvas pixels to inches for downstream consumers
+      const pointsInInches = points.map(p => ({ x: pxToInches(p.x), y: pxToInches(p.y) }));
       const segments = [];
       const n = closed ? points.length : points.length - 1;
       for (let i = 0; i < n; i++) {
-        const p1 = points[i];
-        const p2 = points[(i + 1) % points.length];
-        segments.push({ length: segmentLength(p1, p2) });
+        const p1 = pointsInInches[i];
+        const p2 = pointsInInches[(i + 1) % pointsInInches.length];
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        segments.push({ p1, p2, length: Math.sqrt(dx * dx + dy * dy) });
       }
-      onShapeChange({ points, closed, segments });
+      onShapeChange({ points: pointsInInches, closed, segments, _rawPoints: points });
     }
   }, [points, closed]);
 
