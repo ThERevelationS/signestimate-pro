@@ -270,7 +270,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
             scene.add(mortarBed);
           }
 
-          // Running bond: offset odd courses by half brick+mortar so mortar aligns with brick centers below
+          // Running bond: offset odd courses by half brick+mortar so joints stagger
           const runningOffset = (course % 2 === 0) ? 0 : (brickL + mortarFt) / 2;
 
           // Start edge position (leftmost brick edge on this course)
@@ -298,7 +298,20 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
             scene.add(brick);
 
             // Move edge position to the right side of this brick
-            edgePos += thisBrickL + mortarFt;
+            edgePos += thisBrickL;
+
+            // Render mortar joint at the edge between bricks
+            if (edgePos < segLen / 2) {
+              const mortarCenterLocal = edgePos + mortarFt / 2;
+              const mortarCx = cx + mortarCenterLocal * segDirX;
+              const mortarCz = cz + mortarCenterLocal * segDirZ;
+              const mortarGeo = new THREE.BoxGeometry(mortarFt, brickH, brickW);
+              const mortar = new THREE.Mesh(mortarGeo, mortarMat);
+              mortar.position.set(mortarCx, y, mortarCz);
+              mortar.rotation.y = angle;
+              scene.add(mortar);
+              edgePos += mortarFt;
+            }
           }
 
           // Top mortar cap on final course
