@@ -273,22 +273,22 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
           // Running bond: offset odd courses by half brick+mortar so joints stagger
           const runningOffset = (course % 2 === 0) ? 0 : (brickL + mortarFt) / 2;
 
-          // Start edge position (leftmost brick edge on this course)
-          let edgePos = -segLen / 2 + runningOffset;
+          // Start position for first brick on this course (left edge)
+          let pos = -segLen / 2 + runningOffset;
 
-          while (edgePos < segLen / 2) {
-            const remainingLen = segLen / 2 - edgePos;
+          while (pos < segLen / 2) {
+            const remainingLen = segLen / 2 - pos;
             
             // Full brick or trimmed to fit
             const thisBrickL = Math.min(brickL, remainingLen);
             if (thisBrickL < 0.1) break;
 
-            // Brick center is at: edgePos + thisBrickL/2
-            const brickCenterLocal = edgePos + thisBrickL / 2;
+            // Brick center position = left edge + half length
+            const brickCenterLocal = pos + thisBrickL / 2;
             const brickCx = cx + brickCenterLocal * segDirX;
             const brickCz = cz + brickCenterLocal * segDirZ;
 
-            // Render brick (positioned at its center)
+            // Render brick
             const brickGeo = new THREE.BoxGeometry(thisBrickL, brickH, brickW);
             const brick = new THREE.Mesh(brickGeo, brickMat);
             brick.position.set(brickCx, y, brickCz);
@@ -297,12 +297,12 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
             brick.receiveShadow = true;
             scene.add(brick);
 
-            // Move edge position to the right side of this brick
-            edgePos += thisBrickL;
+            // Move to right edge of brick
+            pos += thisBrickL;
 
-            // Render mortar joint at the edge between bricks
-            if (edgePos < segLen / 2) {
-              const mortarCenterLocal = edgePos + mortarFt / 2;
+            // Render mortar joint between bricks
+            if (pos < segLen / 2) {
+              const mortarCenterLocal = pos + mortarFt / 2;
               const mortarCx = cx + mortarCenterLocal * segDirX;
               const mortarCz = cz + mortarCenterLocal * segDirZ;
               const mortarGeo = new THREE.BoxGeometry(mortarFt, brickH, brickW);
@@ -310,7 +310,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
               mortar.position.set(mortarCx, y, mortarCz);
               mortar.rotation.y = angle;
               scene.add(mortar);
-              edgePos += mortarFt;
+              pos += mortarFt;
             }
           }
 
