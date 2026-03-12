@@ -113,6 +113,7 @@ export default function NewFoundationEstimate() {
         setProject(p);
         setItems(p.items?.length ? p.items.map(i => ({ ...i, _id: i._id || Date.now() + Math.random() })) : [newItem()]);
         setWalls(p.walls?.length ? p.walls.map(w => ({ ...w, _id: w._id || Date.now() + Math.random() })) : []);
+        setSelectedEquipmentList(p.selected_equipment_list?.length ? p.selected_equipment_list.map(e => ({ ...e, _id: e._id || Date.now() + Math.random() })) : []);
       }
     }
     setLoading(false);
