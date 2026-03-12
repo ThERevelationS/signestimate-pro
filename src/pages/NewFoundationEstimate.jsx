@@ -355,6 +355,7 @@ export default function NewFoundationEstimate() {
                     concreteServices={concreteServices}
                     costs={calcItemCost(item)}
                     excavationMethod={project.excavation_method}
+                    excavationEquipment={inventory.find(i => i.id === project.selected_equipment_id)}
                   />
                 ))}
                 <Button variant="outline" onClick={addItem}>
