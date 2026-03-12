@@ -270,24 +270,6 @@ export default function WallSection({
             />
           </div>
 
-          {/* 3D Preview */}
-          {show3D && wall.shape && wall.shape.points?.length >= 2 && selectedMat && (
-            <div>
-              <Label className="text-xs font-semibold text-slate-700 mb-2 block">3D Wall Preview</Label>
-              <Wall3DViewer
-                wallPoints={wall.shape.points}
-                wallSegments={wall.shape.segments || []}
-                wallHeight={wall.heightInches || 24}
-                wallMaterial={selectedMat}
-                mortarGapInches={wall.mortarGapInches || 0.375}
-                brickOffsetFraction={wall.offsetFraction ?? 0.5}
-                foundationHeightInches={0}
-                width={600}
-                height={380}
-              />
-            </div>
-          )}
-
           {/* Cost summary */}
           {costs && (
             <div className="bg-slate-50 rounded-lg p-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
