@@ -15,6 +15,7 @@ import { createPageUrl } from '@/utils';
 import WallSection from '@/components/WallSection';
 import FoundationWalls3DViewer from '@/components/FoundationWalls3DViewer';
 import { UnsavedChangesContext } from '@/components/UnsavedChangesContext';
+import SummaryTab from '@/components/foundation/SummaryTab';
 
 const FoundationProjectEntity = base44.entities.FoundationProject;
 const FoundationInventoryEntity = base44.entities.FoundationInventory;
