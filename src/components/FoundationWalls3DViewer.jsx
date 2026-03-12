@@ -274,12 +274,16 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
            // Running bond: offset odd courses by half brick+mortar
            const runningOffset = (course % 2 === 0) ? 0 : (brickL + mortarFt) / 2;
 
-           // Start edge position - extend slightly past segment end for corner overlap
+           // Start edge position, extend by brick depth for corner overlap
            let edgePos = -segLen / 2 + runningOffset;
 
-           while (edgePos < segLen / 2 + brickL) {
+           while (edgePos < segLen / 2 + brickW) {
+             const remainingLen = segLen / 2 + brickW - edgePos;
+             if (remainingLen < 0.1) break;
+
              // Full brick or trimmed to fit
-             const thisBrickL = brickL;
+             const thisBrickL = Math.min(brickL, remainingLen);
+             if (thisBrickL < 0.1) break;
 
              // Brick center position = left edge + half length
              const brickCenterLocal = edgePos + thisBrickL / 2;
@@ -299,7 +303,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
              edgePos += thisBrickL;
 
              // Render mortar joint at edge between bricks
-             if (edgePos < segLen / 2 + brickL) {
+             if (edgePos < segLen / 2 + brickW) {
                const mortarCenterLocal = edgePos + mortarFt / 2;
                const mortarCx = cx + mortarCenterLocal * segDirX;
                const mortarCz = cz + mortarCenterLocal * segDirZ;
