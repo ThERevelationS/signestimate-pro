@@ -43,7 +43,11 @@ export default function WallShapeBuilder({
   useExistingFoundation = false
 }) {
   const canvasRef = useRef(null);
-  const [points, setPoints] = useState(initialShape?.points || []);
+  // initialShape points are in inches; convert back to canvas pixels for editing
+  const initPoints = initialShape?._rawPoints || (initialShape?.points
+    ? initialShape.points.map(p => ({ x: inchesToPx(p.x), y: inchesToPx(p.y) }))
+    : []);
+  const [points, setPoints] = useState(initPoints);
   const [closed, setClosed] = useState(initialShape?.closed || false);
   const [hoverPt, setHoverPt] = useState(null);
   const [mode, setMode] = useState('draw'); // 'draw' | 'pan'
