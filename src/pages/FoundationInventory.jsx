@@ -196,8 +196,8 @@ export default function FoundationInventoryPage() {
   const [activeTab, setActiveTab] = useState('wall_material');
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
-  const [showLegacyForm, setShowLegacyForm] = useState(false);
-  const [legacyEditItem, setLegacyEditItem] = useState(null);
+  const [showFillForm, setShowFillForm] = useState(false);
+  const [fillEditItem, setFillEditItem] = useState(null);
 
   useEffect(() => {
     loadItems();
