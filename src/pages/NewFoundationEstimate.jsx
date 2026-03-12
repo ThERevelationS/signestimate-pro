@@ -444,12 +444,12 @@ export default function NewFoundationEstimate() {
         </div>
 
         {/* RIGHT: Persistent 3D Viewer */}
-        <div className="hidden lg:flex flex-col w-[825px] xl:w-[1020px] flex-shrink-0 border-l bg-slate-100">
-          <div className="px-4 py-2 border-b bg-white flex items-center justify-between">
+        <div className="hidden lg:flex flex-col flex-1 min-w-0 border-l bg-slate-100">
+          <div className="px-4 py-2 border-b bg-white flex items-center justify-between flex-shrink-0">
             <span className="text-sm font-semibold text-slate-700">3D Preview</span>
             <span className="text-xs text-slate-400">Updates live as you edit</span>
           </div>
-          <div className="flex-1 p-3">
+          <div className="flex-1 p-3 overflow-hidden">
             <FoundationWalls3DViewer items={items} walls={walls} />
           </div>
         </div>
