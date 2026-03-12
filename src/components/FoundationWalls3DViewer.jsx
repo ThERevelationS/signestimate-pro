@@ -78,6 +78,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
       new THREE.MeshStandardMaterial({ map: dirtTex, roughness: 1.0, transparent: true, opacity: 0.55, depthWrite: false })
     );
     ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.002;
     ground.receiveShadow = true;
     ground.userData.isGround = true;
     scene.add(ground);
