@@ -273,19 +273,20 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
           // Running bond: alternate courses offset by half a brick length
           const runningOffset = (course % 2 === 0) ? 0 : (brickL + mortarFt) / 2;
 
-          // Place bricks along the segment
-          let localX = -segLen / 2 + mortarFt + runningOffset;
+          // Place bricks along the segment, starting from the left edge
+          let edgePos = -segLen / 2 + runningOffset;
           let brickCount = 0;
 
-          while (localX < segLen / 2) {
-            const remainingLen = segLen / 2 - localX;
+          while (edgePos < segLen / 2) {
+            const remainingLen = segLen / 2 - edgePos;
             // Use full brick, or cut to fit remainder
-            const thisBrickL = Math.min(brickL, remainingLen - mortarFt);
+            const thisBrickL = Math.min(brickL, remainingLen);
             if (thisBrickL < 0.1) break;
 
-            // World position
-            const brickCx = cx + localX * segDirX + (thisBrickL / 2) * segDirX;
-            const brickCz = cz + localX * segDirZ + (thisBrickL / 2) * segDirZ;
+            // Brick center position (edge + half the brick length)
+            const brickEdgeCenterLocal = edgePos + thisBrickL / 2;
+            const brickCx = cx + brickEdgeCenterLocal * segDirX;
+            const brickCz = cz + brickEdgeCenterLocal * segDirZ;
 
             // Render brick
             const brickGeo = new THREE.BoxGeometry(thisBrickL, brickH, brickW);
@@ -296,10 +297,11 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
             brick.receiveShadow = true;
             scene.add(brick);
 
-            // Head joint mortar between bricks
-            if (brickCount > 0) {
-              const hjX = cx + (localX - mortarFt / 2) * segDirX;
-              const hjZ = cz + (localX - mortarFt / 2) * segDirZ;
+            // Head joint mortar after this brick (before next brick starts)
+            if (brickCount > 0 && edgePos > -segLen / 2) {
+              const mortarEdgeLocal = edgePos - mortarFt / 2;
+              const hjX = cx + mortarEdgeLocal * segDirX;
+              const hjZ = cz + mortarEdgeLocal * segDirZ;
               const hjGeo = new THREE.BoxGeometry(mortarFt, brickH, brickW);
               const hj = new THREE.Mesh(hjGeo, mortarMat);
               hj.position.set(hjX, y, hjZ);
@@ -307,7 +309,8 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
               scene.add(hj);
             }
 
-            localX += thisBrickL + mortarFt;
+            // Move to next brick position: current edge + brick length + mortar gap
+            edgePos += thisBrickL + mortarFt;
             brickCount++;
           }
 
