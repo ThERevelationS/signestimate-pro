@@ -402,6 +402,29 @@ export default function FoundationInventoryPage() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Fill Material Form Dialog */}
+      <Dialog open={showFillForm} onOpenChange={open => { if (!open) { setShowFillForm(false); setFillEditItem(null); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{fillEditItem ? 'Edit Fill Material' : 'Add Fill Material'}</DialogTitle>
+          </DialogHeader>
+          <FillMaterialForm
+            item={fillEditItem}
+            onSave={async (form) => {
+              if (fillEditItem?.id) {
+                await FoundationInventoryEntity.update(fillEditItem.id, form);
+              } else {
+                await FoundationInventoryEntity.create(form);
+              }
+              setShowFillForm(false);
+              setFillEditItem(null);
+              loadItems();
+            }}
+            onCancel={() => { setShowFillForm(false); setFillEditItem(null); }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
