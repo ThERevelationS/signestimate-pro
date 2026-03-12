@@ -270,24 +270,25 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
             scene.add(mortarBed);
           }
 
-          // Running bond: alternate courses offset by half a brick length
+          // Running bond: offset odd courses by half brick+mortar so mortar aligns with brick centers below
           const runningOffset = (course % 2 === 0) ? 0 : (brickL + mortarFt) / 2;
 
-          // Place bricks along the segment, starting from the left edge
+          // Start edge position (leftmost brick edge on this course)
           let edgePos = -segLen / 2 + runningOffset;
 
           while (edgePos < segLen / 2) {
             const remainingLen = segLen / 2 - edgePos;
-            // Use full brick, or cut to fit remainder
+            
+            // Full brick or trimmed to fit
             const thisBrickL = Math.min(brickL, remainingLen);
             if (thisBrickL < 0.1) break;
 
-            // Brick center position (edge + half the brick length)
+            // Brick center is at: edgePos + thisBrickL/2
             const brickCenterLocal = edgePos + thisBrickL / 2;
             const brickCx = cx + brickCenterLocal * segDirX;
             const brickCz = cz + brickCenterLocal * segDirZ;
 
-            // Render brick
+            // Render brick (positioned at its center)
             const brickGeo = new THREE.BoxGeometry(thisBrickL, brickH, brickW);
             const brick = new THREE.Mesh(brickGeo, brickMat);
             brick.position.set(brickCx, y, brickCz);
@@ -296,21 +297,8 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
             brick.receiveShadow = true;
             scene.add(brick);
 
-            // Move to next brick edge position
-            edgePos += thisBrickL;
-
-            // Render mortar joint after brick (if there's more segment left)
-            if (edgePos < segLen / 2) {
-              const mortarCenterLocal = edgePos + mortarFt / 2;
-              const hjX = cx + mortarCenterLocal * segDirX;
-              const hjZ = cz + mortarCenterLocal * segDirZ;
-              const hjGeo = new THREE.BoxGeometry(mortarFt, brickH, brickW);
-              const hj = new THREE.Mesh(hjGeo, mortarMat);
-              hj.position.set(hjX, y, hjZ);
-              hj.rotation.y = angle;
-              scene.add(hj);
-              edgePos += mortarFt;
-            }
+            // Move edge position to the right side of this brick
+            edgePos += thisBrickL + mortarFt;
           }
 
           // Top mortar cap on final course
