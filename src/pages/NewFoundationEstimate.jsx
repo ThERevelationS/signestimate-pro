@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Save, ArrowLeft, Trash2, Copy, Check, Download, ClipboardCopy } from 'lucide-react';
+import { Plus, Save, ArrowLeft, Trash2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import WallSection from '@/components/WallSection';
