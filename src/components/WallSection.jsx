@@ -6,9 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
+import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import WallShapeBuilder from './WallShapeBuilder';
-import Wall3DViewer from './Wall3DViewer';
 
 const MORTAR_GAP_OPTIONS = [
   { label: '1/4" (thin joint)', value: 0.25 },
