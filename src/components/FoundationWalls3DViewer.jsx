@@ -241,24 +241,6 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
       const brickMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.9, metalness: 0.02 });
       const mortarMat = new THREE.MeshStandardMaterial({ color: mortarColor, roughness: 1.0 });
 
-      const segments = shape.segments;
-      const numSegs = segments.length;
-
-      // For each segment, figure out which of its endpoints is a corner shared with another segment.
-      // At a corner, one segment "owns" the corner (extends full brickW into the corner),
-      // the other segment's bricks stop short by brickW to avoid overlap.
-      // We alternate which segment owns the corner per course (the interlocking pattern).
-
-      // Build a map of corner nodes: key = "x,y" of point -> array of segment indices meeting there
-      const cornerMap = {};
-      segments.forEach((seg, idx) => {
-        const keys = [`${seg.p1.x},${seg.p1.y}`, `${seg.p2.x},${seg.p2.y}`];
-        keys.forEach((k, ki) => {
-          if (!cornerMap[k]) cornerMap[k] = [];
-          cornerMap[k].push({ segIdx: idx, isP2: ki === 1 });
-        });
-      });
-
       segments.forEach((seg, segIdx) => {
         const p1 = seg.p1;
         const p2 = seg.p2;
@@ -267,79 +249,45 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
         const x1 = p1.x / 12, z1 = p1.y / 12;
         const x2 = p2.x / 12, z2 = p2.y / 12;
         const dx = x2 - x1, dz = z2 - z1;
-        const fullSegLen = Math.sqrt(dx * dx + dz * dz);
-        if (fullSegLen < 0.01) return;
+        const segLen = Math.sqrt(dx * dx + dz * dz);
+        if (segLen < 0.01) return;
 
         const angle = -Math.atan2(dz, dx);
-        const segDirX = dx / fullSegLen;
-        const segDirZ = dz / fullSegLen;
-
-        // Check if each endpoint is a real corner (2 segments meet there)
-        const k1 = `${p1.x},${p1.y}`;
-        const k2 = `${p2.x},${p2.y}`;
-        const isCornerStart = (cornerMap[k1] || []).length >= 2;
-        const isCornerEnd   = (cornerMap[k2] || []).length >= 2;
+        const cx = (x1 + x2) / 2;
+        const cz = (z1 + z2) / 2;
+        const segDirX = dx / segLen;
+        const segDirZ = dz / segLen;
 
         for (let course = 0; course < numCourses; course++) {
           const y = gradeOffsetFt + course * courseH + brickH / 2;
-          // On even courses this segment owns its start corner; on odd courses it owns its end corner.
-          // This creates the alternating interlocking bond at corners.
-          const evenCourse = course % 2 === 0;
 
-          // How much to trim from each end due to corners
-          // If we DON'T own the start corner, our bricks stop brickW short from the start.
-          // If we DO own the start corner, our bricks extend to the full edge (no trim).
-          const trimStart = isCornerStart ? (evenCourse ? 0 : brickW) : 0;
-          const trimEnd   = isCornerEnd   ? (evenCourse ? brickW : 0) : 0;
-
-          const effectiveLen = fullSegLen - trimStart - trimEnd;
-          if (effectiveLen <= 0) continue;
-
-          // Center of this effective run in world space
-          const runStartLocal = -fullSegLen / 2 + trimStart;
-          const runCenterLocal = runStartLocal + effectiveLen / 2;
-          const runCx = (x1 + x2) / 2 + runCenterLocal * segDirX;
-          const runCz = (z1 + z2) / 2 + runCenterLocal * segDirZ;
-
-          // Horizontal mortar bed
+          // Horizontal mortar bed between courses
           if (course > 0) {
-            const mortarBedGeo = new THREE.BoxGeometry(effectiveLen, mortarFt, brickW);
+            const mortarBedGeo = new THREE.BoxGeometry(segLen, mortarFt, brickW);
             const mortarBed = new THREE.Mesh(mortarBedGeo, mortarMat);
-            mortarBed.position.set(runCx, gradeOffsetFt + course * courseH - mortarFt / 2, runCz);
+            mortarBed.position.set(cx, gradeOffsetFt + course * courseH - mortarFt / 2, cz);
             mortarBed.rotation.y = angle;
             scene.add(mortarBed);
           }
 
-          // Running bond offset: alternate courses offset by half a full brick
+          // Running bond: alternate courses offset by half a brick length
           const runningOffset = (course % 2 === 0) ? 0 : (brickL + mortarFt) / 2;
 
-          // Place bricks along effectiveLen, starting from runStartLocal
-          // Local coords relative to the full segment center
-          let localPos = runStartLocal + runningOffset;
-          let firstBrick = true;
+          // Place bricks along the segment
+          let localX = -segLen / 2 + mortarFt + runningOffset;
+          let brickCount = 0;
 
-          while (localPos < runStartLocal + effectiveLen) {
-            const remainingLen = (runStartLocal + effectiveLen) - localPos;
-            // This brick's length: full brick or cut to fit remaining space
-            const thisBrickL = Math.min(brickL, remainingLen);
-            if (thisBrickL < mortarFt) break; // too small to render
+          while (localX < segLen / 2) {
+            const remainingLen = segLen / 2 - localX;
+            // Use full brick, or cut to fit remainder
+            const thisBrickL = Math.min(brickL, remainingLen - mortarFt);
+            if (thisBrickL < 0.1) break;
 
-            const brickCenterLocal = localPos + thisBrickL / 2;
-            const brickCx = (x1 + x2) / 2 + brickCenterLocal * segDirX;
-            const brickCz = (z1 + z2) / 2 + brickCenterLocal * segDirZ;
+            // World position
+            const brickCx = cx + localX * segDirX + (thisBrickL / 2) * segDirX;
+            const brickCz = cz + localX * segDirZ + (thisBrickL / 2) * segDirZ;
 
-            // Head joint mortar before this brick (except at the very start)
-            if (!firstBrick) {
-              const hjLocal = localPos - mortarFt / 2;
-              const hjX = (x1 + x2) / 2 + hjLocal * segDirX;
-              const hjZ = (z1 + z2) / 2 + hjLocal * segDirZ;
-              const hjGeo = new THREE.BoxGeometry(mortarFt, brickH, brickW);
-              const hj = new THREE.Mesh(hjGeo, mortarMat);
-              hj.position.set(hjX, y, hjZ);
-              hj.rotation.y = angle;
-              scene.add(hj);
-            }
-
+            // Render brick
             const brickGeo = new THREE.BoxGeometry(thisBrickL, brickH, brickW);
             const brick = new THREE.Mesh(brickGeo, brickMat);
             brick.position.set(brickCx, y, brickCz);
@@ -348,15 +296,26 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
             brick.receiveShadow = true;
             scene.add(brick);
 
-            firstBrick = false;
-            localPos += thisBrickL + mortarFt;
+            // Head joint mortar between bricks
+            if (brickCount > 0) {
+              const hjX = cx + (localX - mortarFt / 2) * segDirX;
+              const hjZ = cz + (localX - mortarFt / 2) * segDirZ;
+              const hjGeo = new THREE.BoxGeometry(mortarFt, brickH, brickW);
+              const hj = new THREE.Mesh(hjGeo, mortarMat);
+              hj.position.set(hjX, y, hjZ);
+              hj.rotation.y = angle;
+              scene.add(hj);
+            }
+
+            localX += thisBrickL + mortarFt;
+            brickCount++;
           }
 
           // Top mortar cap on final course
           if (course === numCourses - 1) {
-            const topMortarGeo = new THREE.BoxGeometry(effectiveLen, mortarFt, brickW);
+            const topMortarGeo = new THREE.BoxGeometry(segLen, mortarFt, brickW);
             const topMortar = new THREE.Mesh(topMortarGeo, mortarMat);
-            topMortar.position.set(runCx, wallTopY - mortarFt / 2, runCz);
+            topMortar.position.set(cx, wallTopY - mortarFt / 2, cz);
             topMortar.rotation.y = angle;
             scene.add(topMortar);
           }
