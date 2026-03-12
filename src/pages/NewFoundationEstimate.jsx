@@ -480,7 +480,7 @@ export default function NewFoundationEstimate() {
 }
 
 // ── Foundation Item Row ──
-function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteServices, costs, excavationMethod }) {
+function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteServices, costs, excavationMethod, excavationEquipment }) {
   const [expanded, setExpanded] = useState(true);
 
   return (
