@@ -276,14 +276,14 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
 
            // Start edge position, extend by brick depth for corner overlap
            let edgePos = -segLen / 2 + runningOffset;
+           let firstBrickInSegment = true;
 
            while (edgePos < segLen / 2 + brickW) {
              const remainingLen = segLen / 2 + brickW - edgePos;
-             if (remainingLen < 0.1) break;
+             if (remainingLen < 0.05) break;
 
-             // Full brick or trimmed to fit
+             // Full brick or trimmed to fit segment
              const thisBrickL = Math.min(brickL, remainingLen);
-             if (thisBrickL < 0.1) break;
 
              // Brick center position = left edge + half length
              const brickCenterLocal = edgePos + thisBrickL / 2;
@@ -301,9 +301,13 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
 
              // Move to right edge of brick
              edgePos += thisBrickL;
+             firstBrickInSegment = false;
 
-             // Render mortar joint at edge between bricks
-             if (edgePos < segLen / 2 + brickW) {
+             // Check if there's space for mortar and next brick
+             const spaceAfterMortar = segLen / 2 + brickW - edgePos - mortarFt;
+
+             // Only render mortar if there's room for another brick after it, or if we're not at segment end
+             if (spaceAfterMortar > 0.05 && edgePos < segLen / 2) {
                const mortarCenterLocal = edgePos + mortarFt / 2;
                const mortarCx = cx + mortarCenterLocal * segDirX;
                const mortarCz = cz + mortarCenterLocal * segDirZ;
