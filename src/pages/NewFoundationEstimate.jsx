@@ -427,7 +427,7 @@ export default function NewFoundationEstimate() {
         </div>
 
         {/* RIGHT: Persistent 3D Viewer */}
-        <div className="hidden lg:flex flex-col w-[420px] xl:w-[500px] flex-shrink-0 border-l bg-slate-100">
+        <div className="hidden lg:flex flex-col w-[550px] xl:w-[680px] flex-shrink-0 border-l bg-slate-100">
           <div className="px-4 py-2 border-b bg-white flex items-center justify-between">
             <span className="text-sm font-semibold text-slate-700">3D Preview</span>
             <span className="text-xs text-slate-400">Updates live as you edit</span>
