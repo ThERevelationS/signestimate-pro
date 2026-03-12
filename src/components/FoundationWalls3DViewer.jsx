@@ -250,7 +250,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
       const heightInches = wall.heightInches || 24;
       const heightFt = heightInches / 12;
       const wallWidthFt = (mat.wall_unit_width_inches || 8) / 12;
-      const color = mat.wall_color ? parseInt(mat.wall_color.replace('#', '0x')) : 0xb5451b;
+      const color = mat.wall_color ? parseInt(mat.wall_color.replace('#', ''), 16) : 0xb5451b;
 
       const wallMat3D = new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.05 });
 
