@@ -330,7 +330,12 @@ export default function NewFoundationEstimate() {
                                 <SelectItem value="_none" disabled>No equipment in inventory</SelectItem>
                               )}
                               {inventory.filter(i => i.material_type === 'excavation_equipment').map(eq => (
-                                <SelectItem key={eq.id} value={eq.id}>{eq.material_name}</SelectItem>
+                                <SelectItem key={eq.id} value={eq.id}>
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{eq.material_name}</span>
+                                    {eq.notes && <span className="text-xs text-slate-500 truncate max-w-[280px]">{eq.notes}</span>}
+                                  </div>
+                                </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
