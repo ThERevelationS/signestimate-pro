@@ -164,10 +164,9 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
           mesh.position.y = -depFt / 2 + gradeOff;
           mesh.castShadow = true;
           group.add(mesh);
-          group.add(Object.assign(
-            new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x1e293b })),
-            { position: mesh.position.clone() }
-          ));
+          const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x1e293b }));
+          edges.position.copy(mesh.position);
+          group.add(edges);
         } else {
           const r = diaFt / 2;
           const geo = new THREE.CylinderGeometry(r, r, depFt, 24);
