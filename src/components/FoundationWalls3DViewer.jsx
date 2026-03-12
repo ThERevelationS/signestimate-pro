@@ -283,7 +283,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
           // Offset alternate courses by half a brick for running bond
           const offset = (course % 2 === 0) ? 0 : brickLFinal / 2;
 
-          // Horizontal mortar bed (between courses, except base)
+          // Horizontal mortar bed (between courses)
           if (course > 0) {
             const mortarBedGeo = new THREE.BoxGeometry(segLen, mortarFt, brickW);
             const mortarBed = new THREE.Mesh(mortarBedGeo, mortarMat);
@@ -291,6 +291,8 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
             mortarBed.rotation.y = angle;
             scene.add(mortarBed);
           }
+          const segDirX = dx / segLen;
+          const segDirZ = dz / segLen;
 
           // Mortar at start and end of row (head joints)
           // We place bricks with a small gap between them (the head joint)
