@@ -59,9 +59,53 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
     sun.shadow.camera.bottom = -60;
     scene.add(sun);
 
-    // Ground
+    // Ground — semi-transparent dirt texture
+    const dirtCanvas = document.createElement('canvas');
+    dirtCanvas.width = 512;
+    dirtCanvas.height = 512;
+    const dCtx = dirtCanvas.getContext('2d');
+    // Base dirt color
+    dCtx.fillStyle = '#7a5c3a';
+    dCtx.fillRect(0, 0, 512, 512);
+    // Add noise/texture to simulate dirt
+    for (let i = 0; i < 8000; i++) {
+      const x = Math.random() * 512;
+      const y = Math.random() * 512;
+      const r = Math.random() * 3 + 0.5;
+      const brightness = Math.random();
+      const alpha = 0.15 + Math.random() * 0.25;
+      dCtx.beginPath();
+      dCtx.arc(x, y, r, 0, Math.PI * 2);
+      dCtx.fillStyle = brightness > 0.5
+        ? `rgba(${180 + Math.floor(Math.random()*40)}, ${130 + Math.floor(Math.random()*30)}, ${80 + Math.floor(Math.random()*20)}, ${alpha})`
+        : `rgba(${60 + Math.floor(Math.random()*30)}, ${40 + Math.floor(Math.random()*20)}, ${20 + Math.floor(Math.random()*10)}, ${alpha})`;
+      dCtx.fill();
+    }
+    // Small stones
+    for (let i = 0; i < 200; i++) {
+      const x = Math.random() * 512;
+      const y = Math.random() * 512;
+      const rw = Math.random() * 6 + 2;
+      const rh = Math.random() * 4 + 2;
+      dCtx.beginPath();
+      dCtx.ellipse(x, y, rw, rh, Math.random() * Math.PI, 0, Math.PI * 2);
+      const g = 130 + Math.floor(Math.random() * 60);
+      dCtx.fillStyle = `rgba(${g},${g - 10},${g - 20},0.35)`;
+      dCtx.fill();
+    }
+    const dirtTexture = new THREE.CanvasTexture(dirtCanvas);
+    dirtTexture.wrapS = THREE.RepeatWrapping;
+    dirtTexture.wrapT = THREE.RepeatWrapping;
+    dirtTexture.repeat.set(20, 20);
+
     const groundGeo = new THREE.PlaneGeometry(200, 200);
-    const groundMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9 });
+    const groundMat = new THREE.MeshStandardMaterial({
+      map: dirtTexture,
+      roughness: 1.0,
+      transparent: true,
+      opacity: 0.55,
+      depthWrite: false,
+    });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = 0;
@@ -69,8 +113,10 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
     ground.userData.isGround = true;
     scene.add(ground);
 
-    const grid = new THREE.GridHelper(100, 50, 0x555555, 0x777777);
+    const grid = new THREE.GridHelper(100, 50, 0x3d2b1a, 0x5a3f28);
     grid.position.y = 0.01;
+    grid.material.transparent = true;
+    grid.material.opacity = 0.4;
     grid.userData.isGrid = true;
     scene.add(grid);
 
