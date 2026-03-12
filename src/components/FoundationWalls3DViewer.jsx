@@ -241,7 +241,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
       const brickMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.9, metalness: 0.02 });
       const mortarMat = new THREE.MeshStandardMaterial({ color: mortarColor, roughness: 1.0 });
 
-      segments.forEach((seg, segIdx) => {
+      shape.segments.forEach((seg, segIdx) => {
         const p1 = seg.p1;
         const p2 = seg.p2;
         if (!p1 || !p2) return;
