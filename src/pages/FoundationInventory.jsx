@@ -263,7 +263,7 @@ export default function FoundationInventoryPage() {
           <TabsTrigger value="forming">Forming</TabsTrigger>
           <TabsTrigger value="equipment">Equipment</TabsTrigger>
           <TabsTrigger value="poles">Poles</TabsTrigger>
-          <TabsTrigger value="brick_fill">Brick / Fill</TabsTrigger>
+          <TabsTrigger value="brick_fill">Wall Fill Materials</TabsTrigger>
         </TabsList>
 
         {/* WALL MATERIALS TAB */}
