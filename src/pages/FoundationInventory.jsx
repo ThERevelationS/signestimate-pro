@@ -348,9 +348,44 @@ export default function FoundationInventoryPage() {
           <LegacyItemsTable items={legacyPoles} onDelete={handleDelete} label="Poles" />
         </TabsContent>
 
-        {/* BRICK/FILL TAB */}
-        <TabsContent value="brick_fill">
-          <LegacyItemsTable items={[...legacyBrick, ...legacyFill]} onDelete={handleDelete} label="Foundation Bricks & Fill Materials" />
+        {/* WALL FILL MATERIALS TAB */}
+        <TabsContent value="brick_fill" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-600">Brick/stone and fill materials used inside foundation walls (gravel, foam, poured concrete, etc.).</p>
+            <Button size="sm" onClick={() => { setFillEditItem(null); setShowFillForm(true); }}>
+              <Plus className="w-4 h-4 mr-1" /> Add Fill Material
+            </Button>
+          </div>
+          {loading ? (
+            <div className="text-center text-slate-400 py-8">Loading...</div>
+          ) : [...legacyBrick, ...legacyFill].length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="py-10 text-center text-slate-400">
+                <Layers className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p>No fill materials yet. Add brick/stone or fill types to use in foundation estimates.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {[...legacyBrick, ...legacyFill].map(item => (
+                <Card key={item.id} className="hover:shadow-sm transition-shadow">
+                  <CardContent className="py-3 px-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{item.material_name}</p>
+                      <p className="text-xs text-slate-500 capitalize">{item.material_type?.replace(/_/g, ' ')} · {item.unit || ''}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {item.cost_per_unit && <span className="text-sm font-medium">${parseFloat(item.cost_per_unit).toFixed(2)}</span>}
+                      <Button size="sm" variant="ghost" onClick={() => { setFillEditItem(item); setShowFillForm(true); }}><Edit className="w-3 h-3" /></Button>
+                      <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(item.id)}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
