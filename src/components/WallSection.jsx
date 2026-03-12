@@ -82,7 +82,6 @@ export default function WallSection({
   onDelete,
 }) {
   const [expanded, setExpanded] = useState(true);
-  const [show3D, setShow3D] = useState(false);
 
   const update = (field, value) => onChange({ ...wall, [field]: value });
 
