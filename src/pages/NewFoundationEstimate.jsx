@@ -595,12 +595,15 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
 
           {/* Excavation display */}
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-1">
               <span className="font-semibold text-slate-600 uppercase tracking-wide">Excavation</span>
-              <Badge variant="outline" className="text-xs capitalize">{excavationMethod?.replace('_', ' ')}</Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs capitalize">{excavationMethod?.replace('_', ' ')}</Badge>
+                {excavationEquipment && <Badge variant="secondary" className="text-xs">{excavationEquipment.material_name}</Badge>}
+              </div>
             </div>
             <div className="text-slate-500">
-              Excavation volume: ~{((item.foundation_type === 'spread_foot'
+              Volume: ~{((item.foundation_type === 'spread_foot'
                 ? (item.length_inches / 12) * (item.width_inches / 12) * (item.depth_inches / 12)
                 : Math.PI * ((item.diameter / 2) / 12) ** 2 * (item.depth_inches / 12)) / 27 * (item.quantity || 1) * 1.25).toFixed(2)} CY
               &nbsp;·&nbsp; Cost: <span className="font-semibold text-slate-700">${costs?.excavationCost?.toFixed(2) || '0.00'}</span>
