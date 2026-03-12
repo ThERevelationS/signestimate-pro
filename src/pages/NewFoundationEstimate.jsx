@@ -277,16 +277,6 @@ export default function NewFoundationEstimate() {
                       <Input className="h-9" value={project.hyperlink} onChange={e => updateProject('hyperlink', e.target.value)} placeholder="https://" />
                     </div>
                     <div>
-                      <Label className="text-xs">Excavation Method</Label>
-                      <Select value={project.excavation_method} onValueChange={v => updateProject('excavation_method', v)}>
-                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="hand_dig">Hand Dig</SelectItem>
-                          <SelectItem value="equipment_excavation">Equipment Excavation</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
                       <Label className="text-xs">Status</Label>
                       <Select value={project.status} onValueChange={v => updateProject('status', v)}>
                         <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
