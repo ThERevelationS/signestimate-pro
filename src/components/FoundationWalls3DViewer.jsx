@@ -243,89 +243,85 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
       const mortarMat = new THREE.MeshStandardMaterial({ color: mortarColor, roughness: 1.0 });
 
       shape.segments.forEach((seg, segIdx) => {
-        const p1 = seg.p1;
-        const p2 = seg.p2;
-        if (!p1 || !p2) return;
+         const p1 = seg.p1;
+         const p2 = seg.p2;
+         if (!p1 || !p2) return;
 
-        const x1 = p1.x / 12, z1 = p1.y / 12;
-        const x2 = p2.x / 12, z2 = p2.y / 12;
-        const dx = x2 - x1, dz = z2 - z1;
-        const segLen = Math.sqrt(dx * dx + dz * dz);
-        if (segLen < 0.01) return;
+         const x1 = p1.x / 12, z1 = p1.y / 12;
+         const x2 = p2.x / 12, z2 = p2.y / 12;
+         const dx = x2 - x1, dz = z2 - z1;
+         const segLen = Math.sqrt(dx * dx + dz * dz);
+         if (segLen < 0.01) return;
 
-        const angle = -Math.atan2(dz, dx);
-        const cx = (x1 + x2) / 2;
-        const cz = (z1 + z2) / 2;
-        const segDirX = dx / segLen;
-        const segDirZ = dz / segLen;
+         const angle = -Math.atan2(dz, dx);
+         const cx = (x1 + x2) / 2;
+         const cz = (z1 + z2) / 2;
+         const segDirX = dx / segLen;
+         const segDirZ = dz / segLen;
 
-        for (let course = 0; course < numCourses; course++) {
-          const y = gradeOffsetFt + course * courseH + brickH / 2;
+         for (let course = 0; course < numCourses; course++) {
+           const y = gradeOffsetFt + course * courseH + brickH / 2;
 
-          // Horizontal mortar bed between courses
-          if (course > 0) {
-            const mortarBedGeo = new THREE.BoxGeometry(segLen, mortarFt, brickW);
-            const mortarBed = new THREE.Mesh(mortarBedGeo, mortarMat);
-            mortarBed.position.set(cx, gradeOffsetFt + course * courseH - mortarFt / 2, cz);
-            mortarBed.rotation.y = angle;
-            scene.add(mortarBed);
-          }
+           // Horizontal mortar bed between courses
+           if (course > 0) {
+             const mortarBedGeo = new THREE.BoxGeometry(segLen, mortarFt, brickW);
+             const mortarBed = new THREE.Mesh(mortarBedGeo, mortarMat);
+             mortarBed.position.set(cx, gradeOffsetFt + course * courseH - mortarFt / 2, cz);
+             mortarBed.rotation.y = angle;
+             scene.add(mortarBed);
+           }
 
-          // Running bond: offset odd courses by half brick+mortar
-          const runningOffset = (course % 2 === 0) ? 0 : (brickL + mortarFt) / 2;
+           // Running bond: offset odd courses by half brick+mortar
+           const runningOffset = (course % 2 === 0) ? 0 : (brickL + mortarFt) / 2;
 
-          // Start edge position (left corner of first brick)
-          let edgePos = -segLen / 2 + runningOffset;
+           // Start edge position - extend slightly past segment end for corner overlap
+           let edgePos = -segLen / 2 + runningOffset;
 
-          while (edgePos < segLen / 2) {
-            const remainingLen = segLen / 2 - edgePos;
-            if (remainingLen < 0.1) break;
-            
-            // Full brick or trimmed to fit
-            const thisBrickL = Math.min(brickL, remainingLen);
-            if (thisBrickL < 0.1) break;
+           while (edgePos < segLen / 2 + brickL) {
+             // Full brick or trimmed to fit
+             const thisBrickL = brickL;
 
-            // Brick center position = left edge + half length
-            const brickCenterLocal = edgePos + thisBrickL / 2;
-            const brickCx = cx + brickCenterLocal * segDirX;
-            const brickCz = cz + brickCenterLocal * segDirZ;
+             // Brick center position = left edge + half length
+             const brickCenterLocal = edgePos + thisBrickL / 2;
+             const brickCx = cx + brickCenterLocal * segDirX;
+             const brickCz = cz + brickCenterLocal * segDirZ;
 
-            // Render brick
-            const brickGeo = new THREE.BoxGeometry(thisBrickL, brickH, brickW);
-            const brick = new THREE.Mesh(brickGeo, brickMat);
-            brick.position.set(brickCx, y, brickCz);
-            brick.rotation.y = angle;
-            brick.castShadow = true;
-            brick.receiveShadow = true;
-            scene.add(brick);
+             // Render brick
+             const brickGeo = new THREE.BoxGeometry(thisBrickL, brickH, brickW);
+             const brick = new THREE.Mesh(brickGeo, brickMat);
+             brick.position.set(brickCx, y, brickCz);
+             brick.rotation.y = angle;
+             brick.castShadow = true;
+             brick.receiveShadow = true;
+             scene.add(brick);
 
-            // Move to right edge of brick
-            edgePos += thisBrickL;
+             // Move to right edge of brick
+             edgePos += thisBrickL;
 
-            // Render mortar joint at edge between bricks
-            if (edgePos < segLen / 2) {
-              const mortarCenterLocal = edgePos + mortarFt / 2;
-              const mortarCx = cx + mortarCenterLocal * segDirX;
-              const mortarCz = cz + mortarCenterLocal * segDirZ;
-              const mortarGeo = new THREE.BoxGeometry(mortarFt, brickH, brickW);
-              const mortar = new THREE.Mesh(mortarGeo, mortarMat);
-              mortar.position.set(mortarCx, y, mortarCz);
-              mortar.rotation.y = angle;
-              scene.add(mortar);
-              edgePos += mortarFt;
-            }
-          }
+             // Render mortar joint at edge between bricks
+             if (edgePos < segLen / 2 + brickL) {
+               const mortarCenterLocal = edgePos + mortarFt / 2;
+               const mortarCx = cx + mortarCenterLocal * segDirX;
+               const mortarCz = cz + mortarCenterLocal * segDirZ;
+               const mortarGeo = new THREE.BoxGeometry(mortarFt, brickH, brickW);
+               const mortar = new THREE.Mesh(mortarGeo, mortarMat);
+               mortar.position.set(mortarCx, y, mortarCz);
+               mortar.rotation.y = angle;
+               scene.add(mortar);
+               edgePos += mortarFt;
+             }
+           }
 
-          // Top mortar cap on final course
-          if (course === numCourses - 1) {
-            const topMortarGeo = new THREE.BoxGeometry(segLen, mortarFt, brickW);
-            const topMortar = new THREE.Mesh(topMortarGeo, mortarMat);
-            topMortar.position.set(cx, wallTopY - mortarFt / 2, cz);
-            topMortar.rotation.y = angle;
-            scene.add(topMortar);
-          }
-        }
-      });
+           // Top mortar cap on final course
+           if (course === numCourses - 1) {
+             const topMortarGeo = new THREE.BoxGeometry(segLen, mortarFt, brickW);
+             const topMortar = new THREE.Mesh(topMortarGeo, mortarMat);
+             topMortar.position.set(cx, wallTopY - mortarFt / 2, cz);
+             topMortar.rotation.y = angle;
+             scene.add(topMortar);
+           }
+         }
+       });
     });
 
     // ── Camera framing ────────────────────────────────────────────────────────
