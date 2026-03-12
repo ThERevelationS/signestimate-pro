@@ -306,11 +306,12 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
             const brickGeo = new THREE.BoxGeometry(brickLFinal, brickH, brickW);
             const brick = new THREE.Mesh(brickGeo, brickMat);
 
-            // Position in world: rotate localX around segment center
-            const cosA = Math.cos(-angle);
-            const sinA = Math.sin(-angle);
-            const worldX = cx + localX * cosA;
-            const worldZ = cz + localX * sinA;
+            // localX is along the segment direction; transform into world space
+            // segment direction vector (unit)
+            const segDirX = dx / segLen;
+            const segDirZ = dz / segLen;
+            const worldX = cx + localX * segDirX;
+            const worldZ = cz + localX * segDirZ;
 
             brick.position.set(worldX, y, worldZ);
             brick.rotation.y = angle;
@@ -320,9 +321,9 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
 
             // Thin head joint mortar between bricks (only if not first brick)
             if (b > 0) {
-              const headJointX = localX - brickLFinal / 2 - mortarFt / 2;
-              const hjX = cx + headJointX * cosA;
-              const hjZ = cz + headJointX * sinA;
+              const headJointLocal = localX - brickLFinal / 2 - mortarFt / 2;
+              const hjX = cx + headJointLocal * segDirX;
+              const hjZ = cz + headJointLocal * segDirZ;
               const hjGeo = new THREE.BoxGeometry(mortarFt, brickH, brickW);
               const hj = new THREE.Mesh(hjGeo, mortarMat);
               hj.position.set(hjX, y, hjZ);
