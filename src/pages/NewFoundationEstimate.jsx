@@ -420,6 +420,16 @@ export default function NewFoundationEstimate() {
                 )}
               </TabsContent>
 
+              {/* EQUIPMENT */}
+              <TabsContent value="equipment" className="space-y-4 pt-4">
+                <EquipmentTab
+                  inventory={inventory}
+                  selectedEquipmentList={selectedEquipmentList}
+                  onUpdate={setSelectedEquipmentList}
+                  markDirty={markDirty}
+                />
+              </TabsContent>
+
               {/* SUMMARY */}
               <TabsContent value="summary" className="space-y-4 pt-4">
                 <SummaryTab items={items} walls={walls} totals={totals} calcItemCost={calcItemCost} project={project} />
