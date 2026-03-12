@@ -40,17 +40,6 @@ export default function Layout({ children, currentPageName }) {
   const [showNavWarning, setShowNavWarning] = useState(false);
   const [pendingNavPath, setPendingNavPath] = useState(null);
 
-  useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      if (isDirty) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDirty]);
-
   const handleNavClick = (e, path) => {
     if (isDirty && location.pathname !== path) {
       e.preventDefault();
