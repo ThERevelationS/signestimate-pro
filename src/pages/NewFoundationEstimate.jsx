@@ -416,49 +416,7 @@ export default function NewFoundationEstimate() {
 
               {/* SUMMARY */}
               <TabsContent value="summary" className="space-y-4 pt-4">
-                <Card>
-                  <CardHeader><CardTitle className="text-base">Cost Summary</CardTitle></CardHeader>
-                  <CardContent className="space-y-3">
-                    {items.map((item, idx) => {
-                      const c = calcItemCost(item);
-                      return (
-                        <div key={item._id}>
-                          <div className="flex justify-between text-sm font-medium text-slate-700 py-1">
-                            <span>Foundation #{idx + 1} {item.description ? `— ${item.description}` : ''}</span>
-                            <span>${c.total.toFixed(2)}</span>
-                          </div>
-                          <div className="grid grid-cols-5 gap-1 text-xs text-slate-500 ml-4 pb-2">
-                            <span>Concrete: ${c.concreteCost.toFixed(2)}</span>
-                            <span>Rebar: ${c.rebarCost.toFixed(2)}</span>
-                            <span>Forming: ${c.formingCost.toFixed(2)}</span>
-                            <span>Finishing: ${c.finishingCost.toFixed(2)}</span>
-                            <span>Excavation: ${c.excavationCost.toFixed(2)}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    <div className="flex justify-between py-2 border-t border-b font-semibold">
-                      <span>Foundation & Excavation Total</span>
-                      <span>${totals.itemsTotal.toFixed(2)}</span>
-                    </div>
-                    {walls.map((w, i) => (
-                      <div key={w._id} className="flex justify-between py-1 text-sm">
-                        <span className="text-slate-600">Wall #{i + 1}: {w.name || 'Untitled'}</span>
-                        <span>${(w.calculatedCosts?.totalCost || 0).toFixed(2)}</span>
-                      </div>
-                    ))}
-                    {walls.length > 0 && (
-                      <div className="flex justify-between py-2 border-b font-semibold">
-                        <span>Walls Total</span>
-                        <span>${totals.wallTotal.toFixed(2)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between py-3">
-                      <span className="text-lg font-bold">Grand Total</span>
-                      <span className="text-lg font-bold text-amber-700">${totals.grand.toFixed(2)}</span>
-                    </div>
-                  </CardContent>
-                </Card>
+                <SummaryTab items={items} walls={walls} totals={totals} calcItemCost={calcItemCost} project={project} />
               </TabsContent>
             </Tabs>
           </div>
