@@ -186,12 +186,10 @@ export default function WallShapeBuilder({
         const h = (r.maxY - r.minY) * SCALE_PX_PER_INCH;
         ctx.strokeRect(topLeft.x, topLeft.y, w, h);
         ctx.fillRect(topLeft.x, topLeft.y, w, h);
-        if (i === 0) {
-          ctx.fillStyle = '#92400e';
-          ctx.font = '11px sans-serif';
-          ctx.fillText(`Foundations`, topLeft.x + 4, topLeft.y - 6);
-          ctx.fillStyle = 'rgba(245,158,11,0.07)'; // restore
-        }
+        ctx.fillStyle = '#92400e';
+        ctx.font = '11px sans-serif';
+        ctx.fillText(`Foundation ${r.itemIdx + 1}`, topLeft.x + 4, topLeft.y + 14);
+        ctx.fillStyle = 'rgba(245,158,11,0.07)'; // restore
       });
       ctx.setLineDash([]);
     } else if (useExistingFoundation) {
@@ -199,6 +197,28 @@ export default function WallShapeBuilder({
       ctx.font = '12px sans-serif';
       ctx.fillText('Using Existing Foundation — draw wall outline freely', 20, 20);
     }
+
+    // Other walls
+    otherWalls.forEach(ow => {
+        if (!ow.shape || !ow.shape.points || ow.shape.points.length < 2) return;
+        ctx.beginPath();
+        const pt0 = toCanvas(ow.shape.points[0]);
+        ctx.moveTo(pt0.x, pt0.y);
+        for (let i = 1; i < ow.shape.points.length; i++) {
+            const pt = toCanvas(ow.shape.points[i]);
+            ctx.lineTo(pt.x, pt.y);
+        }
+        if (ow.shape.closed) ctx.closePath();
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        if (ow.shape.closed) {
+            ctx.fillStyle = 'rgba(148, 163, 184, 0.1)';
+            ctx.fill();
+        }
+    });
 
     // Drawn wall outline
     if (points.length > 0) {
@@ -334,8 +354,23 @@ export default function WallShapeBuilder({
       return;
     }
 
-    const currentGridPx = mode === 'move_wall' ? SCALE_PX_PER_INCH : gridPx;
+    const currentGridPx = mode === 'move_wall' || draggingFoundationIndex !== null ? SCALE_PX_PER_INCH : gridPx;
     const worldPt = fromCanvas(rawX, rawY, currentGridPx);
+
+    if (draggingFoundationIndex !== null && dragFoundStart) {
+        const dx = worldPt.x - dragFoundStart.x;
+        const dz = worldPt.y - dragFoundStart.y;
+        
+        if (dx !== 0 || dz !== 0) {
+            const item = foundationItems[draggingFoundationIndex];
+            const newOx = (item.offset_x_inches || 0) + dx;
+            const newOz = (item.offset_z_inches || 0) + dz;
+            onFoundationUpdate(draggingFoundationIndex, 'offset_x_inches', newOx);
+            onFoundationUpdate(draggingFoundationIndex, 'offset_z_inches', newOz);
+            setDragFoundStart(worldPt);
+        }
+        return;
+    }
 
     if (draggingWall && dragWallStart) {
         const dx = worldPt.x - dragWallStart.x;
@@ -391,6 +426,15 @@ export default function WallShapeBuilder({
     const currentGridPx = mode === 'move_wall' ? SCALE_PX_PER_INCH : gridPx;
     const worldPt = fromCanvas(rawX, rawY, currentGridPx);
 
+    if (mode === 'move_foundation') {
+        const clickedRect = fRects.find(r => worldPt.x >= r.minX && worldPt.x <= r.maxX && worldPt.y >= r.minY && worldPt.y <= r.maxY);
+        if (clickedRect) {
+            setDraggingFoundationIndex(clickedRect.itemIdx);
+            setDragFoundStart(worldPt);
+        }
+        return;
+    }
+
     if (mode === 'move_wall') {
         if (points.length > 0) {
             setDraggingWall(true);
@@ -430,6 +474,8 @@ export default function WallShapeBuilder({
     setPanStart(null);
     setDraggingWall(false);
     setDragWallStart(null);
+    setDraggingFoundationIndex(null);
+    setDragFoundStart(null);
     if (draggingPoint !== null) setDraggingPoint(null);
   };
 
@@ -545,6 +591,11 @@ export default function WallShapeBuilder({
         <Button size="sm" variant={mode === 'move_wall' ? 'default' : 'outline'} onClick={() => setMode('move_wall')}>
           <Move className="w-3 h-3 mr-1" /> Move Wall
         </Button>
+        {!useExistingFoundation && foundationItems.length > 0 && (
+            <Button size="sm" variant={mode === 'move_foundation' ? 'default' : 'outline'} onClick={() => setMode('move_foundation')}>
+            <Move className="w-3 h-3 mr-1" /> Move Foundation
+            </Button>
+        )}
         <Button size="sm" variant="outline" onClick={handleUndo} disabled={points.length === 0}>
           <Undo2 className="w-3 h-3 mr-1" /> Undo
         </Button>
@@ -569,12 +620,12 @@ export default function WallShapeBuilder({
           ref={canvasRef}
           width={canvasW}
           height={canvasH}
-          style={{ cursor: mode === 'pan' ? 'grab' : (mode === 'move_wall' ? 'move' : (nearFirstPoint && points.length >= 3 && !closed ? 'pointer' : 'crosshair')), display: 'block', maxWidth: '100%' }}
+          style={{ cursor: mode === 'pan' ? 'grab' : (mode === 'move_wall' || mode === 'move_foundation' ? 'move' : (nearFirstPoint && points.length >= 3 && !closed ? 'pointer' : 'crosshair')), display: 'block', maxWidth: '100%' }}
           onMouseMove={handleMouseMove}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
           onDoubleClick={handleDoubleClick}
-          onMouseLeave={() => { setHoverInches(null); setPanning(false); setNearFirstPoint(false); setDraggingWall(false); setDragWallStart(null); }}
+          onMouseLeave={() => { setHoverInches(null); setPanning(false); setNearFirstPoint(false); setDraggingWall(false); setDragWallStart(null); setDraggingFoundationIndex(null); setDragFoundStart(null); }}
         />
         {editingSegment && (
             <div 
