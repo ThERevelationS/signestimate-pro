@@ -60,6 +60,7 @@ export default function WallShapeBuilder({
   const [draggingPoint, setDraggingPoint] = useState(null);
   const [draggingWall, setDraggingWall] = useState(false);
   const [dragWallStart, setDragWallStart] = useState(null);
+  const [editingSegment, setEditingSegment] = useState(null);
 
   const canvasW = 700;
   const canvasH = 450;
@@ -423,6 +424,33 @@ export default function WallShapeBuilder({
     if (closed && points.length <= 3) setClosed(false);
   };
 
+  const handleDoubleClick = (e) => {
+    if (points.length < 2) return;
+    const { rawX, rawY } = getRawCanvasPoint(e);
+    const segs = closed ? points.length : points.length - 1;
+    for (let i = 0; i < segs; i++) {
+        const p1 = points[i];
+        const p2 = points[(i + 1) % points.length];
+        const cp1 = toCanvas(p1);
+        const cp2 = toCanvas(p2);
+        const mx = (cp1.x + cp2.x) / 2;
+        const my = (cp1.y + cp2.y) / 2;
+        
+        // distance to the midpoint label area
+        const distToMid = Math.sqrt((rawX - mx)**2 + (rawY - my)**2);
+        if (distToMid < 20) {
+            const lenIn = segmentLengthInches(p1, p2);
+            setEditingSegment({
+                index: i,
+                x: mx,
+                y: my,
+                initialValue: Math.round(lenIn)
+            });
+            return;
+        }
+    }
+  };
+
   const totalPerimeterInches = (() => {
     if (points.length < 2) return 0;
     const n = closed ? points.length : points.length - 1;
@@ -505,7 +533,7 @@ export default function WallShapeBuilder({
         {closed && <Badge className="bg-green-600">Shape Closed ✓</Badge>}
       </div>
 
-      <div className="border rounded-lg overflow-hidden" style={{ width: canvasW, maxWidth: '100%' }}>
+      <div className="relative border rounded-lg overflow-hidden" style={{ width: canvasW, maxWidth: '100%' }}>
         <canvas
           ref={canvasRef}
           width={canvasW}
@@ -514,14 +542,47 @@ export default function WallShapeBuilder({
           onMouseMove={handleMouseMove}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
+          onDoubleClick={handleDoubleClick}
           onMouseLeave={() => { setHoverInches(null); setPanning(false); setNearFirstPoint(false); setDraggingWall(false); setDragWallStart(null); }}
         />
+        {editingSegment && (
+            <div 
+                className="absolute bg-white shadow-lg border border-slate-200 rounded p-1 flex items-center gap-1 z-10"
+                style={{ 
+                    left: editingSegment.x, 
+                    top: editingSegment.y, 
+                    transform: 'translate(-50%, -50%)' 
+                }}
+            >
+                <Input 
+                    type="number"
+                    autoFocus
+                    className="w-20 h-7 text-xs"
+                    defaultValue={editingSegment.initialValue}
+                    onBlur={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val) && val > 0 && val !== editingSegment.initialValue) {
+                            handleSegmentChange(editingSegment.index, val);
+                        }
+                        setEditingSegment(null);
+                    }}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            e.currentTarget.blur();
+                        } else if (e.key === 'Escape') {
+                            setEditingSegment(null);
+                        }
+                    }}
+                />
+                <span className="text-xs text-slate-500 pr-1">in</span>
+            </div>
+        )}
       </div>
 
       <p className="text-xs text-slate-500">
         {!closed
-          ? `Click to place points (Snaps to ${snapInch}"). Move cursor near first point to auto-close. Pan to view. Move Wall to reposition.`
-          : 'Shape closed. Drag points to refine, or use Move Wall to reposition. Click "Reset" to start over.'}
+          ? `Click to place points (Snaps to ${snapInch}"). Move cursor near first point to auto-close. Pan to view. Move Wall to reposition. Double-click a measurement to edit.`
+          : 'Shape closed. Drag points to refine, use Move Wall to reposition, or double-click a measurement to edit. Click "Reset" to start over.'}
       </p>
 
       {points.length > 1 && (
