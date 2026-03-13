@@ -75,13 +75,13 @@ export default function WallSection({
   wall,
   index,
   wallMaterials,
-  foundationLengthInches,
-  foundationWidthInches,
+  foundationItems = [],
   settings,
   onChange,
   onDelete,
 }) {
   const [expanded, setExpanded] = useState(true);
+  const [shakeMaterial, setShakeMaterial] = useState(false);
 
   const update = (field, value) => onChange({ ...wall, [field]: value });
 
@@ -164,6 +164,7 @@ export default function WallSection({
             </div>
             <div>
               <Label className="text-xs">Wall Material</Label>
+              <div className={`transition-all duration-300 ${shakeMaterial ? 'ring-2 ring-red-500 ring-offset-2 rounded-md bg-red-50 -mx-1 px-1 scale-105' : ''}`}>
               <Select
                 value={wall.materialId || ''}
                 onValueChange={v => {
@@ -185,6 +186,7 @@ export default function WallSection({
                   ))}
                 </SelectContent>
               </Select>
+              </div>
             </div>
             <div className="flex items-end">
               <div className="flex items-center gap-2">
@@ -252,9 +254,9 @@ export default function WallSection({
           )}
 
           {/* Foundation restriction notice */}
-          {!wall.useExistingFoundation && (!foundationLengthInches || !foundationWidthInches) && (
+          {!wall.useExistingFoundation && foundationItems.length === 0 && (
             <div className="bg-amber-100 border border-amber-300 rounded-lg p-3 text-sm text-amber-800">
-              ⚠️ No foundation dimensions set. Check "Use Existing Foundation" or add a foundation item above to constrain the wall drawing.
+              ⚠️ No foundations available. Check "Use Existing Foundation" or add a foundation item above to constrain the wall drawing.
             </div>
           )}
 
@@ -262,11 +264,15 @@ export default function WallSection({
           <div>
             <Label className="text-xs font-semibold text-slate-700 mb-2 block">Wall Outline (Top-Down View)</Label>
             <WallShapeBuilder
-              foundationLengthInches={foundationLengthInches}
-              foundationWidthInches={foundationWidthInches}
+              foundationItems={foundationItems}
               useExistingFoundation={wall.useExistingFoundation}
+              wallMaterial={selectedMat}
               onShapeChange={shape => update('shape', shape)}
               initialShape={wall.shape}
+              onRequireMaterial={() => {
+                setShakeMaterial(true);
+                setTimeout(() => setShakeMaterial(false), 800);
+              }}
             />
           </div>
 

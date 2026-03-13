@@ -11,6 +11,11 @@ function snapToGrid(val, gridPx) {
   return Math.round(val / gridPx) * gridPx;
 }
 
+function pointInRects(pt, rects) {
+  if (rects.length === 0) return true; // No constraints if no rects
+  return rects.some(r => pt.x >= r.minX && pt.x <= r.maxX && pt.y >= r.minY && pt.y <= r.maxY);
+}
+
 // Convert canvas pixel to world inches (accounting for pan offset and scale)
 function canvasToInches(px, offset) {
   return (px - offset) / SCALE_PX_PER_INCH;
@@ -31,11 +36,12 @@ function segmentLengthInches(p1, p2) {
 }
 
 export default function WallShapeBuilder({
-  foundationLengthInches,
-  foundationWidthInches,
+  foundationItems = [],
   onShapeChange,
   initialShape = null,
-  useExistingFoundation = false
+  useExistingFoundation = false,
+  wallMaterial = null,
+  onRequireMaterial = () => {}
 }) {
   const canvasRef = useRef(null);
 
@@ -51,9 +57,48 @@ export default function WallShapeBuilder({
   const [panStart, setPanStart] = useState(null);
   const [selectedPointIndex, setSelectedPointIndex] = useState(null);
   const [draggingPoint, setDraggingPoint] = useState(null);
+  const [draggingWall, setDraggingWall] = useState(false);
+  const [dragWallStart, setDragWallStart] = useState(null);
 
   const canvasW = 700;
   const canvasH = 450;
+
+  const fRects = React.useMemo(() => {
+    if (useExistingFoundation || !foundationItems) return [];
+    let cumulativeOffsetX = 0;
+    const rects = [];
+    foundationItems.forEach(item => {
+      const qty = item.quantity || 1;
+      const gridSize = Math.ceil(Math.sqrt(qty));
+      const isSpread = item.foundation_type !== 'pillar';
+      const lenFt = (item.length_inches || 48) / 12;
+      const widFt = (item.width_inches || 48) / 12;
+      const diaFt = (item.diameter || 24) / 12;
+      const footprintX = isSpread ? lenFt : diaFt;
+      const footprintZ = isSpread ? widFt : diaFt;
+      const spacingX = footprintX * 1.5 + 1;
+      const spacingZ = footprintZ * 1.5 + 1;
+
+      for (let i = 0; i < qty; i++) {
+        const col = i % gridSize;
+        const row = Math.floor(i / gridSize);
+        const ox = cumulativeOffsetX + col * spacingX + footprintX / 2;
+        const oz = row * spacingZ + footprintZ / 2;
+        
+        rects.push({
+            minX: (ox - footprintX/2) * 12,
+            maxX: (ox + footprintX/2) * 12,
+            minY: (oz - footprintZ/2) * 12,
+            maxY: (oz + footprintZ/2) * 12
+        });
+      }
+      cumulativeOffsetX += gridSize * spacingX + 2;
+    });
+    return rects;
+  }, [foundationItems, useExistingFoundation]);
+
+  const snapInch = wallMaterial?.wall_unit_length_inches || GRID_INCH;
+  const gridPx = snapInch * SCALE_PX_PER_INCH;
 
   // Convert world-inch point to canvas pixel
   const toCanvas = useCallback((pt) => ({
@@ -63,14 +108,13 @@ export default function WallShapeBuilder({
 
   // Convert raw canvas pixel to snapped world inches
   const fromCanvas = useCallback((rawX, rawY) => {
-    const gridPx = GRID_INCH * SCALE_PX_PER_INCH;
     const snappedX = snapToGrid(rawX, gridPx);
     const snappedY = snapToGrid(rawY, gridPx);
     return {
       x: canvasToInches(snappedX, offset.x),
       y: canvasToInches(snappedY, offset.y),
     };
-  }, [offset]);
+  }, [offset, gridPx]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -96,21 +140,26 @@ export default function WallShapeBuilder({
     }
 
     // Foundation bounds (world space, pans with offset)
-    if (!useExistingFoundation && foundationLengthInches && foundationWidthInches) {
-      // Foundation sits at world origin (0,0) to (L, W)
-      const topLeft = toCanvas({ x: 0, y: 0 });
-      const w = foundationLengthInches * SCALE_PX_PER_INCH;
-      const h = foundationWidthInches * SCALE_PX_PER_INCH;
+    if (!useExistingFoundation && fRects.length > 0) {
       ctx.strokeStyle = '#f59e0b';
       ctx.lineWidth = 2;
       ctx.setLineDash([8, 4]);
-      ctx.strokeRect(topLeft.x, topLeft.y, w, h);
-      ctx.setLineDash([]);
       ctx.fillStyle = 'rgba(245,158,11,0.07)';
-      ctx.fillRect(topLeft.x, topLeft.y, w, h);
-      ctx.fillStyle = '#92400e';
-      ctx.font = '11px sans-serif';
-      ctx.fillText(`Foundation: ${foundationLengthInches}"L x ${foundationWidthInches}"W`, topLeft.x + 4, topLeft.y - 6);
+      
+      fRects.forEach((r, i) => {
+        const topLeft = toCanvas({ x: r.minX, y: r.minY });
+        const w = (r.maxX - r.minX) * SCALE_PX_PER_INCH;
+        const h = (r.maxY - r.minY) * SCALE_PX_PER_INCH;
+        ctx.strokeRect(topLeft.x, topLeft.y, w, h);
+        ctx.fillRect(topLeft.x, topLeft.y, w, h);
+        if (i === 0) {
+          ctx.fillStyle = '#92400e';
+          ctx.font = '11px sans-serif';
+          ctx.fillText(`Foundations`, topLeft.x + 4, topLeft.y - 6);
+          ctx.fillStyle = 'rgba(245,158,11,0.07)'; // restore
+        }
+      });
+      ctx.setLineDash([]);
     } else if (useExistingFoundation) {
       ctx.fillStyle = '#6b7280';
       ctx.font = '12px sans-serif';
@@ -212,7 +261,7 @@ export default function WallShapeBuilder({
         ctx.fillText(label, (last.x + hcp.x) / 2 + 4, (last.y + hcp.y) / 2 - 4);
       }
     }
-  }, [points, hoverInches, nearFirstPoint, mode, offset, closed, foundationLengthInches, foundationWidthInches, useExistingFoundation, selectedPointIndex, toCanvas]);
+  }, [points, hoverInches, nearFirstPoint, mode, offset, closed, fRects, useExistingFoundation, selectedPointIndex, toCanvas]);
 
   useEffect(() => { draw(); }, [draw]);
 
@@ -251,17 +300,34 @@ export default function WallShapeBuilder({
       return;
     }
 
+    const worldPt = fromCanvas(rawX, rawY);
+
+    if (draggingWall && dragWallStart) {
+        const dx = worldPt.x - dragWallStart.x;
+        const dy = worldPt.y - dragWallStart.y;
+        
+        // Check if new positions are valid
+        const newPoints = points.map(p => ({ x: p.x + dx, y: p.y + dy }));
+        const allValid = fRects.length === 0 || newPoints.every(p => pointInRects(p, fRects));
+        
+        if (allValid && (dx !== 0 || dy !== 0)) {
+            setPoints(newPoints);
+            setDragWallStart(worldPt);
+        }
+        return;
+    }
+
     if (draggingPoint !== null) {
-      const worldPt = fromCanvas(rawX, rawY);
-      setPoints(prev => {
-        const arr = [...prev];
-        arr[draggingPoint] = worldPt;
-        return arr;
-      });
+      if (fRects.length === 0 || pointInRects(worldPt, fRects)) {
+        setPoints(prev => {
+          const arr = [...prev];
+          arr[draggingPoint] = worldPt;
+          return arr;
+        });
+      }
       return;
     }
 
-    const worldPt = fromCanvas(rawX, rawY);
     setHoverInches(worldPt);
 
     // Check proximity to first point (in canvas pixels)
@@ -275,6 +341,11 @@ export default function WallShapeBuilder({
   };
 
   const handleMouseDown = (e) => {
+    if (!wallMaterial) {
+        onRequireMaterial();
+        return;
+    }
+
     if (mode === 'pan') {
       setPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
@@ -283,6 +354,14 @@ export default function WallShapeBuilder({
 
     const { rawX, rawY } = getRawCanvasPoint(e);
     const worldPt = fromCanvas(rawX, rawY);
+
+    if (mode === 'move_wall') {
+        if (points.length > 0) {
+            setDraggingWall(true);
+            setDragWallStart(worldPt);
+        }
+        return;
+    }
 
     // Check if clicking near existing point (canvas px distance)
     for (let i = 0; i < points.length; i++) {
@@ -303,12 +382,18 @@ export default function WallShapeBuilder({
       return;
     }
 
+    if (fRects.length > 0 && !pointInRects(worldPt, fRects)) {
+        return; // Don't allow placing outside bounds
+    }
+
     setPoints(prev => [...prev, worldPt]);
   };
 
   const handleMouseUp = () => {
     setPanning(false);
     setPanStart(null);
+    setDraggingWall(false);
+    setDragWallStart(null);
     if (draggingPoint !== null) setDraggingPoint(null);
   };
 
@@ -347,6 +432,44 @@ export default function WallShapeBuilder({
   const totalFt = Math.floor(totalPerimeterInches / 12);
   const totalInch = Math.round(totalPerimeterInches % 12);
 
+  const handleSegmentChange = (idx, newLengthInches) => {
+    // Determine vector of the segment
+    const p1 = points[idx];
+    const p2 = points[(idx + 1) % points.length];
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const currentLen = Math.sqrt(dx * dx + dy * dy);
+    if (currentLen === 0) return;
+    
+    // Calculate new p2
+    const scale = newLengthInches / currentLen;
+    const newP2 = {
+        x: p1.x + dx * scale,
+        y: p1.y + dy * scale
+    };
+
+    // If we only move p2, what happens to subsequent points?
+    // Move all subsequent points by the same delta
+    const deltaX = newP2.x - p2.x;
+    const deltaY = newP2.y - p2.y;
+
+    setPoints(prev => {
+        const arr = [...prev];
+        if (closed) {
+            arr[(idx + 1) % arr.length] = newP2;
+        } else {
+            for (let i = idx + 1; i < arr.length; i++) {
+                arr[i] = { x: arr[i].x + deltaX, y: arr[i].y + deltaY };
+            }
+        }
+        // Force bounds constraint correction if possible
+        if (fRects.length > 0 && !arr.every(p => pointInRects(p, fRects))) {
+            return prev; // Undo if edit pushes it outside foundation bounds
+        }
+        return arr;
+    });
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
@@ -355,6 +478,9 @@ export default function WallShapeBuilder({
         </Button>
         <Button size="sm" variant={mode === 'pan' ? 'default' : 'outline'} onClick={() => setMode('pan')}>
           <Move className="w-3 h-3 mr-1" /> Pan
+        </Button>
+        <Button size="sm" variant={mode === 'move_wall' ? 'default' : 'outline'} onClick={() => setMode('move_wall')}>
+          <Move className="w-3 h-3 mr-1" /> Move Wall
         </Button>
         <Button size="sm" variant="outline" onClick={handleUndo} disabled={points.length === 0}>
           <Undo2 className="w-3 h-3 mr-1" /> Undo
@@ -380,19 +506,47 @@ export default function WallShapeBuilder({
           ref={canvasRef}
           width={canvasW}
           height={canvasH}
-          style={{ cursor: mode === 'pan' ? 'grab' : (nearFirstPoint && points.length >= 3 && !closed ? 'pointer' : 'crosshair'), display: 'block', maxWidth: '100%' }}
+          style={{ cursor: mode === 'pan' ? 'grab' : (mode === 'move_wall' ? 'move' : (nearFirstPoint && points.length >= 3 && !closed ? 'pointer' : 'crosshair')), display: 'block', maxWidth: '100%' }}
           onMouseMove={handleMouseMove}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
-          onMouseLeave={() => { setHoverInches(null); setPanning(false); setNearFirstPoint(false); }}
+          onMouseLeave={() => { setHoverInches(null); setPanning(false); setNearFirstPoint(false); setDraggingWall(false); setDragWallStart(null); }}
         />
       </div>
 
       <p className="text-xs text-slate-500">
         {!closed
-          ? 'Click to place points (6" grid). Move cursor near the first point (red) to auto-close. Pan mode moves the view. Drag points to adjust.'
-          : 'Shape closed. Drag points to refine. Click "Reset" to start over.'}
+          ? `Click to place points (Snaps to ${snapInch}"). Move cursor near first point to auto-close. Pan to view. Move Wall to reposition.`
+          : 'Shape closed. Drag points to refine, or use Move Wall to reposition. Click "Reset" to start over.'}
       </p>
+
+      {points.length > 1 && (
+        <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+            <h4 className="text-xs font-semibold text-slate-700 mb-2">Segment Measurements</h4>
+            <div className="flex flex-wrap gap-4">
+                {Array.from({ length: closed ? points.length : points.length - 1 }).map((_, i) => {
+                    const p1 = points[i];
+                    const p2 = points[(i + 1) % points.length];
+                    const lenIn = segmentLengthInches(p1, p2);
+                    return (
+                        <div key={i} className="flex items-center gap-2">
+                            <span className="text-xs text-slate-500 font-medium">Seg {i+1}:</span>
+                            <Input 
+                                type="number" 
+                                className="h-7 w-20 text-xs" 
+                                value={Math.round(lenIn)} 
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    if (!isNaN(val) && val > 0) handleSegmentChange(i, val);
+                                }}
+                            />
+                            <span className="text-xs text-slate-400">in</span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+      )}
     </div>
   );
 }

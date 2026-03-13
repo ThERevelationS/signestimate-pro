@@ -257,7 +257,9 @@ export default function NewFoundationEstimate() {
                 <TabsTrigger value="info">Project Info</TabsTrigger>
                 <TabsTrigger value="foundation">Foundation ({items.length})</TabsTrigger>
                 <TabsTrigger value="walls">Walls ({walls.length})</TabsTrigger>
-                <TabsTrigger value="equipment">Equipment {selectedEquipmentList.length > 0 ? `(${selectedEquipmentList.length})` : ''}</TabsTrigger>
+                {project.excavation_method === 'equipment_excavation' && (
+                  <TabsTrigger value="equipment">Equipment {selectedEquipmentList.length > 0 ? `(${selectedEquipmentList.length})` : ''}</TabsTrigger>
+                )}
                 <TabsTrigger value="summary">Summary</TabsTrigger>
               </TabsList>
 
@@ -317,40 +319,7 @@ export default function NewFoundationEstimate() {
                           </SelectContent>
                         </Select>
                       </div>
-                      {project.excavation_method === 'equipment_excavation' && (
-                        <div className="min-w-[220px]">
-                          <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Equipment</Label>
-                          <Select
-                            value={project.selected_equipment_id || ''}
-                            onValueChange={v => updateProject('selected_equipment_id', v)}
-                          >
-                            <SelectTrigger className="h-9 mt-1"><SelectValue placeholder="Select equipment (optional)" /></SelectTrigger>
-                            <SelectContent>
-                              {inventory.filter(i => i.material_type === 'excavation_equipment').length === 0 && (
-                                <SelectItem value="_none" disabled>No equipment in inventory</SelectItem>
-                              )}
-                              {inventory.filter(i => i.material_type === 'excavation_equipment').map(eq => (
-                                <SelectItem key={eq.id} value={eq.id}>
-                                  <div className="flex flex-col">
-                                    <span className="font-medium">{eq.material_name}</span>
-                                    {eq.notes && <span className="text-xs text-slate-500 truncate max-w-[280px]">{eq.notes}</span>}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                      {project.excavation_method === 'equipment_excavation' && project.selected_equipment_id && (() => {
-                        const eq = inventory.find(i => i.id === project.selected_equipment_id);
-                        return eq ? (
-                          <div className="text-xs text-slate-500 pb-2">
-                            {eq.cost_per_day && <span>Day: ${eq.cost_per_day}</span>}
-                            {eq.cost_per_week && <span className="ml-3">Week: ${eq.cost_per_week}</span>}
-                            {eq.pickup_delivery_cost && <span className="ml-3">Delivery: ${eq.pickup_delivery_cost}</span>}
-                          </div>
-                        ) : null;
-                      })()}
+                      {/* Equipment selection moved to Equipment tab */}
                     </div>
                   </CardContent>
                 </Card>
@@ -407,8 +376,7 @@ export default function NewFoundationEstimate() {
                     wall={wall}
                     index={idx}
                     wallMaterials={wallMaterials}
-                    foundationLengthInches={foundationLengthInches}
-                    foundationWidthInches={foundationWidthInches}
+                    foundationItems={items}
                     settings={settings}
                     onChange={(updated) => updateWall(idx, updated)}
                     onDelete={() => removeWall(idx)}
@@ -426,6 +394,7 @@ export default function NewFoundationEstimate() {
               </TabsContent>
 
               {/* EQUIPMENT */}
+              {project.excavation_method === 'equipment_excavation' && (
               <TabsContent value="equipment" className="space-y-4 pt-4">
                 <EquipmentTab
                   inventory={inventory}
@@ -434,6 +403,7 @@ export default function NewFoundationEstimate() {
                   markDirty={markDirty}
                 />
               </TabsContent>
+              )}
 
               {/* SUMMARY */}
               <TabsContent value="summary" className="space-y-4 pt-4">
