@@ -45,6 +45,14 @@ export default function BOMTab({ items, walls, project }) {
     { name: 'Wall Units (Bricks/Blocks)', qty: totalBricks, unit: 'Units' },
   ];
 
+  if (project.poles && project.poles.length > 0) {
+      materials.push({
+          name: 'Poles (Various)',
+          qty: project.poles.length,
+          unit: 'Pieces'
+      });
+  }
+
   const buildTextSummary = () => {
     const lines = [];
     lines.push(`BILL OF MATERIALS`);
