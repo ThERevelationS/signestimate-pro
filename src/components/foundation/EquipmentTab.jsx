@@ -7,27 +7,43 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Trash2, Info, Wrench } from 'lucide-react';
 
-function EquipmentCard({ equipment, selectedEquipment, onUpdate, onRemove, allAttachments }) {
+function EquipmentCard({ equipment, selectedEquipment, onUpdate, onRemove, allAttachments, allSubAttachments }) {
   const eq = equipment; // the inventory item
 
   const compatibleAttachments = allAttachments.filter(a => {
-    if (!a.compatible_equipment_ids || a.compatible_equipment_ids.length === 0) return true;
-    return a.compatible_equipment_ids.includes(eq.id);
+    return eq.compatible_attachment_ids?.includes(a.id);
   });
 
-  const selectedAttachmentIds = selectedEquipment.attachment_ids || [];
+  const attCounts = selectedEquipment.attachment_counts || {};
+  
+  // Convert legacy attachment_ids to attachment_counts if needed
+  if (selectedEquipment.attachment_ids?.length && Object.keys(attCounts).length === 0) {
+      selectedEquipment.attachment_ids.forEach(id => attCounts[id] = 1);
+  }
 
-  const toggleAttachment = (attId) => {
-    const current = selectedAttachmentIds;
-    const updated = current.includes(attId)
-      ? current.filter(id => id !== attId)
-      : [...current, attId];
-    onUpdate({ ...selectedEquipment, attachment_ids: updated });
+  const subAttCounts = selectedEquipment.sub_attachment_counts || {};
+
+  const handleAttChange = (id, change, allowMultiple) => {
+    const current = attCounts[id] || 0;
+    let next = Math.max(0, current + change);
+    if (!allowMultiple && next > 1) next = 1;
+    onUpdate({ ...selectedEquipment, attachment_counts: { ...attCounts, [id]: next } });
   };
 
-  const attachmentCost = compatibleAttachments
-    .filter(a => selectedAttachmentIds.includes(a.id))
-    .reduce((sum, a) => sum + (a.cost_per_unit || 0), 0);
+  const handleSubAttChange = (id, change, allowMultiple) => {
+    const current = subAttCounts[id] || 0;
+    let next = Math.max(0, current + change);
+    if (!allowMultiple && next > 1) next = 1;
+    onUpdate({ ...selectedEquipment, sub_attachment_counts: { ...subAttCounts, [id]: next } });
+  };
+
+  const attachmentCost = compatibleAttachments.reduce((sum, a) => sum + (a.cost_per_unit || 0) * (attCounts[a.id] || 0), 0);
+
+  const visibleSubAttachments = allSubAttachments.filter(s => {
+    return compatibleAttachments.some(a => (attCounts[a.id] || 0) > 0 && a.compatible_sub_attachment_ids?.includes(s.id));
+  });
+
+  const subAttachmentCost = visibleSubAttachments.reduce((sum, s) => sum + (s.cost_per_unit || 0) * (subAttCounts[s.id] || 0), 0);
 
   const rentalPeriod = selectedEquipment.rental_period || 'day';
   const rentalDuration = selectedEquipment.rental_duration || 1;
@@ -40,7 +56,7 @@ function EquipmentCard({ equipment, selectedEquipment, onUpdate, onRemove, allAt
   })();
 
   const deliveryCost = selectedEquipment.include_delivery ? (eq.pickup_delivery_cost || 0) : 0;
-  const totalCost = baseRentalCost + deliveryCost + attachmentCost;
+  const totalCost = baseRentalCost + deliveryCost + attachmentCost + subAttachmentCost;
 
   return (
     <Card className="border border-slate-200">
@@ -118,34 +134,77 @@ function EquipmentCard({ equipment, selectedEquipment, onUpdate, onRemove, allAt
               Attachments
             </Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {compatibleAttachments.map(att => (
-                <div
-                  key={att.id}
-                  className={`flex items-start gap-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
-                    selectedAttachmentIds.includes(att.id)
-                      ? 'bg-amber-50 border-amber-300'
-                      : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                  }`}
-                  onClick={() => toggleAttachment(att.id)}
-                >
-                  <Checkbox
-                    checked={selectedAttachmentIds.includes(att.id)}
-                    onCheckedChange={() => toggleAttachment(att.id)}
-                    className="mt-0.5"
-                  />
-                  <div className="flex-1">
-                    <p className="font-medium text-slate-800">{att.material_name}</p>
-                    {att.notes && <p className="text-slate-500 mt-0.5">{att.notes}</p>}
-                    <p className="text-amber-700 font-semibold mt-0.5">${att.cost_per_unit || 0}</p>
+              {compatibleAttachments.map(att => {
+                const count = attCounts[att.id] || 0;
+                return (
+                  <div
+                    key={att.id}
+                    className={`flex items-center justify-between gap-2 p-2 rounded-lg border text-xs transition-colors ${
+                      count > 0
+                        ? 'bg-amber-50 border-amber-300'
+                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex-1 cursor-pointer" onClick={() => handleAttChange(att.id, count > 0 ? -count : 1, att.allow_multiple)}>
+                      <p className="font-medium text-slate-800">{att.material_name}</p>
+                      <p className="text-amber-700 font-semibold mt-0.5">${att.cost_per_unit || 0}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {att.allow_multiple ? (
+                            <div className="flex items-center bg-white border rounded">
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleAttChange(att.id, -1, true)}>-</Button>
+                                <span className="w-4 text-center font-medium">{count}</span>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleAttChange(att.id, 1, true)}>+</Button>
+                            </div>
+                        ) : (
+                            <Checkbox checked={count > 0} onCheckedChange={(v) => handleAttChange(att.id, v ? 1 : -1, false)} />
+                        )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-            {attachmentCost > 0 && (
-              <p className="text-xs text-slate-500 mt-2">
-                Attachment cost: <span className="font-semibold text-slate-700">${attachmentCost.toFixed(2)}</span>
-              </p>
-            )}
+          </div>
+        )}
+
+        {/* Sub-Attachments */}
+        {visibleSubAttachments.length > 0 && (
+          <div className="pt-2">
+            <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2 block">
+              <Plus className="w-3 h-3 inline mr-1" />
+              Sub-Attachments
+            </Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {visibleSubAttachments.map(sub => {
+                const count = subAttCounts[sub.id] || 0;
+                return (
+                  <div
+                    key={sub.id}
+                    className={`flex items-center justify-between gap-2 p-2 rounded-lg border text-xs transition-colors ${
+                      count > 0
+                        ? 'bg-blue-50 border-blue-300'
+                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex-1 cursor-pointer" onClick={() => handleSubAttChange(sub.id, count > 0 ? -count : 1, sub.allow_multiple)}>
+                      <p className="font-medium text-slate-800">{sub.material_name}</p>
+                      <p className="text-blue-700 font-semibold mt-0.5">${sub.cost_per_unit || 0}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {sub.allow_multiple ? (
+                            <div className="flex items-center bg-white border rounded">
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleSubAttChange(sub.id, -1, true)}>-</Button>
+                                <span className="w-4 text-center font-medium">{count}</span>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleSubAttChange(sub.id, 1, true)}>+</Button>
+                            </div>
+                        ) : (
+                            <Checkbox checked={count > 0} onCheckedChange={(v) => handleSubAttChange(sub.id, v ? 1 : -1, false)} />
+                        )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </CardContent>
@@ -156,6 +215,7 @@ function EquipmentCard({ equipment, selectedEquipment, onUpdate, onRemove, allAt
 export default function EquipmentTab({ inventory, selectedEquipmentList, onUpdate, markDirty }) {
   const allEquipment = inventory.filter(i => i.material_type === 'excavation_equipment');
   const allAttachments = inventory.filter(i => i.material_type === 'attachment');
+  const allSubAttachments = inventory.filter(i => i.material_type === 'sub_attachment');
 
   const addEquipment = (eqId) => {
     if (!eqId || eqId === '_none') return;
@@ -165,7 +225,8 @@ export default function EquipmentTab({ inventory, selectedEquipmentList, onUpdat
       rental_period: 'day',
       rental_duration: 1,
       include_delivery: false,
-      attachment_ids: [],
+      attachment_counts: {},
+      sub_attachment_counts: {}
     };
     onUpdate([...selectedEquipmentList, newEntry]);
     markDirty();
@@ -193,10 +254,29 @@ export default function EquipmentTab({ inventory, selectedEquipmentList, onUpdat
     else if (rentalPeriod === 'week') base = (eq.cost_per_week || 0) * rentalDuration;
     else if (rentalPeriod === 'month') base = (eq.cost_per_month || 0) * rentalDuration;
     const delivery = entry.include_delivery ? (eq.pickup_delivery_cost || 0) : 0;
-    const attCost = allAttachments
-      .filter(a => (entry.attachment_ids || []).includes(a.id))
-      .reduce((s, a) => s + (a.cost_per_unit || 0), 0);
-    return sum + base + delivery + attCost;
+    
+    // Att cost
+    let attCost = 0;
+    if (entry.attachment_counts) {
+        Object.entries(entry.attachment_counts).forEach(([id, qty]) => {
+            const a = allAttachments.find(att => att.id === id);
+            if (a) attCost += (a.cost_per_unit || 0) * qty;
+        });
+    } else if (entry.attachment_ids) {
+        // legacy
+        attCost = allAttachments.filter(a => entry.attachment_ids.includes(a.id)).reduce((s, a) => s + (a.cost_per_unit || 0), 0);
+    }
+    
+    // Sub-att cost
+    let subAttCost = 0;
+    if (entry.sub_attachment_counts) {
+        Object.entries(entry.sub_attachment_counts).forEach(([id, qty]) => {
+            const s = allSubAttachments.find(sub => sub.id === id);
+            if (s) subAttCost += (s.cost_per_unit || 0) * qty;
+        });
+    }
+
+    return sum + base + delivery + attCost + subAttCost;
   }, 0);
 
   return (
@@ -255,6 +335,7 @@ export default function EquipmentTab({ inventory, selectedEquipmentList, onUpdat
             onUpdate={(updated) => updateEntry(idx, updated)}
             onRemove={() => removeEquipment(idx)}
             allAttachments={allAttachments}
+            allSubAttachments={allSubAttachments}
           />
         );
       })}
