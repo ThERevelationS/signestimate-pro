@@ -423,7 +423,7 @@ export default function WallShapeBuilder({
     }
 
     const { rawX, rawY } = getRawCanvasPoint(e);
-    const currentGridPx = mode === 'move_wall' ? SCALE_PX_PER_INCH : gridPx;
+    const currentGridPx = mode === 'move_wall' || mode === 'move_foundation' ? SCALE_PX_PER_INCH : gridPx;
     const worldPt = fromCanvas(rawX, rawY, currentGridPx);
 
     if (mode === 'move_foundation') {
