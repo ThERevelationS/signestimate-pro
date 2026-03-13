@@ -16,6 +16,7 @@ import WallSection from '@/components/WallSection';
 import FoundationWalls3DViewer from '@/components/FoundationWalls3DViewer';
 import { UnsavedChangesContext } from '@/components/UnsavedChangesContext';
 import SummaryTab from '@/components/foundation/SummaryTab';
+import BOMTab from '@/components/foundation/BOMTab';
 import EquipmentTab from '@/components/foundation/EquipmentTab';
 
 const FoundationProjectEntity = base44.entities.FoundationProject;
@@ -260,7 +261,8 @@ export default function NewFoundationEstimate() {
                 {project.excavation_method === 'equipment_excavation' && (
                   <TabsTrigger value="equipment">Equipment {selectedEquipmentList.length > 0 ? `(${selectedEquipmentList.length})` : ''}</TabsTrigger>
                 )}
-                <TabsTrigger value="summary">Summary</TabsTrigger>
+                <TabsTrigger value="summary">Cost Summary</TabsTrigger>
+                <TabsTrigger value="bom">Bill of Materials</TabsTrigger>
               </TabsList>
 
               {/* PROJECT INFO */}
@@ -408,6 +410,11 @@ export default function NewFoundationEstimate() {
               {/* SUMMARY */}
               <TabsContent value="summary" className="space-y-4 pt-4">
                 <SummaryTab items={items} walls={walls} totals={totals} calcItemCost={calcItemCost} project={project} />
+              </TabsContent>
+
+              {/* BOM */}
+              <TabsContent value="bom" className="space-y-4 pt-4">
+                <BOMTab items={items} walls={walls} project={project} />
               </TabsContent>
             </Tabs>
           </div>

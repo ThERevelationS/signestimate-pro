@@ -138,7 +138,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                 <span>Foundation #{idx + 1}{item.description ? ` — ${item.description}` : ''}</span>
                 <CopyValue value={`$${c.total.toFixed(2)}`} className="text-sm font-semibold" />
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 text-xs">
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
                 <CopyValue label="Concrete:" value={`$${c.concreteCost.toFixed(2)}`} />
                 <CopyValue label="Rebar:" value={`$${c.rebarCost.toFixed(2)}`} />
                 <CopyValue label="Forming:" value={`$${c.formingCost.toFixed(2)}`} />
