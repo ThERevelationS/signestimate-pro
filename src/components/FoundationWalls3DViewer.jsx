@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
  * Wall shape points are in world inches (origin = foundation origin).
  * Foundation item 0 is placed at world origin; its center is at (L/2, 0, W/2) in feet.
  */
-export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
+export default function FoundationWalls3DViewer({ items = [], walls = [], polesData = [], polesInventory = [] }) {
   const mountRef = useRef(null);
   const rendererRef = useRef(null);
   const sceneRef = useRef(null);
@@ -444,6 +444,41 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
           }
         }
       });
+    });
+
+    // ── POLES ─────────────────────────────────────────────────────────────────
+    polesData.forEach(p => {
+        const inv = polesInventory.find(i => i.id === p.pole_id);
+        if (!inv) return;
+        
+        const hFt = (p.height_inches || 0) / 12;
+        const yOffFt = (p.y_offset_inches || 0) / 12;
+        const widFt = (inv.pole_width_inches || 6) / 12;
+        const depFt = (inv.pole_depth_inches || 6) / 12;
+        
+        const cx = p.x_inches / 12;
+        const cz = p.z_inches / 12;
+        
+        // y_offset is from top of foundation downwards.
+        // top of foundation is at gradeOffsetFt.
+        const topOfFoundation = gradeOffsetFt;
+        const topOfPole = topOfFoundation - yOffFt + hFt;
+        const yCenter = topOfPole - hFt / 2;
+
+        let mat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3, metalness: 0.8 }); // default steel
+        if (p.paint) mat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.6 });
+        
+        let mesh;
+        if (inv.pole_shape === 'round') {
+            mesh = new THREE.Mesh(new THREE.CylinderGeometry(widFt/2, widFt/2, hFt, 16), mat);
+        } else {
+            mesh = new THREE.Mesh(new THREE.BoxGeometry(widFt, hFt, depFt), mat);
+        }
+        
+        mesh.position.set(cx, yCenter, cz);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        scene.add(mesh);
     });
 
     // ── Camera framing ────────────────────────────────────────────────────────

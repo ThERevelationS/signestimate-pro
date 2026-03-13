@@ -33,6 +33,7 @@ function CopyValue({ label, value, className = '' }) {
 }
 
 export default function SummaryTab({ items, walls, totals, calcItemCost, project }) {
+  const polesTotal = totals.polesTotal || 0;
   const [allCopied, setAllCopied] = useState(false);
 
   const buildTextSummary = () => {
