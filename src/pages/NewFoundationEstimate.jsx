@@ -513,12 +513,28 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
                 <Label className="text-xs">Grade Offset (inches)</Label>
                 <Input type="number" className="h-8" value={item.grade_offset_inches} onChange={e => onUpdate('grade_offset_inches', parseFloat(e.target.value) || 0)} />
               </div>
+              <div>
+                <Label className="text-xs">Draw Offset X (in)</Label>
+                <Input type="number" className="h-8" value={item.offset_x_inches || 0} onChange={e => onUpdate('offset_x_inches', parseFloat(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label className="text-xs">Draw Offset Y (in)</Label>
+                <Input type="number" className="h-8" value={item.offset_z_inches || 0} onChange={e => onUpdate('offset_z_inches', parseFloat(e.target.value) || 0)} />
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <div>
                 <Label className="text-xs">Diameter (inches)</Label>
                 <Input type="number" className="h-8" value={item.diameter} onChange={e => onUpdate('diameter', parseFloat(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label className="text-xs">Draw Offset X (in)</Label>
+                <Input type="number" className="h-8" value={item.offset_x_inches || 0} onChange={e => onUpdate('offset_x_inches', parseFloat(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label className="text-xs">Draw Offset Y (in)</Label>
+                <Input type="number" className="h-8" value={item.offset_z_inches || 0} onChange={e => onUpdate('offset_z_inches', parseFloat(e.target.value) || 0)} />
               </div>
             </div>
           )}
