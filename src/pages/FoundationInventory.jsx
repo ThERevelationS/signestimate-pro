@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Trash2, Plus, Edit, Package, Building2, Layers } from 'lucide-react';
+import { Trash2, Plus, Edit, Package, Building2, Layers, Wrench } from 'lucide-react';
+import EquipmentInventoryTab from '@/components/foundation/EquipmentInventoryTab';
 
 const FoundationInventoryEntity = base44.entities.FoundationInventory;
 
@@ -80,22 +81,6 @@ const TAB_CONFIGS = {
       { key: 'supplier', label: 'Supplier', type: 'text' },
       { key: 'unit', label: 'Unit', type: 'select', options: [{ value: 'lf', label: 'Linear Ft' }, { value: 'each', label: 'Each' }, { value: 'sheet', label: 'Sheet' }] },
       { key: 'cost_per_unit', label: 'Cost Per Unit ($)', type: 'number' },
-      { key: 'notes', label: 'Notes', type: 'text' },
-    ],
-  },
-  equipment: {
-    label: 'Equipment',
-    types: ['excavation_equipment', 'attachment'],
-    defaultType: 'excavation_equipment',
-    fields: [
-      { key: 'material_name', label: 'Equipment Name *', type: 'text', required: true },
-      { key: 'material_type', label: 'Type', type: 'select', options: [{ value: 'excavation_equipment', label: 'Excavation Equipment' }, { value: 'attachment', label: 'Attachment' }] },
-      { key: 'equipment_type', label: 'Equipment Description', type: 'text' },
-      { key: 'rental_company', label: 'Rental Company', type: 'text' },
-      { key: 'cost_per_day', label: 'Cost Per Day ($)', type: 'number' },
-      { key: 'cost_per_week', label: 'Cost Per Week ($)', type: 'number' },
-      { key: 'cost_per_month', label: 'Cost Per Month ($)', type: 'number' },
-      { key: 'pickup_delivery_cost', label: 'Pickup/Delivery Cost ($)', type: 'number' },
       { key: 'notes', label: 'Notes', type: 'text' },
     ],
   },
@@ -388,7 +373,7 @@ export default function FoundationInventoryPage() {
           <TabsTrigger value="concrete">Concrete</TabsTrigger>
           <TabsTrigger value="rebar">Rebar</TabsTrigger>
           <TabsTrigger value="forming">Forming</TabsTrigger>
-          <TabsTrigger value="equipment">Equipment</TabsTrigger>
+          <TabsTrigger value="equipment" className="flex items-center gap-1"><Wrench className="w-3 h-3" /> Equipment</TabsTrigger>
           <TabsTrigger value="poles">Poles</TabsTrigger>
           <TabsTrigger value="fill_material"><Layers className="w-3 h-3 mr-1" />Wall Fill</TabsTrigger>
         </TabsList>
@@ -439,6 +424,11 @@ export default function FoundationInventoryPage() {
                 ))}
               </div>
             )}
+        </TabsContent>
+
+        {/* EQUIPMENT (Custom UI) */}
+        <TabsContent value="equipment">
+            <EquipmentInventoryTab allItems={items} loadItems={loadItems} />
         </TabsContent>
 
         {/* GENERIC TABS */}
