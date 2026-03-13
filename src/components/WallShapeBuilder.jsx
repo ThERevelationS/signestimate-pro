@@ -1,6 +1,7 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Trash2, Undo2, Plus, Move, RotateCcw } from 'lucide-react';
 
 const SCALE_PX_PER_INCH = 4; // 4 pixels per inch
