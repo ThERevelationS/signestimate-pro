@@ -256,59 +256,90 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
 
       segData.forEach((sd, segIdx) => {
         if (!sd) return;
-        const { x1, z1, x2, z2, dx, dz, dirX, dirZ, angle } = sd;
+        const { x1, z1, dx, dz, dirX, dirZ, angle } = sd;
         const segLen = sd.len;
-        const cx = (x1 + x2) / 2;
-        const cz = (z1 + z2) / 2;
+        const originX = x1, originZ = z1;
 
-        // Find adjacent segments to determine corner overlaps
-        // prevSeg ends at p1, nextSeg starts at p2
-        const prevSd = segData[(segIdx - 1 + segData.length) % segData.length];
-        const nextSd = segData[(segIdx + 1) % segData.length];
         const closed = shape.closed !== false;
+        let prevSd = null;
+        let nextSd = null;
+        
+        if (closed || segIdx > 0) {
+            prevSd = segData[(segIdx - 1 + segData.length) % segData.length];
+        }
+        if (closed || segIdx < segData.length - 1) {
+            nextSd = segData[(segIdx + 1) % segData.length];
+        }
 
-        // Corner overlap: on even courses, this wall's brick extends brickW past p2 corner (over next wall face)
-        // On odd courses, the next wall's brick extends over this wall - so this wall is set back brickW at p2
-        // Same logic applies at p1 with the previous wall.
-        // Result: at each corner, one course the brick sticks out brickW, the other course it ends brickW short.
+        // True masonry corners: alternating pinwheel bond.
+        // At any corner (intersection), one wall extends PAST the intersection by brickW/2 to cover the corner (Dominant),
+        // while the other wall STOPS short of the intersection by brickW/2 + mortar to butt against the dominant wall (Subordinate).
+        // On even courses, Wall A is Dominant, Wall B is Subordinate.
+        // On odd courses, Wall A is Subordinate, Wall B is Dominant.
 
         for (let course = 0; course < numCourses; course++) {
           const y = gradeOffsetFt + course * courseH + brickH / 2;
           const even = course % 2 === 0;
 
-          // Running bond half-brick offset for course
-          const runningOffset = even ? 0 : (brickL + mortarFt) / 2;
-
-          // Determine start and end of brick run in local coords (0 = p1, segLen = p2)
-          // At p1 (start): if closed and prevSd exists:
-          //   even: this wall is "dominant" at start => starts at 0 (or extends to -brickW for overlap into prev)
-          //   odd:  prev wall is dominant => this wall starts at +brickW (set back to avoid collision)
-          // At p2 (end): if closed and nextSd exists:
-          //   even: this wall is "dominant" at end => extends to segLen + brickW
-          //   odd:  next wall is dominant => this wall ends at segLen - brickW
-
           let localStart = 0;
           let localEnd = segLen;
 
-          if (closed) {
-            if (prevSd) {
-              localStart = even ? -brickW : brickW;
+          // Corner at p1 (start)
+          if (prevSd) {
+            if (even) {
+              // Dominant at start: extends backward to cover outer face
+              localStart = -brickW / 2;
+            } else {
+              // Subordinate at start: starts after inner face of prev wall + mortar
+              localStart = brickW / 2 + mortarFt;
+              
+              // Draw the vertical mortar joint in the corner
+              const mCenter = brickW / 2 + mortarFt / 2;
+              const mCx = originX + mCenter * dirX;
+              const mCz = originZ + mCenter * dirZ;
+              const mortar = new THREE.Mesh(new THREE.BoxGeometry(mortarFt, brickH, brickW), mortarMat);
+              mortar.position.set(mCx, y, mCz);
+              mortar.rotation.y = angle;
+              scene.add(mortar);
             }
-            if (nextSd) {
-              localEnd = even ? segLen + brickW : segLen - brickW;
+          }
+
+          // Corner at p2 (end)
+          if (nextSd) {
+            if (even) {
+              // Subordinate at end: stops before inner face of next wall - mortar
+              localEnd = segLen - brickW / 2 - mortarFt;
+              
+              // Draw the vertical mortar joint in the corner
+              const mCenter = segLen - brickW / 2 - mortarFt / 2;
+              const mCx = originX + mCenter * dirX;
+              const mCz = originZ + mCenter * dirZ;
+              const mortar = new THREE.Mesh(new THREE.BoxGeometry(mortarFt, brickH, brickW), mortarMat);
+              mortar.position.set(mCx, y, mCz);
+              mortar.rotation.y = angle;
+              scene.add(mortar);
+            } else {
+              // Dominant at end: extends forward to cover outer face
+              localEnd = segLen + brickW / 2;
             }
           }
 
           // Build brick ranges within [localStart, localEnd]
-          // Start offset is runningOffset from localStart
-          let pos = localStart + runningOffset;
-          // If runningOffset pushes pos before localStart, keep it at localStart
-          if (pos < localStart) pos = localStart;
+          let pos = localStart;
+
+          // If open start and odd course, first brick is a half brick to maintain running bond
+          let firstBrickL = brickL;
+          if (!prevSd && !even) {
+            firstBrickL = brickL / 2;
+          }
 
           const brickRanges = [];
           while (pos < localEnd - 0.01) {
             const spaceLeft = localEnd - pos;
-            const thisBrickL = Math.min(brickL, spaceLeft);
+            const isFirst = brickRanges.length === 0;
+            const maxBrick = isFirst ? firstBrickL : brickL;
+            const thisBrickL = Math.min(maxBrick, spaceLeft);
+            
             if (thisBrickL < 0.02) break;
             brickRanges.push({ left: pos, right: pos + thisBrickL });
             pos += thisBrickL + mortarFt;
@@ -316,21 +347,18 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
 
           if (brickRanges.length === 0) continue;
 
-          const actualLeft = brickRanges[0].left;
-          const actualRight = brickRanges[brickRanges.length - 1].right;
-          const actualSpan = actualRight - actualLeft;
-          const actualCenterLocal = (actualLeft + actualRight) / 2;
-          const actualCx = cx + (actualCenterLocal - segLen/2 + segLen/2 - segLen/2) * dirX;
-          // Proper world position: local 0 = p1 world pos, local segLen = p2 world pos
-          const originX = x1, originZ = z1;
-          const worldCx = originX + actualCenterLocal * dirX;
-          const worldCz = originZ + actualCenterLocal * dirZ;
-
-          // Horizontal mortar bed between courses
+          // Horizontal mortar bed between courses (spans the full structural length to cover corners)
           if (course > 0) {
-            const mortarBedGeo = new THREE.BoxGeometry(actualSpan, mortarFt, brickW);
+            const bedLeft = prevSd ? (even ? -brickW/2 : 0) : 0;
+            const bedRight = nextSd ? (even ? segLen : segLen + brickW/2) : segLen;
+            const bedSpan = bedRight - bedLeft;
+            const bedCenter = (bedLeft + bedRight) / 2;
+            const bedCx = originX + bedCenter * dirX;
+            const bedCz = originZ + bedCenter * dirZ;
+
+            const mortarBedGeo = new THREE.BoxGeometry(bedSpan, mortarFt, brickW);
             const mortarBed = new THREE.Mesh(mortarBedGeo, mortarMat);
-            mortarBed.position.set(worldCx, gradeOffsetFt + course * courseH - mortarFt / 2, worldCz);
+            mortarBed.position.set(bedCx, gradeOffsetFt + course * courseH - mortarFt / 2, bedCz);
             mortarBed.rotation.y = angle;
             scene.add(mortarBed);
           }
@@ -369,9 +397,16 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
 
           // Top mortar cap on final course
           if (course === numCourses - 1) {
-            const topMortarGeo = new THREE.BoxGeometry(actualSpan, mortarFt, brickW);
+            const bedLeft = prevSd ? (even ? -brickW/2 : 0) : 0;
+            const bedRight = nextSd ? (even ? segLen : segLen + brickW/2) : segLen;
+            const bedSpan = bedRight - bedLeft;
+            const bedCenter = (bedLeft + bedRight) / 2;
+            const bedCx = originX + bedCenter * dirX;
+            const bedCz = originZ + bedCenter * dirZ;
+
+            const topMortarGeo = new THREE.BoxGeometry(bedSpan, mortarFt, brickW);
             const topMortar = new THREE.Mesh(topMortarGeo, mortarMat);
-            topMortar.position.set(worldCx, wallTopY - mortarFt / 2, worldCz);
+            topMortar.position.set(bedCx, wallTopY - mortarFt / 2, bedCz);
             topMortar.rotation.y = angle;
             scene.add(topMortar);
           }
