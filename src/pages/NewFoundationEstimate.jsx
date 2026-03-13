@@ -18,6 +18,7 @@ import { UnsavedChangesContext } from '@/components/UnsavedChangesContext';
 import SummaryTab from '@/components/foundation/SummaryTab';
 import BOMTab from '@/components/foundation/BOMTab';
 import EquipmentTab from '@/components/foundation/EquipmentTab';
+import PolePlacer from '@/components/PolePlacer';
 
 const FoundationProjectEntity = base44.entities.FoundationProject;
 const FoundationInventoryEntity = base44.entities.FoundationInventory;
@@ -82,9 +83,11 @@ export default function NewFoundationEstimate() {
     notes: '',
     items: [],
     walls: [],
+    poles: [],
     excavation_method: 'hand_dig',
     selected_concrete_id: '',
   });
+  const [polesData, setPolesData] = useState([]);
   const [items, setItems] = useState([newItem()]);
   const [walls, setWalls] = useState([]);
   const [selectedEquipmentList, setSelectedEquipmentList] = useState([]);
@@ -116,6 +119,7 @@ export default function NewFoundationEstimate() {
         setProject(p);
         setItems(p.items?.length ? p.items.map(i => ({ ...i, _id: i._id || Date.now() + Math.random() })) : [newItem()]);
         setWalls(p.walls?.length ? p.walls.map(w => ({ ...w, _id: w._id || Date.now() + Math.random() })) : []);
+        setPolesData(p.poles || []);
         setSelectedEquipmentList(p.selected_equipment?.length ? p.selected_equipment.map(e => ({ ...e, _id: e._id || Date.now() + Math.random() })) : []);
       }
     }
@@ -202,7 +206,19 @@ export default function NewFoundationEstimate() {
   const totals = (() => {
     const itemsTotal = items.reduce((s, item) => s + calcItemCost(item).total, 0);
     const wallTotal = walls.reduce((s, w) => s + (w.calculatedCosts?.totalCost || 0), 0);
-    return { itemsTotal, wallTotal, grand: itemsTotal + wallTotal };
+    const polesTotal = polesData.reduce((sum, p) => {
+        const inv = inventory.find(i => i.id === p.pole_id);
+        if (!inv) return sum;
+        if (inv.pole_pricing_mode === 'stock_price') {
+            const stockLen = (inv.pole_stock_length_ft || 20) * 12;
+            const pieces = Math.ceil(p.height_inches / stockLen);
+            return sum + (pieces * (inv.pole_stock_price || 0));
+        } else {
+            return sum + ((p.height_inches / 12) * (inv.cost_per_unit || 0));
+        }
+    }, 0);
+
+    return { itemsTotal, wallTotal, polesTotal, grand: itemsTotal + wallTotal + polesTotal };
   })();
 
   const handleSave = async () => {
@@ -212,6 +228,7 @@ export default function NewFoundationEstimate() {
       ...project,
       items: items.map(({ _id, ...rest }) => rest),
       walls: walls.map(({ _id, ...rest }) => rest),
+      poles: polesData.map(({ id, ...rest }) => rest),
       selected_equipment: selectedEquipmentList.map(({ _id, ...rest }) => rest),
       total_labor_cost: totals.grand,
     };
@@ -261,6 +278,7 @@ export default function NewFoundationEstimate() {
                 <TabsTrigger value="info">Project Info</TabsTrigger>
                 <TabsTrigger value="foundation">Foundation ({items.length})</TabsTrigger>
                 <TabsTrigger value="walls">Walls ({walls.length})</TabsTrigger>
+                <TabsTrigger value="poles">Poles ({polesData.length})</TabsTrigger>
                 {project.excavation_method === 'equipment_excavation' && (
                   <TabsTrigger value="equipment">Equipment {selectedEquipmentList.length > 0 ? `(${selectedEquipmentList.length})` : ''}</TabsTrigger>
                 )}
@@ -408,6 +426,16 @@ export default function NewFoundationEstimate() {
                 )}
               </TabsContent>
 
+              {/* POLES */}
+              <TabsContent value="poles" className="space-y-4 pt-4">
+                <PolePlacer 
+                    polesData={polesData} 
+                    polesInventory={poles} 
+                    foundationItems={items} 
+                    onChange={v => { setPolesData(v); markDirty(); }} 
+                />
+              </TabsContent>
+
               {/* EQUIPMENT */}
               {project.excavation_method === 'equipment_excavation' && (
               <TabsContent value="equipment" className="space-y-4 pt-4">
@@ -440,7 +468,7 @@ export default function NewFoundationEstimate() {
             <span className="text-xs text-slate-400">Updates live as you edit</span>
           </div>
           <div className="flex-1 p-3 overflow-hidden">
-            <FoundationWalls3DViewer items={items} walls={walls} />
+            <FoundationWalls3DViewer items={items} walls={walls} polesData={polesData} polesInventory={poles} />
           </div>
         </div>
       </div>
