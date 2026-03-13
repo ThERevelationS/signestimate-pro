@@ -108,9 +108,10 @@ export default function WallShapeBuilder({
   }), [offset]);
 
   // Convert raw canvas pixel to snapped world inches
-  const fromCanvas = useCallback((rawX, rawY) => {
-    const snappedX = snapToGrid(rawX, gridPx);
-    const snappedY = snapToGrid(rawY, gridPx);
+  const fromCanvas = useCallback((rawX, rawY, customGridPx) => {
+    const activeGridPx = customGridPx || gridPx;
+    const snappedX = snapToGrid(rawX, activeGridPx);
+    const snappedY = snapToGrid(rawY, activeGridPx);
     return {
       x: canvasToInches(snappedX, offset.x),
       y: canvasToInches(snappedY, offset.y),
@@ -301,7 +302,8 @@ export default function WallShapeBuilder({
       return;
     }
 
-    const worldPt = fromCanvas(rawX, rawY);
+    const currentGridPx = mode === 'move_wall' ? SCALE_PX_PER_INCH : gridPx;
+    const worldPt = fromCanvas(rawX, rawY, currentGridPx);
 
     if (draggingWall && dragWallStart) {
         const dx = worldPt.x - dragWallStart.x;
@@ -354,7 +356,8 @@ export default function WallShapeBuilder({
     }
 
     const { rawX, rawY } = getRawCanvasPoint(e);
-    const worldPt = fromCanvas(rawX, rawY);
+    const currentGridPx = mode === 'move_wall' ? SCALE_PX_PER_INCH : gridPx;
+    const worldPt = fromCanvas(rawX, rawY, currentGridPx);
 
     if (mode === 'move_wall') {
         if (points.length > 0) {
