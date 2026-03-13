@@ -9,7 +9,6 @@ import { Plus, Trash2, Info, Wrench } from 'lucide-react';
 
 function EquipmentCard({ equipment, selectedEquipment, onUpdate, onRemove, allAttachments }) {
   const eq = equipment; // the inventory item
-  const [showInfo, setShowInfo] = useState(false);
 
   const compatibleAttachments = allAttachments.filter(a => {
     if (!a.compatible_equipment_ids || a.compatible_equipment_ids.length === 0) return true;
@@ -46,17 +45,17 @@ function EquipmentCard({ equipment, selectedEquipment, onUpdate, onRemove, allAt
   return (
     <Card className="border border-slate-200">
       <CardHeader className="py-3 px-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 flex-wrap">
-            <CardTitle className="text-sm font-semibold">{eq.material_name}</CardTitle>
-            {eq.equipment_type && <Badge variant="outline" className="text-xs">{eq.equipment_type}</Badge>}
-            {eq.rental_company && <span className="text-xs text-slate-500">{eq.rental_company}</span>}
-            <Badge variant="secondary" className="text-xs">Total: ${totalCost.toFixed(2)}</Badge>
+        <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <CardTitle className="text-sm font-semibold">{eq.material_name}</CardTitle>
+              {eq.equipment_type && <Badge variant="outline" className="text-xs">{eq.equipment_type}</Badge>}
+              {eq.rental_company && <span className="text-xs text-slate-500">{eq.rental_company}</span>}
+              <Badge variant="secondary" className="text-xs">Total: ${totalCost.toFixed(2)}</Badge>
+            </div>
+            {eq.notes && <p className="text-xs text-slate-500 leading-relaxed max-w-3xl">{eq.notes}</p>}
           </div>
           <div className="flex gap-1">
-            <Button size="sm" variant="ghost" onClick={() => setShowInfo(s => !s)}>
-              <Info className="w-3.5 h-3.5 text-slate-400" />
-            </Button>
             <Button size="sm" variant="ghost" className="text-red-500" onClick={onRemove}>
               <Trash2 className="w-3 h-3" />
             </Button>
@@ -65,12 +64,6 @@ function EquipmentCard({ equipment, selectedEquipment, onUpdate, onRemove, allAt
       </CardHeader>
 
       <CardContent className="px-4 pb-4 space-y-4">
-        {/* Info panel */}
-        {showInfo && eq.notes && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
-            {eq.notes}
-          </div>
-        )}
 
         {/* Rental config */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -224,10 +217,10 @@ export default function EquipmentTab({ inventory, selectedEquipmentList, onUpdat
                   ) : (
                     allEquipment.map(eq => (
                       <SelectItem key={eq.id} value={eq.id}>
-                        <div className="flex flex-col">
+                        <div className="flex flex-col py-1">
                           <span className="font-medium">{eq.material_name}</span>
                           {eq.notes && (
-                            <span className="text-xs text-slate-500 truncate max-w-[320px]">{eq.notes}</span>
+                            <span className="text-xs text-slate-500 whitespace-normal max-w-[450px] mt-0.5">{eq.notes}</span>
                           )}
                         </div>
                       </SelectItem>
@@ -236,9 +229,6 @@ export default function EquipmentTab({ inventory, selectedEquipmentList, onUpdat
                 </SelectContent>
               </Select>
             </div>
-            {allEquipment.length > 0 && (
-              <p className="text-xs text-slate-500 pb-2">Equipment descriptions appear below each item name in the dropdown.</p>
-            )}
           </div>
         </CardContent>
       </Card>
