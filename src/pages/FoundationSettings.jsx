@@ -5,8 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, RefreshCw } from 'lucide-react';
-import SettingsAuthWrapper from '@/components/SettingsAuthWrapper';
+import { Save, RefreshCw, ShieldAlert } from 'lucide-react';
 
 const SettingsEntity = base44.entities.Settings;
 
@@ -37,6 +36,7 @@ export default function FoundationSettings() {
   const [settings, setSettings] = useState({});
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -44,6 +44,12 @@ export default function FoundationSettings() {
 
   const loadSettings = async () => {
     setLoading(true);
+    const user = await base44.auth.me();
+    if (user?.role !== 'admin') {
+      setLoading(false);
+      return;
+    }
+    setIsAdmin(true);
     const raw = await SettingsEntity.filter({ category: ['foundation_pricing', 'foundation_labor', 'foundation_calc'] });
     const map = {};
     raw.forEach(s => { map[s.setting_name] = s; });
@@ -106,8 +112,18 @@ export default function FoundationSettings() {
     return <div className="flex items-center justify-center p-12"><div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>;
   }
 
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
+        <ShieldAlert className="w-16 h-16 text-slate-300" />
+        <h2 className="text-xl font-semibold text-slate-700">Access Restricted</h2>
+        <p className="text-slate-500">Only administrators can modify foundation settings.</p>
+      </div>
+    );
+  }
+
   return (
-    <SettingsAuthWrapper>
+    <div>
       <div className="p-6 max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -201,6 +217,6 @@ export default function FoundationSettings() {
           </TabsContent>
         </Tabs>
       </div>
-    </SettingsAuthWrapper>
+    </div>
   );
 }

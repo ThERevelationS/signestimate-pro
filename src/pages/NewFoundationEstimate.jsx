@@ -38,11 +38,13 @@ function newItem() {
     depth_inches: 36,
     grade_offset_inches: 0,
     include_rebar: false,
-    include_forming: true,
-    include_finishing: true,
+    include_forming: false,
+    include_finishing: false,
     rebar_size: '#4',
     rebar_spacing_length: 12,
     rebar_spacing_width: 12,
+    rebar_layers: 1,
+    rebar_layer_separation_inches: 12,
     selected_pole_id: '',
     pole_offset_from_bottom_inches: 0,
     pole_total_height_inches: 0,
@@ -114,7 +116,7 @@ export default function NewFoundationEstimate() {
         setProject(p);
         setItems(p.items?.length ? p.items.map(i => ({ ...i, _id: i._id || Date.now() + Math.random() })) : [newItem()]);
         setWalls(p.walls?.length ? p.walls.map(w => ({ ...w, _id: w._id || Date.now() + Math.random() })) : []);
-        setSelectedEquipmentList(p.selected_equipment_list?.length ? p.selected_equipment_list.map(e => ({ ...e, _id: e._id || Date.now() + Math.random() })) : []);
+        setSelectedEquipmentList(p.selected_equipment?.length ? p.selected_equipment.map(e => ({ ...e, _id: e._id || Date.now() + Math.random() })) : []);
       }
     }
     setLoading(false);
@@ -165,7 +167,8 @@ export default function NewFoundationEstimate() {
     if (item.include_rebar && item.foundation_type === 'spread_foot') {
       const nBarsL = Math.floor(item.width_inches / (item.rebar_spacing_width || 12)) + 1;
       const nBarsW = Math.floor(item.length_inches / (item.rebar_spacing_length || 12)) + 1;
-      const totalFt = (nBarsL * (item.length_inches / 12) + nBarsW * (item.width_inches / 12)) * (item.quantity || 1);
+      const layers = item.rebar_layers || 1;
+      const totalFt = (nBarsL * (item.length_inches / 12) + nBarsW * (item.width_inches / 12)) * layers * (item.quantity || 1);
       rebarCost = totalFt * rebar_cost;
     }
 
@@ -209,7 +212,7 @@ export default function NewFoundationEstimate() {
       ...project,
       items: items.map(({ _id, ...rest }) => rest),
       walls: walls.map(({ _id, ...rest }) => rest),
-      selected_equipment_list: selectedEquipmentList.map(({ _id, ...rest }) => rest),
+      selected_equipment: selectedEquipmentList.map(({ _id, ...rest }) => rest),
       total_labor_cost: totals.grand,
     };
     if (editId) { await FoundationProjectEntity.update(editId, data); }
@@ -321,7 +324,15 @@ export default function NewFoundationEstimate() {
                           </SelectContent>
                         </Select>
                       </div>
-                      {/* Equipment selection moved to Equipment tab */}
+                      <div className="min-w-[200px]">
+                        <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Concrete Type</Label>
+                        <Select value={project.selected_concrete_id} onValueChange={v => updateProject('selected_concrete_id', v)}>
+                          <SelectTrigger className="h-9 mt-1"><SelectValue placeholder="Select concrete..." /></SelectTrigger>
+                          <SelectContent>
+                            {concreteServices.map(c => <SelectItem key={c.id} value={c.id}>{c.material_name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -545,6 +556,14 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
               <div>
                 <Label className="text-xs">Spacing Along Width (in)</Label>
                 <Input type="number" className="h-8" value={item.rebar_spacing_width} onChange={e => onUpdate('rebar_spacing_width', parseFloat(e.target.value) || 12)} />
+              </div>
+              <div>
+                <Label className="text-xs">Layers</Label>
+                <Input type="number" className="h-8" value={item.rebar_layers || 1} onChange={e => onUpdate('rebar_layers', parseInt(e.target.value) || 1)} min={1} />
+              </div>
+              <div>
+                <Label className="text-xs">Layer Separation (in)</Label>
+                <Input type="number" className="h-8" value={item.rebar_layer_separation_inches || 12} onChange={e => onUpdate('rebar_layer_separation_inches', parseFloat(e.target.value) || 0)} />
               </div>
             </div>
           )}

@@ -177,31 +177,63 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
           group.add(mesh);
         }
 
+        // Forming
+        if (item.include_forming && isSpread) {
+          const formThickness = 1.5 / 12; // 1.5 inches wood
+          const formGeo1 = new THREE.BoxGeometry(lenFt + 2 * formThickness, depFt, formThickness);
+          const formGeo2 = new THREE.BoxGeometry(formThickness, depFt, widFt);
+          const formMat = new THREE.MeshStandardMaterial({ color: 0xba8c63, roughness: 0.9 });
+          
+          // Form sides
+          const f1 = new THREE.Mesh(formGeo1, formMat); f1.position.set(0, -depFt/2 + gradeOff, widFt/2 + formThickness/2);
+          const f2 = new THREE.Mesh(formGeo1, formMat); f2.position.set(0, -depFt/2 + gradeOff, -widFt/2 - formThickness/2);
+          const f3 = new THREE.Mesh(formGeo2, formMat); f3.position.set(lenFt/2 + formThickness/2, -depFt/2 + gradeOff, 0);
+          const f4 = new THREE.Mesh(formGeo2, formMat); f4.position.set(-lenFt/2 - formThickness/2, -depFt/2 + gradeOff, 0);
+          
+          group.add(f1, f2, f3, f4);
+        }
+
         // Rebar
         if (item.include_rebar && isSpread) {
           const rebarMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5, metalness: 0.4 });
           const spacL = (item.rebar_spacing_length || 12) / 12;
           const spacW = (item.rebar_spacing_width || 12) / 12;
+          const layers = item.rebar_layers || 1;
+          const layerSep = (item.rebar_layer_separation_inches || 12) / 12;
           const clearance = 3 / 12;
+          
           const effL = lenFt - 2 * clearance;
           const effW = widFt - 2 * clearance;
-          const nL = Math.max(1, Math.floor(effW / spacW) + 1);
-          const nW = Math.max(1, Math.floor(effL / spacL) + 1);
+          
+          // Force at least 2 bars so we get the perimeter square
+          const nL = Math.max(2, Math.floor(effW / spacW) + 1);
+          const nW = Math.max(2, Math.floor(effL / spacL) + 1);
+          
+          const actualSpacW = effW / (nL - 1);
+          const actualSpacL = effL / (nW - 1);
+          
           const rDia = 0.04;
-          const yPos = -clearance + gradeOff;
-          for (let j = 0; j < nL; j++) {
-            const zOff = -effW / 2 + j * spacW;
-            const rg = new THREE.CylinderGeometry(rDia, rDia, effL, 6);
-            const rm = new THREE.Mesh(rg, rebarMat);
-            rm.rotation.z = Math.PI / 2; rm.position.set(0, yPos, zOff);
-            group.add(rm);
-          }
-          for (let j = 0; j < nW; j++) {
-            const xOff = -effL / 2 + j * spacL;
-            const rg = new THREE.CylinderGeometry(rDia, rDia, effW, 6);
-            const rm = new THREE.Mesh(rg, rebarMat);
-            rm.rotation.x = Math.PI / 2; rm.position.set(xOff, yPos - 0.03, 0);
-            group.add(rm);
+          const baseYPos = -depFt + clearance + gradeOff; // start from bottom
+          
+          for (let layer = 0; layer < layers; layer++) {
+            const yPos = baseYPos + layer * layerSep;
+            
+            // Bars running along length
+            for (let j = 0; j < nL; j++) {
+              const zOff = -effW / 2 + j * actualSpacW;
+              const rg = new THREE.CylinderGeometry(rDia, rDia, effL, 6);
+              const rm = new THREE.Mesh(rg, rebarMat);
+              rm.rotation.z = Math.PI / 2; rm.position.set(0, yPos, zOff);
+              group.add(rm);
+            }
+            // Bars running along width
+            for (let j = 0; j < nW; j++) {
+              const xOff = -effL / 2 + j * actualSpacL;
+              const rg = new THREE.CylinderGeometry(rDia, rDia, effW, 6);
+              const rm = new THREE.Mesh(rg, rebarMat);
+              rm.rotation.x = Math.PI / 2; rm.position.set(xOff, yPos - 0.03, 0); // slightly offset to prevent Z-fighting
+              group.add(rm);
+            }
           }
         }
 
