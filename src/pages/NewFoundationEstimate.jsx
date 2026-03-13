@@ -369,7 +369,7 @@ export default function NewFoundationEstimate() {
                     )}
                   </div>
                   <Button onClick={addWall} size="sm" className="bg-amber-600 hover:bg-amber-700 text-white">
-                    <Plus className="w-4 h-4 mr-1" /> Add Wall
+                    <Plus className="w-4 h-4 mr-1" /> {walls.length === 0 ? 'Add Wall' : 'Add Additional Wall Type'}
                   </Button>
                 </div>
 
@@ -388,11 +388,13 @@ export default function NewFoundationEstimate() {
                     key={wall._id}
                     wall={wall}
                     index={idx}
+                    walls={walls}
                     wallMaterials={wallMaterials}
                     foundationItems={items}
                     settings={settings}
                     onChange={(updated) => updateWall(idx, updated)}
                     onDelete={() => removeWall(idx)}
+                    onFoundationUpdate={updateItem}
                   />
                 ))}
 

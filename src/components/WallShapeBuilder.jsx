@@ -17,6 +17,29 @@ function pointInRects(pt, rects) {
   return rects.some(r => pt.x >= r.minX && pt.x <= r.maxX && pt.y >= r.minY && pt.y <= r.maxY);
 }
 
+function pointInPolygon(point, vs) {
+    let x = point.x, y = point.y;
+    let inside = false;
+    for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        let xi = vs[i].x, yi = vs[i].y;
+        let xj = vs[j].x, yj = vs[j].y;
+        let intersect = ((yi > y) != (yj > y))
+            && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+}
+
+function isPointValid(pt, fRects, otherWalls) {
+    if (fRects.length > 0 && !pointInRects(pt, fRects)) return false;
+    for (const ow of otherWalls) {
+        if (ow.shape?.closed && ow.shape.points?.length >= 3) {
+            if (pointInPolygon(pt, ow.shape.points)) return false;
+        }
+    }
+    return true;
+}
+
 // Convert canvas pixel to world inches (accounting for pan offset and scale)
 function canvasToInches(px, offset) {
   return (px - offset) / SCALE_PX_PER_INCH;
@@ -38,7 +61,9 @@ function segmentLengthInches(p1, p2) {
 
 export default function WallShapeBuilder({
   foundationItems = [],
+  otherWalls = [],
   onShapeChange,
+  onFoundationUpdate = () => {},
   initialShape = null,
   useExistingFoundation = false,
   wallMaterial = null,
@@ -60,6 +85,8 @@ export default function WallShapeBuilder({
   const [draggingPoint, setDraggingPoint] = useState(null);
   const [draggingWall, setDraggingWall] = useState(false);
   const [dragWallStart, setDragWallStart] = useState(null);
+  const [draggingFoundationIndex, setDraggingFoundationIndex] = useState(null);
+  const [dragFoundStart, setDragFoundStart] = useState(null);
   const [editingSegment, setEditingSegment] = useState(null);
 
   const canvasW = 700;
@@ -69,7 +96,7 @@ export default function WallShapeBuilder({
     if (useExistingFoundation || !foundationItems) return [];
     let cumulativeOffsetX = 0;
     const rects = [];
-    foundationItems.forEach(item => {
+    foundationItems.forEach((item, itemIdx) => {
       const qty = item.quantity || 1;
       const gridSize = Math.ceil(Math.sqrt(qty));
       const isSpread = item.foundation_type !== 'pillar';
@@ -81,13 +108,17 @@ export default function WallShapeBuilder({
       const spacingX = footprintX * 1.5 + 1;
       const spacingZ = footprintZ * 1.5 + 1;
 
+      const userOffsetX = (item.offset_x_inches || 0) / 12;
+      const userOffsetZ = (item.offset_z_inches || 0) / 12;
+
       for (let i = 0; i < qty; i++) {
         const col = i % gridSize;
         const row = Math.floor(i / gridSize);
-        const ox = cumulativeOffsetX + col * spacingX + footprintX / 2;
-        const oz = row * spacingZ + footprintZ / 2;
+        const ox = userOffsetX + cumulativeOffsetX + col * spacingX + footprintX / 2;
+        const oz = userOffsetZ + row * spacingZ + footprintZ / 2;
         
         rects.push({
+            itemIdx,
             minX: (ox - footprintX/2) * 12,
             maxX: (ox + footprintX/2) * 12,
             minY: (oz - footprintZ/2) * 12,

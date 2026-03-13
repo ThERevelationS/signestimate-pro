@@ -74,11 +74,13 @@ function calcWallCosts({ wallShape, wallMaterial, wallHeightInches, mortarGapInc
 export default function WallSection({
   wall,
   index,
+  walls = [],
   wallMaterials,
   foundationItems = [],
   settings,
   onChange,
   onDelete,
+  onFoundationUpdate,
 }) {
   const [expanded, setExpanded] = useState(true);
   const [shakeMaterial, setShakeMaterial] = useState(false);
@@ -266,8 +268,10 @@ export default function WallSection({
             <WallShapeBuilder
               foundationItems={foundationItems}
               useExistingFoundation={wall.useExistingFoundation}
+              otherWalls={walls.filter((_, i) => i !== index)}
               wallMaterial={selectedMat}
               onShapeChange={shape => update('shape', shape)}
+              onFoundationUpdate={onFoundationUpdate}
               initialShape={wall.shape}
               onRequireMaterial={() => {
                 setShakeMaterial(true);
