@@ -262,36 +262,55 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
          for (let course = 0; course < numCourses; course++) {
            const y = gradeOffsetFt + course * courseH + brickH / 2;
 
-           // Horizontal mortar bed between courses
+           // Running bond: offset odd courses by half brick+mortar
+           const runningOffset = (course % 2 === 0) ? 0 : (brickL + mortarFt) / 2;
+
+           // Build list of bricks for this course so we can align mortar beds to actual extent
+           // Hard wall boundary: bricks must stay within [-segLen/2, segLen/2]
+           const wallStart = -segLen / 2;
+           const wallEnd = segLen / 2;
+
+           // Step 1: plan brick positions
+           const brickRanges = []; // [{left, right}] in local coords
+           let pos = wallStart + runningOffset;
+
+           // We may start with a partial brick if runningOffset pushes first brick start < wallStart
+           // Adjust first brick start to wallStart but keep stride alignment
+           if (pos < wallStart) pos = wallStart;
+
+           while (pos < wallEnd) {
+             const spaceLeft = wallEnd - pos;
+             if (spaceLeft < 0.02) break;
+             const thisBrickL = Math.min(brickL, spaceLeft);
+             brickRanges.push({ left: pos, right: pos + thisBrickL });
+             pos += thisBrickL + mortarFt;
+           }
+
+           // Step 2: render bricks with mortar joints between them
+           // Also compute actual extent for horizontal mortar beds
+           const actualLeft = brickRanges.length > 0 ? brickRanges[0].left : wallStart;
+           const actualRight = brickRanges.length > 0 ? brickRanges[brickRanges.length - 1].right : wallEnd;
+           const actualSpan = actualRight - actualLeft;
+           const actualCenterLocal = (actualLeft + actualRight) / 2;
+           const actualCx = cx + actualCenterLocal * segDirX;
+           const actualCz = cz + actualCenterLocal * segDirZ;
+
+           // Horizontal mortar bed between courses (matches actual brick span)
            if (course > 0) {
-             const mortarBedGeo = new THREE.BoxGeometry(segLen, mortarFt, brickW);
+             const mortarBedGeo = new THREE.BoxGeometry(actualSpan, mortarFt, brickW);
              const mortarBed = new THREE.Mesh(mortarBedGeo, mortarMat);
-             mortarBed.position.set(cx, gradeOffsetFt + course * courseH - mortarFt / 2, cz);
+             mortarBed.position.set(actualCx, gradeOffsetFt + course * courseH - mortarFt / 2, actualCz);
              mortarBed.rotation.y = angle;
              scene.add(mortarBed);
            }
 
-           // Running bond: offset odd courses by half brick+mortar
-           const runningOffset = (course % 2 === 0) ? 0 : (brickL + mortarFt) / 2;
-
-           // Start edge position, extend by brick depth for corner overlap
-           let edgePos = -segLen / 2 + runningOffset;
-           let firstBrickInSegment = true;
-
-           while (edgePos < segLen / 2 + brickW) {
-             const remainingLen = segLen / 2 + brickW - edgePos;
-             if (remainingLen < 0.05) break;
-
-             // Full brick or trimmed to fit segment
-             const thisBrickL = Math.min(brickL, remainingLen);
-
-             // Brick center position = left edge + half length
-             const brickCenterLocal = edgePos + thisBrickL / 2;
+           brickRanges.forEach((br, idx) => {
+             const brickLen = br.right - br.left;
+             const brickCenterLocal = (br.left + br.right) / 2;
              const brickCx = cx + brickCenterLocal * segDirX;
              const brickCz = cz + brickCenterLocal * segDirZ;
 
-             // Render brick
-             const brickGeo = new THREE.BoxGeometry(thisBrickL, brickH, brickW);
+             const brickGeo = new THREE.BoxGeometry(brickLen, brickH, brickW);
              const brick = new THREE.Mesh(brickGeo, brickMat);
              brick.position.set(brickCx, y, brickCz);
              brick.rotation.y = angle;
@@ -299,32 +318,29 @@ export default function FoundationWalls3DViewer({ items = [], walls = [] }) {
              brick.receiveShadow = true;
              scene.add(brick);
 
-             // Move to right edge of brick
-             edgePos += thisBrickL;
-             firstBrickInSegment = false;
-
-             // Check if there's space for mortar and next brick
-             const spaceAfterMortar = segLen / 2 + brickW - edgePos - mortarFt;
-
-             // Only render mortar if there's room for another brick after it, or if we're not at segment end
-             if (spaceAfterMortar > 0.05 && edgePos < segLen / 2) {
-               const mortarCenterLocal = edgePos + mortarFt / 2;
-               const mortarCx = cx + mortarCenterLocal * segDirX;
-               const mortarCz = cz + mortarCenterLocal * segDirZ;
-               const mortarGeo = new THREE.BoxGeometry(mortarFt, brickH, brickW);
-               const mortar = new THREE.Mesh(mortarGeo, mortarMat);
-               mortar.position.set(mortarCx, y, mortarCz);
-               mortar.rotation.y = angle;
-               scene.add(mortar);
-               edgePos += mortarFt;
+             // Vertical mortar joint to the right of this brick (between bricks only)
+             if (idx < brickRanges.length - 1) {
+               const mortarLeft = br.right;
+               const mortarRight = brickRanges[idx + 1].left;
+               const mortarLen = mortarRight - mortarLeft;
+               if (mortarLen > 0.001) {
+                 const mortarCenterLocal = (mortarLeft + mortarRight) / 2;
+                 const mortarCx = cx + mortarCenterLocal * segDirX;
+                 const mortarCz = cz + mortarCenterLocal * segDirZ;
+                 const mortarGeo = new THREE.BoxGeometry(mortarLen, brickH, brickW);
+                 const mortar = new THREE.Mesh(mortarGeo, mortarMat);
+                 mortar.position.set(mortarCx, y, mortarCz);
+                 mortar.rotation.y = angle;
+                 scene.add(mortar);
+               }
              }
-           }
+           });
 
-           // Top mortar cap on final course
+           // Top mortar cap on final course (matches actual brick span)
            if (course === numCourses - 1) {
-             const topMortarGeo = new THREE.BoxGeometry(segLen, mortarFt, brickW);
+             const topMortarGeo = new THREE.BoxGeometry(actualSpan, mortarFt, brickW);
              const topMortar = new THREE.Mesh(topMortarGeo, mortarMat);
-             topMortar.position.set(cx, wallTopY - mortarFt / 2, cz);
+             topMortar.position.set(actualCx, wallTopY - mortarFt / 2, actualCz);
              topMortar.rotation.y = angle;
              scene.add(topMortar);
            }
