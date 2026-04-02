@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { Camera } from 'lucide-react';
+import { Camera, Maximize, Minimize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /**
@@ -9,13 +9,17 @@ import { Button } from '@/components/ui/button';
  * Wall shape points are in world inches (origin = foundation origin).
  * Foundation item 0 is placed at world origin; its center is at (L/2, 0, W/2) in feet.
  */
-export default function FoundationWalls3DViewer({ items = [], walls = [], polesData = [], polesInventory = [], formingInventory = [] }) {
+export default function FoundationWalls3DViewer({ items = [], walls = [], polesData = [], polesInventory = [], formingInventory = [], beautifyDataUrl = null }) {
   const mountRef = useRef(null);
   const rendererRef = useRef(null);
   const sceneRef = useRef(null);
   const cameraRef = useRef(null);
   const controlsRef = useRef(null);
   const animFrameRef = useRef(null);
+  const groundMatRef = useRef(null);
+  const dirtTexRef = useRef(null);
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // ── Scene setup (once) ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -73,9 +77,13 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
     const dirtTex = new THREE.CanvasTexture(dirtCanvas);
     dirtTex.wrapS = dirtTex.wrapT = THREE.RepeatWrapping;
     dirtTex.repeat.set(20, 20);
+    const groundMat = new THREE.MeshStandardMaterial({ map: dirtTex, roughness: 1.0, transparent: true, opacity: 0.55, depthWrite: false });
+    groundMatRef.current = groundMat;
+    dirtTexRef.current = dirtTex;
+
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(200, 200),
-      new THREE.MeshStandardMaterial({ map: dirtTex, roughness: 1.0, transparent: true, opacity: 0.55, depthWrite: false })
+      groundMat
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.002;
@@ -83,11 +91,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
     ground.userData.isGround = true;
     scene.add(ground);
 
-    const grid = new THREE.GridHelper(100, 50, 0x3d2b1a, 0x5a3f28);
-    grid.position.y = 0.01;
-    grid.material.transparent = true; grid.material.opacity = 0.4;
-    grid.userData.isGrid = true;
-    scene.add(grid);
+    // Removed grid per user request
 
     const animate = () => {
       animFrameRef.current = requestAnimationFrame(animate);
@@ -499,7 +503,34 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
         scene.add(mesh);
     });
 
-    // ── Camera framing ────────────────────────────────────────────────────────
+    // ── Update Ground Texture ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (!groundMatRef.current) return;
+    
+    if (beautifyDataUrl) {
+      const img = new Image();
+      img.onload = () => {
+        const tex = new THREE.Texture(img);
+        tex.needsUpdate = true;
+        // flipY is true by default for THREE.Texture, but our canvas is drawn with standard origin top-left
+        // Three.js maps 0,0 to bottom-left. We need to match.
+        // By default it flips Y, which might make it match since canvas is top-left.
+        tex.colorSpace = THREE.SRGBColorSpace;
+        groundMatRef.current.map = tex;
+        groundMatRef.current.color.setHex(0xffffff); // Remove tint so original color shows
+        groundMatRef.current.opacity = 1.0;
+        groundMatRef.current.needsUpdate = true;
+      };
+      img.src = beautifyDataUrl;
+    } else {
+      groundMatRef.current.map = dirtTexRef.current;
+      groundMatRef.current.color.setHex(0xffffff);
+      groundMatRef.current.opacity = 0.55;
+      groundMatRef.current.needsUpdate = true;
+    }
+  }, [beautifyDataUrl]);
+
+  // ── Camera framing ────────────────────────────────────────────────────────
     if (items.length > 0 && cameraRef.current && controlsRef.current) {
       const first = items[0];
       const lenFt = (first.length_inches || 48) / 12;
@@ -525,16 +556,29 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
   };
 
   return (
-    <div className="relative w-full h-full rounded-xl overflow-hidden bg-slate-200">
-      <div ref={mountRef} className="w-full h-full" />
-      <Button
-        onClick={handleSaveImage}
-        variant="secondary"
-        size="sm"
-        className="absolute top-2 right-2 bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm text-xs"
-      >
-        <Camera className="w-3 h-3 mr-1" /> Save View
-      </Button>
+    <div className={isFullscreen ? "fixed inset-0 z-[100] bg-slate-200 flex flex-col" : "relative w-full h-full rounded-xl overflow-hidden bg-slate-200"}>
+      <div ref={mountRef} className="w-full h-full flex-1" />
+      <div className="absolute top-2 right-2 flex gap-2">
+        <Button
+          onClick={handleSaveImage}
+          variant="secondary"
+          size="sm"
+          className="bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm text-xs"
+        >
+          <Camera className="w-3 h-3 mr-1" /> Save View
+        </Button>
+        <Button
+          onClick={() => {
+            setIsFullscreen(!isFullscreen);
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+          }}
+          variant="secondary"
+          size="sm"
+          className="bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm text-xs"
+        >
+          {isFullscreen ? <><Minimize className="w-3 h-3 mr-1" /> Exit Full Screen</> : <><Maximize className="w-3 h-3 mr-1" /> Full Screen</>}
+        </Button>
+      </div>
       <div className="absolute bottom-2 left-2 text-xs text-white/70 bg-black/30 rounded px-2 py-1 pointer-events-none">
         Drag to orbit · Scroll to zoom
       </div>

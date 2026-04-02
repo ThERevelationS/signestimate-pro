@@ -19,6 +19,7 @@ import SummaryTab from '@/components/foundation/SummaryTab';
 import BOMTab from '@/components/foundation/BOMTab';
 import EquipmentTab from '@/components/foundation/EquipmentTab';
 import PolePlacer from '@/components/PolePlacer';
+import BeautifyCanvas from '@/components/BeautifyCanvas';
 
 const FoundationProjectEntity = base44.entities.FoundationProject;
 const FoundationInventoryEntity = base44.entities.FoundationInventory;
@@ -86,6 +87,7 @@ export default function NewFoundationEstimate() {
     poles: [],
     excavation_method: 'hand_dig',
     selected_concrete_id: '',
+    beautify_data_url: '',
   });
   const [polesData, setPolesData] = useState([]);
   const [items, setItems] = useState([newItem()]);
@@ -281,6 +283,7 @@ export default function NewFoundationEstimate() {
                 <TabsTrigger value="foundation">Foundation ({items.length})</TabsTrigger>
                 <TabsTrigger value="walls">Walls ({walls.length})</TabsTrigger>
                 <TabsTrigger value="poles">Poles ({polesData.length})</TabsTrigger>
+                <TabsTrigger value="beautify">Beautify</TabsTrigger>
                 {project.excavation_method === 'equipment_excavation' && (
                   <TabsTrigger value="equipment">Equipment {selectedEquipmentList.length > 0 ? `(${selectedEquipmentList.length})` : ''}</TabsTrigger>
                 )}
@@ -448,6 +451,15 @@ export default function NewFoundationEstimate() {
                 />
               </TabsContent>
 
+              {/* BEAUTIFY */}
+              <TabsContent value="beautify" className="space-y-4 pt-4">
+                <BeautifyCanvas
+                  dataUrl={project.beautify_data_url}
+                  foundationItems={items}
+                  onChange={v => updateProject('beautify_data_url', v)}
+                />
+              </TabsContent>
+
               {/* EQUIPMENT */}
               {project.excavation_method === 'equipment_excavation' && (
               <TabsContent value="equipment" className="space-y-4 pt-4">
@@ -480,7 +492,14 @@ export default function NewFoundationEstimate() {
             <span className="text-xs text-slate-400">Updates live as you edit</span>
           </div>
           <div className="flex-1 p-3 overflow-hidden">
-            <FoundationWalls3DViewer items={items} walls={walls} polesData={polesData} polesInventory={poles} formingInventory={formingInventory} />
+            <FoundationWalls3DViewer 
+               items={items} 
+               walls={walls} 
+               polesData={polesData} 
+               polesInventory={poles} 
+               formingInventory={formingInventory} 
+               beautifyDataUrl={project.beautify_data_url} 
+            />
           </div>
         </div>
       </div>
