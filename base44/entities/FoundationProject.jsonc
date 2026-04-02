@@ -407,6 +407,9 @@
     },
     "notes": {
       "type": "string"
+    },
+    "ai_engineering_recommendation": {
+      "type": "string"
     }
   },
   "required": [

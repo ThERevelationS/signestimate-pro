@@ -20,6 +20,8 @@ import BOMTab from '@/components/foundation/BOMTab';
 import EquipmentTab from '@/components/foundation/EquipmentTab';
 import PolePlacer from '@/components/PolePlacer';
 import BeautifyCanvas from '@/components/BeautifyCanvas';
+import AIEngineeringCalculatorModal from '@/components/foundation/AIEngineeringCalculatorModal';
+import { Bot } from 'lucide-react';
 
 const FoundationProjectEntity = base44.entities.FoundationProject;
 const FoundationInventoryEntity = base44.entities.FoundationInventory;
@@ -333,8 +335,28 @@ export default function NewFoundationEstimate() {
 
               {/* FOUNDATION ITEMS */}
               <TabsContent value="foundation" className="space-y-4 pt-4">
+                
+                {/* AI Engineering Calculator */}
+                <div className="flex flex-col items-start gap-4">
+                  <AIEngineeringCalculatorModal onSave={(recommendation) => updateProject('ai_engineering_recommendation', recommendation)} />
+                  
+                  {project.ai_engineering_recommendation && (
+                    <Card className="w-full border-indigo-200 bg-indigo-50 shadow-sm">
+                      <CardHeader className="py-3 px-4 border-b border-indigo-100 flex flex-row items-center gap-2">
+                        <Bot className="w-4 h-4 text-indigo-600" />
+                        <CardTitle className="text-sm font-semibold text-indigo-900">AI Engineering Recommendations</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4">
+                        <div className="text-sm text-indigo-950 whitespace-pre-wrap font-medium">
+                          {project.ai_engineering_recommendation}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
                 {/* Excavation Settings Card */}
-                <Card className="border-slate-200 bg-slate-50">
+                <Card className="border-slate-200 bg-slate-50 mt-4">
                   <CardContent className="py-3 px-4">
                     <div className="flex flex-wrap items-end gap-4">
                       <div className="min-w-[200px]">
