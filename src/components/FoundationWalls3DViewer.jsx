@@ -503,7 +503,23 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
         scene.add(mesh);
     });
 
-    // ── Update Ground Texture ───────────────────────────────────────────────────
+    // ── Camera framing ────────────────────────────────────────────────────────
+    if (items.length > 0 && cameraRef.current && controlsRef.current) {
+      const first = items[0];
+      const lenFt = (first.length_inches || 48) / 12;
+      const widFt = (first.width_inches || 48) / 12;
+      const cx = lenFt / 2;
+      const cz = widFt / 2;
+      const dim = Math.max(lenFt, widFt, (first.depth_inches || 36) / 12);
+      const d = Math.max(dim * 3.5, 8);
+      cameraRef.current.position.set(cx + d, d * 0.7, cz + d);
+      cameraRef.current.lookAt(cx, 0, cz);
+      controlsRef.current.target.set(cx, 0, cz);
+      controlsRef.current.update();
+    }
+  }, [items, walls, polesData]);
+
+  // ── Update Ground Texture ───────────────────────────────────────────────────
   useEffect(() => {
     if (!groundMatRef.current) return;
     
@@ -529,22 +545,6 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
       groundMatRef.current.needsUpdate = true;
     }
   }, [beautifyDataUrl]);
-
-  // ── Camera framing ────────────────────────────────────────────────────────
-    if (items.length > 0 && cameraRef.current && controlsRef.current) {
-      const first = items[0];
-      const lenFt = (first.length_inches || 48) / 12;
-      const widFt = (first.width_inches || 48) / 12;
-      const cx = lenFt / 2;
-      const cz = widFt / 2;
-      const dim = Math.max(lenFt, widFt, (first.depth_inches || 36) / 12);
-      const d = Math.max(dim * 3.5, 8);
-      cameraRef.current.position.set(cx + d, d * 0.7, cz + d);
-      cameraRef.current.lookAt(cx, 0, cz);
-      controlsRef.current.target.set(cx, 0, cz);
-      controlsRef.current.update();
-    }
-  }, [items, walls, polesData]);
 
   const handleSaveImage = () => {
     if (rendererRef.current) {
