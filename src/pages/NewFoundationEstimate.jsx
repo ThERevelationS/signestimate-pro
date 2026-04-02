@@ -352,21 +352,28 @@ export default function NewFoundationEstimate() {
               <TabsContent value="foundation" className="space-y-4 pt-4">
                 
                 {/* AI Engineering Calculator */}
-                <div className="flex flex-col items-start gap-4">
-                  <AIEngineeringCalculatorModal onSave={(recommendation) => updateProject('ai_engineering_recommendation', recommendation)} />
+                <div className="flex flex-col items-start gap-4 w-full">
+                  <div className="w-full bg-indigo-50 border-2 border-indigo-200 border-dashed rounded-xl p-5 flex flex-col md:flex-row items-center justify-between text-left gap-4 shadow-sm">
+                    <div>
+                      <h3 className="text-base font-bold text-indigo-900 flex items-center gap-2"><Bot className="w-5 h-5 text-indigo-600"/> AI Engineering Assistant</h3>
+                      <p className="text-sm text-indigo-700 mt-1">Generate concise wind load calculations and sizing recommendations for your foundation and poles.</p>
+                    </div>
+                    <AIEngineeringCalculatorModal onSave={(recommendation) => updateProject('ai_engineering_recommendation', recommendation)} />
+                  </div>
                   
                   {project.ai_engineering_recommendation && (
-                    <Card className="w-full border-indigo-200 bg-indigo-50 shadow-sm">
-                      <CardHeader className="py-3 px-4 border-b border-indigo-100 flex flex-row items-center gap-2">
-                        <Bot className="w-4 h-4 text-indigo-600" />
-                        <CardTitle className="text-sm font-semibold text-indigo-900">AI Engineering Recommendations</CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-4">
-                        <div className="text-sm text-indigo-950 whitespace-pre-wrap font-medium">
-                          {project.ai_engineering_recommendation}
+                    <details className="w-full group" open>
+                      <summary className="list-none w-full border border-indigo-200 bg-white shadow-sm rounded-lg py-3 px-4 flex flex-row items-center justify-between cursor-pointer hover:bg-slate-50 font-semibold text-indigo-900 text-sm transition-colors">
+                        <div className="flex items-center gap-2">
+                          <Bot className="w-4 h-4 text-indigo-600" />
+                          AI Engineering Recommendations
                         </div>
-                      </CardContent>
-                    </Card>
+                        <span className="group-open:rotate-180 transition-transform duration-200">▼</span>
+                      </summary>
+                      <div className="p-5 border border-t-0 border-indigo-200 bg-indigo-50/30 rounded-b-lg -mt-1 text-sm text-indigo-950 whitespace-pre-wrap font-medium leading-relaxed">
+                        {project.ai_engineering_recommendation}
+                      </div>
+                    </details>
                   )}
                 </div>
 

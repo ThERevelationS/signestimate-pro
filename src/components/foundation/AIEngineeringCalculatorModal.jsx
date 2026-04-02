@@ -47,8 +47,8 @@ export default function AIEngineeringCalculatorModal({ onSave }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2">
-          <Bot className="w-4 h-4" /> AI Engineering Calculator
+        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 font-bold px-6 shadow-md flex-shrink-0">
+          <Bot className="w-4 h-4" /> Run AI Calculator
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">

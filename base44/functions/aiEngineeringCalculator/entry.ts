@@ -23,7 +23,7 @@ Criteria provided by the user:
 - Qty of Poles: ${body.qtyPoles || 'Not provided'}
 - Additional Info: ${body.additionalInfo || 'None'}
 
-Provide a highly professional, simple breakdown of the recommended foundation size, pole size, and estimated wind loads. Keep it concise but accurate, referencing standard engineering principles for signs. Do not use markdown headers, use simple text formatting.`;
+Provide a VERY CONCISE, highly professional breakdown of the recommended foundation size, pole size, and estimated wind loads. MAXIMUM 3-4 SENTENCES or a short bulleted list. Do not explain the math or write long paragraphs. Do not use markdown headers.`;
 
     const result = await base44.integrations.Core.InvokeLLM({
       prompt: prompt,
