@@ -355,7 +355,7 @@ export default function WallShapeBuilder({
     }
 
     const currentGridPx = mode === 'move_wall' || draggingFoundationIndex !== null ? SCALE_PX_PER_INCH : gridPx;
-    const worldPt = fromCanvas(rawX, rawY, currentGridPx);
+    let worldPt = fromCanvas(rawX, rawY, currentGridPx);
 
     if (draggingFoundationIndex !== null && dragFoundStart) {
         const dx = worldPt.x - dragFoundStart.x;
@@ -387,27 +387,35 @@ export default function WallShapeBuilder({
         return;
     }
 
+    // Check proximity to first point (in canvas pixels)
+    let isNearFirst = false;
+    if (points.length >= 3 && !closed) {
+      const cp0 = { x: inchesToCanvas(points[0].x, offset.x), y: inchesToCanvas(points[0].y, offset.y) };
+      const dPx = dist({ x: rawX, y: rawY }, cp0);
+      isNearFirst = dPx < SNAP_DISTANCE;
+      setNearFirstPoint(isNearFirst);
+    } else {
+      setNearFirstPoint(false);
+    }
+
+    // Enforce 90-degree walls
+    if (mode === 'draw' && points.length > 0 && !isNearFirst) {
+        const lastPt = points[points.length - 1];
+        const dx = Math.abs(worldPt.x - lastPt.x);
+        const dy = Math.abs(worldPt.y - lastPt.y);
+        if (dx > dy) {
+            worldPt.y = lastPt.y;
+        } else {
+            worldPt.x = lastPt.x;
+        }
+    }
+
     if (draggingPoint !== null) {
-      if (fRects.length === 0 || pointInRects(worldPt, fRects)) {
-        setPoints(prev => {
-          const arr = [...prev];
-          arr[draggingPoint] = worldPt;
-          return arr;
-        });
-      }
+      // Disabled dragging points to prevent angled walls
       return;
     }
 
     setHoverInches(worldPt);
-
-    // Check proximity to first point (in canvas pixels)
-    if (points.length >= 3 && !closed) {
-      const cp0 = { x: inchesToCanvas(points[0].x, offset.x), y: inchesToCanvas(points[0].y, offset.y) };
-      const dPx = dist({ x: rawX, y: rawY }, cp0);
-      setNearFirstPoint(dPx < SNAP_DISTANCE);
-    } else {
-      setNearFirstPoint(false);
-    }
   };
 
   const handleMouseDown = (e) => {
@@ -447,7 +455,6 @@ export default function WallShapeBuilder({
     for (let i = 0; i < points.length; i++) {
       const cp = { x: inchesToCanvas(points[i].x, offset.x), y: inchesToCanvas(points[i].y, offset.y) };
       if (dist({ x: rawX, y: rawY }, cp) < 10) {
-        setDraggingPoint(i);
         setSelectedPointIndex(i);
         return;
       }
@@ -457,9 +464,27 @@ export default function WallShapeBuilder({
 
     // Close shape if near first point
     if (points.length >= 3 && nearFirstPoint) {
+      const lastPt = points[points.length - 1];
+      const firstPt = points[0];
+      if (Math.abs(lastPt.x - firstPt.x) > 0.1 && Math.abs(lastPt.y - firstPt.y) > 0.1) {
+          // Inject a corner to maintain 90 degrees
+          setPoints(prev => [...prev, { x: firstPt.x, y: lastPt.y }]);
+      }
       setClosed(true);
       setNearFirstPoint(false);
       return;
+    }
+
+    // Enforce 90-degree walls for the click
+    if (mode === 'draw' && points.length > 0) {
+        const lastPt = points[points.length - 1];
+        const dx = Math.abs(worldPt.x - lastPt.x);
+        const dy = Math.abs(worldPt.y - lastPt.y);
+        if (dx > dy) {
+            worldPt.y = lastPt.y;
+        } else {
+            worldPt.x = lastPt.x;
+        }
     }
 
     if (fRects.length > 0 && !pointInRects(worldPt, fRects)) {
@@ -502,6 +527,7 @@ export default function WallShapeBuilder({
   };
 
   const handleDoubleClick = (e) => {
+    if (closed) return; // Prevent editing segments when closed to avoid breaking 90-degree angles
     if (points.length < 2) return;
     const { rawX, rawY } = getRawCanvasPoint(e);
     const segs = closed ? points.length : points.length - 1;
@@ -565,7 +591,7 @@ export default function WallShapeBuilder({
     setPoints(prev => {
         const arr = [...prev];
         if (closed) {
-            arr[(idx + 1) % arr.length] = newP2;
+            return prev; // Editing closed segments is disabled to preserve 90-degree angles
         } else {
             for (let i = idx + 1; i < arr.length; i++) {
                 arr[i] = { x: arr[i].x + deltaX, y: arr[i].y + deltaY };
@@ -664,10 +690,10 @@ export default function WallShapeBuilder({
       <p className="text-xs text-slate-500">
         {!closed
           ? `Click to place points (Snaps to ${snapInch}"). Move cursor near first point to auto-close. Pan to view. Move Wall to reposition. Double-click a measurement to edit.`
-          : 'Shape closed. Drag points to refine, use Move Wall to reposition, or double-click a measurement to edit. Click "Reset" to start over.'}
+          : 'Shape closed. Use Move Wall to reposition. To edit lengths, click Undo to open the shape. Click "Reset" to start over.'}
       </p>
 
-      {points.length > 1 && (
+      {points.length > 1 && !closed && (
         <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
             <h4 className="text-xs font-semibold text-slate-700 mb-2">Segment Measurements</h4>
             <div className="flex flex-wrap gap-4">
