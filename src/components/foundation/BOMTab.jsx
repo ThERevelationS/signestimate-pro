@@ -3,8 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, Download, ClipboardCopy } from 'lucide-react';
 
-export default function BOMTab({ items, walls, project }) {
+export default function BOMTab({ items, walls, project, inventory = [] }) {
   const [allCopied, setAllCopied] = useState(false);
+
+  const selectedConcrete = inventory.find(c => c.id === project.selected_concrete_id);
+  const isBagged = selectedConcrete?.material_type === 'bagged_concrete';
 
   // Calculate quantities
   let totalConcreteCY = 0;
@@ -38,8 +41,15 @@ export default function BOMTab({ items, walls, project }) {
     totalBricks += (w.calculatedCosts?.totalBricks || 0);
   });
 
+  let concreteQty = totalConcreteCY.toFixed(2);
+  let concreteUnit = 'Cubic Yards (CY)';
+  if (isBagged) {
+    concreteQty = Math.ceil(totalConcreteCY * 45);
+    concreteUnit = 'Bags (approx 80lb)';
+  }
+
   const materials = [
-    { name: 'Concrete', qty: totalConcreteCY.toFixed(2), unit: 'Cubic Yards (CY)' },
+    { name: 'Concrete', qty: concreteQty, unit: concreteUnit },
     { name: 'Excavation Volume', qty: totalExcavationCY.toFixed(2), unit: 'Cubic Yards (CY)' },
     { name: 'Rebar', qty: totalRebarFt.toFixed(2), unit: 'Linear Feet' },
     { name: 'Wall Units (Bricks/Blocks)', qty: totalBricks, unit: 'Units' },

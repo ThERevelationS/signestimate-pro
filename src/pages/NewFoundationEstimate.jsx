@@ -170,7 +170,13 @@ export default function NewFoundationEstimate() {
     }
     volumeCY = volumeCY * (item.quantity || 1);
 
-    const concreteCost = volumeCY * conc_cost;
+    let concreteCost = 0;
+    if (selectedConcrete?.material_type === 'bagged_concrete') {
+      const bags = Math.ceil(volumeCY * 45); // ~45 80lb bags per CY
+      concreteCost = bags * (selectedConcrete.cost_per_unit || 5); // Fallback to $5/bag if not set
+    } else {
+      concreteCost = volumeCY * conc_cost;
+    }
 
     let rebarCost = 0;
     if (item.include_rebar && item.foundation_type === 'spread_foot') {
@@ -205,7 +211,16 @@ export default function NewFoundationEstimate() {
       excavationCost = excVol * getSetting('foundation_equipment_excavation_cost_per_cy', 15);
     }
 
-    return { concreteCost, rebarCost, formingCost, finishingCost, excavationCost, total: concreteCost + rebarCost + formingCost + finishingCost + excavationCost };
+    return { 
+      concreteCost, 
+      concreteBags: selectedConcrete?.material_type === 'bagged_concrete' ? Math.ceil(volumeCY * 45) : null,
+      volumeCY,
+      rebarCost, 
+      formingCost, 
+      finishingCost, 
+      excavationCost, 
+      total: concreteCost + rebarCost + formingCost + finishingCost + excavationCost 
+    };
   };
 
   const totals = (() => {
@@ -501,7 +516,7 @@ export default function NewFoundationEstimate() {
 
               {/* BOM */}
               <TabsContent value="bom" className="space-y-4 pt-4">
-                <BOMTab items={items} walls={walls} project={project} />
+                <BOMTab items={items} walls={walls} project={project} inventory={inventory} />
               </TabsContent>
             </Tabs>
           </div>
@@ -707,7 +722,10 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
           {/* Cost breakdown */}
           {costs && (
             <div className="bg-slate-50 rounded-lg p-3 grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
-              <div><p className="text-slate-400">Concrete</p><p className="font-medium">${costs.concreteCost.toFixed(2)}</p></div>
+              <div>
+                <p className="text-slate-400">Concrete {costs.concreteBags ? `(${costs.concreteBags} bags)` : ''}</p>
+                <p className="font-medium">${costs.concreteCost.toFixed(2)}</p>
+              </div>
               <div><p className="text-slate-400">Rebar</p><p className="font-medium">${costs.rebarCost.toFixed(2)}</p></div>
               <div><p className="text-slate-400">Forming</p><p className="font-medium">${costs.formingCost.toFixed(2)}</p></div>
               <div><p className="text-slate-400">Finishing</p><p className="font-medium">${costs.finishingCost.toFixed(2)}</p></div>
