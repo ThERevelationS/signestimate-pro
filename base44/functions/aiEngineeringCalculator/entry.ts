@@ -23,7 +23,7 @@ Criteria provided by the user:
 - Qty of Poles: ${body.qtyPoles || 'Not provided'}
 - Additional Info: ${body.additionalInfo || 'None'}
 
-Provide a VERY CONCISE, highly professional breakdown of the recommended foundation size, pole size, and estimated wind loads. MAXIMUM 3-4 SENTENCES or a short bulleted list. Do not explain the math or write long paragraphs. Do not use markdown headers.`;
+Provide an EXTREMELY CONCISE, highly professional breakdown. Provide ONLY the recommended foundation size, pole size, and estimated wind loads in a short, 3-bullet list. DO NOT write any introductory or concluding sentences. DO NOT explain the math. KEEP IT UNDER 40 WORDS TOTAL.`;
 
     const result = await base44.integrations.Core.InvokeLLM({
       prompt: prompt,
