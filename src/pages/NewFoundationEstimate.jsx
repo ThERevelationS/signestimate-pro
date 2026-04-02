@@ -148,7 +148,8 @@ export default function NewFoundationEstimate() {
   const getSetting = (key, def) => parseFloat(settings[key] || def);
 
   const calcItemCost = (item) => {
-    const conc_cost = item.custom_concrete_cost_per_cy || getSetting('foundation_concrete_cost_per_cy', 135);
+    const selectedConcrete = inventory.find(c => c.id === project.selected_concrete_id);
+    const conc_cost = item.custom_concrete_cost_per_cy || selectedConcrete?.cost_per_unit || getSetting('foundation_concrete_cost_per_cy', 135);
     const rebar_cost = item.custom_rebar_cost_per_ft || getSetting('foundation_rebar_cost_per_ft', 0.75);
     const forming_labor = getSetting('foundation_forming_labor_rate', 55);
     const finishing_labor = getSetting('foundation_finishing_labor_rate', 50);
@@ -241,6 +242,7 @@ export default function NewFoundationEstimate() {
 
   const poles = inventory.filter(i => i.material_type === 'pole');
   const concreteServices = inventory.filter(i => i.material_type === 'concrete_service' || i.material_type === 'bagged_concrete');
+  const formingInventory = inventory.filter(i => i.material_type === 'forming_material');
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen"><div className="w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full animate-spin" /></div>;
@@ -347,7 +349,16 @@ export default function NewFoundationEstimate() {
                         <Select value={project.selected_concrete_id} onValueChange={v => updateProject('selected_concrete_id', v)}>
                           <SelectTrigger className="h-9 mt-1"><SelectValue placeholder="Select concrete..." /></SelectTrigger>
                           <SelectContent>
-                            {concreteServices.map(c => <SelectItem key={c.id} value={c.id}>{c.material_name}</SelectItem>)}
+                            {concreteServices.map(c => (
+                              <SelectItem key={c.id} value={c.id}>
+                                <div className="flex flex-col text-left py-1 max-w-[400px]">
+                                   <span className="font-medium">{c.material_name}</span>
+                                   {(c.material_description || c.notes) && (
+                                       <span className="text-xs text-slate-500 whitespace-normal mt-0.5">{c.material_description || c.notes}</span>
+                                   )}
+                                </div>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -364,6 +375,7 @@ export default function NewFoundationEstimate() {
                     onRemove={() => removeItem(idx)}
                     poles={poles}
                     concreteServices={concreteServices}
+                    formingInventory={formingInventory}
                     costs={calcItemCost(item)}
                     excavationMethod={project.excavation_method}
                     excavationEquipment={inventory.find(i => i.id === project.selected_equipment_id)}
@@ -468,7 +480,7 @@ export default function NewFoundationEstimate() {
             <span className="text-xs text-slate-400">Updates live as you edit</span>
           </div>
           <div className="flex-1 p-3 overflow-hidden">
-            <FoundationWalls3DViewer items={items} walls={walls} polesData={polesData} polesInventory={poles} />
+            <FoundationWalls3DViewer items={items} walls={walls} polesData={polesData} polesInventory={poles} formingInventory={formingInventory} />
           </div>
         </div>
       </div>
@@ -477,7 +489,7 @@ export default function NewFoundationEstimate() {
 }
 
 // ── Foundation Item Row ──
-function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteServices, costs, excavationMethod, excavationEquipment }) {
+function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteServices, formingInventory, costs, excavationMethod, excavationEquipment }) {
   const [expanded, setExpanded] = useState(true);
 
   return (
@@ -582,6 +594,26 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
               <Label htmlFor={`finishing-${index}`} className="text-xs cursor-pointer">Include Finishing</Label>
             </div>
           </div>
+
+          {/* Forming selection */}
+          {item.include_forming && (
+            <div className="bg-amber-50 border border-amber-100 rounded-lg p-3">
+              <Label className="text-xs">Forming Material</Label>
+              <Select value={item.selected_forming_id || ''} onValueChange={v => onUpdate('selected_forming_id', v)}>
+                <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Select forming material..." /></SelectTrigger>
+                <SelectContent>
+                  {formingInventory?.map(f => (
+                    <SelectItem key={f.id} value={f.id}>
+                      <div className="flex flex-col text-left py-1 max-w-[400px]">
+                         <span className="font-medium">{f.material_name}</span>
+                         {(f.material_description || f.notes) && <span className="text-xs text-slate-500 whitespace-normal mt-0.5">{f.material_description || f.notes}</span>}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Rebar spacing — only shown when rebar is checked */}
           {item.include_rebar && item.foundation_type === 'spread_foot' && (

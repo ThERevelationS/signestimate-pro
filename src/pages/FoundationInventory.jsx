@@ -47,6 +47,7 @@ const TAB_CONFIGS = {
     defaultType: 'concrete_service',
     fields: [
       { key: 'material_name', label: 'Material Name *', type: 'text', required: true },
+      { key: 'material_description', label: 'Description', type: 'text' },
       { key: 'material_type', label: 'Type', type: 'select', options: [{ value: 'concrete_service', label: 'Concrete Service (ready-mix)' }, { value: 'bagged_concrete', label: 'Bagged Concrete' }] },
       { key: 'supplier', label: 'Supplier', type: 'text' },
       { key: 'unit', label: 'Unit', type: 'select', options: [{ value: 'cy', label: 'Cubic Yard (CY)' }, { value: 'bag', label: 'Bag' }, { value: 'each', label: 'Each' }] },
@@ -76,6 +77,7 @@ const TAB_CONFIGS = {
     defaultType: 'forming_material',
     fields: [
       { key: 'material_name', label: 'Material Name *', type: 'text', required: true },
+      { key: 'material_description', label: 'Description', type: 'text' },
       { key: 'lumber_size', label: 'Lumber Size', type: 'select', options: [{ value: '2x4', label: '2x4' }, { value: '2x6', label: '2x6' }, { value: '2x8', label: '2x8' }, { value: '2x10', label: '2x10' }, { value: '2x12', label: '2x12' }, { value: 'plywood_3/4', label: 'Plywood 3/4"' }, { value: 'custom', label: 'Custom' }] },
       { key: 'thickness_inches', label: 'Thickness (inches)', type: 'number' },
       { key: 'supplier', label: 'Supplier', type: 'text' },

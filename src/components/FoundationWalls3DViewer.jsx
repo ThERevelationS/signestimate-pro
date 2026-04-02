@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
  * Wall shape points are in world inches (origin = foundation origin).
  * Foundation item 0 is placed at world origin; its center is at (L/2, 0, W/2) in feet.
  */
-export default function FoundationWalls3DViewer({ items = [], walls = [], polesData = [], polesInventory = [] }) {
+export default function FoundationWalls3DViewer({ items = [], walls = [], polesData = [], polesInventory = [], formingInventory = [] }) {
   const mountRef = useRef(null);
   const rendererRef = useRef(null);
   const sceneRef = useRef(null);
@@ -179,16 +179,34 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
 
         // Forming
         if (item.include_forming && isSpread) {
-          const formThickness = 1.5 / 12; // 1.5 inches wood
-          const formGeo1 = new THREE.BoxGeometry(lenFt + 2 * formThickness, depFt, formThickness);
-          const formGeo2 = new THREE.BoxGeometry(formThickness, depFt, widFt);
+          let formHeightFt = depFt;
+          let formThickness = 1.5 / 12;
+          if (item.selected_forming_id) {
+              const formInvMat = formingInventory.find(f => f.id === item.selected_forming_id);
+              if (formInvMat) {
+                  formThickness = (formInvMat.thickness_inches || 1.5) / 12;
+                  if (formInvMat.lumber_size === '2x4') formHeightFt = 3.5 / 12;
+                  else if (formInvMat.lumber_size === '2x6') formHeightFt = 5.5 / 12;
+                  else if (formInvMat.lumber_size === '2x8') formHeightFt = 7.25 / 12;
+                  else if (formInvMat.lumber_size === '2x10') formHeightFt = 9.25 / 12;
+                  else if (formInvMat.lumber_size === '2x12') formHeightFt = 11.25 / 12;
+                  else if (formInvMat.lumber_size === 'plywood_3/4') formHeightFt = 48 / 12;
+              }
+          }
+          if (formHeightFt > depFt) formHeightFt = depFt;
+          
+          const formGeo1 = new THREE.BoxGeometry(lenFt + 2 * formThickness, formHeightFt, formThickness);
+          const formGeo2 = new THREE.BoxGeometry(formThickness, formHeightFt, widFt);
           const formMat = new THREE.MeshStandardMaterial({ color: 0xba8c63, roughness: 0.9 });
           
+          const topOfFoundation = gradeOff;
+          const centerY = topOfFoundation - formHeightFt / 2;
+
           // Form sides
-          const f1 = new THREE.Mesh(formGeo1, formMat); f1.position.set(0, -depFt/2 + gradeOff, widFt/2 + formThickness/2);
-          const f2 = new THREE.Mesh(formGeo1, formMat); f2.position.set(0, -depFt/2 + gradeOff, -widFt/2 - formThickness/2);
-          const f3 = new THREE.Mesh(formGeo2, formMat); f3.position.set(lenFt/2 + formThickness/2, -depFt/2 + gradeOff, 0);
-          const f4 = new THREE.Mesh(formGeo2, formMat); f4.position.set(-lenFt/2 - formThickness/2, -depFt/2 + gradeOff, 0);
+          const f1 = new THREE.Mesh(formGeo1, formMat); f1.position.set(0, centerY, widFt/2 + formThickness/2);
+          const f2 = new THREE.Mesh(formGeo1, formMat); f2.position.set(0, centerY, -widFt/2 - formThickness/2);
+          const f3 = new THREE.Mesh(formGeo2, formMat); f3.position.set(lenFt/2 + formThickness/2, centerY, 0);
+          const f4 = new THREE.Mesh(formGeo2, formMat); f4.position.set(-lenFt/2 - formThickness/2, centerY, 0);
           
           group.add(f1, f2, f3, f4);
         }
@@ -495,7 +513,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
       controlsRef.current.target.set(cx, 0, cz);
       controlsRef.current.update();
     }
-  }, [items, walls]);
+  }, [items, walls, polesData]);
 
   const handleSaveImage = () => {
     if (rendererRef.current) {
