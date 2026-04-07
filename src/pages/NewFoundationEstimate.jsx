@@ -105,6 +105,10 @@ export default function NewFoundationEstimate() {
   const [loading, setLoading] = useState(true);
   const [missingFields, setMissingFields] = useState([]);
   const [show3D, setShow3D] = useState(true);
+  const [lastSaved, setLastSaved] = useState(null);
+  const [autoSaving, setAutoSaving] = useState(false);
+
+  const autoSaveRef = React.useRef();
 
   useEffect(() => { loadData(); }, []);
 
@@ -253,18 +257,24 @@ export default function NewFoundationEstimate() {
     return { itemsTotal, wallTotal, polesTotal, grand: itemsTotal + wallTotal + polesTotal };
   })();
 
-  const handleSave = async () => {
+  const handleSave = async (isAutoSave = false) => {
+    if (saving || autoSaving) return;
+    
     const missing = [];
     if (!project.project_name) missing.push('project_name');
     if (!project.client_name) missing.push('client_name');
     
     if (missing.length > 0) {
+      if (isAutoSave) return;
       setMissingFields(missing);
       setActiveTab('info');
       setTimeout(() => setMissingFields([]), 3000);
       return;
     }
-    setSaving(true);
+    
+    if (isAutoSave) setAutoSaving(true);
+    else setSaving(true);
+    
     const data = {
       ...project,
       items: items.map(({ _id, ...rest }) => rest),
@@ -273,11 +283,50 @@ export default function NewFoundationEstimate() {
       selected_equipment: selectedEquipmentList.map(({ _id, ...rest }) => rest),
       total_labor_cost: totals.grand,
     };
-    if (editId) { await FoundationProjectEntity.update(editId, data); }
-    else { await FoundationProjectEntity.create(data); }
-    setIsDirty(false);
-    setSaving(false);
-    navigate(createPageUrl('FoundationProjects'));
+    
+    const currentId = project.id || editId;
+    try {
+      if (currentId) { 
+        await FoundationProjectEntity.update(currentId, data); 
+      } else { 
+        const created = await FoundationProjectEntity.create(data); 
+        setProject(prev => ({...prev, id: created.id}));
+        window.history.replaceState(null, '', `?id=${created.id}`);
+      }
+      setIsDirty(false);
+      setLastSaved(new Date());
+    } catch (e) {
+      console.error("Save failed", e);
+    } finally {
+      if (isAutoSave) {
+        setAutoSaving(false);
+      } else {
+        setSaving(false);
+        navigate(createPageUrl('FoundationProjects'));
+      }
+    }
+  };
+
+  useEffect(() => {
+    autoSaveRef.current = () => {
+      if (isDirty && !saving && !autoSaving) {
+        handleSave(true);
+      }
+    };
+  }, [project, items, walls, polesData, selectedEquipmentList, totals, isDirty, editId, saving, autoSaving]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (autoSaveRef.current) autoSaveRef.current();
+    }, 30000); // 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleBlur = (e) => {
+    // We defer the save slightly to let state update if multiple fields blur in sequence
+    setTimeout(() => {
+      if (autoSaveRef.current) autoSaveRef.current();
+    }, 500);
   };
 
   const poles = inventory.filter(i => i.material_type === 'pole');
@@ -289,7 +338,7 @@ export default function NewFoundationEstimate() {
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col" onBlur={handleBlur}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-white flex-shrink-0 flex-wrap gap-2 sticky top-[61px] z-40 shadow-sm">
         <div className="flex items-center gap-3">
@@ -297,14 +346,19 @@ export default function NewFoundationEstimate() {
             <Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
           </Link>
           <div>
-            <h1 className="text-lg font-bold text-slate-900">{editId ? 'Edit Concrete | Masonry | Poles Estimate' : 'Concrete | Masonry | Poles'}</h1>
+            <h1 className="text-lg font-bold text-slate-900">{(editId || project.id) ? 'Edit Concrete | Masonry | Poles Estimate' : 'Concrete | Masonry | Poles'}</h1>
             <p className="text-xs text-slate-500">Engineering, foundation, excavation, wall & pole estimating</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex flex-col items-end mr-2">
+            {autoSaving && <span className="text-xs text-amber-600 font-medium">Auto-saving...</span>}
+            {lastSaved && !autoSaving && !isDirty && <span className="text-xs text-slate-400">All changes saved to cloud</span>}
+            {isDirty && !autoSaving && <span className="text-xs text-slate-400">Unsaved changes...</span>}
+          </div>
           <Badge variant="secondary" className="px-3 py-1">Total: ${totals.grand.toFixed(2)}</Badge>
-          <Button onClick={handleSave} disabled={saving} className="bg-amber-600 hover:bg-amber-700 text-white" size="sm">
-            <Save className="w-4 h-4 mr-1" />{saving ? 'Saving...' : 'Save Estimate'}
+          <Button onClick={() => handleSave(false)} disabled={saving} className="bg-amber-600 hover:bg-amber-700 text-white" size="sm">
+            <Save className="w-4 h-4 mr-1" />{saving ? 'Saving...' : 'Save & Exit'}
           </Button>
         </div>
       </div>
