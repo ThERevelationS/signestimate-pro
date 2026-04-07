@@ -326,59 +326,6 @@ export default function WallSection({
             </div>
           )}
 
-          {/* Cost summary */}
-          {costs && (
-            <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 mt-4 space-y-3 text-sm">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div>
-                  <p className="text-xs text-emerald-700/70">Outer Units Needed</p>
-                  <p className="font-semibold text-emerald-900">{costs.totalBricks}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-emerald-700/70">Outer Material Cost</p>
-                  <p className="font-semibold text-emerald-900">${costs.materialCost.toFixed(2)}</p>
-                </div>
-                {!isConcrete && (
-                  <div>
-                    <p className="text-xs text-emerald-700/70">Outer Mortar Cost</p>
-                    <p className="font-semibold text-emerald-900">${costs.mortarCost.toFixed(2)}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-xs text-emerald-700/70">Outer Labor Cost ({costs.laborHours.toFixed(1)} hrs)</p>
-                  <p className="font-semibold text-emerald-900">${costs.laborCost.toFixed(2)}</p>
-                </div>
-              </div>
-              
-              {wall.includeInternalWall && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 border-t border-emerald-200/50 pt-3">
-                  <div>
-                    <p className="text-xs text-emerald-700/70">Internal Units Needed</p>
-                    <p className="font-semibold text-emerald-900">{costs.internalTotalBricks}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-emerald-700/70">Internal Material Cost</p>
-                    <p className="font-semibold text-emerald-900">${costs.internalMaterialCost.toFixed(2)}</p>
-                  </div>
-                  {!isInternalConcrete && (
-                    <div>
-                      <p className="text-xs text-emerald-700/70">Internal Mortar Cost</p>
-                      <p className="font-semibold text-emerald-900">${costs.internalMortarCost.toFixed(2)}</p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-xs text-emerald-700/70">Internal Labor ({costs.internalLaborHours.toFixed(1)} hrs)</p>
-                    <p className="font-semibold text-emerald-900">${costs.internalLaborCost.toFixed(2)}</p>
-                  </div>
-                </div>
-              )}
-
-              <div className="border-t border-emerald-200/50 pt-2 flex items-center justify-between">
-                <p className="text-xs text-emerald-700/70">Total Wall Assembly Cost</p>
-                <p className="text-base font-bold text-emerald-700">${costs.totalCost.toFixed(2)}</p>
-              </div>
-            </div>
-          )}
         </CardContent>
       )}
     </Card>

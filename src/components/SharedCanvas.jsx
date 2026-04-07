@@ -89,6 +89,8 @@ export default function SharedCanvas({
   const [dragWallStart, setDragWallStart] = useState(null);
   const [editingSegment, setEditingSegment] = useState(null);
   const [draggingPointIndex, setDraggingPointIndex] = useState(null);
+  const [draggingPoleIdx, setDraggingPoleIdx] = useState(null);
+  const [dragPoleStart, setDragPoleStart] = useState(null);
   
   // Foundation state
   const [draggingFoundationIndex, setDraggingFoundationIndex] = useState(null);
@@ -397,6 +399,22 @@ export default function SharedCanvas({
     const currentGridPx = mode === 'move_wall' || draggingFoundationIndex !== null ? scale : gridPx;
     let worldPt = fromCanvas(rawX, rawY, currentGridPx);
 
+    if (draggingPoleIdx !== null && dragPoleStart) {
+        const dx = worldPt.x - dragPoleStart.x;
+        const dz = worldPt.y - dragPoleStart.y;
+        if (dx !== 0 || dz !== 0) {
+            const arr = [...polesData];
+            arr[draggingPoleIdx] = {
+                ...arr[draggingPoleIdx],
+                x_inches: arr[draggingPoleIdx].x_inches + dx,
+                z_inches: arr[draggingPoleIdx].z_inches + dz
+            };
+            onChangePoles(arr);
+            setDragPoleStart(worldPt);
+        }
+        return;
+    }
+
     if (draggingFoundationIndex !== null && dragFoundStart) {
         const dx = worldPt.x - dragFoundStart.x;
         const dz = worldPt.y - dragFoundStart.y;
@@ -542,7 +560,7 @@ export default function SharedCanvas({
       updateShape([...points, worldPt], closed);
     }
 
-    if (showPoles && mode === 'place') {
+    if (showPoles) {
       let clickedIdx = -1;
       for (let i = polesData.length - 1; i >= 0; i--) {
           const p = polesData[i];
@@ -555,10 +573,12 @@ export default function SharedCanvas({
 
       if (clickedIdx !== -1) {
           setSelectedPlacedIdx(clickedIdx);
+          setDraggingPoleIdx(clickedIdx);
+          setDragPoleStart(worldPt);
           return;
       }
 
-      if (selectedPoleId) {
+      if (mode === 'place' && selectedPoleId) {
           const fRect = fRects.find(r => {
              if (r.isPillar) {
                 const dx = worldPt.x - r.centerX;
@@ -595,6 +615,8 @@ export default function SharedCanvas({
     setDraggingFoundationIndex(null);
     setDragFoundStart(null);
     setDraggingPointIndex(null);
+    setDraggingPoleIdx(null);
+    setDragPoleStart(null);
   };
 
   const handleUndo = () => {
@@ -689,6 +711,35 @@ export default function SharedCanvas({
   const totalFt = Math.floor(totalPerimeterInches / 12);
   const totalInch = Math.round(totalPerimeterInches % 12);
 
+  const centerActiveWall = (direction) => {
+      if (activeWallIndex === null || points.length === 0) return;
+      let minX = points[0].x, maxX = points[0].x, minY = points[0].y, maxY = points[0].y;
+      for (const p of points) {
+          if (p.x < minX) minX = p.x;
+          if (p.x > maxX) maxX = p.x;
+          if (p.y < minY) minY = p.y;
+          if (p.y > maxY) maxY = p.y;
+      }
+      const wallCenterX = (minX + maxX) / 2;
+      const wallCenterZ = (minY + maxY) / 2;
+
+      let fMinX = 0, fMaxX = 0, fMinZ = 0, fMaxZ = 0;
+      if (fRects.length > 0) {
+          fMinX = Math.min(...fRects.map(r => r.isPillar ? r.centerX - r.radius : r.minX));
+          fMaxX = Math.max(...fRects.map(r => r.isPillar ? r.centerX + r.radius : r.maxX));
+          fMinZ = Math.min(...fRects.map(r => r.isPillar ? r.centerY - r.radius : r.minY));
+          fMaxZ = Math.max(...fRects.map(r => r.isPillar ? r.centerY + r.radius : r.maxY));
+      }
+      const fCX = fRects.length > 0 ? (fMinX + fMaxX) / 2 : 0;
+      const fCZ = fRects.length > 0 ? (fMinZ + fMaxZ) / 2 : 0;
+
+      const dx = (direction === 'horizontal' || direction === 'both') ? (fCX - wallCenterX) : 0;
+      const dz = (direction === 'vertical' || direction === 'both') ? (fCZ - wallCenterZ) : 0;
+
+      const newPts = points.map(p => ({ x: p.x + dx, y: p.y + dz }));
+      updateShape(newPts, closed);
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 flex-wrap bg-slate-50 p-2 rounded-lg border border-slate-200">
@@ -703,6 +754,13 @@ export default function SharedCanvas({
             <Button size="sm" variant={mode === 'move_wall' ? 'default' : 'outline'} onClick={() => setMode('move_wall')}>
               <Move className="w-3 h-3 mr-1" /> Move Wall
             </Button>
+            {closed && points.length > 0 && (
+                <div className="flex bg-slate-200 rounded-md p-0.5 mx-1 items-center gap-0.5">
+                    <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => centerActiveWall('both')}>Center C</Button>
+                    <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => centerActiveWall('horizontal')}>Center H</Button>
+                    <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => centerActiveWall('vertical')}>Center V</Button>
+                </div>
+            )}
           </>
         )}
         {showPoles && (
