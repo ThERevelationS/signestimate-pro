@@ -423,6 +423,7 @@ export default function NewFoundationEstimate() {
               {items.some(i => i.excavation_method === 'equipment_excavation') && (
               <TabsContent value="equipment" className="space-y-4 pt-4">
                 <EquipmentTab
+                  foundationItems={items}
                   inventory={inventory}
                   selectedEquipmentList={selectedEquipmentList}
                   onUpdate={setSelectedEquipmentList}
@@ -637,6 +638,16 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
                 <div>
                   <Label className="text-xs">Width (inches)</Label>
                   <Input type="number" className="h-8" value={item.width_inches} onChange={e => onUpdate('width_inches', parseFloat(e.target.value) || 0)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Depth (inches)</Label>
+                  <Input type="number" className="h-8" value={item.depth_inches} onChange={e => {
+                    const depth = parseFloat(e.target.value) || 0;
+                    onUpdate('depth_inches', depth);
+                    if (item.include_rebar && item.rebar_layer_separation_inches) {
+                      onUpdate('rebar_layers', Math.floor(depth / item.rebar_layer_separation_inches) || 1);
+                    }
+                  }} />
                 </div>
                 <div>
                   <Label className="text-xs">Height relative to grade (inches)</Label>

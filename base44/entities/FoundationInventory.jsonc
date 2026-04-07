@@ -212,6 +212,21 @@
     },
     "notes": {
       "type": "string"
+    },
+    "is_pillar_excavation": {
+      "type": "boolean"
+    },
+    "is_spread_foot_excavation": {
+      "type": "boolean"
+    },
+    "is_non_excavation_equipment": {
+      "type": "boolean"
+    },
+    "is_miscellaneous_attachment": {
+      "type": "boolean"
+    },
+    "sort_order": {
+      "type": "number"
     }
   },
   "required": [

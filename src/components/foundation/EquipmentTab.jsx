@@ -7,10 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Trash2, Info, Wrench } from 'lucide-react';
 
-function EquipmentCard({ equipment, selectedEquipment, onUpdate, onRemove, allAttachments, allSubAttachments }) {
+function EquipmentCard({ equipment, selectedEquipment, onUpdate, onRemove, allAttachments, allSubAttachments, showMiscAttachments }) {
   const eq = equipment; // the inventory item
 
   const compatibleAttachments = allAttachments.filter(a => {
+    if (!showMiscAttachments && a.is_miscellaneous_attachment) return false;
     return eq.compatible_attachment_ids?.includes(a.id);
   });
 
@@ -212,10 +213,32 @@ function EquipmentCard({ equipment, selectedEquipment, onUpdate, onRemove, allAt
   );
 }
 
-export default function EquipmentTab({ inventory, selectedEquipmentList, onUpdate, markDirty }) {
+export default function EquipmentTab({ foundationItems = [], inventory, selectedEquipmentList, onUpdate, markDirty }) {
+  const [showAllEquipment, setShowAllEquipment] = useState(false);
+  const [showMiscAttachments, setShowMiscAttachments] = useState(false);
+
   const allEquipment = inventory.filter(i => i.material_type === 'excavation_equipment');
-  const allAttachments = inventory.filter(i => i.material_type === 'attachment');
-  const allSubAttachments = inventory.filter(i => i.material_type === 'sub_attachment');
+  const allAttachments = inventory.filter(i => i.material_type === 'attachment').sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  const allSubAttachments = inventory.filter(i => i.material_type === 'sub_attachment').sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+  const hasPillar = foundationItems.some(i => i.foundation_type === 'pillar');
+  const hasSpreadFoot = foundationItems.some(i => i.foundation_type === 'spread_foot');
+
+  let filteredExcavationEquipment = allEquipment.filter(eq => !eq.is_non_excavation_equipment);
+  if (!showAllEquipment) {
+      if (hasPillar && !hasSpreadFoot) {
+          filteredExcavationEquipment = filteredExcavationEquipment.filter(eq => eq.is_pillar_excavation);
+      } else if (hasSpreadFoot && !hasPillar) {
+          filteredExcavationEquipment = filteredExcavationEquipment.filter(eq => eq.is_spread_foot_excavation);
+      } else if (hasPillar && hasSpreadFoot) {
+          filteredExcavationEquipment = filteredExcavationEquipment.filter(eq => eq.is_pillar_excavation || eq.is_spread_foot_excavation);
+      }
+  }
+  filteredExcavationEquipment.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+  const filteredNonExcavationEquipment = allEquipment
+      .filter(eq => eq.is_non_excavation_equipment)
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
   const addEquipment = (eqId) => {
     if (!eqId || eqId === '_none') return;
@@ -281,21 +304,57 @@ export default function EquipmentTab({ inventory, selectedEquipmentList, onUpdat
 
   return (
     <div className="space-y-4">
-      {/* Add equipment */}
+      {/* Options and Add equipment */}
       <Card className="border-indigo-200 bg-indigo-50/50 shadow-sm mb-4">
         <CardContent className="py-3 px-4">
+          <div className="flex items-center gap-6 mb-4 pb-4 border-b border-indigo-100">
+            <div className="flex items-center gap-2">
+              <Checkbox id="showAllEq" checked={showAllEquipment} onCheckedChange={setShowAllEquipment} />
+              <Label htmlFor="showAllEq" className="text-sm cursor-pointer text-indigo-900 font-medium">Show all equipment</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox id="showMiscAtt" checked={showMiscAttachments} onCheckedChange={setShowMiscAttachments} />
+              <Label htmlFor="showMiscAtt" className="text-sm cursor-pointer text-indigo-900 font-medium">Show Miscellaneous Attachments</Label>
+            </div>
+          </div>
+
           <div className="flex flex-wrap items-end gap-4">
             <div className="flex-1 min-w-[260px]">
-              <Label className="text-xs font-semibold text-indigo-900 uppercase tracking-wide">Add Equipment</Label>
-              <Select onValueChange={addEquipment}>
+              <Label className="text-xs font-semibold text-indigo-900 uppercase tracking-wide">Add Excavation Equipment</Label>
+              <Select value="" onValueChange={addEquipment}>
                 <SelectTrigger className="h-9 mt-1">
-                  <SelectValue placeholder="Select equipment to add…" />
+                  <SelectValue placeholder="Select excavation equipment to add…" />
                 </SelectTrigger>
                 <SelectContent>
-                  {allEquipment.length === 0 ? (
-                    <SelectItem value="_none" disabled>No equipment in inventory</SelectItem>
+                  {filteredExcavationEquipment.length === 0 ? (
+                    <SelectItem value="_none" disabled>No excavation equipment available</SelectItem>
                   ) : (
-                    allEquipment.map(eq => (
+                    filteredExcavationEquipment.map(eq => (
+                      <SelectItem key={eq.id} value={eq.id}>
+                        <div className="flex flex-col py-1">
+                          <span className="font-medium">{eq.material_name}</span>
+                          {eq.notes && (
+                            <span className="text-xs text-slate-500 whitespace-normal max-w-[450px] mt-0.5">{eq.notes}</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex-1 min-w-[260px]">
+              <Label className="text-xs font-semibold text-indigo-900 uppercase tracking-wide">Add Non-Excavation Equipment</Label>
+              <Select value="" onValueChange={addEquipment}>
+                <SelectTrigger className="h-9 mt-1">
+                  <SelectValue placeholder="Select non-excavation equipment to add…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredNonExcavationEquipment.length === 0 ? (
+                    <SelectItem value="_none" disabled>No non-excavation equipment available</SelectItem>
+                  ) : (
+                    filteredNonExcavationEquipment.map(eq => (
                       <SelectItem key={eq.id} value={eq.id}>
                         <div className="flex flex-col py-1">
                           <span className="font-medium">{eq.material_name}</span>
@@ -336,6 +395,7 @@ export default function EquipmentTab({ inventory, selectedEquipmentList, onUpdat
             onRemove={() => removeEquipment(idx)}
             allAttachments={allAttachments}
             allSubAttachments={allSubAttachments}
+            showMiscAttachments={showMiscAttachments}
           />
         );
       })}

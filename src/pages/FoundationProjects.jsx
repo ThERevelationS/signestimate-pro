@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { FoundationProject, User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -129,7 +128,7 @@ export default function FoundationProjects() {
                         <div className="flex flex-col items-end gap-2">
                           <Badge className={getStatusColor(project.status)}>{project.status}</Badge>
                           <div className="flex gap-2">
-                            <Link to={`${createPageUrl("NewFoundationEstimate")}?edit=${project.id}`}>
+                            <Link to={`${createPageUrl("NewFoundationEstimate")}?id=${project.id}`}>
                               <Button variant="outline" size="sm">
                                 <Edit2 className="w-4 h-4 mr-1" />
                                 Edit

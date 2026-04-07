@@ -55,8 +55,8 @@ export default function EquipmentInventoryTab({ allItems, loadItems }) {
   };
 
   const openAdd = (type) => {
-    setEditItem({ material_type: type, material_name: '', cost_per_day: 0, cost_per_week: 0, cost_per_month: 0, pickup_delivery_cost: 0, allow_multiple: false, compatible_attachment_ids: [], compatible_sub_attachment_ids: [] });
-    setShowForm(true);
+      setEditItem({ material_type: type, material_name: '', cost_per_day: 0, cost_per_week: 0, cost_per_month: 0, pickup_delivery_cost: 0, allow_multiple: false, compatible_attachment_ids: [], compatible_sub_attachment_ids: [], is_pillar_excavation: false, is_spread_foot_excavation: false, is_non_excavation_equipment: false, is_miscellaneous_attachment: false, sort_order: 0 });
+      setShowForm(true);
   };
 
   const openEdit = (item) => {
@@ -244,19 +244,51 @@ function EquipmentForm({ item, equipment, attachments, subAttachments, onSave, o
                 </div>
             </div>
 
-            {form.material_type === 'excavation_equipment' && (
+            <div className="grid grid-cols-2 gap-3">
+                {form.material_type === 'excavation_equipment' && (
+                    <div>
+                        <Label className="text-xs">Delivery/Pickup Cost</Label>
+                        <Input type="number" className="h-8" value={form.pickup_delivery_cost} onChange={e => update('pickup_delivery_cost', parseFloat(e.target.value) || 0)} />
+                    </div>
+                )}
                 <div>
-                    <Label className="text-xs">Delivery/Pickup Cost</Label>
-                    <Input type="number" className="h-8" value={form.pickup_delivery_cost} onChange={e => update('pickup_delivery_cost', parseFloat(e.target.value) || 0)} />
+                    <Label className="text-xs">Sort Order</Label>
+                    <Input type="number" className="h-8" value={form.sort_order || 0} onChange={e => update('sort_order', parseInt(e.target.value) || 0)} />
                 </div>
-            )}
+            </div>
 
-            {(form.material_type === 'attachment' || form.material_type === 'sub_attachment') && (
-                <div className="flex items-center gap-2 pt-2">
-                    <Checkbox id="allow_multiple" checked={form.allow_multiple} onCheckedChange={v => update('allow_multiple', v)} />
-                    <Label htmlFor="allow_multiple" className="text-sm cursor-pointer">Allow user to select multiple instances of this item per equipment</Label>
-                </div>
-            )}
+            <div className="space-y-2 pt-2">
+                {form.material_type === 'excavation_equipment' && (
+                    <>
+                        <div className="flex items-center gap-2">
+                            <Checkbox id="is_pillar_excavation" checked={form.is_pillar_excavation} onCheckedChange={v => update('is_pillar_excavation', v)} />
+                            <Label htmlFor="is_pillar_excavation" className="text-sm cursor-pointer">Used for Pillar Excavation</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Checkbox id="is_spread_foot_excavation" checked={form.is_spread_foot_excavation} onCheckedChange={v => update('is_spread_foot_excavation', v)} />
+                            <Label htmlFor="is_spread_foot_excavation" className="text-sm cursor-pointer">Used for Spread Foot Excavation</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Checkbox id="is_non_excavation_equipment" checked={form.is_non_excavation_equipment} onCheckedChange={v => update('is_non_excavation_equipment', v)} />
+                            <Label htmlFor="is_non_excavation_equipment" className="text-sm cursor-pointer">Is Non-Excavation Equipment</Label>
+                        </div>
+                    </>
+                )}
+
+                {form.material_type === 'attachment' && (
+                    <div className="flex items-center gap-2">
+                        <Checkbox id="is_miscellaneous_attachment" checked={form.is_miscellaneous_attachment} onCheckedChange={v => update('is_miscellaneous_attachment', v)} />
+                        <Label htmlFor="is_miscellaneous_attachment" className="text-sm cursor-pointer">Is Miscellaneous Attachment</Label>
+                    </div>
+                )}
+
+                {(form.material_type === 'attachment' || form.material_type === 'sub_attachment') && (
+                    <div className="flex items-center gap-2">
+                        <Checkbox id="allow_multiple" checked={form.allow_multiple} onCheckedChange={v => update('allow_multiple', v)} />
+                        <Label htmlFor="allow_multiple" className="text-sm cursor-pointer">Allow user to select multiple instances of this item</Label>
+                    </div>
+                )}
+            </div>
 
             <hr />
 
