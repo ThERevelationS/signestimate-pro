@@ -77,7 +77,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
     const dirtTex = new THREE.CanvasTexture(dirtCanvas);
     dirtTex.wrapS = dirtTex.wrapT = THREE.RepeatWrapping;
     dirtTex.repeat.set(20, 20);
-    const groundMat = new THREE.MeshStandardMaterial({ map: dirtTex, roughness: 1.0, transparent: true, opacity: 0.55, depthWrite: false });
+    const groundMat = new THREE.MeshStandardMaterial({ map: dirtTex, roughness: 1.0, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide });
     groundMatRef.current = groundMat;
     dirtTexRef.current = dirtTex;
 
@@ -218,56 +218,95 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
         }
 
         // Rebar
-        if (item.include_rebar && isSpread) {
+        if (item.include_rebar) {
           const rebarMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5, metalness: 0.4 });
-          const spacL = (item.rebar_spacing_length || 12) / 12;
-          const spacW = (item.rebar_spacing_width || 12) / 12;
-          const layers = item.rebar_layers || 1;
-          const layerSep = (item.rebar_layer_separation_inches || 12) / 12;
           const clearance = 3 / 12;
-          
-          const effL = lenFt - 2 * clearance;
-          const effW = widFt - 2 * clearance;
-          
-          // Force at least 2 bars so we get the perimeter square
-          const nL = Math.max(2, Math.floor(effW / spacW) + 1);
-          const nW = Math.max(2, Math.floor(effL / spacL) + 1);
-          
-          const actualSpacW = effW / (nL - 1);
-          const actualSpacL = effL / (nW - 1);
-          
           const rDia = 0.04;
-          const topYPos = gradeOff - clearance; // start from top of foundation
           
-          for (let layer = 0; layer < layers; layer++) {
-            const yPos = topYPos - layer * layerSep;
+          if (isSpread) {
+            const spacL = (item.rebar_spacing_length || 12) / 12;
+            const spacW = (item.rebar_spacing_width || 12) / 12;
+            const layers = item.rebar_layers || 1;
+            const layerSep = (item.rebar_layer_separation_inches || 12) / 12;
             
-            // Bars running along length
-            for (let j = 0; j < nL; j++) {
-              const zOff = -effW / 2 + j * actualSpacW;
-              const rg = new THREE.CylinderGeometry(rDia, rDia, effL, 6);
-              const rm = new THREE.Mesh(rg, rebarMat);
-              rm.rotation.z = Math.PI / 2; rm.position.set(0, yPos, zOff);
-              group.add(rm);
-            }
-            // Bars running along width
-            for (let j = 0; j < nW; j++) {
-              const xOff = -effL / 2 + j * actualSpacL;
-              const rg = new THREE.CylinderGeometry(rDia, rDia, effW, 6);
-              const rm = new THREE.Mesh(rg, rebarMat);
-              rm.rotation.x = Math.PI / 2; rm.position.set(xOff, yPos - 0.03, 0); // slightly offset to prevent Z-fighting
-              group.add(rm);
-            }
-          }
-          
-          // Vertical connectors at intersections
-          const verticalHeight = Math.max(0, depFt - (2 * clearance));
-          if (verticalHeight > 0) {
-            const verticalYPos = -depFt / 2 + gradeOff;
-            for (let i = 0; i < nL; i++) {
+            const effL = lenFt - 2 * clearance;
+            const effW = widFt - 2 * clearance;
+            
+            // Force at least 2 bars so we get the perimeter square
+            const nL = Math.max(2, Math.floor(effW / spacW) + 1);
+            const nW = Math.max(2, Math.floor(effL / spacL) + 1);
+            
+            const actualSpacW = effW / (nL - 1);
+            const actualSpacL = effL / (nW - 1);
+            
+            const topYPos = gradeOff - clearance; // start from top of foundation
+            
+            for (let layer = 0; layer < layers; layer++) {
+              const yPos = topYPos - layer * layerSep;
+              
+              // Bars running along length
+              for (let j = 0; j < nL; j++) {
+                const zOff = -effW / 2 + j * actualSpacW;
+                const rg = new THREE.CylinderGeometry(rDia, rDia, effL, 6);
+                const rm = new THREE.Mesh(rg, rebarMat);
+                rm.rotation.z = Math.PI / 2; rm.position.set(0, yPos, zOff);
+                group.add(rm);
+              }
+              // Bars running along width
               for (let j = 0; j < nW; j++) {
-                const zOff = -effW / 2 + i * actualSpacW;
                 const xOff = -effL / 2 + j * actualSpacL;
+                const rg = new THREE.CylinderGeometry(rDia, rDia, effW, 6);
+                const rm = new THREE.Mesh(rg, rebarMat);
+                rm.rotation.x = Math.PI / 2; rm.position.set(xOff, yPos - 0.03, 0); // slightly offset to prevent Z-fighting
+                group.add(rm);
+              }
+            }
+            
+            // Vertical connectors at intersections
+            const verticalHeight = Math.max(0, depFt - (2 * clearance));
+            if (verticalHeight > 0) {
+              const verticalYPos = -depFt / 2 + gradeOff;
+              for (let i = 0; i < nL; i++) {
+                for (let j = 0; j < nW; j++) {
+                  const zOff = -effW / 2 + i * actualSpacW;
+                  const xOff = -effL / 2 + j * actualSpacL;
+                  
+                  const verticalGeo = new THREE.CylinderGeometry(rDia, rDia, verticalHeight, 6);
+                  const verticalRebar = new THREE.Mesh(verticalGeo, rebarMat);
+                  verticalRebar.position.set(xOff, verticalYPos, zOff);
+                  group.add(verticalRebar);
+                }
+              }
+            }
+          } else {
+            // Pillar rebar
+            const hoopDiaIn = item.pillar_rebar_hoop_diameter || Math.max(0, (item.diameter || 24) - 4);
+            const safeHoopDiaIn = Math.min(hoopDiaIn, Math.max(0, (item.diameter || 24) - 4));
+            const hoopRadiusFt = safeHoopDiaIn / 2 / 12;
+            const layers = item.pillar_rebar_layers || 1;
+            const layerSep = (item.pillar_rebar_layer_separation_inches || 12) / 12;
+            const verticalCount = item.pillar_vertical_rebar_count || 4;
+            
+            const topYPos = gradeOff - clearance;
+            
+            // Hoops
+            for (let layer = 0; layer < layers; layer++) {
+              const yPos = topYPos - layer * layerSep;
+              const hoopGeo = new THREE.TorusGeometry(hoopRadiusFt, rDia, 8, 32);
+              const hoop = new THREE.Mesh(hoopGeo, rebarMat);
+              hoop.rotation.x = Math.PI / 2;
+              hoop.position.set(0, yPos, 0);
+              group.add(hoop);
+            }
+            
+            // Verticals
+            const verticalHeight = Math.max(0, depFt - (2 * clearance));
+            if (verticalHeight > 0 && verticalCount > 0) {
+              const verticalYPos = -depFt / 2 + gradeOff;
+              for (let i = 0; i < verticalCount; i++) {
+                const angle = (i / verticalCount) * Math.PI * 2;
+                const xOff = Math.cos(angle) * hoopRadiusFt;
+                const zOff = Math.sin(angle) * hoopRadiusFt;
                 
                 const verticalGeo = new THREE.CylinderGeometry(rDia, rDia, verticalHeight, 6);
                 const verticalRebar = new THREE.Mesh(verticalGeo, rebarMat);

@@ -49,6 +49,11 @@ function newItem() {
     rebar_spacing_width: 12,
     rebar_layers: 1,
     rebar_layer_separation_inches: 12,
+    pillar_rebar_size: '#4',
+    pillar_rebar_hoop_diameter: 20,
+    pillar_rebar_layer_separation_inches: 12,
+    pillar_rebar_layers: 1,
+    pillar_vertical_rebar_count: 4,
     selected_pole_id: '',
     pole_offset_from_bottom_inches: 0,
     pole_total_height_inches: 0,
@@ -171,6 +176,8 @@ export default function NewFoundationEstimate() {
     // Find the selected rebar from inventory (matching the #size)
     const selectedRebar = inventory.find(r => r.material_type === 'rebar' && r.rebar_size === item.rebar_size);
     const rebar_cost = item.custom_rebar_cost_per_ft || selectedRebar?.cost_per_unit || 0;
+    const rebar_labor_cross_section = getSetting('foundation_rebar_labor_cross_section', 0.5);
+    const rebar_labor_linear_ft = getSetting('foundation_rebar_labor_linear_ft', 0.2);
     const forming_labor = getSetting('foundation_forming_labor_rate', 55);
     const finishing_labor = getSetting('foundation_finishing_labor_rate', 50);
     const forming_mult = item.foundation_type === 'spread_foot'
@@ -216,12 +223,37 @@ export default function NewFoundationEstimate() {
       const layers = parseInt(item.rebar_layers) || 1;
       const horizontalFt = (nBarsL * (lenIn / 12) + nBarsW * (widIn / 12)) * layers;
       
-      const numIntersections = nBarsL * nBarsW;
+      const numIntersections = nBarsL * nBarsW * layers;
       const verticalLengthFt = Math.max(0, depIn - 6) / 12;
       const verticalFt = numIntersections * verticalLengthFt;
       
       const totalFt = (horizontalFt + verticalFt) * (parseInt(item.quantity) || 1);
-      rebarCost = totalFt * rebar_cost;
+      const totalIntersections = numIntersections * (parseInt(item.quantity) || 1);
+      
+      const materialCost = totalFt * rebar_cost;
+      const laborCost = (totalIntersections * rebar_labor_cross_section) + (totalFt * rebar_labor_linear_ft);
+      rebarCost = materialCost + laborCost;
+    } else if (item.include_rebar && item.foundation_type === 'pillar') {
+      const hoopDia = parseFloat(item.pillar_rebar_hoop_diameter) || Math.max(0, diaIn - 4);
+      const safeHoopDia = Math.min(hoopDia, Math.max(0, diaIn - 4));
+      const layers = parseInt(item.pillar_rebar_layers) || 1;
+      const verticalCount = parseInt(item.pillar_vertical_rebar_count) || 4;
+      
+      const hoopLengthFt = (Math.PI * safeHoopDia) / 12;
+      const totalHoopFt = hoopLengthFt * layers;
+      
+      const verticalLengthFt = Math.max(0, depIn - 6) / 12;
+      const totalVerticalFt = verticalCount * verticalLengthFt;
+      
+      const totalFt = (totalHoopFt + totalVerticalFt) * (parseInt(item.quantity) || 1);
+      const totalIntersections = (layers * verticalCount) * (parseInt(item.quantity) || 1);
+      
+      const pillarSelectedRebar = inventory.find(r => r.material_type === 'rebar' && r.rebar_size === (item.pillar_rebar_size || '#4'));
+      const pillarRebarCostPerFt = item.custom_rebar_cost_per_ft || pillarSelectedRebar?.cost_per_unit || 0;
+      
+      const materialCost = totalFt * pillarRebarCostPerFt;
+      const laborCost = (totalIntersections * rebar_labor_cross_section) + (totalFt * rebar_labor_linear_ft);
+      rebarCost = materialCost + laborCost;
     }
 
     let formingCost = 0;
@@ -634,7 +666,7 @@ export default function NewFoundationEstimate() {
         </div>
 
         {/* RIGHT: Persistent 3D Viewer */}
-        <div className={`hidden lg:flex flex-col border-l bg-slate-100 transition-all duration-300 h-full ${show3D ? 'w-[40%]' : 'w-auto'}`}>
+        <div className={`hidden lg:flex flex-col border-l bg-slate-100 transition-all duration-300 h-full ${show3D ? 'w-[50%]' : 'w-auto'}`}>
           <div className="px-4 py-2 border-b bg-white flex items-center justify-between flex-shrink-0 h-12">
             {show3D && (
               <div>
@@ -834,6 +866,49 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
                   onUpdate('rebar_layer_separation_inches', sep);
                   if (item.include_rebar && item.depth_inches && sep) {
                     onUpdate('rebar_layers', Math.floor(item.depth_inches / sep) || 1);
+                  }
+                }} />
+              </div>
+            </div>
+          )}
+
+          {/* Pillar rebar spacing */}
+          {item.include_rebar && item.foundation_type === 'pillar' && (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 bg-amber-50 rounded-lg p-3">
+              <div>
+                <Label className="text-xs">Rebar Size</Label>
+                <Select value={item.pillar_rebar_size || '#4'} onValueChange={v => onUpdate('pillar_rebar_size', v)}>
+                  <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {['#3', '#4', '#5', '#6'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Hoop Diameter (in)</Label>
+                <Input type="number" className="h-8" value={item.pillar_rebar_hoop_diameter || Math.max(0, (item.diameter || 0) - 4)} onChange={e => {
+                  let val = parseFloat(e.target.value) || 0;
+                  const maxDia = Math.max(0, (item.diameter || 0) - 4);
+                  if (val > maxDia) val = maxDia;
+                  onUpdate('pillar_rebar_hoop_diameter', val);
+                }} max={Math.max(0, (item.diameter || 0) - 4)} />
+                <p className="text-[10px] text-slate-500 mt-1">Max: {Math.max(0, (item.diameter || 0) - 4)}" (2" clearance)</p>
+              </div>
+              <div>
+                <Label className="text-xs">Vertical Pieces</Label>
+                <Input type="number" className="h-8" value={item.pillar_vertical_rebar_count || 4} onChange={e => onUpdate('pillar_vertical_rebar_count', parseInt(e.target.value) || 1)} min={1} />
+              </div>
+              <div>
+                <Label className="text-xs">Hoop Layers</Label>
+                <Input type="number" className="h-8" value={item.pillar_rebar_layers || 1} onChange={e => onUpdate('pillar_rebar_layers', parseInt(e.target.value) || 1)} min={1} />
+              </div>
+              <div>
+                <Label className="text-xs">Layer Separation (in)</Label>
+                <Input type="number" className="h-8" value={item.pillar_rebar_layer_separation_inches || 12} onChange={e => {
+                  const sep = parseFloat(e.target.value) || 0;
+                  onUpdate('pillar_rebar_layer_separation_inches', sep);
+                  if (item.include_rebar && item.depth_inches && sep) {
+                    onUpdate('pillar_rebar_layers', Math.floor(item.depth_inches / sep) || 1);
                   }
                 }} />
               </div>

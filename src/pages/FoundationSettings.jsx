@@ -13,6 +13,8 @@ const DEFAULT_SETTINGS = {
   // Concrete
   foundation_min_excavation_time: { value: '1.0', label: 'Min Excavation Time (hrs)', category: 'foundation_labor', type: 'number' },
   // Labor rates
+  foundation_rebar_labor_cross_section: { value: '0.5', label: 'Rebar Labor Cost Per Cross Section ($)', category: 'foundation_labor', type: 'number' },
+  foundation_rebar_labor_linear_ft: { value: '0.2', label: 'Rebar Labor Cost Per Linear Ft ($)', category: 'foundation_labor', type: 'number' },
   foundation_forming_labor_rate: { value: '55', label: 'Forming Labor Rate ($/hr)', category: 'foundation_labor', type: 'number' },
   foundation_pouring_labor_rate: { value: '60', label: 'Pouring Labor Rate ($/hr)', category: 'foundation_labor', type: 'number' },
   foundation_finishing_labor_rate: { value: '50', label: 'Finishing Labor Rate ($/hr)', category: 'foundation_labor', type: 'number' },
@@ -145,6 +147,8 @@ export default function FoundationSettings() {
                 <CardTitle className="text-base">Labor Rates</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <SettingInput settingKey="foundation_rebar_labor_cross_section" />
+                <SettingInput settingKey="foundation_rebar_labor_linear_ft" />
                 <SettingInput settingKey="foundation_forming_labor_rate" />
                 <SettingInput settingKey="foundation_pouring_labor_rate" />
                 <SettingInput settingKey="foundation_finishing_labor_rate" />
@@ -158,6 +162,7 @@ export default function FoundationSettings() {
                 <CardTitle className="text-sm text-indigo-900">How Labor Rates are Calculated</CardTitle>
               </CardHeader>
               <CardContent className="text-xs text-indigo-800 space-y-2">
+                <p><strong>Rebar Labor Cost:</strong> (Total Linear Feet × Linear Ft Rate) + (Total Intersections/Cross Sections × Cross Section Rate).</p>
                 <p><strong>Excavation Cost:</strong> (Volume in Cubic Yards × 1.25 Expansion Factor) × Excavation Labor Rate.</p>
                 <p><strong>Forming Cost:</strong> (Perimeter in Feet × 0.25 Hours) × Forming Labor Rate.</p>
                 <p><strong>Finishing Cost:</strong> (Top Surface Area in Sq. Feet × 0.10 Hours) × Finishing Labor Rate.</p>
