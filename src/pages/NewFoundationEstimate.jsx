@@ -13,12 +13,12 @@ import { Plus, Save, ArrowLeft, Trash2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import WallSection from '@/components/WallSection';
+import SharedCanvas from '@/components/SharedCanvas';
 import FoundationWalls3DViewer from '@/components/FoundationWalls3DViewer';
 import { UnsavedChangesContext } from '@/components/UnsavedChangesContext';
 import SummaryTab from '@/components/foundation/SummaryTab';
 import BOMTab from '@/components/foundation/BOMTab';
 import EquipmentTab from '@/components/foundation/EquipmentTab';
-import PolePlacer from '@/components/PolePlacer';
 import BeautifyCanvas from '@/components/BeautifyCanvas';
 import AIEngineeringCalculatorModal from '@/components/foundation/AIEngineeringCalculatorModal';
 import { Bot } from 'lucide-react';
@@ -112,6 +112,16 @@ export default function NewFoundationEstimate() {
   const [show3D, setShow3D] = useState(true);
   const [lastSaved, setLastSaved] = useState(null);
   const [autoSaving, setAutoSaving] = useState(false);
+
+  const [activeWallIndex, setActiveWallIndex] = useState(0);
+  const [showPoles, setShowPoles] = useState(false);
+  const [selectedPoleId, setSelectedPoleId] = useState('');
+  const [selectedPlacedIdx, setSelectedPlacedIdx] = useState(null);
+
+  useEffect(() => {
+     if (walls.length === 0) setActiveWallIndex(null);
+     else if (activeWallIndex === null || activeWallIndex >= walls.length) setActiveWallIndex(0);
+  }, [walls.length]);
 
   const autoSaveRef = useRef();
 
@@ -590,11 +600,165 @@ export default function NewFoundationEstimate() {
 
               {/* WALLS AND POLES */}
               <TabsContent value="walls_poles" className="space-y-6 pt-4">
-                <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">Layout Canvas</h3>
+                    <p className="text-sm text-slate-600">Draw walls and place poles on your foundations.</p>
+                  </div>
+                  <div className="flex items-center gap-2 bg-slate-100 p-2 rounded-lg border border-slate-200">
+                    <Checkbox id="add-poles" checked={showPoles} onCheckedChange={setShowPoles} />
+                    <Label htmlFor="add-poles" className="font-semibold cursor-pointer">Add Pole/s</Label>
+                  </div>
+                </div>
+
+                <div className="flex flex-col lg:flex-row gap-4">
+                  {/* Left: Canvas */}
+                  <div className="flex-1 space-y-4">
+                     {showPoles && (
+                        <div className="bg-blue-50/30 border border-blue-100 rounded-xl p-4 flex items-end justify-between flex-wrap gap-4 shadow-sm mb-2">
+                          <div>
+                            <Label className="text-xs font-semibold text-blue-900">Select Pole from Inventory to Place</Label>
+                            <div className="flex gap-2 items-center mt-1">
+                              <Select value={selectedPoleId} onValueChange={setSelectedPoleId}>
+                                <SelectTrigger className="w-[250px] h-9 bg-white">
+                                  <SelectValue placeholder="Choose a pole..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {poles.map(p => (
+                                    <SelectItem key={p.id} value={p.id}>{p.material_name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button size="sm" onClick={() => {
+                                if (!selectedPoleId) return;
+                                const fIdx = 0;
+                                const fItem = items[fIdx] || {};
+                                const defHeight = (fItem.depth_inches || 36) + 48; 
+                                const newPole = {
+                                    id: Date.now() + Math.random(),
+                                    pole_id: selectedPoleId,
+                                    x_inches: 0,
+                                    z_inches: 0,
+                                    height_inches: defHeight,
+                                    y_offset_inches: 0,
+                                    foundation_idx: fIdx,
+                                    paint: false
+                                };
+                                setPolesData([...polesData, newPole]);
+                                setSelectedPlacedIdx(polesData.length);
+                                markDirty();
+                              }} disabled={!selectedPoleId}><Plus className="w-4 h-4 mr-1"/> Add Pole</Button>
+                            </div>
+                          </div>
+                        </div>
+                     )}
+                     <SharedCanvas 
+                        foundationItems={items}
+                        onFoundationUpdate={updateItem}
+                        walls={walls}
+                        activeWallIndex={activeWallIndex}
+                        onWallShapeChange={(idx, shape) => {
+                           const newWalls = [...walls];
+                           newWalls[idx].shape = shape;
+                           setWalls(newWalls);
+                           markDirty();
+                        }}
+                        polesData={polesData}
+                        polesInventory={poles}
+                        selectedPoleId={selectedPoleId}
+                        onChangePoles={v => { setPolesData(v); markDirty(); }}
+                        selectedPlacedIdx={selectedPlacedIdx}
+                        setSelectedPlacedIdx={setSelectedPlacedIdx}
+                        showPoles={showPoles}
+                     />
+                  </div>
+
+                  {/* Right: Poles List */}
+                  {showPoles && (
+                    <div className="w-full lg:w-[350px] space-y-3">
+                      <h3 className="font-semibold text-slate-800">Poles List</h3>
+                      <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                        {polesData.length === 0 && (
+                          <p className="text-sm text-slate-500 italic">No poles added yet. Select a pole and click "Add Pole" or place it on the canvas.</p>
+                        )}
+                        {polesData.map((pole, idx) => {
+                          const isSelected = selectedPlacedIdx === idx;
+                          return (
+                            <Card key={pole.id || idx} className={`border ${isSelected ? 'border-red-400 bg-red-50/20' : 'border-slate-200'} cursor-pointer`} onClick={() => setSelectedPlacedIdx(idx)}>
+                              <CardContent className="p-3 space-y-3">
+                                <div className="flex justify-between items-center">
+                                  <span className="font-semibold text-sm">Pole {idx + 1}</span>
+                                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-500" onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPolesData(polesData.filter((_, i) => i !== idx));
+                                      if (selectedPlacedIdx === idx) setSelectedPlacedIdx(null);
+                                      else if (selectedPlacedIdx > idx) setSelectedPlacedIdx(selectedPlacedIdx - 1);
+                                  }}>
+                                      <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                                
+                                {isSelected && (
+                                  <div className="space-y-3" onClick={e => e.stopPropagation()}>
+                                    <div>
+                                      <Label className="text-[10px] text-slate-500 uppercase font-semibold">Applied to Foundation</Label>
+                                      <Select 
+                                        value={String(pole.foundation_idx)} 
+                                        onValueChange={v => {
+                                            const arr = [...polesData];
+                                            arr[idx].foundation_idx = parseInt(v);
+                                            setPolesData(arr);
+                                            markDirty();
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-7 text-xs mt-1 bg-white">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {items.map((f, fIdx) => (
+                                            <SelectItem key={fIdx} value={String(fIdx)}>
+                                              Foundation {fIdx + 1} {f.description ? `(${f.description})` : ''}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <Label className="text-[10px] text-slate-500">Height (in)</Label>
+                                            <Input type="number" className="h-7 text-xs" value={pole.height_inches} onChange={e => {
+                                                const arr = [...polesData];
+                                                arr[idx].height_inches = parseFloat(e.target.value) || 0;
+                                                setPolesData(arr);
+                                                markDirty();
+                                            }} />
+                                        </div>
+                                        <div>
+                                            <Label className="text-[10px] text-slate-500">Depth in Found (in)</Label>
+                                            <Input type="number" className="h-7 text-xs" value={pole.y_offset_inches} onChange={e => {
+                                                const arr = [...polesData];
+                                                arr[idx].y_offset_inches = parseFloat(e.target.value) || 0;
+                                                setPolesData(arr);
+                                                markDirty();
+                                            }} />
+                                        </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-6 border-t border-slate-200 space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-base font-bold text-slate-900">Walls</h3>
-                      <p className="text-sm text-slate-600">Design walls built above the foundation using brick, stone, cinderblock, or concrete.</p>
+                      <h3 className="text-base font-bold text-slate-900">Wall Configurations</h3>
                       {wallMaterials.length === 0 && (
                         <p className="text-xs text-amber-700 mt-1">
                           No wall materials in inventory.{' '}
@@ -602,8 +766,8 @@ export default function NewFoundationEstimate() {
                         </p>
                       )}
                     </div>
-                    <Button onClick={addWall} size="sm" className="bg-amber-600 hover:bg-amber-700 text-white">
-                      <Plus className="w-4 h-4 mr-1" /> {walls.length === 0 ? 'Add Wall' : 'Add Additional Wall Type'}
+                    <Button onClick={() => { addWall(); setActiveWallIndex(walls.length); }} size="sm" className="bg-amber-600 hover:bg-amber-700 text-white">
+                      <Plus className="w-4 h-4 mr-1" /> Add Wall Type
                     </Button>
                   </div>
 
@@ -612,7 +776,7 @@ export default function NewFoundationEstimate() {
                       <CardContent className="py-10 text-center text-slate-400">
                         <div className="text-4xl mb-2">🧱</div>
                         <p className="font-medium">No walls added yet</p>
-                        <p className="text-sm mt-1">Click "Add Wall" to draw a wall outline and configure materials.</p>
+                        <p className="text-sm mt-1">Click "Add Wall Type" to configure materials.</p>
                       </CardContent>
                     </Card>
                   )}
@@ -622,14 +786,13 @@ export default function NewFoundationEstimate() {
                       key={wall._id}
                       wall={wall}
                       index={idx}
-                      walls={walls}
+                      isActive={activeWallIndex === idx}
+                      onSetActive={() => setActiveWallIndex(idx)}
                       wallMaterials={wallMaterials}
                       fillMaterials={inventory.filter(i => i.material_type === 'fill_material')}
-                      foundationItems={items}
                       settings={settings}
                       onChange={(updated) => updateWall(idx, updated)}
-                      onDelete={() => removeWall(idx)}
-                      onFoundationUpdate={updateItem}
+                      onDelete={() => { removeWall(idx); if (activeWallIndex === idx) setActiveWallIndex(0); }}
                     />
                   ))}
 
@@ -641,19 +804,6 @@ export default function NewFoundationEstimate() {
                       </CardContent>
                     </Card>
                   )}
-                </div>
-
-                <div className="pt-6 border-t border-slate-200 space-y-4">
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900">Poles</h3>
-                    <p className="text-sm text-slate-600">Place and configure poles on foundations.</p>
-                  </div>
-                  <PolePlacer 
-                      polesData={polesData} 
-                      polesInventory={poles} 
-                      foundationItems={items} 
-                      onChange={v => { setPolesData(v); markDirty(); }} 
-                  />
                 </div>
               </TabsContent>
 

@@ -7,9 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
-import SharedCanvas from './SharedCanvas';
-
-
 
 function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInternalWall, wallHeightInches, mortarGapInches, internalMortarGapInches, settings }) {
   if (!wallShape || !wallMaterial || !wallShape.segments) return null;
@@ -117,6 +114,8 @@ function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInter
 export default function WallSection({
   wall,
   index,
+  isActive = false,
+  onSetActive = () => {},
   walls = [],
   wallMaterials,
   fillMaterials = [],
@@ -172,7 +171,10 @@ export default function WallSection({
   ]);
 
   return (
-    <Card className="border border-orange-200 shadow-sm overflow-hidden mb-4">
+    <Card 
+      className={`border shadow-sm overflow-hidden mb-4 transition-colors ${isActive ? 'border-orange-500 ring-1 ring-orange-500' : 'border-orange-200 cursor-pointer hover:border-orange-300'}`}
+      onClick={() => { if (!isActive) onSetActive(); }}
+    >
       <CardHeader className="py-3 px-4 bg-orange-50/60 border-b border-orange-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -323,25 +325,6 @@ export default function WallSection({
               ⚠️ No foundations available. Check "Use Existing Foundation" or add a foundation item above to constrain the wall drawing.
             </div>
           )}
-
-          {/* Shape builder */}
-          <div>
-            <Label className="text-xs font-semibold text-slate-700 mb-2 block">Wall Outline (Top-Down View)</Label>
-            <SharedCanvas
-              toolType="wall"
-              foundationItems={foundationItems}
-              useExistingFoundation={wall.useExistingFoundation}
-              otherWalls={walls.filter((_, i) => i !== index)}
-              wallMaterial={selectedMat}
-              onShapeChange={shape => update('shape', shape)}
-              onFoundationUpdate={onFoundationUpdate}
-              initialShape={wall.shape}
-              onRequireMaterial={() => {
-                setShakeMaterial(true);
-                setTimeout(() => setShakeMaterial(false), 800);
-              }}
-            />
-          </div>
 
           {/* Cost summary */}
           {costs && (

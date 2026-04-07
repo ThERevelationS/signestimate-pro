@@ -31,26 +31,23 @@ function pointInPolygon(point, vs) {
 }
 
 export default function SharedCanvas({
-  toolType = 'wall', // 'wall' or 'pole'
-  
   foundationItems = [],
   onFoundationUpdate = () => {},
   
-  // Wall props
-  initialShape = null,
-  otherWalls = [],
-  useExistingFoundation = false,
-  wallMaterial = null,
-  onShapeChange = () => {},
-  onRequireMaterial = () => {},
+  // Walls
+  walls = [],
+  activeWallIndex = null,
+  onWallShapeChange = () => {},
   
-  // Pole props
+  // Poles
   polesData = [],
   polesInventory = [],
   selectedPoleId = '',
   onChangePoles = () => {},
   selectedPlacedIdx = null,
-  setSelectedPlacedIdx = () => {}
+  setSelectedPlacedIdx = () => {},
+  
+  showPoles = false
 }) {
   const canvasRef = useRef(null);
   
@@ -61,11 +58,30 @@ export default function SharedCanvas({
   const [panning, setPanning] = useState(false);
   const [panStart, setPanStart] = useState(null);
   
-  const [mode, setMode] = useState(toolType === 'wall' ? 'draw' : 'place');
+  const [mode, setMode] = useState('draw');
 
   // Wall state
-  const [points, setPoints] = useState(initialShape?.points || []);
-  const [closed, setClosed] = useState(initialShape?.closed || false);
+  const activeWall = activeWallIndex !== null ? walls[activeWallIndex] : null;
+  const points = activeWall?.shape?.points || [];
+  const closed = activeWall?.shape?.closed || false;
+  const useExistingFoundation = activeWall?.useExistingFoundation || false;
+  const wallMaterial = activeWall?.selectedMaterial || null;
+  const otherWalls = activeWallIndex !== null ? walls.filter((_, i) => i !== activeWallIndex) : [];
+
+  const updateShape = useCallback((newPoints, newClosed) => {
+    if (activeWallIndex === null) return;
+    const segments = [];
+    const n = newClosed ? newPoints.length : newPoints.length - 1;
+    for (let i = 0; i < n; i++) {
+      const p1 = newPoints[i];
+      const p2 = newPoints[(i + 1) % newPoints.length];
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      segments.push({ p1, p2, length: Math.sqrt(dx * dx + dy * dy) });
+    }
+    onWallShapeChange(activeWallIndex, { points: newPoints, closed: newClosed, segments });
+  }, [activeWallIndex, onWallShapeChange]);
+
   const [hoverInches, setHoverInches] = useState(null);
   const [nearFirstPoint, setNearFirstPoint] = useState(false);
   const [selectedPointIndex, setSelectedPointIndex] = useState(null);
@@ -82,7 +98,7 @@ export default function SharedCanvas({
   const canvasH = 450;
 
   const fRects = useMemo(() => {
-    if (toolType === 'wall' && useExistingFoundation) return [];
+    if (activeWallIndex !== null && useExistingFoundation) return [];
     let cumulativeOffsetX = 0;
     const rects = [];
     foundationItems.forEach((item, itemIdx) => {
@@ -136,7 +152,7 @@ export default function SharedCanvas({
     });
   }
 
-  const snapInch = toolType === 'wall' && wallMaterial ? (wallMaterial.wall_unit_length_inches || GRID_INCH) : GRID_INCH;
+  const snapInch = activeWallIndex !== null && wallMaterial ? (wallMaterial.wall_unit_length_inches || GRID_INCH) : GRID_INCH;
   const gridPx = snapInch * scale;
 
   const toCanvas = useCallback((pt) => ({
@@ -205,13 +221,13 @@ export default function SharedCanvas({
         ctx.fillStyle = 'rgba(245,158,11,0.07)'; 
       });
       ctx.setLineDash([]);
-    } else if (toolType === 'wall' && useExistingFoundation) {
+    } else if (activeWallIndex !== null && useExistingFoundation) {
       ctx.fillStyle = '#6b7280';
       ctx.font = '12px sans-serif';
       ctx.fillText('Using Existing Foundation — draw wall outline freely', 20, 20);
     }
 
-    if (toolType === 'wall') {
+    if (activeWallIndex !== null) {
         otherWalls.forEach(ow => {
             if (!ow.shape || !ow.shape.points || ow.shape.points.length < 2) return;
             ctx.beginPath();
@@ -325,7 +341,7 @@ export default function SharedCanvas({
         }
     }
 
-    if (toolType === 'pole') {
+    if (showPoles) {
       polesData.forEach((p, idx) => {
         const cp = toCanvas({ x: p.x_inches, y: p.z_inches });
         const inv = polesInventory.find(i => i.id === p.pole_id);
@@ -354,24 +370,9 @@ export default function SharedCanvas({
       });
     }
 
-  }, [offset, fRects, points, polesData, polesInventory, selectedPlacedIdx, hoverInches, nearFirstPoint, mode, closed, useExistingFoundation, selectedPointIndex, toCanvas, scale, toolType, otherWalls]);
+  }, [offset, fRects, points, polesData, polesInventory, selectedPlacedIdx, hoverInches, nearFirstPoint, mode, closed, useExistingFoundation, selectedPointIndex, toCanvas, scale, activeWallIndex, otherWalls, showPoles]);
 
   useEffect(() => { draw(); }, [draw]);
-
-  useEffect(() => {
-    if (toolType === 'wall' && onShapeChange) {
-      const segments = [];
-      const n = closed ? points.length : points.length - 1;
-      for (let i = 0; i < n; i++) {
-        const p1 = points[i];
-        const p2 = points[(i + 1) % points.length];
-        const dx = p2.x - p1.x;
-        const dy = p2.y - p1.y;
-        segments.push({ p1, p2, length: Math.sqrt(dx * dx + dy * dy) });
-      }
-      onShapeChange({ points: [...points], closed, segments });
-    }
-  }, [points, closed, toolType]);
 
   const getRawCanvasPoint = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
@@ -411,11 +412,11 @@ export default function SharedCanvas({
         return;
     }
 
-    if (toolType === 'wall') {
+    if (activeWallIndex !== null && mode !== 'place') {
       if (mode === 'edit_points' && draggingPointIndex !== null) {
           const newPoints = [...points];
           newPoints[draggingPointIndex] = worldPt;
-          setPoints(newPoints);
+          updateShape(newPoints, closed);
           return;
       }
 
@@ -425,7 +426,7 @@ export default function SharedCanvas({
           const newPoints = points.map(p => ({ x: p.x + dx, y: p.y + dy }));
           const allValid = fRects.length === 0 || newPoints.every(p => pointInRects(p, fRects));
           if (allValid && (dx !== 0 || dy !== 0)) {
-              setPoints(newPoints);
+              updateShape(newPoints, closed);
               setDragWallStart(worldPt);
           }
           return;
@@ -454,8 +455,8 @@ export default function SharedCanvas({
   };
 
   const handleMouseDown = (e) => {
-    if (toolType === 'wall' && !wallMaterial) {
-        onRequireMaterial();
+    if (activeWallIndex !== null && !wallMaterial && mode !== 'place') {
+        alert("Please select a Wall Material first.");
         return;
     }
 
@@ -485,7 +486,7 @@ export default function SharedCanvas({
         return;
     }
 
-    if (toolType === 'wall') {
+    if (activeWallIndex !== null && mode !== 'place') {
       if (mode === 'move_wall') {
           if (points.length > 0) {
               setDraggingWall(true);
@@ -511,10 +512,11 @@ export default function SharedCanvas({
       if (points.length >= 3 && nearFirstPoint) {
         const lastPt = points[points.length - 1];
         const firstPt = points[0];
+        let newPoints = [...points];
         if (Math.abs(lastPt.x - firstPt.x) > 0.1 && Math.abs(lastPt.y - firstPt.y) > 0.1) {
-            setPoints(prev => [...prev, { x: firstPt.x, y: lastPt.y }]);
+            newPoints.push({ x: firstPt.x, y: lastPt.y });
         }
-        setClosed(true);
+        updateShape(newPoints, true);
         setNearFirstPoint(false);
         return;
       }
@@ -537,10 +539,10 @@ export default function SharedCanvas({
 
       if (fRects.length > 0 && !pointInRects(worldPt, fRects)) return;
 
-      setPoints(prev => [...prev, worldPt]);
+      updateShape([...points, worldPt], closed);
     }
 
-    if (toolType === 'pole') {
+    if (showPoles && mode === 'place') {
       let clickedIdx = -1;
       for (let i = polesData.length - 1; i >= 0; i--) {
           const p = polesData[i];
@@ -597,28 +599,28 @@ export default function SharedCanvas({
 
   const handleUndo = () => {
     if (closed) {
-      setClosed(false);
+      updateShape(points, false);
     } else {
-      setPoints(prev => prev.slice(0, -1));
+      updateShape(points.slice(0, -1), false);
     }
   };
 
   const handleReset = () => {
-    setPoints([]);
-    setClosed(false);
+    updateShape([], false);
     setSelectedPointIndex(null);
     setNearFirstPoint(false);
   };
 
   const deleteSelectedPoint = () => {
     if (selectedPointIndex === null) return;
-    setPoints(prev => prev.filter((_, i) => i !== selectedPointIndex));
+    const newPoints = points.filter((_, i) => i !== selectedPointIndex);
+    const newClosed = closed && newPoints.length <= 3 ? false : closed;
+    updateShape(newPoints, newClosed);
     setSelectedPointIndex(null);
-    if (closed && points.length <= 3) setClosed(false);
   };
 
   const handleDoubleClick = (e) => {
-    if (toolType !== 'wall' || closed || points.length < 2) return;
+    if (activeWallIndex === null || closed || points.length < 2) return;
     const { rawX, rawY } = getRawCanvasPoint(e);
     const segs = closed ? points.length : points.length - 1;
     for (let i = 0; i < segs; i++) {
@@ -660,20 +662,18 @@ export default function SharedCanvas({
     const deltaX = newP2.x - p2.x;
     const deltaY = newP2.y - p2.y;
 
-    setPoints(prev => {
-        const arr = [...prev];
-        if (closed) {
-            return prev; 
-        } else {
-            for (let i = idx + 1; i < arr.length; i++) {
-                arr[i] = { x: arr[i].x + deltaX, y: arr[i].y + deltaY };
-            }
+    const arr = [...points];
+    if (closed) {
+        return; 
+    } else {
+        for (let i = idx + 1; i < arr.length; i++) {
+            arr[i] = { x: arr[i].x + deltaX, y: arr[i].y + deltaY };
         }
-        if (fRects.length > 0 && !arr.every(p => pointInRects(p, fRects))) {
-            return prev; 
-        }
-        return arr;
-    });
+    }
+    if (fRects.length > 0 && !arr.every(p => pointInRects(p, fRects))) {
+        return; 
+    }
+    updateShape(arr, closed);
   };
 
   const totalPerimeterInches = (() => {
@@ -692,7 +692,7 @@ export default function SharedCanvas({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 flex-wrap bg-slate-50 p-2 rounded-lg border border-slate-200">
-        {toolType === 'wall' && (
+        {activeWallIndex !== null && (
           <>
             <Button size="sm" variant={mode === 'draw' ? 'default' : 'outline'} onClick={() => setMode('draw')}>
               <Plus className="w-3 h-3 mr-1" /> Draw
@@ -705,9 +705,9 @@ export default function SharedCanvas({
             </Button>
           </>
         )}
-        {toolType === 'pole' && (
+        {showPoles && (
           <Button size="sm" variant={mode === 'place' ? 'default' : 'outline'} onClick={() => setMode('place')}>
-              <Crosshair className="w-3 h-3 mr-1" /> Place/Select
+              <Crosshair className="w-3 h-3 mr-1" /> Place/Select Pole
           </Button>
         )}
         <Button size="sm" variant={mode === 'pan' ? 'default' : 'outline'} onClick={() => setMode('pan')}>
@@ -731,7 +731,7 @@ export default function SharedCanvas({
             </Button>
         </div>
 
-        {toolType === 'wall' && (
+        {activeWallIndex !== null && (
           <>
             <Button size="sm" variant="outline" onClick={handleUndo} disabled={points.length === 0}>
               <Undo2 className="w-3 h-3 mr-1" /> Undo
@@ -759,7 +759,7 @@ export default function SharedCanvas({
           ref={canvasRef}
           width={canvasW}
           height={canvasH}
-          style={{ cursor: mode === 'pan' ? 'grab' : (mode === 'move_wall' || mode === 'move_foundation' ? 'move' : (mode === 'edit_points' ? 'crosshair' : ((toolType === 'wall' && nearFirstPoint && points.length >= 3 && !closed) ? 'pointer' : 'crosshair'))), display: 'block', maxWidth: '100%' }}
+          style={{ cursor: mode === 'pan' ? 'grab' : (mode === 'move_wall' || mode === 'move_foundation' ? 'move' : (mode === 'edit_points' ? 'crosshair' : ((activeWallIndex !== null && nearFirstPoint && points.length >= 3 && !closed) ? 'pointer' : 'crosshair'))), display: 'block', maxWidth: '100%' }}
           onMouseMove={handleMouseMove}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
@@ -797,7 +797,7 @@ export default function SharedCanvas({
         )}
       </div>
 
-      {toolType === 'wall' && (
+      {activeWallIndex !== null && (
         <>
           <p className="text-xs text-slate-500">
             {!closed
