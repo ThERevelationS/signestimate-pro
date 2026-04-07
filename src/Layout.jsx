@@ -170,7 +170,7 @@ export default function Layout({ children, currentPageName }) {
     },
     {
       id: 'foundation',
-      name: 'Foundation',
+      name: 'Concrete | Masonry | Poles',
       icon: Anchor,
       projectsPage: 'FoundationProjects',
       newEstimatePage: 'NewFoundationEstimate',

@@ -101,6 +101,8 @@ export default function NewFoundationEstimate() {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('info');
   const [loading, setLoading] = useState(true);
+  const [missingFields, setMissingFields] = useState([]);
+  const [show3D, setShow3D] = useState(true);
 
   useEffect(() => { loadData(); }, []);
 
@@ -242,7 +244,16 @@ export default function NewFoundationEstimate() {
   })();
 
   const handleSave = async () => {
-    if (!project.project_name || !project.client_name) { alert('Please fill in Project Name and Client Name.'); return; }
+    const missing = [];
+    if (!project.project_name) missing.push('project_name');
+    if (!project.client_name) missing.push('client_name');
+    
+    if (missing.length > 0) {
+      setMissingFields(missing);
+      setActiveTab('info');
+      setTimeout(() => setMissingFields([]), 3000);
+      return;
+    }
     setSaving(true);
     const data = {
       ...project,
@@ -276,8 +287,8 @@ export default function NewFoundationEstimate() {
             <Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
           </Link>
           <div>
-            <h1 className="text-lg font-bold text-slate-900">{editId ? 'Edit Foundation Estimate' : 'New Foundation Estimate'}</h1>
-            <p className="text-xs text-slate-500">Foundation, excavation & wall estimating</p>
+            <h1 className="text-lg font-bold text-slate-900">{editId ? 'Edit Concrete | Masonry | Poles Estimate' : 'Concrete | Masonry | Poles'}</h1>
+            <p className="text-xs text-slate-500">Engineering, foundation, excavation, wall & pole estimating</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -292,10 +303,10 @@ export default function NewFoundationEstimate() {
       <div className="flex flex-1 overflow-hidden">
 
         {/* LEFT: Tabs / Forms */}
-        <div className="flex flex-col flex-1 overflow-y-auto min-w-0">
-          <div className="p-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList>
+        <div className="flex flex-col flex-1 min-w-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
+            <div className="p-4 pb-0 bg-white border-b flex-shrink-0 z-10 sticky top-0">
+              <TabsList className="mb-4 flex-wrap h-auto">
                 <TabsTrigger value="info">Project Info</TabsTrigger>
                 <TabsTrigger value="foundation">Foundation ({items.length})</TabsTrigger>
                 <TabsTrigger value="walls">Walls ({walls.length})</TabsTrigger>
@@ -307,19 +318,29 @@ export default function NewFoundationEstimate() {
                 <TabsTrigger value="summary">Cost Summary</TabsTrigger>
                 <TabsTrigger value="bom">Bill of Materials</TabsTrigger>
               </TabsList>
+            </div>
 
+            <div className="flex-1 overflow-y-auto p-4 pt-0">
               {/* PROJECT INFO */}
               <TabsContent value="info" className="space-y-4 pt-4">
                 <Card>
                   <CardHeader><CardTitle className="text-base">Project Information</CardTitle></CardHeader>
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-xs">Project Name *</Label>
-                      <Input className="h-9" value={project.project_name} onChange={e => updateProject('project_name', e.target.value)} />
+                      <Label className={`text-xs transition-colors duration-300 ${missingFields.includes('project_name') ? 'text-red-600 font-bold' : ''}`}>Project Name *</Label>
+                      <Input 
+                        className={`h-9 transition-all duration-300 ${missingFields.includes('project_name') ? 'border-red-500 ring-2 ring-red-200 bg-red-50 animate-pulse' : ''}`}
+                        value={project.project_name} 
+                        onChange={e => updateProject('project_name', e.target.value)} 
+                      />
                     </div>
                     <div>
-                      <Label className="text-xs">Client Name *</Label>
-                      <Input className="h-9" value={project.client_name} onChange={e => updateProject('client_name', e.target.value)} />
+                      <Label className={`text-xs transition-colors duration-300 ${missingFields.includes('client_name') ? 'text-red-600 font-bold' : ''}`}>Client Name *</Label>
+                      <Input 
+                        className={`h-9 transition-all duration-300 ${missingFields.includes('client_name') ? 'border-red-500 ring-2 ring-red-200 bg-red-50 animate-pulse' : ''}`}
+                        value={project.client_name} 
+                        onChange={e => updateProject('client_name', e.target.value)} 
+                      />
                     </div>
                     <div>
                       <Label className="text-xs">Estimate Number</Label>
@@ -328,17 +349,6 @@ export default function NewFoundationEstimate() {
                     <div>
                       <Label className="text-xs">Reference Link</Label>
                       <Input className="h-9" value={project.hyperlink} onChange={e => updateProject('hyperlink', e.target.value)} placeholder="https://" />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Status</Label>
-                      <Select value={project.status} onValueChange={v => updateProject('status', v)}>
-                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="draft">Draft</SelectItem>
-                          <SelectItem value="calculated">Calculated</SelectItem>
-                          <SelectItem value="archived">Archived</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
                     <div className="col-span-1 md:col-span-2">
                       <Label className="text-xs">Notes</Label>
@@ -525,26 +535,35 @@ export default function NewFoundationEstimate() {
               <TabsContent value="bom" className="space-y-4 pt-4">
                 <BOMTab items={items} walls={walls} project={project} inventory={inventory} />
               </TabsContent>
-            </Tabs>
-          </div>
+            </div>
+          </Tabs>
         </div>
 
         {/* RIGHT: Persistent 3D Viewer */}
-        <div className="hidden lg:flex flex-col flex-1 min-w-0 border-l bg-slate-100">
-          <div className="px-4 py-2 border-b bg-white flex items-center justify-between flex-shrink-0">
-            <span className="text-sm font-semibold text-slate-700">3D Preview</span>
-            <span className="text-xs text-slate-400">Updates live as you edit</span>
+        <div className={`hidden lg:flex flex-col border-l bg-slate-100 transition-all duration-300 ${show3D ? 'flex-1 min-w-[40%]' : 'w-auto'}`}>
+          <div className="px-4 py-2 border-b bg-white flex items-center justify-between flex-shrink-0 h-12">
+            {show3D && (
+              <div>
+                <span className="text-sm font-semibold text-slate-700">3D Preview</span>
+                <span className="text-xs text-slate-400 ml-2">Updates live as you edit</span>
+              </div>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => setShow3D(!show3D)} className={!show3D ? "mx-auto" : ""}>
+              {show3D ? 'Hide 3D View' : 'Show 3D View'}
+            </Button>
           </div>
-          <div className="flex-1 p-3 overflow-hidden">
-            <FoundationWalls3DViewer 
-               items={items} 
-               walls={walls} 
-               polesData={polesData} 
-               polesInventory={poles} 
-               formingInventory={formingInventory} 
-               beautifyDataUrl={project.beautify_data_url} 
-            />
-          </div>
+          {show3D && (
+            <div className="flex-1 p-3 overflow-hidden h-full">
+              <FoundationWalls3DViewer 
+                 items={items} 
+                 walls={walls} 
+                 polesData={polesData} 
+                 polesInventory={poles} 
+                 formingInventory={formingInventory} 
+                 beautifyDataUrl={project.beautify_data_url} 
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
