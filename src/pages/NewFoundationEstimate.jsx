@@ -479,8 +479,7 @@ export default function NewFoundationEstimate() {
                 {items.some(i => i.excavation_method === 'equipment_excavation') && (
                   <TabsTrigger value="equipment">Equipment {selectedEquipmentList.length > 0 ? `(${selectedEquipmentList.length})` : ''}</TabsTrigger>
                 )}
-                <TabsTrigger value="walls">Walls ({walls.length})</TabsTrigger>
-                <TabsTrigger value="poles">Poles ({polesData.length})</TabsTrigger>
+                <TabsTrigger value="walls_poles">Walls & Poles ({walls.length + polesData.length})</TabsTrigger>
                 <TabsTrigger value="beautify">Beautify</TabsTrigger>
                 <TabsTrigger value="summary">Cost Summary</TabsTrigger>
                 <TabsTrigger value="bom">Bill of Materials</TabsTrigger>
@@ -589,67 +588,73 @@ export default function NewFoundationEstimate() {
               </TabsContent>
               )}
 
-              {/* WALLS */}
-              <TabsContent value="walls" className="space-y-4 pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-slate-600">Design walls built above the foundation using brick, stone, cinderblock, or concrete.</p>
-                    {wallMaterials.length === 0 && (
-                      <p className="text-xs text-amber-700 mt-1">
-                        No wall materials in inventory.{' '}
-                        <Link to={createPageUrl('FoundationInventory')} className="underline font-medium">Add wall materials →</Link>
-                      </p>
-                    )}
+              {/* WALLS AND POLES */}
+              <TabsContent value="walls_poles" className="space-y-6 pt-4">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900">Walls</h3>
+                      <p className="text-sm text-slate-600">Design walls built above the foundation using brick, stone, cinderblock, or concrete.</p>
+                      {wallMaterials.length === 0 && (
+                        <p className="text-xs text-amber-700 mt-1">
+                          No wall materials in inventory.{' '}
+                          <Link to={createPageUrl('FoundationInventory')} className="underline font-medium">Add wall materials →</Link>
+                        </p>
+                      )}
+                    </div>
+                    <Button onClick={addWall} size="sm" className="bg-amber-600 hover:bg-amber-700 text-white">
+                      <Plus className="w-4 h-4 mr-1" /> {walls.length === 0 ? 'Add Wall' : 'Add Additional Wall Type'}
+                    </Button>
                   </div>
-                  <Button onClick={addWall} size="sm" className="bg-amber-600 hover:bg-amber-700 text-white">
-                    <Plus className="w-4 h-4 mr-1" /> {walls.length === 0 ? 'Add Wall' : 'Add Additional Wall Type'}
-                  </Button>
+
+                  {walls.length === 0 && (
+                    <Card className="border-dashed">
+                      <CardContent className="py-10 text-center text-slate-400">
+                        <div className="text-4xl mb-2">🧱</div>
+                        <p className="font-medium">No walls added yet</p>
+                        <p className="text-sm mt-1">Click "Add Wall" to draw a wall outline and configure materials.</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {walls.map((wall, idx) => (
+                    <WallSection
+                      key={wall._id}
+                      wall={wall}
+                      index={idx}
+                      walls={walls}
+                      wallMaterials={wallMaterials}
+                      fillMaterials={inventory.filter(i => i.material_type === 'fill_material')}
+                      foundationItems={items}
+                      settings={settings}
+                      onChange={(updated) => updateWall(idx, updated)}
+                      onDelete={() => removeWall(idx)}
+                      onFoundationUpdate={updateItem}
+                    />
+                  ))}
+
+                  {walls.length > 0 && (
+                    <Card className="bg-amber-50 border-amber-200">
+                      <CardContent className="py-3 px-4 flex items-center justify-between">
+                        <span className="font-medium text-amber-800">Total Wall Cost</span>
+                        <span className="text-lg font-bold text-amber-700">${totals.wallTotal.toFixed(2)}</span>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
 
-                {walls.length === 0 && (
-                  <Card className="border-dashed">
-                    <CardContent className="py-10 text-center text-slate-400">
-                      <div className="text-4xl mb-2">🧱</div>
-                      <p className="font-medium">No walls added yet</p>
-                      <p className="text-sm mt-1">Click "Add Wall" to draw a wall outline and configure materials.</p>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {walls.map((wall, idx) => (
-                  <WallSection
-                    key={wall._id}
-                    wall={wall}
-                    index={idx}
-                    walls={walls}
-                    wallMaterials={wallMaterials}
-                    fillMaterials={inventory.filter(i => i.material_type === 'fill_material')}
-                    foundationItems={items}
-                    settings={settings}
-                    onChange={(updated) => updateWall(idx, updated)}
-                    onDelete={() => removeWall(idx)}
-                    onFoundationUpdate={updateItem}
+                <div className="pt-6 border-t border-slate-200 space-y-4">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">Poles</h3>
+                    <p className="text-sm text-slate-600">Place and configure poles on foundations.</p>
+                  </div>
+                  <PolePlacer 
+                      polesData={polesData} 
+                      polesInventory={poles} 
+                      foundationItems={items} 
+                      onChange={v => { setPolesData(v); markDirty(); }} 
                   />
-                ))}
-
-                {walls.length > 0 && (
-                  <Card className="bg-amber-50 border-amber-200">
-                    <CardContent className="py-3 px-4 flex items-center justify-between">
-                      <span className="font-medium text-amber-800">Total Wall Cost</span>
-                      <span className="text-lg font-bold text-amber-700">${totals.wallTotal.toFixed(2)}</span>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-
-              {/* POLES */}
-              <TabsContent value="poles" className="space-y-4 pt-4">
-                <PolePlacer 
-                    polesData={polesData} 
-                    polesInventory={poles} 
-                    foundationItems={items} 
-                    onChange={v => { setPolesData(v); markDirty(); }} 
-                />
+                </div>
               </TabsContent>
 
               {/* BEAUTIFY */}

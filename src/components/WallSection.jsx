@@ -9,20 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import SharedCanvas from './SharedCanvas';
 
-const MORTAR_GAP_OPTIONS = [
-  { label: '1/4" (thin joint)', value: 0.25 },
-  { label: '3/8" (standard)', value: 0.375 },
-  { label: '1/2"', value: 0.5 },
-  { label: '5/8"', value: 0.625 },
-  { label: '3/4"', value: 0.75 },
-];
 
-const OFFSET_OPTIONS = [
-  { label: 'No offset (stacked bond)', value: 0 },
-  { label: '1/4 offset', value: 0.25 },
-  { label: '1/3 offset (third bond)', value: 0.333 },
-  { label: '1/2 offset (running bond)', value: 0.5 },
-];
 
 function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInternalWall, wallHeightInches, mortarGapInches, internalMortarGapInches, settings }) {
   if (!wallShape || !wallMaterial || !wallShape.segments) return null;
@@ -182,9 +169,6 @@ export default function WallSection({
     wall.internalMaterialId,
     wall.includeInternalWall,
     wall.heightInches,
-    wall.mortarGapInches,
-    wall.internalMortarGapInches,
-    wall.offsetFraction,
   ]);
 
   return (
@@ -289,8 +273,8 @@ export default function WallSection({
             </div>
             
             {wall.includeInternalWall && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-orange-50/50 p-3 rounded-lg border border-orange-100 mb-4">
-                <div className="col-span-2">
+              <div className="bg-orange-50/50 p-3 rounded-lg border border-orange-100 mb-4">
+                <div className="w-full">
                   <Label className="text-xs">Internal Wall Material</Label>
                   <Select
                     value={wall.internalMaterialId || ''}
@@ -314,76 +298,22 @@ export default function WallSection({
                     </SelectContent>
                   </Select>
                 </div>
-                {!isInternalConcrete && (
-                  <div className="col-span-2 md:col-span-2">
-                    <Label className="text-xs">Internal Mortar Gap</Label>
-                    <Select
-                      value={String(wall.internalMortarGapInches || 0.375)}
-                      onValueChange={v => update('internalMortarGapInches', parseFloat(v))}
-                    >
-                      <SelectTrigger className="h-8 text-sm bg-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MORTAR_GAP_OPTIONS.map(o => (
-                          <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
               </div>
             )}
           </div>
 
-          {/* Mortar/offset - hide for concrete */}
-          {!isConcrete && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <div>
-                <Label className="text-xs">Grout/Mortar Gap</Label>
-                <Select
-                  value={String(wall.mortarGapInches || 0.375)}
-                  onValueChange={v => update('mortarGapInches', parseFloat(v))}
-                >
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MORTAR_GAP_OPTIONS.map(o => (
-                      <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          {/* Dimensions preview - hide for concrete */}
+          {!isConcrete && selectedMat && (
+            <div className="flex items-end pb-1 mb-2">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-6 h-6 rounded border border-slate-300"
+                  style={{ backgroundColor: selectedMat.wall_color || '#cc9966' }}
+                />
+                <span className="text-xs text-slate-600">
+                  {selectedMat.wall_unit_length_inches}"L × {selectedMat.wall_unit_width_inches}"W × {selectedMat.wall_unit_height_inches}"H
+                </span>
               </div>
-              <div>
-                <Label className="text-xs">Brick/Stone Offset</Label>
-                <Select
-                  value={String(wall.offsetFraction ?? 0.5)}
-                  onValueChange={v => update('offsetFraction', parseFloat(v))}
-                >
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {OFFSET_OPTIONS.map(o => (
-                      <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {selectedMat && (
-                <div className="flex items-end pb-1">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-6 h-6 rounded border border-slate-300"
-                      style={{ backgroundColor: selectedMat.wall_color || '#cc9966' }}
-                    />
-                    <span className="text-xs text-slate-600">
-                      {selectedMat.wall_unit_length_inches}"L × {selectedMat.wall_unit_width_inches}"W × {selectedMat.wall_unit_height_inches}"H
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

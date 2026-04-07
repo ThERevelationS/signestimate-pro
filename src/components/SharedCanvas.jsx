@@ -72,6 +72,7 @@ export default function SharedCanvas({
   const [draggingWall, setDraggingWall] = useState(false);
   const [dragWallStart, setDragWallStart] = useState(null);
   const [editingSegment, setEditingSegment] = useState(null);
+  const [draggingPointIndex, setDraggingPointIndex] = useState(null);
   
   // Foundation state
   const [draggingFoundationIndex, setDraggingFoundationIndex] = useState(null);
@@ -411,6 +412,13 @@ export default function SharedCanvas({
     }
 
     if (toolType === 'wall') {
+      if (mode === 'edit_points' && draggingPointIndex !== null) {
+          const newPoints = [...points];
+          newPoints[draggingPointIndex] = worldPt;
+          setPoints(newPoints);
+          return;
+      }
+
       if (draggingWall && dragWallStart) {
           const dx = worldPt.x - dragWallStart.x;
           const dy = worldPt.y - dragWallStart.y;
@@ -484,6 +492,18 @@ export default function SharedCanvas({
               setDragWallStart(worldPt);
           }
           return;
+      }
+
+      if (mode === 'edit_points') {
+        for (let i = 0; i < points.length; i++) {
+          const cp = toCanvas(points[i]);
+          if (dist({ x: rawX, y: rawY }, cp) < 15) {
+            setDraggingPointIndex(i);
+            setSelectedPointIndex(i);
+            return;
+          }
+        }
+        return;
       }
 
       if (closed) return;
@@ -572,6 +592,7 @@ export default function SharedCanvas({
     setDragWallStart(null);
     setDraggingFoundationIndex(null);
     setDragFoundStart(null);
+    setDraggingPointIndex(null);
   };
 
   const handleUndo = () => {
@@ -676,6 +697,9 @@ export default function SharedCanvas({
             <Button size="sm" variant={mode === 'draw' ? 'default' : 'outline'} onClick={() => setMode('draw')}>
               <Plus className="w-3 h-3 mr-1" /> Draw
             </Button>
+            <Button size="sm" variant={mode === 'edit_points' ? 'default' : 'outline'} onClick={() => setMode('edit_points')}>
+              <Crosshair className="w-3 h-3 mr-1" /> Edit Points
+            </Button>
             <Button size="sm" variant={mode === 'move_wall' ? 'default' : 'outline'} onClick={() => setMode('move_wall')}>
               <Move className="w-3 h-3 mr-1" /> Move Wall
             </Button>
@@ -735,12 +759,12 @@ export default function SharedCanvas({
           ref={canvasRef}
           width={canvasW}
           height={canvasH}
-          style={{ cursor: mode === 'pan' ? 'grab' : (mode === 'move_wall' || mode === 'move_foundation' ? 'move' : ((toolType === 'wall' && nearFirstPoint && points.length >= 3 && !closed) ? 'pointer' : 'crosshair')), display: 'block', maxWidth: '100%' }}
+          style={{ cursor: mode === 'pan' ? 'grab' : (mode === 'move_wall' || mode === 'move_foundation' ? 'move' : (mode === 'edit_points' ? 'crosshair' : ((toolType === 'wall' && nearFirstPoint && points.length >= 3 && !closed) ? 'pointer' : 'crosshair'))), display: 'block', maxWidth: '100%' }}
           onMouseMove={handleMouseMove}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
           onDoubleClick={handleDoubleClick}
-          onMouseLeave={() => { setHoverInches(null); setPanning(false); setNearFirstPoint(false); setDraggingWall(false); setDragWallStart(null); setDraggingFoundationIndex(null); setDragFoundStart(null); }}
+          onMouseLeave={() => { setHoverInches(null); setPanning(false); setNearFirstPoint(false); setDraggingWall(false); setDragWallStart(null); setDraggingFoundationIndex(null); setDragFoundStart(null); setDraggingPointIndex(null); }}
         />
         {editingSegment && (
             <div 
