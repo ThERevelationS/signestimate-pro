@@ -80,10 +80,11 @@ function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInter
     const intNumCourses = Math.floor(wallHeightInches / intCourseH);
     const intBrickPitch = intUnitL + intMortar;
 
-    // For each segment, inner length is reduced by outer wall depth (unitW) at each corner.
-    // We assume a closed shape with 90-degree corners, meaning each segment loses outer Wall Depth * 2.
+    // For each segment, inner centerline length is reduced based on both outer and inner widths.
+    // The offset of the inner centerline from the drawn line is (unitW/2 + intUnitW/2).
+    // For a 90-degree corner, this shifts the intersection by that offset at each end.
     const isClosed = wallShape.closed !== false;
-    const lengthReduction = isClosed ? (2 * unitW) : 0; 
+    const lengthReduction = isClosed ? (unitW + intUnitW) : 0; 
 
     wallShape.segments.forEach(seg => {
       const innerSegLength = Math.max(0, seg.length - lengthReduction);

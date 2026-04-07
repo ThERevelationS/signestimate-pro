@@ -370,41 +370,40 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
           const len = Math.sqrt(dx * dx + dz * dz);
           if (len < 0.01) return null;
           
-          // Calculate normals for inward offset
-          const nx = dz / len;
-          const nz = -dx / len;
+          // Calculate right-hand normal for inward offset (assuming clockwise drawing)
+          const nx = -dz / len;
+          const nz = dx / len;
           
-          // Apply inward offset for internal walls
-          // Note: In 3D space, depending on drawing direction, this normal might point outward or inward.
-          // WallShapeBuilder typically draws clockwise, making the interior on the right side of the vector.
           const offX1 = x1 + nx * inwardOffset;
           const offZ1 = z1 + nz * inwardOffset;
+          const offX2 = x2 + nx * inwardOffset;
+          const offZ2 = z2 + nz * inwardOffset;
           
-          return { x1: offX1, z1: offZ1, x2: x2 + nx * inwardOffset, z2: z2 + nz * inwardOffset, dx, dz, len, dirX: dx/len, dirZ: dz/len, angle: -Math.atan2(dz, dx) };
+          return { 
+            offX1, offZ1, offX2, offZ2,
+            dx, dz, len, dirX: dx/len, dirZ: dz/len, angle: -Math.atan2(dz, dx) 
+          };
         });
+
+        const intersect = (p1, d1, p2, d2) => {
+          const det = d1.x * d2.z - d1.z * d2.x;
+          if (Math.abs(det) < 0.001) return p1;
+          const dx = p2.x - p1.x;
+          const dz = p2.z - p1.z;
+          const t = (dx * d2.z - dz * d2.x) / det;
+          return { x: p1.x + t * d1.x, z: p1.z + t * d1.z };
+        };
 
         segData.forEach((sd, segIdx) => {
           if (!sd) return;
-          let { x1, z1, dx, dz, dirX, dirZ, angle } = sd;
+          const { dirX, dirZ, angle } = sd;
           
-          // If internal, segments are shorter because they sit inside the outer corners
           let segLen = sd.len;
-          let originX = x1;
-          let originZ = z1;
+          let originX = sd.offX1;
+          let originZ = sd.offZ1;
+          let endX = sd.offX2;
+          let endZ = sd.offZ2;
           
-          if (isInternal) {
-             const isClosed = shape.closed !== false;
-             if (isClosed) {
-                // Shorten by outer width on both ends for a 90 degree inside corner
-                segLen = Math.max(0, sd.len - outerBrickW * 2);
-                // Move origin forward by outerBrickW
-                originX = x1 + dirX * outerBrickW;
-                originZ = z1 + dirZ * outerBrickW;
-             }
-          }
-
-          if (segLen <= 0.01) return;
-
           const closed = shape.closed !== false;
           let prevSd = null;
           let nextSd = null;
@@ -415,6 +414,36 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
           if (closed || segIdx < segData.length - 1) {
               nextSd = segData[(segIdx + 1) % segData.length];
           }
+
+          if (isInternal) {
+             if (prevSd) {
+               const pt = intersect(
+                 { x: sd.offX1, z: sd.offZ1 }, { x: dirX, z: dirZ },
+                 { x: prevSd.offX1, z: prevSd.offZ1 }, { x: prevSd.dirX, z: prevSd.dirZ }
+               );
+               originX = pt.x;
+               originZ = pt.z;
+             }
+             if (nextSd) {
+               const pt = intersect(
+                 { x: sd.offX1, z: sd.offZ1 }, { x: dirX, z: dirZ },
+                 { x: nextSd.offX1, z: nextSd.offZ1 }, { x: nextSd.dirX, z: nextSd.dirZ }
+               );
+               endX = pt.x;
+               endZ = pt.z;
+             }
+             
+             const newDx = endX - originX;
+             const newDz = endZ - originZ;
+             segLen = Math.sqrt(newDx * newDx + newDz * newDz);
+             
+             // If collapsed or inverted direction
+             if (newDx * dirX + newDz * dirZ < 0) {
+               segLen = 0;
+             }
+          }
+
+          if (segLen <= 0.01) return;
 
           for (let course = 0; course < numCourses; course++) {
             const y = gradeOffsetFt + course * courseH + brickH / 2;
