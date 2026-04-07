@@ -579,8 +579,13 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
           {isFullscreen ? <><Minimize className="w-3 h-3 mr-1" /> Exit Full Screen</> : <><Maximize className="w-3 h-3 mr-1" /> Full Screen</>}
         </Button>
       </div>
-      <div className="absolute bottom-2 left-2 text-xs text-white/70 bg-black/30 rounded px-2 py-1 pointer-events-none">
-        Drag to orbit · Scroll to zoom
+      <div className="absolute bottom-2 left-2 text-xs text-white bg-black/60 rounded px-3 py-2 pointer-events-none border border-white/20 shadow-lg">
+        <div className="font-semibold mb-1">3D Viewer Controls:</div>
+        <ul className="list-disc pl-4 space-y-0.5">
+          <li><strong>Left Click + Drag:</strong> Orbit / Rotate view</li>
+          <li><strong>Right Click + Drag:</strong> Pan / Move camera</li>
+          <li><strong>Scroll Wheel:</strong> Zoom in / out</li>
+        </ul>
       </div>
     </div>
   );

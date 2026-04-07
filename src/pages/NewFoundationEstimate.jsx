@@ -55,6 +55,8 @@ function newItem() {
     include_pole_painting: false,
     custom_concrete_cost_per_cy: null,
     custom_rebar_cost_per_ft: null,
+    excavation_method: 'hand_dig',
+    selected_concrete_id: '',
   };
 }
 
@@ -123,7 +125,12 @@ export default function NewFoundationEstimate() {
       if (proj && proj[0]) {
         const p = proj[0];
         setProject(p);
-        setItems(p.items?.length ? p.items.map(i => ({ ...i, _id: i._id || Date.now() + Math.random() })) : [newItem()]);
+        setItems(p.items?.length ? p.items.map(i => ({ 
+          ...i, 
+          excavation_method: i.excavation_method || p.excavation_method || 'hand_dig',
+          selected_concrete_id: i.selected_concrete_id || p.selected_concrete_id || '',
+          _id: i._id || Date.now() + Math.random() 
+        })) : [newItem()]);
         setWalls(p.walls?.length ? p.walls.map(w => ({ ...w, _id: w._id || Date.now() + Math.random() })) : []);
         setPolesData(p.poles || []);
         setSelectedEquipmentList(p.selected_equipment?.length ? p.selected_equipment.map(e => ({ ...e, _id: e._id || Date.now() + Math.random() })) : []);
@@ -154,7 +161,7 @@ export default function NewFoundationEstimate() {
   const getSetting = (key, def) => parseFloat(settings[key] || def);
 
   const calcItemCost = (item) => {
-    const selectedConcrete = inventory.find(c => c.id === project.selected_concrete_id);
+    const selectedConcrete = inventory.find(c => c.id === item.selected_concrete_id);
     const conc_cost = item.custom_concrete_cost_per_cy || selectedConcrete?.cost_per_unit || getSetting('foundation_concrete_cost_per_cy', 135);
     const rebar_cost = item.custom_rebar_cost_per_ft || getSetting('foundation_rebar_cost_per_ft', 0.75);
     const forming_labor = getSetting('foundation_forming_labor_rate', 55);
@@ -207,7 +214,7 @@ export default function NewFoundationEstimate() {
 
     let excavationCost = 0;
     const excVol = volumeCY * 1.25;
-    if (project.excavation_method === 'hand_dig') {
+    if (item.excavation_method === 'hand_dig' || !item.excavation_method) {
       excavationCost = excVol * (getSetting('foundation_hand_dig_excavation_cost_per_cy', 10) + getSetting('foundation_hand_dig_labor_rate', 45) * 0.3);
     } else {
       excavationCost = excVol * getSetting('foundation_equipment_excavation_cost_per_cy', 15);
@@ -309,12 +316,12 @@ export default function NewFoundationEstimate() {
               <TabsList className="mb-4 flex-wrap h-auto">
                 <TabsTrigger value="info">Project Info</TabsTrigger>
                 <TabsTrigger value="foundation">Foundation ({items.length})</TabsTrigger>
+                {items.some(i => i.excavation_method === 'equipment_excavation') && (
+                  <TabsTrigger value="equipment">Equipment {selectedEquipmentList.length > 0 ? `(${selectedEquipmentList.length})` : ''}</TabsTrigger>
+                )}
                 <TabsTrigger value="walls">Walls ({walls.length})</TabsTrigger>
                 <TabsTrigger value="poles">Poles ({polesData.length})</TabsTrigger>
                 <TabsTrigger value="beautify">Beautify</TabsTrigger>
-                {project.excavation_method === 'equipment_excavation' && (
-                  <TabsTrigger value="equipment">Equipment {selectedEquipmentList.length > 0 ? `(${selectedEquipmentList.length})` : ''}</TabsTrigger>
-                )}
                 <TabsTrigger value="summary">Cost Summary</TabsTrigger>
                 <TabsTrigger value="bom">Bill of Materials</TabsTrigger>
               </TabsList>
@@ -387,41 +394,7 @@ export default function NewFoundationEstimate() {
                   )}
                 </div>
 
-                {/* Excavation Settings Card */}
-                <Card className="border-slate-200 bg-slate-50 mt-4">
-                  <CardContent className="py-3 px-4">
-                    <div className="flex flex-wrap items-end gap-4">
-                      <div className="min-w-[200px]">
-                        <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Excavation Method</Label>
-                        <Select value={project.excavation_method} onValueChange={v => updateProject('excavation_method', v)}>
-                          <SelectTrigger className="h-9 mt-1"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="hand_dig">Hand Dig</SelectItem>
-                            <SelectItem value="equipment_excavation">Equipment Excavation</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="min-w-[200px]">
-                        <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Concrete Type</Label>
-                        <Select value={project.selected_concrete_id} onValueChange={v => updateProject('selected_concrete_id', v)}>
-                          <SelectTrigger className="h-9 mt-1"><SelectValue placeholder="Select concrete..." /></SelectTrigger>
-                          <SelectContent>
-                            {concreteServices.map(c => (
-                              <SelectItem key={c.id} value={c.id}>
-                                <div className="flex flex-col text-left py-1 max-w-[400px]">
-                                   <span className="font-medium">{c.material_name}</span>
-                                   {(c.material_description || c.notes) && (
-                                       <span className="text-xs text-slate-500 whitespace-normal mt-0.5">{c.material_description || c.notes}</span>
-                                   )}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+
 
                 {items.map((item, idx) => (
                   <FoundationItemRow
@@ -442,6 +415,18 @@ export default function NewFoundationEstimate() {
                   <Plus className="w-4 h-4 mr-1" /> Add Foundation Item
                 </Button>
               </TabsContent>
+
+              {/* EQUIPMENT */}
+              {items.some(i => i.excavation_method === 'equipment_excavation') && (
+              <TabsContent value="equipment" className="space-y-4 pt-4">
+                <EquipmentTab
+                  inventory={inventory}
+                  selectedEquipmentList={selectedEquipmentList}
+                  onUpdate={setSelectedEquipmentList}
+                  markDirty={markDirty}
+                />
+              </TabsContent>
+              )}
 
               {/* WALLS */}
               <TabsContent value="walls" className="space-y-4 pt-4">
@@ -513,18 +498,6 @@ export default function NewFoundationEstimate() {
                   onChange={v => updateProject('beautify_data_url', v)}
                 />
               </TabsContent>
-
-              {/* EQUIPMENT */}
-              {project.excavation_method === 'equipment_excavation' && (
-              <TabsContent value="equipment" className="space-y-4 pt-4">
-                <EquipmentTab
-                  inventory={inventory}
-                  selectedEquipmentList={selectedEquipmentList}
-                  onUpdate={setSelectedEquipmentList}
-                  markDirty={markDirty}
-                />
-              </TabsContent>
-              )}
 
               {/* SUMMARY */}
               <TabsContent value="summary" className="space-y-4 pt-4">
@@ -620,46 +593,67 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
             </div>
           </div>
 
-          {/* Dimensions */}
-          {item.foundation_type === 'spread_foot' ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {/* Dimensions & Materials */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="col-span-2 md:col-span-4 bg-slate-50 border border-slate-200 rounded-lg p-3 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label className="text-xs">Length (inches)</Label>
-                <Input type="number" className="h-8" value={item.length_inches} onChange={e => onUpdate('length_inches', parseFloat(e.target.value) || 0)} />
+                <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Excavation Method</Label>
+                <Select value={item.excavation_method || 'hand_dig'} onValueChange={v => onUpdate('excavation_method', v)}>
+                  <SelectTrigger className="h-8 mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hand_dig">Hand Dig</SelectItem>
+                    <SelectItem value="equipment_excavation">Equipment Excavation</SelectItem>
+                  </SelectContent>
+                </Select>
+                {item.excavation_method === 'equipment_excavation' && (
+                  <p className="text-xs text-slate-500 mt-1 font-medium">See Equipment Tab to Select Equipment for the Project.</p>
+                )}
               </div>
               <div>
-                <Label className="text-xs">Width (inches)</Label>
-                <Input type="number" className="h-8" value={item.width_inches} onChange={e => onUpdate('width_inches', parseFloat(e.target.value) || 0)} />
-              </div>
-              <div>
-                <Label className="text-xs">Grade Offset (inches)</Label>
-                <Input type="number" className="h-8" value={item.grade_offset_inches} onChange={e => onUpdate('grade_offset_inches', parseFloat(e.target.value) || 0)} />
-              </div>
-              <div>
-                <Label className="text-xs">Draw Offset X (in)</Label>
-                <Input type="number" className="h-8" value={item.offset_x_inches || 0} onChange={e => onUpdate('offset_x_inches', parseFloat(e.target.value) || 0)} />
-              </div>
-              <div>
-                <Label className="text-xs">Draw Offset Y (in)</Label>
-                <Input type="number" className="h-8" value={item.offset_z_inches || 0} onChange={e => onUpdate('offset_z_inches', parseFloat(e.target.value) || 0)} />
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <div>
-                <Label className="text-xs">Diameter (inches)</Label>
-                <Input type="number" className="h-8" value={item.diameter} onChange={e => onUpdate('diameter', parseFloat(e.target.value) || 0)} />
-              </div>
-              <div>
-                <Label className="text-xs">Draw Offset X (in)</Label>
-                <Input type="number" className="h-8" value={item.offset_x_inches || 0} onChange={e => onUpdate('offset_x_inches', parseFloat(e.target.value) || 0)} />
-              </div>
-              <div>
-                <Label className="text-xs">Draw Offset Y (in)</Label>
-                <Input type="number" className="h-8" value={item.offset_z_inches || 0} onChange={e => onUpdate('offset_z_inches', parseFloat(e.target.value) || 0)} />
+                <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Concrete Type</Label>
+                <Select value={item.selected_concrete_id || ''} onValueChange={v => onUpdate('selected_concrete_id', v)}>
+                  <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Select concrete..." /></SelectTrigger>
+                  <SelectContent>
+                    {concreteServices.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        <div className="flex flex-col text-left py-1 max-w-[300px]">
+                           <span className="font-medium">{c.material_name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          )}
+
+            {item.foundation_type === 'spread_foot' ? (
+              <>
+                <div>
+                  <Label className="text-xs">Length (inches)</Label>
+                  <Input type="number" className="h-8" value={item.length_inches} onChange={e => onUpdate('length_inches', parseFloat(e.target.value) || 0)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Width (inches)</Label>
+                  <Input type="number" className="h-8" value={item.width_inches} onChange={e => onUpdate('width_inches', parseFloat(e.target.value) || 0)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Grade Offset (inches)</Label>
+                  <Input type="number" className="h-8" value={item.grade_offset_inches} onChange={e => onUpdate('grade_offset_inches', parseFloat(e.target.value) || 0)} />
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <Label className="text-xs">Diameter (inches)</Label>
+                  <Input type="number" className="h-8" value={item.diameter} onChange={e => onUpdate('diameter', parseFloat(e.target.value) || 0)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Grade Offset (inches)</Label>
+                  <Input type="number" className="h-8" value={item.grade_offset_inches || 0} onChange={e => onUpdate('grade_offset_inches', parseFloat(e.target.value) || 0)} />
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Options */}
           <div className="flex flex-wrap gap-4">
@@ -733,7 +727,7 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
             <div className="flex items-center justify-between mb-1">
               <span className="font-semibold text-slate-600 uppercase tracking-wide">Excavation</span>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs capitalize">{excavationMethod?.replace('_', ' ')}</Badge>
+                <Badge variant="outline" className="text-xs capitalize">{(item.excavation_method || 'hand_dig').replace('_', ' ')}</Badge>
                 {excavationEquipment && <Badge variant="secondary" className="text-xs">{excavationEquipment.material_name}</Badge>}
               </div>
             </div>
