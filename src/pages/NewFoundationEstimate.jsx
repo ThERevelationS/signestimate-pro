@@ -459,13 +459,16 @@ export default function NewFoundationEstimate() {
       </div>
 
       {/* Two-panel body */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
 
-        {/* LEFT: Tabs / Forms */}
-        <div className="flex flex-col flex-1 min-w-0 h-full overflow-y-auto relative">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col min-h-0">
-            <div className="p-4 pb-0 bg-white border-b flex-shrink-0 z-30 sticky top-0 shadow-sm">
-              <TabsList className="mb-4 flex-wrap h-auto bg-slate-100/80 p-1.5 border border-slate-200 rounded-xl shadow-sm">
+        {/* Full-width scroll container to place scrollbar on the far right */}
+        <div className="w-full h-full overflow-y-auto overflow-x-hidden flex items-start">
+
+          {/* LEFT: Tabs / Forms */}
+          <div className={`flex flex-col min-w-0 pb-12 ${show3D ? 'lg:w-[50%]' : 'w-full'}`}>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col min-h-0">
+              <div className="p-4 pb-0 bg-white border-b flex-shrink-0 z-30 sticky top-0 shadow-sm">
+                <TabsList className="mb-4 flex-wrap h-auto bg-slate-100/80 p-1.5 border border-slate-200 rounded-xl shadow-sm">
                 <TabsTrigger value="info">Project Info</TabsTrigger>
                 <TabsTrigger value="foundation">Foundation ({items.length})</TabsTrigger>
                 {items.some(i => i.excavation_method === 'equipment_excavation') && (
@@ -666,7 +669,10 @@ export default function NewFoundationEstimate() {
         </div>
 
         {/* RIGHT: Persistent 3D Viewer */}
-        <div className={`hidden lg:flex flex-col border-l bg-slate-100 transition-all duration-300 h-full ${show3D ? 'w-[50%]' : 'w-auto'}`}>
+        <div 
+          className={`hidden lg:flex flex-col border-l bg-slate-100 transition-all duration-300 sticky top-0 ${show3D ? 'w-[50%]' : 'w-0'}`}
+          style={{ height: 'calc(100vh - 122px)' }}
+        >
           <div className="px-4 py-2 border-b bg-white flex items-center justify-between flex-shrink-0 h-12">
             {show3D && (
               <div>
@@ -690,6 +696,8 @@ export default function NewFoundationEstimate() {
               />
             </div>
           )}
+        </div>
+
         </div>
       </div>
     </div>
