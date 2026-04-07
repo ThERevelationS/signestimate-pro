@@ -14,7 +14,14 @@ function snapToGrid(val, gridPx) {
 
 function pointInRects(pt, rects) {
   if (rects.length === 0) return true; // No constraints if no rects
-  return rects.some(r => pt.x >= r.minX && pt.x <= r.maxX && pt.y >= r.minY && pt.y <= r.maxY);
+  return rects.some(r => {
+    if (r.isPillar) {
+      const dx = pt.x - r.centerX;
+      const dy = pt.y - r.centerY;
+      return (dx * dx + dy * dy) <= r.radius * r.radius;
+    }
+    return pt.x >= r.minX && pt.x <= r.maxX && pt.y >= r.minY && pt.y <= r.maxY;
+  });
 }
 
 function pointInPolygon(point, vs) {
@@ -122,7 +129,11 @@ export default function WallShapeBuilder({
             minX: (ox - footprintX/2) * 12,
             maxX: (ox + footprintX/2) * 12,
             minY: (oz - footprintZ/2) * 12,
-            maxY: (oz + footprintZ/2) * 12
+            maxY: (oz + footprintZ/2) * 12,
+            isPillar: !isSpread,
+            centerX: ox * 12,
+            centerY: oz * 12,
+            radius: (diaFt * 12) / 2
         });
       }
       cumulativeOffsetX += gridSize * spacingX + 2;
@@ -184,8 +195,19 @@ export default function WallShapeBuilder({
         const topLeft = toCanvas({ x: r.minX, y: r.minY });
         const w = (r.maxX - r.minX) * SCALE_PX_PER_INCH;
         const h = (r.maxY - r.minY) * SCALE_PX_PER_INCH;
-        ctx.strokeRect(topLeft.x, topLeft.y, w, h);
-        ctx.fillRect(topLeft.x, topLeft.y, w, h);
+        
+        if (r.isPillar) {
+            const center = toCanvas({ x: r.centerX, y: r.centerY });
+            const radiusPx = r.radius * SCALE_PX_PER_INCH;
+            ctx.beginPath();
+            ctx.arc(center.x, center.y, radiusPx, 0, 2 * Math.PI);
+            ctx.stroke();
+            ctx.fill();
+        } else {
+            ctx.strokeRect(topLeft.x, topLeft.y, w, h);
+            ctx.fillRect(topLeft.x, topLeft.y, w, h);
+        }
+        
         ctx.fillStyle = '#92400e';
         ctx.font = '11px sans-serif';
         ctx.fillText(`Foundation ${r.itemIdx + 1}`, topLeft.x + 4, topLeft.y + 14);
