@@ -411,10 +411,15 @@ export default function NewFoundationEstimate() {
   }, [project, items, walls, polesData, selectedEquipmentList, totals, isDirty, editId, saving, autoSaving]);
 
   useEffect(() => {
+    // Lock body scroll to strictly use our internal scroll container
+    document.body.style.overflow = 'hidden';
     const interval = setInterval(() => {
       if (autoSaveRef.current) autoSaveRef.current();
     }, 30000); // 30 seconds
-    return () => clearInterval(interval);
+    return () => {
+      document.body.style.overflow = '';
+      clearInterval(interval);
+    };
   }, []);
 
   const handleBlur = (e) => {
@@ -433,7 +438,7 @@ export default function NewFoundationEstimate() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-60px)]" onBlur={handleBlur}>
+    <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 61px)' }} onBlur={handleBlur}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-white flex-shrink-0 flex-wrap gap-2 z-40 shadow-sm">
         <div className="flex items-center gap-3">
@@ -670,8 +675,7 @@ export default function NewFoundationEstimate() {
 
         {/* RIGHT: Persistent 3D Viewer */}
         <div 
-          className={`hidden lg:flex flex-col border-l bg-slate-100 transition-all duration-300 sticky top-0 ${show3D ? 'w-[50%]' : 'w-0'}`}
-          style={{ height: 'calc(100vh - 122px)' }}
+          className={`hidden lg:flex flex-col border-l bg-slate-100 transition-all duration-300 sticky top-0 h-full ${show3D ? 'w-[50%]' : 'w-0'}`}
         >
           <div className="px-4 py-2 border-b bg-white flex items-center justify-between flex-shrink-0 h-12">
             {show3D && (
