@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,7 +77,7 @@ function newWall() {
 
 export default function NewFoundationEstimate() {
   const navigate = useNavigate();
-  const { setIsDirty } = useContext(UnsavedChangesContext) || { setIsDirty: () => {} };
+  const { isDirty, setIsDirty } = useContext(UnsavedChangesContext) || { isDirty: false, setIsDirty: () => {} };
 
   const [project, setProject] = useState({
     project_name: '',
@@ -108,7 +108,7 @@ export default function NewFoundationEstimate() {
   const [lastSaved, setLastSaved] = useState(null);
   const [autoSaving, setAutoSaving] = useState(false);
 
-  const autoSaveRef = React.useRef();
+  const autoSaveRef = useRef();
 
   useEffect(() => { loadData(); }, []);
 
