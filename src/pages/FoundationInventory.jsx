@@ -105,20 +105,6 @@ const TAB_CONFIGS = {
       { key: 'notes', label: 'Notes', type: 'text' },
     ],
   },
-  fill_material: {
-    label: 'Wall Fill Materials',
-    types: ['fill_material', 'brick_stone'],
-    defaultType: 'fill_material',
-    fields: [
-      { key: 'material_name', label: 'Material Name *', type: 'text', required: true },
-      { key: 'material_type', label: 'Category', type: 'select', options: [{ value: 'fill_material', label: 'Fill Material' }, { value: 'brick_stone', label: 'Brick / Stone' }] },
-      { key: 'fill_material_subtype', label: 'Subtype', type: 'select', options: [{ value: 'cinder_block', label: 'Cinder Block' }, { value: 'poured_concrete', label: 'Poured Concrete' }, { value: 'gravel', label: 'Gravel' }, { value: 'foam', label: 'Foam' }, { value: 'sand', label: 'Sand' }] },
-      { key: 'unit', label: 'Unit', type: 'select', options: [{ value: 'cy', label: 'Cubic Yard (CY)' }, { value: 'bag', label: 'Bag' }, { value: 'each', label: 'Each' }, { value: 'sqft', label: 'Sq Ft' }, { value: 'lf', label: 'Linear Ft' }] },
-      { key: 'cost_per_unit', label: 'Cost Per Unit ($)', type: 'number' },
-      { key: 'supplier', label: 'Supplier', type: 'text' },
-      { key: 'notes', label: 'Notes', type: 'text' },
-    ],
-  },
 };
 
 // ─── Generic Item Form ─────────────────────────────────────────────────────
@@ -167,9 +153,9 @@ function GenericItemForm({ tabKey, item, onSave, onCancel }) {
 }
 
 // ─── Wall Material Form ────────────────────────────────────────────────────
-function WallMaterialForm({ item, onSave, onCancel }) {
+function WallMaterialForm({ item, onSave, onCancel, isFillMaterial }) {
   const [form, setForm] = useState({
-    material_name: '', material_type: 'wall_material', wall_material_subtype: 'brick',
+    material_name: '', material_type: isFillMaterial ? 'fill_material' : 'wall_material', wall_material_subtype: 'brick',
     wall_unit_length_inches: 8, wall_unit_width_inches: 4, wall_unit_height_inches: 2.25,
     wall_color: '#b5451b', wall_texture: 'rough', cost_per_unit: 0.75, supplier: '', notes: '',
     ...item,
@@ -320,6 +306,7 @@ export default function FoundationInventoryPage() {
   // Wall material dialog
   const [showWallForm, setShowWallForm] = useState(false);
   const [wallEditItem, setWallEditItem] = useState(null);
+  const [wallEditItemIsFill, setWallEditItemIsFill] = useState(false);
 
   // Generic dialog
   const [showGenericForm, setShowGenericForm] = useState(false);
@@ -344,7 +331,7 @@ export default function FoundationInventoryPage() {
   const handleSaveWall = async (form) => {
     if (wallEditItem?.id) await FoundationInventoryEntity.update(wallEditItem.id, form);
     else await FoundationInventoryEntity.create(form);
-    setShowWallForm(false); setWallEditItem(null);
+    setShowWallForm(false); setWallEditItem(null); setWallEditItemIsFill(false);
     loadItems();
   };
 
@@ -361,6 +348,7 @@ export default function FoundationInventoryPage() {
   // Group items by type
   const byType = (types) => items.filter(i => types.includes(i.material_type));
   const wallMaterials = byType(['wall_material']);
+  const fillMaterials = byType(['fill_material']);
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -428,6 +416,54 @@ export default function FoundationInventoryPage() {
             )}
         </TabsContent>
 
+        {/* WALL FILL MATERIALS TAB */}
+        <TabsContent value="fill_material" className="space-y-4 mt-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-600">Materials for internal walls (configured identically to Wall Materials).</p>
+            <Button size="sm" onClick={() => { setWallEditItem(null); setWallEditItemIsFill(true); setShowWallForm(true); }}>
+              <Plus className="w-4 h-4 mr-1" /> Add Wall Fill
+            </Button>
+          </div>
+          {loading ? <div className="text-center text-slate-400 py-8">Loading...</div>
+            : fillMaterials.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="py-10 text-center text-slate-400">
+                  <Layers className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p>No wall fill materials yet.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {fillMaterials.map(m => (
+                  <Card key={m.id} className="hover:shadow-md transition-shadow border-indigo-200 shadow-sm overflow-hidden">
+                    <CardHeader className="py-3 px-4 bg-indigo-50/50 border-b border-indigo-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded border border-slate-300 flex-shrink-0" style={{ backgroundColor: m.wall_color || '#cc9966' }} />
+                          <div>
+                            <CardTitle className="text-sm font-semibold">{m.material_name}</CardTitle>
+                            <Badge variant="outline" className="text-xs capitalize">{m.wall_material_subtype}</Badge>
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => { setWallEditItem(m); setWallEditItemIsFill(true); setShowWallForm(true); }}><Edit className="w-3 h-3" /></Button>
+                          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDelete(m.id)}><Trash2 className="w-3 h-3" /></Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3 text-xs text-slate-600 space-y-1">
+                      {m.wall_material_subtype !== 'concrete' && <div>Size: {m.wall_unit_length_inches}"L × {m.wall_unit_width_inches}"W × {m.wall_unit_height_inches}"H</div>}
+                      {m.wall_material_subtype === 'concrete' && <div>Wall depth: {m.wall_unit_width_inches}"</div>}
+                      <div>Cost: ${parseFloat(m.cost_per_unit || 0).toFixed(2)} / unit</div>
+                      <div>Texture: <span className="capitalize">{m.wall_texture}</span></div>
+                      {m.supplier && <div>Supplier: {m.supplier}</div>}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+        </TabsContent>
+
         {/* EQUIPMENT (Custom UI) */}
         <TabsContent value="equipment">
             <EquipmentInventoryTab allItems={items} loadItems={loadItems} />
@@ -448,10 +484,10 @@ export default function FoundationInventoryPage() {
       </Tabs>
 
       {/* Wall Material Dialog */}
-      <Dialog open={showWallForm} onOpenChange={open => { if (!open) { setShowWallForm(false); setWallEditItem(null); } }}>
+      <Dialog open={showWallForm} onOpenChange={open => { if (!open) { setShowWallForm(false); setWallEditItem(null); setWallEditItemIsFill(false); } }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{wallEditItem ? 'Edit Wall Material' : 'Add Wall Material'}</DialogTitle></DialogHeader>
-          <WallMaterialForm item={wallEditItem} onSave={handleSaveWall} onCancel={() => { setShowWallForm(false); setWallEditItem(null); }} />
+          <DialogHeader><DialogTitle>{wallEditItem ? (wallEditItemIsFill ? 'Edit Wall Fill' : 'Edit Wall Material') : (wallEditItemIsFill ? 'Add Wall Fill' : 'Add Wall Material')}</DialogTitle></DialogHeader>
+          <WallMaterialForm isFillMaterial={wallEditItemIsFill} item={wallEditItem} onSave={handleSaveWall} onCancel={() => { setShowWallForm(false); setWallEditItem(null); setWallEditItemIsFill(false); }} />
         </DialogContent>
       </Dialog>
 

@@ -623,6 +623,7 @@ export default function NewFoundationEstimate() {
                     index={idx}
                     walls={walls}
                     wallMaterials={wallMaterials}
+                    fillMaterials={inventory.filter(i => i.material_type === 'fill_material')}
                     foundationItems={items}
                     settings={settings}
                     onChange={(updated) => updateWall(idx, updated)}

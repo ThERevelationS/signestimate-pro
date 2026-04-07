@@ -24,7 +24,7 @@ const OFFSET_OPTIONS = [
   { label: '1/2 offset (running bond)', value: 0.5 },
 ];
 
-function calcWallCosts({ wallShape, wallMaterial, wallHeightInches, mortarGapInches, settings }) {
+function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInternalWall, wallHeightInches, mortarGapInches, internalMortarGapInches, settings }) {
   if (!wallShape || !wallMaterial || !wallShape.segments) return null;
 
   const isConcrete = wallMaterial.wall_material_subtype === 'concrete';
@@ -36,10 +36,8 @@ function calcWallCosts({ wallShape, wallMaterial, wallHeightInches, mortarGapInc
   const numCourses = Math.floor(wallHeightInches / courseH);
   const brickPitch = unitL + (isConcrete ? 0 : mortar);
 
-  // Total linear inches of wall (perimeter)
   const totalLinearInches = wallShape.segments.reduce((s, seg) => s + seg.length, 0);
 
-  // Count bricks: courses * bricks per course per linear foot
   const bricksPerCoursePerLinearInch = 1 / brickPitch;
   const totalBricks = Math.ceil(numCourses * totalLinearInches * bricksPerCoursePerLinearInch);
 
@@ -47,27 +45,69 @@ function calcWallCosts({ wallShape, wallMaterial, wallHeightInches, mortarGapInc
 
   const surfaceAreaSqFtSingleSide = (totalLinearInches * wallHeightInches) / 144;
 
-  // Mortar cost
   let mortarCost = 0;
   if (!isConcrete) {
-    // Surface area of all faces: inner + outer side (2 sides * length * height)
     const surfaceAreaSqFtMortar = surfaceAreaSqFtSingleSide * 2;
     const mortarCostPerSqFt = parseFloat(settings?.wall_mortar_cost_per_sqft || 0.35);
     mortarCost = surfaceAreaSqFtMortar * mortarCostPerSqFt;
   }
 
-  // Labor: Cost per sqft (Wall Masonry Labor Rate)
   const laborRatePerSqFt = parseFloat(settings?.wall_labor_rate || 45);
   const minCharge = parseFloat(settings?.wall_minimum_charge || 150);
   
-  let rawLaborCost = surfaceAreaSqFtSingleSide * laborRatePerSqFt;
-  let laborCost = rawLaborCost;
+  let laborCost = surfaceAreaSqFtSingleSide * laborRatePerSqFt;
   if (laborCost < minCharge) {
     laborCost = minCharge;
   }
   
-  // Approximate labor hours based on bricks per hour (cinderblock/filler units) for reference
   const laborHours = totalBricks / (parseFloat(settings?.wall_labor_bricks_per_hour || 50));
+
+  // --- Internal Wall Calculation ---
+  let internalTotalBricks = 0;
+  let internalMaterialCost = 0;
+  let internalMortarCost = 0;
+  let internalLaborCost = 0;
+  let internalLaborHours = 0;
+  let internalTotalLinearInches = 0;
+
+  if (includeInternalWall && internalMaterial) {
+    const intIsConcrete = internalMaterial.wall_material_subtype === 'concrete';
+    const intUnitL = internalMaterial.wall_unit_length_inches || 8;
+    const intUnitW = internalMaterial.wall_unit_width_inches || 4;
+    const intUnitH = internalMaterial.wall_unit_height_inches || 2.25;
+    const intMortar = intIsConcrete ? 0 : (internalMortarGapInches || 0.375);
+    const intCourseH = intUnitH + intMortar;
+    const intNumCourses = Math.floor(wallHeightInches / intCourseH);
+    const intBrickPitch = intUnitL + intMortar;
+
+    // For each segment, inner length is reduced by outer wall depth (unitW) at each corner.
+    // We assume a closed shape with 90-degree corners, meaning each segment loses outer Wall Depth * 2.
+    const isClosed = wallShape.closed !== false;
+    const lengthReduction = isClosed ? (2 * unitW) : 0; 
+
+    wallShape.segments.forEach(seg => {
+      const innerSegLength = Math.max(0, seg.length - lengthReduction);
+      internalTotalLinearInches += innerSegLength;
+
+      // "When a fill material is cut count it as a full piece."
+      const bricksThisCourse = Math.ceil(innerSegLength / intBrickPitch);
+      internalTotalBricks += bricksThisCourse * intNumCourses;
+    });
+
+    internalMaterialCost = internalTotalBricks * (internalMaterial.cost_per_unit || 0);
+    
+    const intSurfaceAreaSqFtSingleSide = (internalTotalLinearInches * wallHeightInches) / 144;
+    
+    if (!intIsConcrete) {
+      const intSurfaceAreaSqFtMortar = intSurfaceAreaSqFtSingleSide * 2;
+      const mortarCostPerSqFt = parseFloat(settings?.wall_mortar_cost_per_sqft || 0.35);
+      internalMortarCost = intSurfaceAreaSqFtMortar * mortarCostPerSqFt;
+    }
+
+    let rawIntLaborCost = intSurfaceAreaSqFtSingleSide * laborRatePerSqFt;
+    internalLaborCost = rawIntLaborCost;
+    internalLaborHours = internalTotalBricks / (parseFloat(settings?.wall_labor_bricks_per_hour || 50));
+  }
 
   return {
     totalBricks,
@@ -75,9 +115,14 @@ function calcWallCosts({ wallShape, wallMaterial, wallHeightInches, mortarGapInc
     mortarCost,
     laborHours,
     laborCost,
-    totalCost: materialCost + mortarCost + laborCost,
+    totalCost: materialCost + mortarCost + laborCost + internalMaterialCost + internalMortarCost + internalLaborCost,
     totalLinearInches,
     numCourses,
+    internalTotalBricks,
+    internalMaterialCost,
+    internalMortarCost,
+    internalLaborCost,
+    internalLaborHours
   };
 }
 
@@ -86,6 +131,7 @@ export default function WallSection({
   index,
   walls = [],
   wallMaterials,
+  fillMaterials = [],
   foundationItems = [],
   settings,
   onChange,
@@ -98,15 +144,20 @@ export default function WallSection({
   const update = (field, value) => onChange({ ...wall, [field]: value });
 
   const isConcrete = wall.selectedMaterial?.wall_material_subtype === 'concrete';
+  const isInternalConcrete = wall.selectedInternalMaterial?.wall_material_subtype === 'concrete';
   const costs = calcWallCosts({
     wallShape: wall.shape,
     wallMaterial: wall.selectedMaterial,
+    internalMaterial: wall.selectedInternalMaterial,
+    includeInternalWall: wall.includeInternalWall,
     wallHeightInches: wall.heightInches || 24,
     mortarGapInches: wall.mortarGapInches || 0.375,
+    internalMortarGapInches: wall.internalMortarGapInches || 0.375,
     settings,
   });
 
   const selectedMat = wallMaterials.find(m => m.id === wall.materialId);
+  const selectedIntMat = fillMaterials.find(m => m.id === wall.internalMaterialId);
 
   useEffect(() => {
     if (selectedMat && selectedMat.id !== wall.selectedMaterial?.id) {
@@ -115,14 +166,23 @@ export default function WallSection({
   }, [wall.materialId, wallMaterials]);
 
   useEffect(() => {
+    if (selectedIntMat && selectedIntMat.id !== wall.selectedInternalMaterial?.id) {
+      update('selectedInternalMaterial', selectedIntMat);
+    }
+  }, [wall.internalMaterialId, fillMaterials]);
+
+  useEffect(() => {
     if (costs) {
       onChange({ ...wall, calculatedCosts: costs });
     }
   }, [
     wall.shape?.segments?.length,
     wall.materialId,
+    wall.internalMaterialId,
+    wall.includeInternalWall,
     wall.heightInches,
     wall.mortarGapInches,
+    wall.internalMortarGapInches,
     wall.offsetFraction,
   ]);
 
@@ -214,6 +274,67 @@ export default function WallSection({
             </div>
           </div>
 
+          {/* Internal Wall Toggle */}
+          <div className="pt-2 border-t border-orange-100">
+            <div className="flex items-center gap-2 mb-3">
+              <Checkbox
+                checked={wall.includeInternalWall || false}
+                onCheckedChange={v => update('includeInternalWall', v)}
+                id={`internal-${index}`}
+              />
+              <Label htmlFor={`internal-${index}`} className="text-sm font-semibold text-orange-900 cursor-pointer">
+                Add Internal Wall (Fill Material)
+              </Label>
+            </div>
+            
+            {wall.includeInternalWall && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-orange-50/50 p-3 rounded-lg border border-orange-100 mb-4">
+                <div className="col-span-2">
+                  <Label className="text-xs">Internal Wall Material</Label>
+                  <Select
+                    value={wall.internalMaterialId || ''}
+                    onValueChange={v => {
+                      const mat = fillMaterials.find(m => m.id === v);
+                      onChange({ ...wall, internalMaterialId: v, selectedInternalMaterial: mat || null });
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-sm bg-white">
+                      <SelectValue placeholder="Select fill material" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fillMaterials.length === 0 && (
+                        <SelectItem value="_none" disabled>No wall fill materials in inventory</SelectItem>
+                      )}
+                      {fillMaterials.map(m => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.material_name} ({m.wall_material_subtype})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {!isInternalConcrete && (
+                  <div className="col-span-2 md:col-span-2">
+                    <Label className="text-xs">Internal Mortar Gap</Label>
+                    <Select
+                      value={String(wall.internalMortarGapInches || 0.375)}
+                      onValueChange={v => update('internalMortarGapInches', parseFloat(v))}
+                    >
+                      <SelectTrigger className="h-8 text-sm bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MORTAR_GAP_OPTIONS.map(o => (
+                          <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Mortar/offset - hide for concrete */}
           {!isConcrete && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -292,27 +413,53 @@ export default function WallSection({
 
           {/* Cost summary */}
           {costs && (
-            <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-4">
-              <div>
-                <p className="text-xs text-emerald-700/70">Units Needed</p>
-                <p className="font-semibold text-emerald-900">{costs.totalBricks}</p>
-              </div>
-              <div>
-                <p className="text-xs text-emerald-700/70">Material Cost</p>
-                <p className="font-semibold text-emerald-900">${costs.materialCost.toFixed(2)}</p>
-              </div>
-              {!isConcrete && (
+            <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 mt-4 space-y-3 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
-                  <p className="text-xs text-emerald-700/70">Mortar Cost</p>
-                  <p className="font-semibold text-emerald-900">${costs.mortarCost.toFixed(2)}</p>
+                  <p className="text-xs text-emerald-700/70">Outer Units Needed</p>
+                  <p className="font-semibold text-emerald-900">{costs.totalBricks}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-emerald-700/70">Outer Material Cost</p>
+                  <p className="font-semibold text-emerald-900">${costs.materialCost.toFixed(2)}</p>
+                </div>
+                {!isConcrete && (
+                  <div>
+                    <p className="text-xs text-emerald-700/70">Outer Mortar Cost</p>
+                    <p className="font-semibold text-emerald-900">${costs.mortarCost.toFixed(2)}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs text-emerald-700/70">Outer Labor Cost ({costs.laborHours.toFixed(1)} hrs)</p>
+                  <p className="font-semibold text-emerald-900">${costs.laborCost.toFixed(2)}</p>
+                </div>
+              </div>
+              
+              {wall.includeInternalWall && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 border-t border-emerald-200/50 pt-3">
+                  <div>
+                    <p className="text-xs text-emerald-700/70">Internal Units Needed</p>
+                    <p className="font-semibold text-emerald-900">{costs.internalTotalBricks}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-emerald-700/70">Internal Material Cost</p>
+                    <p className="font-semibold text-emerald-900">${costs.internalMaterialCost.toFixed(2)}</p>
+                  </div>
+                  {!isInternalConcrete && (
+                    <div>
+                      <p className="text-xs text-emerald-700/70">Internal Mortar Cost</p>
+                      <p className="font-semibold text-emerald-900">${costs.internalMortarCost.toFixed(2)}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-emerald-700/70">Internal Labor ({costs.internalLaborHours.toFixed(1)} hrs)</p>
+                    <p className="font-semibold text-emerald-900">${costs.internalLaborCost.toFixed(2)}</p>
+                  </div>
                 </div>
               )}
-              <div>
-                <p className="text-xs text-emerald-700/70">Labor Cost ({costs.laborHours.toFixed(1)} hrs)</p>
-                <p className="font-semibold text-emerald-900">${costs.laborCost.toFixed(2)}</p>
-              </div>
-              <div className="col-span-2 md:col-span-4 border-t border-emerald-200/50 pt-2">
-                <p className="text-xs text-emerald-700/70">Wall Total</p>
+
+              <div className="border-t border-emerald-200/50 pt-2 flex items-center justify-between">
+                <p className="text-xs text-emerald-700/70">Total Wall Assembly Cost</p>
                 <p className="text-base font-bold text-emerald-700">${costs.totalCost.toFixed(2)}</p>
               </div>
             </div>
