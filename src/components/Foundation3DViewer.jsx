@@ -263,6 +263,23 @@ export default function Foundation3DViewer({
                 rebarGroup.add(rebar);
               }
             }
+
+            // Vertical connectors at intersections
+            const verticalHeight = Math.max(0, depthFeet - (2 * edgeClearance));
+            if (verticalHeight > 0) {
+              const verticalYPos = -depthFeet / 2 + gradeOffsetFeet;
+              for (let i = 0; i < numRebarsLengthwise; i++) {
+                for (let j = 0; j < numRebarsWidthwise; j++) {
+                  const zOffset = -effectiveWidthFeet / 2 + i * rebarSpacingWidthFeet;
+                  const xOffset = -effectiveLengthFeet / 2 + j * rebarSpacingLengthFeet;
+                  
+                  const verticalGeometry = new THREE.CylinderGeometry(rebarDiameter, rebarDiameter, verticalHeight, 8);
+                  const verticalRebar = new THREE.Mesh(verticalGeometry, rebarMaterial);
+                  verticalRebar.position.set(xOffset, verticalYPos, zOffset);
+                  rebarGroup.add(verticalRebar);
+                }
+              }
+            }
             
             foundationGroup.add(rebarGroup);
           }

@@ -209,7 +209,13 @@ export default function NewFoundationEstimate() {
       const nBarsL = Math.floor(item.width_inches / (item.rebar_spacing_width || 12)) + 1;
       const nBarsW = Math.floor(item.length_inches / (item.rebar_spacing_length || 12)) + 1;
       const layers = item.rebar_layers || 1;
-      const totalFt = (nBarsL * (item.length_inches / 12) + nBarsW * (item.width_inches / 12)) * layers * (item.quantity || 1);
+      const horizontalFt = (nBarsL * (item.length_inches / 12) + nBarsW * (item.width_inches / 12)) * layers;
+      
+      const numIntersections = nBarsL * nBarsW;
+      const verticalLengthFt = Math.max(0, item.depth_inches - 6) / 12;
+      const verticalFt = numIntersections * verticalLengthFt;
+      
+      const totalFt = (horizontalFt + verticalFt) * (item.quantity || 1);
       rebarCost = totalFt * rebar_cost;
     }
 
@@ -390,9 +396,9 @@ export default function NewFoundationEstimate() {
   }
 
   return (
-    <div className="flex flex-col" onBlur={handleBlur}>
+    <div className="flex flex-col h-[calc(100vh-60px)]" onBlur={handleBlur}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-white flex-shrink-0 flex-wrap gap-2 sticky top-[61px] z-40 shadow-sm">
+      <div className="flex items-center justify-between px-4 py-3 border-b bg-white flex-shrink-0 flex-wrap gap-2 z-40 shadow-sm">
         <div className="flex items-center gap-3">
           <Link to={createPageUrl('FoundationProjects')}>
             <Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
@@ -416,12 +422,12 @@ export default function NewFoundationEstimate() {
       </div>
 
       {/* Two-panel body */}
-      <div className="flex flex-1 items-start">
+      <div className="flex flex-1 overflow-hidden">
 
         {/* LEFT: Tabs / Forms */}
-        <div className="flex flex-col flex-1 min-w-0">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col">
-            <div className="p-4 pb-0 bg-white border-b flex-shrink-0 z-30 sticky top-[130px] shadow-sm">
+        <div className="flex flex-col flex-1 min-w-0 h-full overflow-y-auto relative">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col min-h-0">
+            <div className="p-4 pb-0 bg-white border-b flex-shrink-0 z-30 sticky top-0 shadow-sm">
               <TabsList className="mb-4 flex-wrap h-auto bg-slate-100/80 p-1.5 border border-slate-200 rounded-xl shadow-sm">
                 <TabsTrigger value="info">Project Info</TabsTrigger>
                 <TabsTrigger value="foundation">Foundation ({items.length})</TabsTrigger>
@@ -623,7 +629,7 @@ export default function NewFoundationEstimate() {
         </div>
 
         {/* RIGHT: Persistent 3D Viewer */}
-        <div className={`hidden lg:flex flex-col border-l bg-slate-100 transition-all duration-300 sticky top-[130px] h-[calc(100vh-130px)] ${show3D ? 'w-[40%]' : 'w-auto'}`}>
+        <div className={`hidden lg:flex flex-col border-l bg-slate-100 transition-all duration-300 h-full ${show3D ? 'w-[40%]' : 'w-auto'}`}>
           <div className="px-4 py-2 border-b bg-white flex items-center justify-between flex-shrink-0 h-12">
             {show3D && (
               <div>
@@ -864,24 +870,29 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
 
           {/* Excavation display */}
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs mt-4">
-            <div className="flex items-center justify-between mb-1">
-              <span className="font-semibold text-amber-800 uppercase tracking-wide">Excavation</span>
-              <div className="flex items-center gap-2">
-                <Select value={item.excavation_method || 'hand_dig'} onValueChange={v => onUpdate('excavation_method', v)}>
-                  <SelectTrigger className="h-6 py-0 px-2 text-xs w-[180px] bg-white"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hand_dig">Hand Dig</SelectItem>
-                    <SelectItem value="equipment_excavation">Equipment Excavation</SelectItem>
-                  </SelectContent>
-                </Select>
-                {item.excavation_method === 'equipment_excavation' && excavationEquipment && <Badge variant="secondary" className="text-xs">{excavationEquipment.material_name}</Badge>}
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col justify-center">
+                <span className="font-semibold text-amber-800 uppercase tracking-wide mb-1">Excavation</span>
+                <div className="text-slate-500">
+                  Volume: ~{((item.foundation_type === 'spread_foot'
+                    ? (item.length_inches / 12) * (item.width_inches / 12) * (item.depth_inches / 12)
+                    : Math.PI * ((item.diameter / 2) / 12) ** 2 * (item.depth_inches / 12)) / 27 * (item.quantity || 1) * 1.25).toFixed(2)} CY
+                  &nbsp;·&nbsp; Cost: <span className="font-semibold text-slate-700">${costs?.excavationCost?.toFixed(2) || '0.00'}</span>
+                </div>
               </div>
-            </div>
-            <div className="text-slate-500">
-              Volume: ~{((item.foundation_type === 'spread_foot'
-                ? (item.length_inches / 12) * (item.width_inches / 12) * (item.depth_inches / 12)
-                : Math.PI * ((item.diameter / 2) / 12) ** 2 * (item.depth_inches / 12)) / 27 * (item.quantity || 1) * 1.25).toFixed(2)} CY
-              &nbsp;·&nbsp; Cost: <span className="font-semibold text-slate-700">${costs?.excavationCost?.toFixed(2) || '0.00'}</span>
+              <div className="flex flex-col items-end gap-1">
+                <Label className="text-[10px] uppercase font-semibold text-amber-800/70">Excavation Method</Label>
+                <div className="flex items-center gap-2">
+                  <Select value={item.excavation_method || 'hand_dig'} onValueChange={v => onUpdate('excavation_method', v)}>
+                    <SelectTrigger className="h-6 py-0 px-2 text-xs w-[180px] bg-white"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hand_dig">Hand Dig</SelectItem>
+                      <SelectItem value="equipment_excavation">Equipment Excavation</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {item.excavation_method === 'equipment_excavation' && excavationEquipment && <Badge variant="secondary" className="text-xs">{excavationEquipment.material_name}</Badge>}
+                </div>
+              </div>
             </div>
           </div>
 

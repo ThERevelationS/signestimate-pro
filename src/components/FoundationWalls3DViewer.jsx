@@ -259,6 +259,23 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
               group.add(rm);
             }
           }
+          
+          // Vertical connectors at intersections
+          const verticalHeight = Math.max(0, depFt - (2 * clearance));
+          if (verticalHeight > 0) {
+            const verticalYPos = -depFt / 2 + gradeOff;
+            for (let i = 0; i < nL; i++) {
+              for (let j = 0; j < nW; j++) {
+                const zOff = -effW / 2 + i * actualSpacW;
+                const xOff = -effL / 2 + j * actualSpacL;
+                
+                const verticalGeo = new THREE.CylinderGeometry(rDia, rDia, verticalHeight, 6);
+                const verticalRebar = new THREE.Mesh(verticalGeo, rebarMat);
+                verticalRebar.position.set(xOff, verticalYPos, zOff);
+                group.add(verticalRebar);
+              }
+            }
+          }
         }
 
         scene.add(group);
