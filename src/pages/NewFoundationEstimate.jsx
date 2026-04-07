@@ -600,6 +600,57 @@ export default function NewFoundationEstimate() {
 
               {/* WALLS AND POLES */}
               <TabsContent value="walls_poles" className="space-y-6 pt-4">
+                <div className="space-y-4 pb-6 border-b border-slate-200 mb-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900">Wall Configurations</h3>
+                      {wallMaterials.length === 0 && (
+                        <p className="text-xs text-amber-700 mt-1">
+                          No wall materials in inventory.{' '}
+                          <Link to={createPageUrl('FoundationInventory')} className="underline font-medium">Add wall materials →</Link>
+                        </p>
+                      )}
+                    </div>
+                    <Button onClick={() => { addWall(); setActiveWallIndex(walls.length); }} size="sm" className="bg-amber-600 hover:bg-amber-700 text-white">
+                      <Plus className="w-4 h-4 mr-1" /> Add Wall Type
+                    </Button>
+                  </div>
+
+                  {walls.length === 0 && (
+                    <Card className="border-dashed">
+                      <CardContent className="py-10 text-center text-slate-400">
+                        <div className="text-4xl mb-2">🧱</div>
+                        <p className="font-medium">No walls added yet</p>
+                        <p className="text-sm mt-1">Click "Add Wall Type" to configure materials.</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {walls.map((wall, idx) => (
+                    <WallSection
+                      key={wall._id}
+                      wall={wall}
+                      index={idx}
+                      isActive={activeWallIndex === idx}
+                      onSetActive={() => setActiveWallIndex(idx)}
+                      wallMaterials={wallMaterials}
+                      fillMaterials={inventory.filter(i => i.material_type === 'fill_material')}
+                      settings={settings}
+                      onChange={(updated) => updateWall(idx, updated)}
+                      onDelete={() => { removeWall(idx); if (activeWallIndex === idx) setActiveWallIndex(0); }}
+                    />
+                  ))}
+
+                  {walls.length > 0 && (
+                    <Card className="bg-amber-50 border-amber-200">
+                      <CardContent className="py-3 px-4 flex items-center justify-between">
+                        <span className="font-medium text-amber-800">Total Wall Cost</span>
+                        <span className="text-lg font-bold text-amber-700">${totals.wallTotal.toFixed(2)}</span>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-base font-bold text-slate-900">Layout Canvas</h3>
@@ -755,56 +806,6 @@ export default function NewFoundationEstimate() {
                   )}
                 </div>
 
-                <div className="pt-6 border-t border-slate-200 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-base font-bold text-slate-900">Wall Configurations</h3>
-                      {wallMaterials.length === 0 && (
-                        <p className="text-xs text-amber-700 mt-1">
-                          No wall materials in inventory.{' '}
-                          <Link to={createPageUrl('FoundationInventory')} className="underline font-medium">Add wall materials →</Link>
-                        </p>
-                      )}
-                    </div>
-                    <Button onClick={() => { addWall(); setActiveWallIndex(walls.length); }} size="sm" className="bg-amber-600 hover:bg-amber-700 text-white">
-                      <Plus className="w-4 h-4 mr-1" /> Add Wall Type
-                    </Button>
-                  </div>
-
-                  {walls.length === 0 && (
-                    <Card className="border-dashed">
-                      <CardContent className="py-10 text-center text-slate-400">
-                        <div className="text-4xl mb-2">🧱</div>
-                        <p className="font-medium">No walls added yet</p>
-                        <p className="text-sm mt-1">Click "Add Wall Type" to configure materials.</p>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {walls.map((wall, idx) => (
-                    <WallSection
-                      key={wall._id}
-                      wall={wall}
-                      index={idx}
-                      isActive={activeWallIndex === idx}
-                      onSetActive={() => setActiveWallIndex(idx)}
-                      wallMaterials={wallMaterials}
-                      fillMaterials={inventory.filter(i => i.material_type === 'fill_material')}
-                      settings={settings}
-                      onChange={(updated) => updateWall(idx, updated)}
-                      onDelete={() => { removeWall(idx); if (activeWallIndex === idx) setActiveWallIndex(0); }}
-                    />
-                  ))}
-
-                  {walls.length > 0 && (
-                    <Card className="bg-amber-50 border-amber-200">
-                      <CardContent className="py-3 px-4 flex items-center justify-between">
-                        <span className="font-medium text-amber-800">Total Wall Cost</span>
-                        <span className="text-lg font-bold text-amber-700">${totals.wallTotal.toFixed(2)}</span>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
               </TabsContent>
 
               {/* BEAUTIFY */}
