@@ -189,9 +189,19 @@ export default function NewFoundationEstimate() {
     let concreteCost = 0;
     if (selectedConcrete?.material_type === 'bagged_concrete') {
       const bags = Math.ceil(volumeCY * 45); // ~45 80lb bags per CY
-      concreteCost = bags * (selectedConcrete.cost_per_unit || 5); // Fallback to $5/bag if not set
+      concreteCost = bags * (Number(selectedConcrete.cost_per_unit) || 5); // Fallback to $5/bag if not set
     } else {
-      concreteCost = volumeCY * conc_cost;
+      let baseRate = Number(conc_cost) || 0;
+      if (selectedConcrete && Number(selectedConcrete.minimum_order_yards) > 0 && volumeCY < Number(selectedConcrete.minimum_order_yards)) {
+        if (Number(selectedConcrete.below_minimum_cost_per_cy) > 0) {
+          baseRate = Number(selectedConcrete.below_minimum_cost_per_cy);
+        }
+      }
+      concreteCost = volumeCY * baseRate;
+      
+      if (selectedConcrete && Number(selectedConcrete.minimum_cost) > 0 && concreteCost < Number(selectedConcrete.minimum_cost)) {
+        concreteCost = Number(selectedConcrete.minimum_cost);
+      }
     }
 
     let rebarCost = 0;
