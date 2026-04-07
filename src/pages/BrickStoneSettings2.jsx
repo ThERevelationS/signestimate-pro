@@ -170,6 +170,16 @@ export default function BrickStoneSettings2() {
 
         <SettingsAuthWrapper correctPassword="Cinci2467" onUnlock={() => setIsLocked(false)} user={currentUser}>
           {settingsContent}
+          <Card className="bg-indigo-50 border-indigo-100 mt-6">
+            <CardHeader>
+              <CardTitle className="text-sm text-indigo-900">How Brick & Stone Costs are Calculated</CardTitle>
+            </CardHeader>
+            <CardContent className="text-xs text-indigo-800 space-y-2">
+              <p><strong>Material Cost:</strong> Calculated Number of Bricks × Waste Factor × Cost Per Brick.</p>
+              <p><strong>Mortar Cost:</strong> (Surface Area ÷ 100) × Mortar Bags per 100sqft × Cost per Bag.</p>
+              <p><strong>Calculated Bricks:</strong> Total Surface Area ÷ (Brick Area + Mortar Gap Area).</p>
+            </CardContent>
+          </Card>
         </SettingsAuthWrapper>
       </div>
     </div>

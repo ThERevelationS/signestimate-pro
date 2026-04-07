@@ -178,11 +178,16 @@ export default function NewFoundationEstimate() {
       : getSetting('foundation_forming_materials_pillar', 0.75);
 
     let volumeCY = 0;
+    const lenIn = parseFloat(item.length_inches) || 0;
+    const widIn = parseFloat(item.width_inches) || 0;
+    const depIn = parseFloat(item.depth_inches) || 0;
+    const diaIn = parseFloat(item.diameter) || 0;
+    
     if (item.foundation_type === 'spread_foot') {
-      volumeCY = ((item.length_inches / 12) * (item.width_inches / 12) * (item.depth_inches / 12)) / 27;
+      volumeCY = ((lenIn / 12) * (widIn / 12) * (depIn / 12)) / 27;
     } else {
-      const r = (item.diameter / 2) / 12;
-      volumeCY = (Math.PI * r * r * (item.depth_inches / 12)) / 27;
+      const r = (diaIn / 2) / 12;
+      volumeCY = (Math.PI * r * r * (depIn / 12)) / 27;
     }
     volumeCY = volumeCY * (item.quantity || 1);
 
@@ -206,33 +211,33 @@ export default function NewFoundationEstimate() {
 
     let rebarCost = 0;
     if (item.include_rebar && item.foundation_type === 'spread_foot') {
-      const nBarsL = Math.floor(item.width_inches / (item.rebar_spacing_width || 12)) + 1;
-      const nBarsW = Math.floor(item.length_inches / (item.rebar_spacing_length || 12)) + 1;
-      const layers = item.rebar_layers || 1;
-      const horizontalFt = (nBarsL * (item.length_inches / 12) + nBarsW * (item.width_inches / 12)) * layers;
+      const nBarsL = Math.floor(widIn / (parseFloat(item.rebar_spacing_width) || 12)) + 1;
+      const nBarsW = Math.floor(lenIn / (parseFloat(item.rebar_spacing_length) || 12)) + 1;
+      const layers = parseInt(item.rebar_layers) || 1;
+      const horizontalFt = (nBarsL * (lenIn / 12) + nBarsW * (widIn / 12)) * layers;
       
       const numIntersections = nBarsL * nBarsW;
-      const verticalLengthFt = Math.max(0, item.depth_inches - 6) / 12;
+      const verticalLengthFt = Math.max(0, depIn - 6) / 12;
       const verticalFt = numIntersections * verticalLengthFt;
       
-      const totalFt = (horizontalFt + verticalFt) * (item.quantity || 1);
+      const totalFt = (horizontalFt + verticalFt) * (parseInt(item.quantity) || 1);
       rebarCost = totalFt * rebar_cost;
     }
 
     let formingCost = 0;
     if (item.include_forming) {
       const perim = item.foundation_type === 'spread_foot'
-        ? 2 * (item.length_inches + item.width_inches) / 12
-        : Math.PI * item.diameter / 12;
-      formingCost = perim * 0.25 * (item.quantity || 1) * forming_labor + concreteCost * forming_mult;
+        ? 2 * (lenIn + widIn) / 12
+        : Math.PI * diaIn / 12;
+      formingCost = perim * 0.25 * (parseInt(item.quantity) || 1) * forming_labor + concreteCost * forming_mult;
     }
 
     let finishingCost = 0;
     if (item.include_finishing) {
       const topArea = item.foundation_type === 'spread_foot'
-        ? (item.length_inches * item.width_inches) / 144
-        : Math.PI * ((item.diameter / 2 / 12) ** 2);
-      finishingCost = topArea * 0.1 * (item.quantity || 1) * finishing_labor;
+        ? (lenIn * widIn) / 144
+        : Math.PI * ((diaIn / 2 / 12) ** 2);
+      finishingCost = topArea * 0.1 * (parseInt(item.quantity) || 1) * finishing_labor;
     }
 
     let excavationCost = 0;
@@ -449,19 +454,19 @@ export default function NewFoundationEstimate() {
                   <CardHeader className="bg-indigo-50/50 border-b border-indigo-100"><CardTitle className="text-base text-indigo-900">Project Information</CardTitle></CardHeader>
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className={`text-xs transition-colors duration-300 ${missingFields.includes('project_name') ? 'text-red-600 font-bold' : ''}`}>Project Name *</Label>
-                      <Input 
-                        className={`h-9 transition-all duration-300 ${missingFields.includes('project_name') ? 'border-red-500 ring-2 ring-red-200 bg-red-50 animate-pulse' : ''}`}
-                        value={project.project_name} 
-                        onChange={e => updateProject('project_name', e.target.value)} 
-                      />
-                    </div>
-                    <div>
                       <Label className={`text-xs transition-colors duration-300 ${missingFields.includes('client_name') ? 'text-red-600 font-bold' : ''}`}>Client Name *</Label>
                       <Input 
                         className={`h-9 transition-all duration-300 ${missingFields.includes('client_name') ? 'border-red-500 ring-2 ring-red-200 bg-red-50 animate-pulse' : ''}`}
                         value={project.client_name} 
                         onChange={e => updateProject('client_name', e.target.value)} 
+                      />
+                    </div>
+                    <div>
+                      <Label className={`text-xs transition-colors duration-300 ${missingFields.includes('project_name') ? 'text-red-600 font-bold' : ''}`}>Project Name *</Label>
+                      <Input 
+                        className={`h-9 transition-all duration-300 ${missingFields.includes('project_name') ? 'border-red-500 ring-2 ring-red-200 bg-red-50 animate-pulse' : ''}`}
+                        value={project.project_name} 
+                        onChange={e => updateProject('project_name', e.target.value)} 
                       />
                     </div>
                     <div>
@@ -686,10 +691,6 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
           {/* Basic */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
-              <Label className="text-xs">Description</Label>
-              <Input className="h-8" value={item.description} onChange={e => onUpdate('description', e.target.value)} placeholder="e.g. Main post base" />
-            </div>
-            <div>
               <Label className="text-xs">Foundation Type</Label>
               <Select value={item.foundation_type} onValueChange={v => {
                   onUpdate('foundation_type', v);
@@ -721,7 +722,7 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
                   </SelectContent>
                 </Select>
                 {item.excavation_method === 'equipment_excavation' && (
-                  <p className="text-xs text-slate-500 mt-1 font-medium">See Equipment Tab to Select Equipment for the Project.</p>
+                  <p className="text-sm text-red-600 mt-1 font-medium">See Equipment Tab to Select Equipment for the Project.</p>
                 )}
               </div>
               <div>
@@ -745,46 +746,48 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
               <>
                 <div>
                   <Label className="text-xs">Length (inches)</Label>
-                  <Input type="number" className="h-8" value={item.length_inches} onChange={e => onUpdate('length_inches', parseFloat(e.target.value) || 0)} />
+                  <Input type="number" className="h-8" value={item.length_inches} onChange={e => onUpdate('length_inches', e.target.value)} />
                 </div>
                 <div>
                   <Label className="text-xs">Width (inches)</Label>
-                  <Input type="number" className="h-8" value={item.width_inches} onChange={e => onUpdate('width_inches', parseFloat(e.target.value) || 0)} />
+                  <Input type="number" className="h-8" value={item.width_inches} onChange={e => onUpdate('width_inches', e.target.value)} />
                 </div>
                 <div>
                   <Label className="text-xs">Depth (inches)</Label>
                   <Input type="number" className="h-8" value={item.depth_inches} onChange={e => {
-                    const depth = parseFloat(e.target.value) || 0;
-                    onUpdate('depth_inches', depth);
+                    const val = e.target.value;
+                    onUpdate('depth_inches', val);
+                    const depth = parseFloat(val) || 0;
                     if (item.include_rebar && item.rebar_layer_separation_inches) {
-                      onUpdate('rebar_layers', Math.floor(depth / item.rebar_layer_separation_inches) || 1);
+                      onUpdate('rebar_layers', Math.floor(depth / (parseFloat(item.rebar_layer_separation_inches)||1)) || 1);
                     }
                   }} />
                 </div>
                 <div>
                   <Label className="text-xs">Height relative to grade (inches)</Label>
-                  <Input type="number" className="h-8" value={item.grade_offset_inches} onChange={e => onUpdate('grade_offset_inches', parseFloat(e.target.value) || 0)} />
+                  <Input type="number" className="h-8" value={item.grade_offset_inches} onChange={e => onUpdate('grade_offset_inches', e.target.value)} />
                 </div>
               </>
             ) : (
               <>
                 <div>
                   <Label className="text-xs">Diameter (inches)</Label>
-                  <Input type="number" className="h-8" value={item.diameter} onChange={e => onUpdate('diameter', parseFloat(e.target.value) || 0)} />
+                  <Input type="number" className="h-8" value={item.diameter} onChange={e => onUpdate('diameter', e.target.value)} />
                 </div>
                 <div>
                   <Label className="text-xs">Depth (inches)</Label>
                   <Input type="number" className="h-8" value={item.depth_inches} onChange={e => {
-                    const depth = parseFloat(e.target.value) || 0;
-                    onUpdate('depth_inches', depth);
+                    const val = e.target.value;
+                    onUpdate('depth_inches', val);
+                    const depth = parseFloat(val) || 0;
                     if (item.include_rebar && item.rebar_layer_separation_inches) {
-                      onUpdate('rebar_layers', Math.floor(depth / item.rebar_layer_separation_inches) || 1);
+                      onUpdate('rebar_layers', Math.floor(depth / (parseFloat(item.rebar_layer_separation_inches)||1)) || 1);
                     }
                   }} />
                 </div>
                 <div>
                   <Label className="text-xs">Height relative to grade (inches)</Label>
-                  <Input type="number" className="h-8" value={item.grade_offset_inches || 0} onChange={e => onUpdate('grade_offset_inches', parseFloat(e.target.value) || 0)} />
+                  <Input type="number" className="h-8" value={item.grade_offset_inches ?? 0} onChange={e => onUpdate('grade_offset_inches', e.target.value)} />
                 </div>
               </>
             )}
@@ -875,23 +878,13 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
                 <span className="font-semibold text-amber-800 uppercase tracking-wide mb-1">Excavation</span>
                 <div className="text-slate-500">
                   Volume: ~{((item.foundation_type === 'spread_foot'
-                    ? (item.length_inches / 12) * (item.width_inches / 12) * (item.depth_inches / 12)
-                    : Math.PI * ((item.diameter / 2) / 12) ** 2 * (item.depth_inches / 12)) / 27 * (item.quantity || 1) * 1.25).toFixed(2)} CY
+                    ? ((parseFloat(item.length_inches)||0) / 12) * ((parseFloat(item.width_inches)||0) / 12) * ((parseFloat(item.depth_inches)||0) / 12)
+                    : Math.PI * (((parseFloat(item.diameter)||0) / 2) / 12) ** 2 * ((parseFloat(item.depth_inches)||0) / 12)) / 27 * (parseInt(item.quantity) || 1) * 1.25).toFixed(2)} CY
                   &nbsp;·&nbsp; Cost: <span className="font-semibold text-slate-700">${costs?.excavationCost?.toFixed(2) || '0.00'}</span>
                 </div>
               </div>
               <div className="flex flex-col items-end gap-1">
-                <Label className="text-[10px] uppercase font-semibold text-amber-800/70">Excavation Method</Label>
-                <div className="flex items-center gap-2">
-                  <Select value={item.excavation_method || 'hand_dig'} onValueChange={v => onUpdate('excavation_method', v)}>
-                    <SelectTrigger className="h-6 py-0 px-2 text-xs w-[180px] bg-white"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hand_dig">Hand Dig</SelectItem>
-                      <SelectItem value="equipment_excavation">Equipment Excavation</SelectItem>
-                    </SelectContent>
-                  </Select>
                   {item.excavation_method === 'equipment_excavation' && excavationEquipment && <Badge variant="secondary" className="text-xs">{excavationEquipment.material_name}</Badge>}
-                </div>
               </div>
             </div>
           </div>

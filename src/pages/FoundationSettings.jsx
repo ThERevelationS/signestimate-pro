@@ -153,6 +153,16 @@ export default function FoundationSettings() {
                 <SettingInput settingKey="foundation_min_excavation_time" />
               </CardContent>
             </Card>
+            <Card className="bg-indigo-50 border-indigo-100">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-indigo-900">How Labor Rates are Calculated</CardTitle>
+              </CardHeader>
+              <CardContent className="text-xs text-indigo-800 space-y-2">
+                <p><strong>Excavation Cost:</strong> (Volume in Cubic Yards × 1.25 Expansion Factor) × Excavation Labor Rate.</p>
+                <p><strong>Forming Cost:</strong> (Perimeter in Feet × 0.25 Hours) × Forming Labor Rate.</p>
+                <p><strong>Finishing Cost:</strong> (Top Surface Area in Sq. Feet × 0.10 Hours) × Finishing Labor Rate.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="calc" className="space-y-4 pt-4">
@@ -163,6 +173,14 @@ export default function FoundationSettings() {
               <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <SettingInput settingKey="foundation_forming_materials_spread_foot" />
                 <SettingInput settingKey="foundation_forming_materials_pillar" />
+              </CardContent>
+            </Card>
+            <Card className="bg-indigo-50 border-indigo-100">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-indigo-900">How Materials are Calculated</CardTitle>
+              </CardHeader>
+              <CardContent className="text-xs text-indigo-800 space-y-2">
+                <p><strong>Forming Materials Cost:</strong> Concrete Cost × Forming Material Cost Multiplier.</p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -181,6 +199,16 @@ export default function FoundationSettings() {
                 <SettingInput settingKey="wall_labor_rate" />
                 <SettingInput settingKey="wall_labor_bricks_per_hour" />
                 <SettingInput settingKey="wall_minimum_charge" />
+              </CardContent>
+            </Card>
+            <Card className="bg-indigo-50 border-indigo-100">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-indigo-900">How Wall Costs are Calculated</CardTitle>
+              </CardHeader>
+              <CardContent className="text-xs text-indigo-800 space-y-2">
+                <p><strong>Material Cost:</strong> (Total Wall Surface Area ÷ Single Brick Area) × Waste Factor × Price Per Brick.</p>
+                <p><strong>Mortar Cost:</strong> Wall Surface Area × Mortar Cost Per Sq Ft.</p>
+                <p><strong>Labor Cost:</strong> (Total Number of Bricks ÷ Bricks Per Hour) × Wall Masonry Labor Rate.</p>
               </CardContent>
             </Card>
           </TabsContent>

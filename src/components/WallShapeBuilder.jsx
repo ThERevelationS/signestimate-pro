@@ -473,15 +473,6 @@ export default function WallShapeBuilder({
         return;
     }
 
-    // Check if clicking near existing point (canvas px distance)
-    for (let i = 0; i < points.length; i++) {
-      const cp = { x: inchesToCanvas(points[i].x, offset.x), y: inchesToCanvas(points[i].y, offset.y) };
-      if (dist({ x: rawX, y: rawY }, cp) < 10) {
-        setSelectedPointIndex(i);
-        return;
-      }
-    }
-
     if (closed) return;
 
     // Close shape if near first point
@@ -495,6 +486,15 @@ export default function WallShapeBuilder({
       setClosed(true);
       setNearFirstPoint(false);
       return;
+    }
+
+    // Check if clicking near existing point (canvas px distance)
+    for (let i = 0; i < points.length; i++) {
+      const cp = { x: inchesToCanvas(points[i].x, offset.x), y: inchesToCanvas(points[i].y, offset.y) };
+      if (dist({ x: rawX, y: rawY }, cp) < 10) {
+        setSelectedPointIndex(i);
+        return;
+      }
     }
 
     // Enforce 90-degree walls for the click
