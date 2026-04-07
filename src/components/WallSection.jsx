@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
-import WallShapeBuilder from './WallShapeBuilder';
+import SharedCanvas from './SharedCanvas';
 
 const MORTAR_GAP_OPTIONS = [
   { label: '1/4" (thin joint)', value: 0.25 },
@@ -396,7 +396,8 @@ export default function WallSection({
           {/* Shape builder */}
           <div>
             <Label className="text-xs font-semibold text-slate-700 mb-2 block">Wall Outline (Top-Down View)</Label>
-            <WallShapeBuilder
+            <SharedCanvas
+              toolType="wall"
               foundationItems={foundationItems}
               useExistingFoundation={wall.useExistingFoundation}
               otherWalls={walls.filter((_, i) => i !== index)}
