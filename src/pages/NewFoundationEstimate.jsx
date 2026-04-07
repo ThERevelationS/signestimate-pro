@@ -711,37 +711,6 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
 
           {/* Dimensions & Materials */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="col-span-2 md:col-span-4 bg-indigo-50/50 border border-indigo-100 rounded-lg p-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">Excavation Method</Label>
-                <Select value={item.excavation_method || 'hand_dig'} onValueChange={v => onUpdate('excavation_method', v)}>
-                  <SelectTrigger className="h-8 mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hand_dig">Hand Dig</SelectItem>
-                    <SelectItem value="equipment_excavation">Equipment Excavation</SelectItem>
-                  </SelectContent>
-                </Select>
-                {item.excavation_method === 'equipment_excavation' && (
-                  <p className="text-sm text-red-600 mt-1 font-medium">See Equipment Tab to Select Equipment for the Project.</p>
-                )}
-              </div>
-              <div>
-                <Label className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">Concrete Type</Label>
-                <Select value={item.selected_concrete_id || ''} onValueChange={v => onUpdate('selected_concrete_id', v)}>
-                  <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Select concrete..." /></SelectTrigger>
-                  <SelectContent>
-                    {concreteServices.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        <div className="flex flex-col text-left py-1 max-w-[300px]">
-                           <span className="font-medium">{c.material_name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
             {item.foundation_type === 'spread_foot' ? (
               <>
                 <div>
@@ -870,6 +839,38 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
               </div>
             </div>
           )}
+
+          {/* Excavation & Concrete Type */}
+          <div className="bg-indigo-50/50 border border-indigo-100 rounded-lg p-3 grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <Label className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">Excavation Method</Label>
+              <Select value={item.excavation_method || 'hand_dig'} onValueChange={v => onUpdate('excavation_method', v)}>
+                <SelectTrigger className="h-8 mt-1 bg-white"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hand_dig">Hand Dig</SelectItem>
+                  <SelectItem value="equipment_excavation">Equipment Excavation</SelectItem>
+                </SelectContent>
+              </Select>
+              {item.excavation_method === 'equipment_excavation' && (
+                <p className="text-sm text-red-600 mt-1 font-medium">See Equipment Tab to Select Equipment for the Project.</p>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">Concrete Type</Label>
+              <Select value={item.selected_concrete_id || ''} onValueChange={v => onUpdate('selected_concrete_id', v)}>
+                <SelectTrigger className="h-8 mt-1 bg-white"><SelectValue placeholder="Select concrete..." /></SelectTrigger>
+                <SelectContent>
+                  {concreteServices.map(c => (
+                    <SelectItem key={c.id} value={c.id}>
+                      <div className="flex flex-col text-left py-1 max-w-[300px]">
+                         <span className="font-medium">{c.material_name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           {/* Excavation display */}
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs mt-4">
