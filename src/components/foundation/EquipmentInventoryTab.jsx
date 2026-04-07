@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Edit, Plus, Wrench, Link2, Settings2 } from 'lucide-react';
+import { Trash2, Edit, Plus, Wrench, Link2, Settings2, GripVertical } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 const FoundationInventoryEntity = base44.entities.FoundationInventory;
 
@@ -54,6 +55,31 @@ export default function EquipmentInventoryTab({ allItems, loadItems }) {
     loadItems();
   };
 
+  const handleDragEnd = async (result, type) => {
+    if (!result.destination) return;
+    
+    const itemsList = 
+        type === 'excavation_equipment' ? equipment :
+        type === 'attachment' ? attachments : subAttachments;
+        
+    const sorted = [...itemsList].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    
+    const [reorderedItem] = sorted.splice(result.source.index, 1);
+    sorted.splice(result.destination.index, 0, reorderedItem);
+
+    const updates = sorted.map((item, index) => {
+        if (item.sort_order !== index) {
+            return FoundationInventoryEntity.update(item.id, { sort_order: index });
+        }
+        return null;
+    }).filter(Boolean);
+
+    if (updates.length > 0) {
+        await Promise.all(updates);
+        loadItems();
+    }
+  };
+
   const openAdd = (type) => {
       setEditItem({ material_type: type, material_name: '', cost_per_day: 0, cost_per_week: 0, cost_per_month: 0, pickup_delivery_cost: 0, allow_multiple: false, compatible_attachment_ids: [], compatible_sub_attachment_ids: [], is_pillar_excavation: false, is_spread_foot_excavation: false, is_non_excavation_equipment: false, is_miscellaneous_attachment: false, sort_order: 0 });
       setShowForm(true);
@@ -81,13 +107,13 @@ export default function EquipmentInventoryTab({ allItems, loadItems }) {
         </TabsList>
 
         <TabsContent value="excavation_equipment">
-            <EquipmentList items={equipment} attachments={attachments} onEdit={openEdit} onDelete={handleDelete} />
+            <EquipmentList items={equipment} attachments={attachments} onEdit={openEdit} onDelete={handleDelete} onDragEnd={(res) => handleDragEnd(res, 'excavation_equipment')} />
         </TabsContent>
         <TabsContent value="attachment">
-            <EquipmentList items={attachments} subAttachments={subAttachments} equipment={equipment} onEdit={openEdit} onDelete={handleDelete} isAttachment />
+            <EquipmentList items={attachments} subAttachments={subAttachments} equipment={equipment} onEdit={openEdit} onDelete={handleDelete} isAttachment onDragEnd={(res) => handleDragEnd(res, 'attachment')} />
         </TabsContent>
         <TabsContent value="sub_attachment">
-            <EquipmentList items={subAttachments} attachments={attachments} onEdit={openEdit} onDelete={handleDelete} isSubAttachment />
+            <EquipmentList items={subAttachments} attachments={attachments} onEdit={openEdit} onDelete={handleDelete} isSubAttachment onDragEnd={(res) => handleDragEnd(res, 'sub_attachment')} />
         </TabsContent>
       </Tabs>
 
@@ -115,50 +141,75 @@ export default function EquipmentInventoryTab({ allItems, loadItems }) {
   );
 }
 
-function EquipmentList({ items, equipment = [], attachments = [], subAttachments = [], onEdit, onDelete, isAttachment, isSubAttachment }) {
+function EquipmentList({ items, equipment = [], attachments = [], subAttachments = [], onEdit, onDelete, isAttachment, isSubAttachment, onDragEnd }) {
     if (items.length === 0) return <div className="text-center py-8 text-slate-400 text-sm italic border rounded bg-slate-50">No items found in this category.</div>;
+    
+    const sortedItems = [...items].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {items.map(item => (
-                <Card key={item.id} className="hover:shadow-sm">
-                    <CardHeader className="py-3 px-4 flex flex-row items-start justify-between">
-                        <div>
-                            <CardTitle className="text-sm">{item.material_name}</CardTitle>
-                            {item.allow_multiple && <Badge variant="outline" className="text-[10px] mt-1 bg-blue-50 text-blue-700">Allows Multiple</Badge>}
-                        </div>
-                        <div className="flex gap-1">
-                            <Button size="icon" variant="ghost" onClick={() => onEdit(item)} className="h-6 w-6"><Edit className="w-3 h-3" /></Button>
-                            <Button size="icon" variant="ghost" onClick={() => onDelete(item.id)} className="h-6 w-6 text-red-500"><Trash2 className="w-3 h-3" /></Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3 space-y-2">
-                        <div className="flex gap-4 text-xs text-slate-600">
-                            <div>Day: <span className="font-semibold">${item.cost_per_day || 0}</span></div>
-                            <div>Wk: <span className="font-semibold">${item.cost_per_week || 0}</span></div>
-                            <div>Mo: <span className="font-semibold">${item.cost_per_month || 0}</span></div>
-                        </div>
-                        
-                        {/* Show dependencies */}
-                        {!isAttachment && !isSubAttachment && (
-                            <div className="text-xs text-slate-500">
-                                <strong>Linked Attachments:</strong> {item.compatible_attachment_ids?.length ? attachments.filter(a => item.compatible_attachment_ids.includes(a.id)).map(a => a.material_name).join(', ') : 'None'}
-                            </div>
-                        )}
-                        {isAttachment && (
-                            <div className="text-xs text-slate-500 space-y-1">
-                                <div><strong>Compatible Equipment:</strong> {equipment.filter(e => e.compatible_attachment_ids?.includes(item.id)).map(e => e.material_name).join(', ') || 'None'}</div>
-                                <div><strong>Linked Sub-Attachments:</strong> {item.compatible_sub_attachment_ids?.length ? subAttachments.filter(s => item.compatible_sub_attachment_ids.includes(s.id)).map(s => s.material_name).join(', ') : 'None'}</div>
-                            </div>
-                        )}
-                        {isSubAttachment && (
-                            <div className="text-xs text-slate-500">
-                                <strong>Compatible Attachments:</strong> {attachments.filter(a => a.compatible_sub_attachment_ids?.includes(item.id)).map(a => a.material_name).join(', ') || 'None'}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            ))}
-        </div>
+        <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="equipment-list">
+                {(provided) => (
+                    <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3">
+                        {sortedItems.map((item, index) => (
+                            <Draggable key={item.id} draggableId={item.id} index={index}>
+                                {(provided, snapshot) => (
+                                    <div
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        className={snapshot.isDragging ? "opacity-90 z-50" : ""}
+                                    >
+                                        <Card className="hover:shadow-sm">
+                                            <CardHeader className="py-3 px-4 flex flex-row items-start justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div {...provided.dragHandleProps} className="cursor-grab hover:text-indigo-600 text-slate-400">
+                                                        <GripVertical className="w-5 h-5" />
+                                                    </div>
+                                                    <div>
+                                                        <CardTitle className="text-sm">{item.material_name}</CardTitle>
+                                                        {item.allow_multiple && <Badge variant="outline" className="text-[10px] mt-1 bg-blue-50 text-blue-700">Allows Multiple</Badge>}
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-1">
+                                                    <Button size="icon" variant="ghost" onClick={() => onEdit(item)} className="h-6 w-6"><Edit className="w-3 h-3" /></Button>
+                                                    <Button size="icon" variant="ghost" onClick={() => onDelete(item.id)} className="h-6 w-6 text-red-500"><Trash2 className="w-3 h-3" /></Button>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="px-4 pb-3 space-y-2 pl-12">
+                                                <div className="flex gap-4 text-xs text-slate-600">
+                                                    <div>Day: <span className="font-semibold">${item.cost_per_day || 0}</span></div>
+                                                    <div>Wk: <span className="font-semibold">${item.cost_per_week || 0}</span></div>
+                                                    <div>Mo: <span className="font-semibold">${item.cost_per_month || 0}</span></div>
+                                                </div>
+                                                
+                                                {/* Show dependencies */}
+                                                {!isAttachment && !isSubAttachment && (
+                                                    <div className="text-xs text-slate-500">
+                                                        <strong>Linked Attachments:</strong> {item.compatible_attachment_ids?.length ? attachments.filter(a => item.compatible_attachment_ids.includes(a.id)).map(a => a.material_name).join(', ') : 'None'}
+                                                    </div>
+                                                )}
+                                                {isAttachment && (
+                                                    <div className="text-xs text-slate-500 space-y-1">
+                                                        <div><strong>Compatible Equipment:</strong> {equipment.filter(e => e.compatible_attachment_ids?.includes(item.id)).map(e => e.material_name).join(', ') || 'None'}</div>
+                                                        <div><strong>Linked Sub-Attachments:</strong> {item.compatible_sub_attachment_ids?.length ? subAttachments.filter(s => item.compatible_sub_attachment_ids.includes(s.id)).map(s => s.material_name).join(', ') : 'None'}</div>
+                                                    </div>
+                                                )}
+                                                {isSubAttachment && (
+                                                    <div className="text-xs text-slate-500">
+                                                        <strong>Compatible Attachments:</strong> {attachments.filter(a => a.compatible_sub_attachment_ids?.includes(item.id)).map(a => a.material_name).join(', ') || 'None'}
+                                                    </div>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                )}
+                            </Draggable>
+                        ))}
+                        {provided.placeholder}
+                    </div>
+                )}
+            </Droppable>
+        </DragDropContext>
     );
 }
 
@@ -251,10 +302,6 @@ function EquipmentForm({ item, equipment, attachments, subAttachments, onSave, o
                         <Input type="number" className="h-8" value={form.pickup_delivery_cost} onChange={e => update('pickup_delivery_cost', parseFloat(e.target.value) || 0)} />
                     </div>
                 )}
-                <div>
-                    <Label className="text-xs">Sort Order</Label>
-                    <Input type="number" className="h-8" value={form.sort_order || 0} onChange={e => update('sort_order', parseInt(e.target.value) || 0)} />
-                </div>
             </div>
 
             <div className="space-y-2 pt-2">
