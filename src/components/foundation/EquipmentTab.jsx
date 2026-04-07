@@ -38,24 +38,25 @@ function EquipmentCard({ equipment, selectedEquipment, onUpdate, onRemove, allAt
     onUpdate({ ...selectedEquipment, sub_attachment_counts: { ...subAttCounts, [id]: next } });
   };
 
-  const attachmentCost = compatibleAttachments.reduce((sum, a) => sum + (a.cost_per_unit || 0) * (attCounts[a.id] || 0), 0);
+  const rentalPeriod = selectedEquipment.rental_period || 'day';
+  const rentalDuration = selectedEquipment.rental_duration || 1;
+
+  const getRentalCost = (item) => {
+    if (rentalPeriod === 'day') return (item.cost_per_day || 0) * rentalDuration;
+    if (rentalPeriod === 'week') return (item.cost_per_week || 0) * rentalDuration;
+    if (rentalPeriod === 'month') return (item.cost_per_month || 0) * rentalDuration;
+    return 0;
+  };
+
+  const attachmentCost = compatibleAttachments.reduce((sum, a) => sum + getRentalCost(a) * (attCounts[a.id] || 0), 0);
 
   const visibleSubAttachments = allSubAttachments.filter(s => {
     return compatibleAttachments.some(a => (attCounts[a.id] || 0) > 0 && a.compatible_sub_attachment_ids?.includes(s.id));
   });
 
-  const subAttachmentCost = visibleSubAttachments.reduce((sum, s) => sum + (s.cost_per_unit || 0) * (subAttCounts[s.id] || 0), 0);
+  const subAttachmentCost = visibleSubAttachments.reduce((sum, s) => sum + getRentalCost(s) * (subAttCounts[s.id] || 0), 0);
 
-  const rentalPeriod = selectedEquipment.rental_period || 'day';
-  const rentalDuration = selectedEquipment.rental_duration || 1;
-
-  const baseRentalCost = (() => {
-    if (rentalPeriod === 'day') return (eq.cost_per_day || 0) * rentalDuration;
-    if (rentalPeriod === 'week') return (eq.cost_per_week || 0) * rentalDuration;
-    if (rentalPeriod === 'month') return (eq.cost_per_month || 0) * rentalDuration;
-    return 0;
-  })();
-
+  const baseRentalCost = getRentalCost(eq);
   const deliveryCost = selectedEquipment.include_delivery ? (eq.pickup_delivery_cost || 0) : 0;
   const totalCost = baseRentalCost + deliveryCost + attachmentCost + subAttachmentCost;
 
@@ -148,7 +149,7 @@ function EquipmentCard({ equipment, selectedEquipment, onUpdate, onRemove, allAt
                   >
                     <div className="flex-1 cursor-pointer" onClick={() => handleAttChange(att.id, count > 0 ? -count : 1, att.allow_multiple)}>
                       <p className="font-medium text-slate-800">{att.material_name}</p>
-                      <p className="text-amber-700 font-semibold mt-0.5">${att.cost_per_unit || 0}</p>
+                      <p className="text-amber-700 font-semibold mt-0.5">${getRentalCost(att).toFixed(2)}</p>
                     </div>
                     <div className="flex items-center gap-2">
                         {att.allow_multiple ? (
@@ -189,7 +190,7 @@ function EquipmentCard({ equipment, selectedEquipment, onUpdate, onRemove, allAt
                   >
                     <div className="flex-1 cursor-pointer" onClick={() => handleSubAttChange(sub.id, count > 0 ? -count : 1, sub.allow_multiple)}>
                       <p className="font-medium text-slate-800">{sub.material_name}</p>
-                      <p className="text-blue-700 font-semibold mt-0.5">${sub.cost_per_unit || 0}</p>
+                      <p className="text-blue-700 font-semibold mt-0.5">${getRentalCost(sub).toFixed(2)}</p>
                     </div>
                     <div className="flex items-center gap-2">
                         {sub.allow_multiple ? (
@@ -272,10 +273,15 @@ export default function EquipmentTab({ foundationItems = [], inventory, selected
     if (!eq) return sum;
     const rentalPeriod = entry.rental_period || 'day';
     const rentalDuration = entry.rental_duration || 1;
-    let base = 0;
-    if (rentalPeriod === 'day') base = (eq.cost_per_day || 0) * rentalDuration;
-    else if (rentalPeriod === 'week') base = (eq.cost_per_week || 0) * rentalDuration;
-    else if (rentalPeriod === 'month') base = (eq.cost_per_month || 0) * rentalDuration;
+    
+    const getRentalCost = (item) => {
+      if (rentalPeriod === 'day') return (item.cost_per_day || 0) * rentalDuration;
+      if (rentalPeriod === 'week') return (item.cost_per_week || 0) * rentalDuration;
+      if (rentalPeriod === 'month') return (item.cost_per_month || 0) * rentalDuration;
+      return 0;
+    };
+    
+    const base = getRentalCost(eq);
     const delivery = entry.include_delivery ? (eq.pickup_delivery_cost || 0) : 0;
     
     // Att cost
@@ -283,11 +289,11 @@ export default function EquipmentTab({ foundationItems = [], inventory, selected
     if (entry.attachment_counts) {
         Object.entries(entry.attachment_counts).forEach(([id, qty]) => {
             const a = allAttachments.find(att => att.id === id);
-            if (a) attCost += (a.cost_per_unit || 0) * qty;
+            if (a) attCost += getRentalCost(a) * qty;
         });
     } else if (entry.attachment_ids) {
         // legacy
-        attCost = allAttachments.filter(a => entry.attachment_ids.includes(a.id)).reduce((s, a) => s + (a.cost_per_unit || 0), 0);
+        attCost = allAttachments.filter(a => entry.attachment_ids.includes(a.id)).reduce((s, a) => s + getRentalCost(a), 0);
     }
     
     // Sub-att cost
@@ -295,7 +301,7 @@ export default function EquipmentTab({ foundationItems = [], inventory, selected
     if (entry.sub_attachment_counts) {
         Object.entries(entry.sub_attachment_counts).forEach(([id, qty]) => {
             const s = allSubAttachments.find(sub => sub.id === id);
-            if (s) subAttCost += (s.cost_per_unit || 0) * qty;
+            if (s) subAttCost += getRentalCost(s) * qty;
         });
     }
 

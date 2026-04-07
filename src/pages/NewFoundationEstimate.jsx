@@ -254,7 +254,49 @@ export default function NewFoundationEstimate() {
         }
     }, 0);
 
-    return { itemsTotal, wallTotal, polesTotal, grand: itemsTotal + wallTotal + polesTotal };
+    const allAttachments = inventory.filter(i => i.material_type === 'attachment');
+    const allSubAttachments = inventory.filter(i => i.material_type === 'sub_attachment');
+    
+    const equipmentTotal = selectedEquipmentList.reduce((sum, entry) => {
+      const eq = inventory.find(i => i.id === entry.equipment_id);
+      if (!eq) return sum;
+      
+      const rentalPeriod = entry.rental_period || 'day';
+      const rentalDuration = entry.rental_duration || 1;
+      
+      const getRentalCost = (item) => {
+        if (rentalPeriod === 'day') return (item.cost_per_day || 0) * rentalDuration;
+        if (rentalPeriod === 'week') return (item.cost_per_week || 0) * rentalDuration;
+        if (rentalPeriod === 'month') return (item.cost_per_month || 0) * rentalDuration;
+        return 0;
+      };
+      
+      let entryTotal = getRentalCost(eq);
+      if (entry.include_delivery) entryTotal += (eq.pickup_delivery_cost || 0);
+      
+      if (entry.attachment_counts) {
+        Object.entries(entry.attachment_counts).forEach(([id, qty]) => {
+          const a = allAttachments.find(att => att.id === id);
+          if (a) entryTotal += getRentalCost(a) * qty;
+        });
+      } else if (entry.attachment_ids) {
+        entry.attachment_ids.forEach(id => {
+          const a = allAttachments.find(att => att.id === id);
+          if (a) entryTotal += getRentalCost(a);
+        });
+      }
+      
+      if (entry.sub_attachment_counts) {
+        Object.entries(entry.sub_attachment_counts).forEach(([id, qty]) => {
+          const s = allSubAttachments.find(sub => sub.id === id);
+          if (s) entryTotal += getRentalCost(s) * qty;
+        });
+      }
+      
+      return sum + entryTotal;
+    }, 0);
+
+    return { itemsTotal, wallTotal, polesTotal, equipmentTotal, grand: itemsTotal + wallTotal + polesTotal + equipmentTotal };
   })();
 
   const handleSave = async (isAutoSave = false) => {

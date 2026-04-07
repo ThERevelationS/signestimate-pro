@@ -64,6 +64,10 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
       lines.push('');
       lines.push(`Poles Total: $${polesTotal.toFixed(2)}`);
     }
+    if (totals.equipmentTotal > 0) {
+      lines.push('');
+      lines.push(`Equipment Total: $${totals.equipmentTotal.toFixed(2)}`);
+    }
     lines.push(`GRAND TOTAL: $${totals.grand.toFixed(2)}`);
     return lines.join('\n');
   };
@@ -102,6 +106,10 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
         ]);
       });
       rows.push(['Walls Total', totals.wallTotal.toFixed(2)]);
+    }
+    if (totals.equipmentTotal > 0) {
+      rows.push([]);
+      rows.push(['Equipment Total', totals.equipmentTotal.toFixed(2)]);
     }
     rows.push([]);
     rows.push(['GRAND TOTAL', totals.grand.toFixed(2)]);
@@ -177,6 +185,13 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
           <div className="flex justify-between py-2 border-b font-semibold text-slate-700">
             <span>Poles Total</span>
             <CopyValue value={`$${polesTotal.toFixed(2)}`} className="font-semibold" />
+          </div>
+        )}
+
+        {totals.equipmentTotal > 0 && (
+          <div className="flex justify-between py-2 border-b font-semibold text-slate-700">
+            <span>Equipment Total</span>
+            <CopyValue value={`$${totals.equipmentTotal.toFixed(2)}`} className="font-semibold" />
           </div>
         )}
 
