@@ -137,7 +137,7 @@ export default function SharedCanvas({
       cumulativeOffsetX += gridSize * spacingX + 2;
     });
     return rects;
-  }, [foundationItems, useExistingFoundation, toolType]);
+  }, [foundationItems, useExistingFoundation]);
 
   function pointInRects(pt, rects) {
     if (rects.length === 0) return true;
