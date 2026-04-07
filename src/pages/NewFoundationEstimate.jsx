@@ -162,8 +162,11 @@ export default function NewFoundationEstimate() {
 
   const calcItemCost = (item) => {
     const selectedConcrete = inventory.find(c => c.id === item.selected_concrete_id);
-    const conc_cost = item.custom_concrete_cost_per_cy || selectedConcrete?.cost_per_unit || getSetting('foundation_concrete_cost_per_cy', 135);
-    const rebar_cost = item.custom_rebar_cost_per_ft || getSetting('foundation_rebar_cost_per_ft', 0.75);
+    const conc_cost = item.custom_concrete_cost_per_cy || selectedConcrete?.cost_per_unit || 0;
+    
+    // Find the selected rebar from inventory (matching the #size)
+    const selectedRebar = inventory.find(r => r.material_type === 'rebar' && r.rebar_size === item.rebar_size);
+    const rebar_cost = item.custom_rebar_cost_per_ft || selectedRebar?.cost_per_unit || 0;
     const forming_labor = getSetting('foundation_forming_labor_rate', 55);
     const finishing_labor = getSetting('foundation_finishing_labor_rate', 50);
     const forming_mult = item.foundation_type === 'spread_foot'
@@ -215,9 +218,9 @@ export default function NewFoundationEstimate() {
     let excavationCost = 0;
     const excVol = volumeCY * 1.25;
     if (item.excavation_method === 'hand_dig' || !item.excavation_method) {
-      excavationCost = excVol * (getSetting('foundation_hand_dig_excavation_cost_per_cy', 10) + getSetting('foundation_hand_dig_labor_rate', 45) * 0.3);
+      excavationCost = excVol * getSetting('foundation_hand_dig_labor_rate', 45);
     } else {
-      excavationCost = excVol * getSetting('foundation_equipment_excavation_cost_per_cy', 15);
+      excavationCost = excVol * getSetting('foundation_equipment_excavation_labor_rate', 35);
     }
 
     return { 

@@ -11,10 +11,7 @@ const SettingsEntity = base44.entities.Settings;
 
 const DEFAULT_SETTINGS = {
   // Concrete
-  foundation_concrete_cost_per_cy: { value: '135', label: 'Concrete Cost Per CY ($)', category: 'foundation_pricing', type: 'number' },
   foundation_min_excavation_time: { value: '1.0', label: 'Min Excavation Time (hrs)', category: 'foundation_labor', type: 'number' },
-  foundation_hand_dig_excavation_cost_per_cy: { value: '10', label: 'Hand Dig Excavation Cost Per CY ($)', category: 'foundation_pricing', type: 'number' },
-  foundation_equipment_excavation_cost_per_cy: { value: '15', label: 'Equipment Excavation Cost Per CY ($)', category: 'foundation_pricing', type: 'number' },
   // Labor rates
   foundation_forming_labor_rate: { value: '55', label: 'Forming Labor Rate ($/hr)', category: 'foundation_labor', type: 'number' },
   foundation_pouring_labor_rate: { value: '60', label: 'Pouring Labor Rate ($/hr)', category: 'foundation_labor', type: 'number' },
@@ -24,12 +21,11 @@ const DEFAULT_SETTINGS = {
   // Forming materials
   foundation_forming_materials_spread_foot: { value: '0.5', label: 'Forming Material Cost Multiplier - Spread Foot', category: 'foundation_calc', type: 'number' },
   foundation_forming_materials_pillar: { value: '0.75', label: 'Forming Material Cost Multiplier - Pillar', category: 'foundation_calc', type: 'number' },
-  // Rebar
-  foundation_rebar_cost_per_ft: { value: '0.75', label: 'Rebar Cost Per Foot ($)', category: 'foundation_pricing', type: 'number' },
-  // Wall / Masonry settings (NEW)
+  // Wall / Masonry settings
   wall_mortar_cost_per_sqft: { value: '0.35', label: 'Mortar/Grout Cost Per Sq Ft of Wall Face ($)', category: 'foundation_pricing', type: 'number' },
-  wall_labor_rate: { value: '45', label: 'Wall Masonry Labor Rate ($/hr)', category: 'foundation_labor', type: 'number' },
-  wall_labor_bricks_per_hour: { value: '50', label: 'Wall Units Laid Per Labor Hour', category: 'foundation_calc', type: 'number' },
+  wall_labor_rate: { value: '45', label: 'Wall Masonry Labor Rate ($/sqft)', category: 'foundation_labor', type: 'number' },
+  wall_labor_bricks_per_hour: { value: '50', label: 'Cinderblock/Filler Units Laid Per Labor Hour', category: 'foundation_calc', type: 'number' },
+  wall_minimum_charge: { value: '150', label: 'Minimum Charge ($)', category: 'foundation_pricing', type: 'number' },
 };
 
 export default function FoundationSettings() {
@@ -136,27 +132,12 @@ export default function FoundationSettings() {
           </Button>
         </div>
 
-        <Tabs defaultValue="pricing">
+        <Tabs defaultValue="labor">
           <TabsList>
-            <TabsTrigger value="pricing">Pricing</TabsTrigger>
             <TabsTrigger value="labor">Labor Rates</TabsTrigger>
             <TabsTrigger value="calc">Calculation Factors</TabsTrigger>
             <TabsTrigger value="wall">Wall / Masonry</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="pricing" className="space-y-4 pt-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Concrete & Excavation Pricing</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <SettingInput settingKey="foundation_concrete_cost_per_cy" />
-                <SettingInput settingKey="foundation_rebar_cost_per_ft" />
-                <SettingInput settingKey="foundation_hand_dig_excavation_cost_per_cy" />
-                <SettingInput settingKey="foundation_equipment_excavation_cost_per_cy" />
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="labor" className="space-y-4 pt-4">
             <Card>
@@ -195,23 +176,11 @@ export default function FoundationSettings() {
                   Mortar gap for each wall is set per-project in the estimate.
                 </p>
               </CardHeader>
-              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <CardContent className="flex flex-col gap-6">
                 <SettingInput settingKey="wall_mortar_cost_per_sqft" />
                 <SettingInput settingKey="wall_labor_rate" />
                 <SettingInput settingKey="wall_labor_bricks_per_hour" />
-              </CardContent>
-            </Card>
-
-            <Card className="bg-blue-50 border-blue-200">
-              <CardContent className="pt-4 pb-4">
-                <p className="text-sm text-blue-800 font-medium">About the Wall Cost Formula</p>
-                <ul className="text-xs text-blue-700 mt-2 space-y-1 list-disc ml-4">
-                  <li><strong>Material cost</strong> = number of units × cost per unit (full unit cost even when cut at corners)</li>
-                  <li><strong>Mortar cost</strong> = (2 × wall perimeter × wall height) ÷ 144 × mortar cost per sq ft</li>
-                  <li><strong>Labor cost</strong> = (total units ÷ units per hour) × labor rate</li>
-                  <li>Mortar gap is set per-wall in the estimate (default 3/8")</li>
-                  <li>Concrete walls have no mortar or offset applied</li>
-                </ul>
+                <SettingInput settingKey="wall_minimum_charge" />
               </CardContent>
             </Card>
           </TabsContent>

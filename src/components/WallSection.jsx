@@ -45,19 +45,29 @@ function calcWallCosts({ wallShape, wallMaterial, wallHeightInches, mortarGapInc
 
   const materialCost = totalBricks * (wallMaterial.cost_per_unit || 0);
 
+  const surfaceAreaSqFtSingleSide = (totalLinearInches * wallHeightInches) / 144;
+
   // Mortar cost
   let mortarCost = 0;
   if (!isConcrete) {
     // Surface area of all faces: inner + outer side (2 sides * length * height)
-    const surfaceAreaSqFt = (2 * totalLinearInches * wallHeightInches) / 144;
+    const surfaceAreaSqFtMortar = surfaceAreaSqFtSingleSide * 2;
     const mortarCostPerSqFt = parseFloat(settings?.wall_mortar_cost_per_sqft || 0.35);
-    mortarCost = surfaceAreaSqFt * mortarCostPerSqFt;
+    mortarCost = surfaceAreaSqFtMortar * mortarCostPerSqFt;
   }
 
-  // Labor: approximate 1 hour per 50 bricks laid
+  // Labor: Cost per sqft (Wall Masonry Labor Rate)
+  const laborRatePerSqFt = parseFloat(settings?.wall_labor_rate || 45);
+  const minCharge = parseFloat(settings?.wall_minimum_charge || 150);
+  
+  let rawLaborCost = surfaceAreaSqFtSingleSide * laborRatePerSqFt;
+  let laborCost = rawLaborCost;
+  if (laborCost < minCharge) {
+    laborCost = minCharge;
+  }
+  
+  // Approximate labor hours based on bricks per hour (cinderblock/filler units) for reference
   const laborHours = totalBricks / (parseFloat(settings?.wall_labor_bricks_per_hour || 50));
-  const laborRate = parseFloat(settings?.wall_labor_rate || 45);
-  const laborCost = laborHours * laborRate;
 
   return {
     totalBricks,
