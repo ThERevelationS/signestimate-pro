@@ -117,11 +117,11 @@ export default function WallSection({
   ]);
 
   return (
-    <Card className="border border-amber-200 bg-amber-50/30">
-      <CardHeader className="py-3 px-4">
+    <Card className="border border-orange-200 shadow-sm overflow-hidden mb-4">
+      <CardHeader className="py-3 px-4 bg-orange-50/60 border-b border-orange-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-base font-semibold text-amber-900">
+            <CardTitle className="text-base font-semibold text-orange-900">
               Wall #{index + 1}: {wall.name || 'Untitled Wall'}
             </CardTitle>
             {costs && (
@@ -282,28 +282,28 @@ export default function WallSection({
 
           {/* Cost summary */}
           {costs && (
-            <div className="bg-slate-50 rounded-lg p-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-4">
               <div>
-                <p className="text-xs text-slate-500">Units Needed</p>
-                <p className="font-semibold">{costs.totalBricks}</p>
+                <p className="text-xs text-emerald-700/70">Units Needed</p>
+                <p className="font-semibold text-emerald-900">{costs.totalBricks}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Material Cost</p>
-                <p className="font-semibold">${costs.materialCost.toFixed(2)}</p>
+                <p className="text-xs text-emerald-700/70">Material Cost</p>
+                <p className="font-semibold text-emerald-900">${costs.materialCost.toFixed(2)}</p>
               </div>
               {!isConcrete && (
                 <div>
-                  <p className="text-xs text-slate-500">Mortar Cost</p>
-                  <p className="font-semibold">${costs.mortarCost.toFixed(2)}</p>
+                  <p className="text-xs text-emerald-700/70">Mortar Cost</p>
+                  <p className="font-semibold text-emerald-900">${costs.mortarCost.toFixed(2)}</p>
                 </div>
               )}
               <div>
-                <p className="text-xs text-slate-500">Labor Cost ({costs.laborHours.toFixed(1)} hrs)</p>
-                <p className="font-semibold">${costs.laborCost.toFixed(2)}</p>
+                <p className="text-xs text-emerald-700/70">Labor Cost ({costs.laborHours.toFixed(1)} hrs)</p>
+                <p className="font-semibold text-emerald-900">${costs.laborCost.toFixed(2)}</p>
               </div>
-              <div className="col-span-2 md:col-span-4 border-t pt-2">
-                <p className="text-xs text-slate-500">Wall Total</p>
-                <p className="text-base font-bold text-amber-700">${costs.totalCost.toFixed(2)}</p>
+              <div className="col-span-2 md:col-span-4 border-t border-emerald-200/50 pt-2">
+                <p className="text-xs text-emerald-700/70">Wall Total</p>
+                <p className="text-base font-bold text-emerald-700">${costs.totalCost.toFixed(2)}</p>
               </div>
             </div>
           )}

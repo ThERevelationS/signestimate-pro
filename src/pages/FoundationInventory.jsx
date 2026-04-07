@@ -277,8 +277,8 @@ function GenericTab({ tabKey, items, onEdit, onDelete, onAdd }) {
       ) : (
         <div className="space-y-2">
           {items.map(item => (
-            <Card key={item.id} className="hover:shadow-sm transition-shadow">
-              <CardContent className="py-3 px-4 flex items-start justify-between gap-3">
+            <Card key={item.id} className="hover:shadow-sm transition-shadow border-blue-200 shadow-sm overflow-hidden mb-3">
+              <CardContent className="py-3 px-4 flex items-start justify-between gap-3 bg-blue-50/30">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-slate-800">{item.material_name}</p>
                   <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
@@ -370,7 +370,7 @@ export default function FoundationInventoryPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex-wrap h-auto gap-1">
+        <TabsList className="flex-wrap h-auto gap-1 bg-slate-100/80 p-1.5 border border-slate-200 rounded-xl shadow-sm">
           <TabsTrigger value="wall_material" className="flex items-center gap-1"><Building2 className="w-3 h-3" /> Wall Materials</TabsTrigger>
           <TabsTrigger value="concrete">Concrete</TabsTrigger>
           <TabsTrigger value="rebar">Rebar</TabsTrigger>
@@ -399,8 +399,8 @@ export default function FoundationInventoryPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {wallMaterials.map(m => (
-                  <Card key={m.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader className="py-3 px-4">
+                  <Card key={m.id} className="hover:shadow-md transition-shadow border-orange-200 shadow-sm overflow-hidden">
+                    <CardHeader className="py-3 px-4 bg-orange-50/50 border-b border-orange-100">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded border border-slate-300 flex-shrink-0" style={{ backgroundColor: m.wall_color || '#cc9966' }} />

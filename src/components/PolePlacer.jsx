@@ -256,9 +256,9 @@ export default function PolePlacer({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end gap-4 flex-wrap">
+      <div className="bg-blue-50/30 border border-blue-100 rounded-xl p-4 flex items-end justify-between flex-wrap gap-4 shadow-sm mb-2">
         <div>
-          <Label className="text-xs">Select Pole from Inventory to Place</Label>
+          <Label className="text-xs font-semibold text-blue-900">Select Pole from Inventory to Place</Label>
           <Select value={selectedPoleId} onValueChange={setSelectedPoleId}>
             <SelectTrigger className="w-[250px] h-9 mt-1">
               <SelectValue placeholder="Choose a pole..." />
@@ -280,7 +280,7 @@ export default function PolePlacer({
         </div>
       </div>
 
-      <div className="border rounded-lg overflow-hidden bg-white" style={{ width: canvasW, maxWidth: '100%' }}>
+      <div className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white" style={{ width: canvasW, maxWidth: '100%' }}>
         <canvas
           ref={canvasRef}
           width={canvasW}

@@ -59,8 +59,8 @@ function EquipmentCard({ equipment, selectedEquipment, onUpdate, onRemove, allAt
   const totalCost = baseRentalCost + deliveryCost + attachmentCost + subAttachmentCost;
 
   return (
-    <Card className="border border-slate-200">
-      <CardHeader className="py-3 px-4">
+    <Card className="border border-indigo-200 shadow-sm overflow-hidden mb-4">
+      <CardHeader className="py-3 px-4 bg-indigo-50/60 border-b border-indigo-100">
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 flex-wrap">
@@ -282,11 +282,11 @@ export default function EquipmentTab({ inventory, selectedEquipmentList, onUpdat
   return (
     <div className="space-y-4">
       {/* Add equipment */}
-      <Card className="border-slate-200 bg-slate-50">
+      <Card className="border-indigo-200 bg-indigo-50/50 shadow-sm mb-4">
         <CardContent className="py-3 px-4">
           <div className="flex flex-wrap items-end gap-4">
             <div className="flex-1 min-w-[260px]">
-              <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Add Equipment</Label>
+              <Label className="text-xs font-semibold text-indigo-900 uppercase tracking-wide">Add Equipment</Label>
               <Select onValueChange={addEquipment}>
                 <SelectTrigger className="h-9 mt-1">
                   <SelectValue placeholder="Select equipment to add…" />

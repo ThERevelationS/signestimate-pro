@@ -313,7 +313,7 @@ export default function NewFoundationEstimate() {
         <div className="flex flex-col flex-1 min-w-0">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
             <div className="p-4 pb-0 bg-white border-b flex-shrink-0 z-10 sticky top-0">
-              <TabsList className="mb-4 flex-wrap h-auto">
+              <TabsList className="mb-4 flex-wrap h-auto bg-slate-100/80 p-1.5 border border-slate-200 rounded-xl shadow-sm">
                 <TabsTrigger value="info">Project Info</TabsTrigger>
                 <TabsTrigger value="foundation">Foundation ({items.length})</TabsTrigger>
                 {items.some(i => i.excavation_method === 'equipment_excavation') && (
@@ -330,8 +330,8 @@ export default function NewFoundationEstimate() {
             <div className="flex-1 overflow-y-auto p-4 pt-0">
               {/* PROJECT INFO */}
               <TabsContent value="info" className="space-y-4 pt-4">
-                <Card>
-                  <CardHeader><CardTitle className="text-base">Project Information</CardTitle></CardHeader>
+                <Card className="border-indigo-200 shadow-sm overflow-hidden">
+                  <CardHeader className="bg-indigo-50/50 border-b border-indigo-100"><CardTitle className="text-base text-indigo-900">Project Information</CardTitle></CardHeader>
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label className={`text-xs transition-colors duration-300 ${missingFields.includes('project_name') ? 'text-red-600 font-bold' : ''}`}>Project Name *</Label>
@@ -548,8 +548,8 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
   const [expanded, setExpanded] = useState(true);
 
   return (
-    <Card className="border border-slate-200">
-      <CardHeader className="py-3 px-4">
+    <Card className="border border-blue-200 shadow-sm overflow-hidden mb-4">
+      <CardHeader className="py-3 px-4 bg-blue-50/60 border-b border-blue-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-wrap">
             <CardTitle className="text-sm font-semibold">
@@ -595,9 +595,9 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
 
           {/* Dimensions & Materials */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="col-span-2 md:col-span-4 bg-slate-50 border border-slate-200 rounded-lg p-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="col-span-2 md:col-span-4 bg-indigo-50/50 border border-indigo-100 rounded-lg p-3 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Excavation Method</Label>
+                <Label className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">Excavation Method</Label>
                 <Select value={item.excavation_method || 'hand_dig'} onValueChange={v => onUpdate('excavation_method', v)}>
                   <SelectTrigger className="h-8 mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -610,7 +610,7 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
                 )}
               </div>
               <div>
-                <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Concrete Type</Label>
+                <Label className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">Concrete Type</Label>
                 <Select value={item.selected_concrete_id || ''} onValueChange={v => onUpdate('selected_concrete_id', v)}>
                   <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Select concrete..." /></SelectTrigger>
                   <SelectContent>
@@ -723,9 +723,9 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
           )}
 
           {/* Excavation display */}
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs mt-4">
             <div className="flex items-center justify-between mb-1">
-              <span className="font-semibold text-slate-600 uppercase tracking-wide">Excavation</span>
+              <span className="font-semibold text-amber-800 uppercase tracking-wide">Excavation</span>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs capitalize">{(item.excavation_method || 'hand_dig').replace('_', ' ')}</Badge>
                 {excavationEquipment && <Badge variant="secondary" className="text-xs">{excavationEquipment.material_name}</Badge>}
@@ -741,15 +741,15 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
 
           {/* Cost breakdown */}
           {costs && (
-            <div className="bg-slate-50 rounded-lg p-3 grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+            <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 grid grid-cols-2 md:grid-cols-5 gap-2 text-xs mt-4">
               <div>
-                <p className="text-slate-400">Concrete {costs.concreteBags ? `(${costs.concreteBags} bags)` : ''}</p>
-                <p className="font-medium">${costs.concreteCost.toFixed(2)}</p>
+                <p className="text-emerald-700/70">Concrete {costs.concreteBags ? `(${costs.concreteBags} bags)` : ''}</p>
+                <p className="font-medium text-emerald-900">${costs.concreteCost.toFixed(2)}</p>
               </div>
-              <div><p className="text-slate-400">Rebar</p><p className="font-medium">${costs.rebarCost.toFixed(2)}</p></div>
-              <div><p className="text-slate-400">Forming</p><p className="font-medium">${costs.formingCost.toFixed(2)}</p></div>
-              <div><p className="text-slate-400">Finishing</p><p className="font-medium">${costs.finishingCost.toFixed(2)}</p></div>
-              <div><p className="text-slate-400">Excavation</p><p className="font-medium">${costs.excavationCost.toFixed(2)}</p></div>
+              <div><p className="text-emerald-700/70">Rebar</p><p className="font-medium text-emerald-900">${costs.rebarCost.toFixed(2)}</p></div>
+              <div><p className="text-emerald-700/70">Forming</p><p className="font-medium text-emerald-900">${costs.formingCost.toFixed(2)}</p></div>
+              <div><p className="text-emerald-700/70">Finishing</p><p className="font-medium text-emerald-900">${costs.finishingCost.toFixed(2)}</p></div>
+              <div><p className="text-emerald-700/70">Excavation</p><p className="font-medium text-emerald-900">${costs.excavationCost.toFixed(2)}</p></div>
             </div>
           )}
         </CardContent>
