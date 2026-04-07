@@ -153,12 +153,14 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
       const spacingX = footprintX * 1.5 + 1;
       const spacingZ = footprintZ * 1.5 + 1;
 
+      const userOffsetX = (item.offset_x_inches || 0) / 12;
+      const userOffsetZ = (item.offset_z_inches || 0) / 12;
+
       for (let i = 0; i < qty; i++) {
         const col = i % gridSize;
         const row = Math.floor(i / gridSize);
-        // Place so the group of foundations for this item starts at cumulativeOffsetX
-        const ox = cumulativeOffsetX + col * spacingX + footprintX / 2;
-        const oz = row * spacingZ + footprintZ / 2;
+        const ox = cumulativeOffsetX + col * spacingX + footprintX / 2 + userOffsetX;
+        const oz = row * spacingZ + footprintZ / 2 + userOffsetZ;
 
         const group = new THREE.Group();
         group.position.set(ox, 0, oz);
@@ -235,10 +237,10 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
           const actualSpacL = effL / (nW - 1);
           
           const rDia = 0.04;
-          const baseYPos = -depFt + clearance + gradeOff; // start from bottom
+          const topYPos = gradeOff - clearance; // start from top of foundation
           
           for (let layer = 0; layer < layers; layer++) {
-            const yPos = baseYPos + layer * layerSep;
+            const yPos = topYPos - layer * layerSep;
             
             // Bars running along length
             for (let j = 0; j < nL; j++) {

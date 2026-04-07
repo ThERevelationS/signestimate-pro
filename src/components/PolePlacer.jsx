@@ -47,8 +47,8 @@ export default function PolePlacer({
       for (let i = 0; i < qty; i++) {
         const col = i % gridSize;
         const row = Math.floor(i / gridSize);
-        const ox = userOffsetX + cumulativeOffsetX + col * spacingX + footprintX / 2;
-        const oz = userOffsetZ + row * spacingZ + footprintZ / 2;
+        const ox = cumulativeOffsetX + col * spacingX + footprintX / 2 + userOffsetX;
+        const oz = row * spacingZ + footprintZ / 2 + userOffsetZ;
         
         rects.push({
             itemIdx,

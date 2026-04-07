@@ -575,7 +575,10 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
             </div>
             <div>
               <Label className="text-xs">Foundation Type</Label>
-              <Select value={item.foundation_type} onValueChange={v => onUpdate('foundation_type', v)}>
+              <Select value={item.foundation_type} onValueChange={v => {
+                  onUpdate('foundation_type', v);
+                  onUpdate('grade_offset_inches', v === 'pillar' ? -3 : 2);
+                }}>
                 <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="spread_foot">Spread Foot</SelectItem>
@@ -586,10 +589,6 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
             <div>
               <Label className="text-xs">Quantity</Label>
               <Input type="number" className="h-8" value={item.quantity} onChange={e => onUpdate('quantity', parseInt(e.target.value) || 1)} min={1} />
-            </div>
-            <div>
-              <Label className="text-xs">Depth (inches)</Label>
-              <Input type="number" className="h-8" value={item.depth_inches} onChange={e => onUpdate('depth_inches', parseFloat(e.target.value) || 0)} />
             </div>
           </div>
 
@@ -637,7 +636,7 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
                   <Input type="number" className="h-8" value={item.width_inches} onChange={e => onUpdate('width_inches', parseFloat(e.target.value) || 0)} />
                 </div>
                 <div>
-                  <Label className="text-xs">Grade Offset (inches)</Label>
+                  <Label className="text-xs">Height relative to grade (inches)</Label>
                   <Input type="number" className="h-8" value={item.grade_offset_inches} onChange={e => onUpdate('grade_offset_inches', parseFloat(e.target.value) || 0)} />
                 </div>
               </>
@@ -648,7 +647,17 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
                   <Input type="number" className="h-8" value={item.diameter} onChange={e => onUpdate('diameter', parseFloat(e.target.value) || 0)} />
                 </div>
                 <div>
-                  <Label className="text-xs">Grade Offset (inches)</Label>
+                  <Label className="text-xs">Depth (inches)</Label>
+                  <Input type="number" className="h-8" value={item.depth_inches} onChange={e => {
+                    const depth = parseFloat(e.target.value) || 0;
+                    onUpdate('depth_inches', depth);
+                    if (item.include_rebar && item.rebar_layer_separation_inches) {
+                      onUpdate('rebar_layers', Math.floor(depth / item.rebar_layer_separation_inches) || 1);
+                    }
+                  }} />
+                </div>
+                <div>
+                  <Label className="text-xs">Height relative to grade (inches)</Label>
                   <Input type="number" className="h-8" value={item.grade_offset_inches || 0} onChange={e => onUpdate('grade_offset_inches', parseFloat(e.target.value) || 0)} />
                 </div>
               </>
@@ -658,7 +667,12 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
           {/* Options */}
           <div className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2">
-              <Checkbox checked={item.include_rebar} onCheckedChange={v => onUpdate('include_rebar', v)} id={`rebar-${index}`} />
+              <Checkbox checked={item.include_rebar} onCheckedChange={v => {
+                onUpdate('include_rebar', v);
+                if (v && item.depth_inches && item.rebar_layer_separation_inches) {
+                  onUpdate('rebar_layers', Math.floor(item.depth_inches / item.rebar_layer_separation_inches) || 1);
+                }
+              }} id={`rebar-${index}`} />
               <Label htmlFor={`rebar-${index}`} className="text-xs cursor-pointer">Include Rebar</Label>
             </div>
             <div className="flex items-center gap-2">
@@ -717,7 +731,13 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
               </div>
               <div>
                 <Label className="text-xs">Layer Separation (in)</Label>
-                <Input type="number" className="h-8" value={item.rebar_layer_separation_inches || 12} onChange={e => onUpdate('rebar_layer_separation_inches', parseFloat(e.target.value) || 0)} />
+                <Input type="number" className="h-8" value={item.rebar_layer_separation_inches || 12} onChange={e => {
+                  const sep = parseFloat(e.target.value) || 0;
+                  onUpdate('rebar_layer_separation_inches', sep);
+                  if (item.include_rebar && item.depth_inches && sep) {
+                    onUpdate('rebar_layers', Math.floor(item.depth_inches / sep) || 1);
+                  }
+                }} />
               </div>
             </div>
           )}
@@ -727,8 +747,14 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
             <div className="flex items-center justify-between mb-1">
               <span className="font-semibold text-amber-800 uppercase tracking-wide">Excavation</span>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs capitalize">{(item.excavation_method || 'hand_dig').replace('_', ' ')}</Badge>
-                {excavationEquipment && <Badge variant="secondary" className="text-xs">{excavationEquipment.material_name}</Badge>}
+                <Select value={item.excavation_method || 'hand_dig'} onValueChange={v => onUpdate('excavation_method', v)}>
+                  <SelectTrigger className="h-6 py-0 px-2 text-xs w-[180px] bg-white"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hand_dig">Hand Dig</SelectItem>
+                    <SelectItem value="equipment_excavation">Equipment Excavation</SelectItem>
+                  </SelectContent>
+                </Select>
+                {item.excavation_method === 'equipment_excavation' && excavationEquipment && <Badge variant="secondary" className="text-xs">{excavationEquipment.material_name}</Badge>}
               </div>
             </div>
             <div className="text-slate-500">
