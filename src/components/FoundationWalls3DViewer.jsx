@@ -152,18 +152,20 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
 
     // Ground
     const dirtCanvas = document.createElement('canvas');
-    dirtCanvas.width = 256; dirtCanvas.height = 256;
+    dirtCanvas.width = 512; dirtCanvas.height = 512;
     const dCtx = dirtCanvas.getContext('2d');
     dCtx.fillStyle = '#7a5c3a';
-    dCtx.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 4000; i++) {
-      const x = Math.random() * 256, y = Math.random() * 256, r = Math.random() * 2 + 0.5;
-      const b = Math.random(), a = 0.1 + Math.random() * 0.2;
-      dCtx.beginPath(); dCtx.arc(x, y, r, 0, Math.PI * 2);
-      dCtx.fillStyle = b > 0.5
-        ? `rgba(${160 + Math.floor(Math.random()*40)},${110+Math.floor(Math.random()*30)},${70+Math.floor(Math.random()*20)},${a})`
-        : `rgba(${50+Math.floor(Math.random()*20)},${30+Math.floor(Math.random()*15)},${15+Math.floor(Math.random()*10)},${a})`;
-      dCtx.fill();
+    dCtx.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 20000; i++) {
+      const v = Math.random() > 0.5 ? 0 : 255;
+      dCtx.fillStyle = `rgba(${v},${v},${v}, ${Math.random() * 0.06})`;
+      dCtx.fillRect(Math.random() * 512, Math.random() * 512, Math.random() * 3 + 1, Math.random() * 3 + 1);
+    }
+    for (let i=0; i<100; i++) {
+        dCtx.beginPath();
+        dCtx.arc(Math.random()*512, Math.random()*512, Math.random()*10+2, 0, Math.PI*2);
+        dCtx.fillStyle = `rgba(60,40,20,${Math.random()*0.1})`;
+        dCtx.fill();
     }
     const dirtTex = new THREE.CanvasTexture(dirtCanvas);
     dirtTex.wrapS = dirtTex.wrapT = THREE.RepeatWrapping;
@@ -245,7 +247,20 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
     // First foundation item is placed with its corner at world origin (x=0, z=0).
     // Subsequent items are offset along X.
 
-    const concMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.7, transparent: true, opacity: 0.8 });
+    const concreteCanvas = document.createElement('canvas');
+    concreteCanvas.width = 512; concreteCanvas.height = 512;
+    const cCtx = concreteCanvas.getContext('2d');
+    cCtx.fillStyle = '#a1a1aa';
+    cCtx.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 40000; i++) {
+        const v = Math.floor(Math.random() * 50) + 130;
+        cCtx.fillStyle = `rgba(${v}, ${v}, ${v}, ${Math.random() * 0.2})`;
+        cCtx.fillRect(Math.random() * 512, Math.random() * 512, Math.random() * 2 + 1, Math.random() * 2 + 1);
+    }
+    const concTex = new THREE.CanvasTexture(concreteCanvas);
+    concTex.wrapS = concTex.wrapT = THREE.RepeatWrapping;
+    concTex.repeat.set(2, 2);
+    const concMat = new THREE.MeshStandardMaterial({ map: concTex, roughness: 0.9, metalness: 0.05 });
 
     let cumulativeOffsetX = 0;
     const foundationCenters = []; // track where each item's center is for camera framing

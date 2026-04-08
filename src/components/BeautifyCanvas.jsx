@@ -24,7 +24,7 @@ const MATERIALS = [
 // Using high-performance procedural seamless patterns
 
 const generateTexture = (type) => {
-  const size = 256;
+  const size = 512;
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
@@ -33,75 +33,114 @@ const generateTexture = (type) => {
   if (type === 'grass') {
     ctx.fillStyle = '#4ade80';
     ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 4000; i++) {
-      ctx.fillStyle = Math.random() > 0.5 ? '#22c55e' : '#16a34a';
-      const w = Math.random() * 2 + 1;
-      const h = Math.random() * 6 + 2;
-      ctx.fillRect(Math.random() * size, Math.random() * size, w, h);
+    for (let i = 0; i < 25000; i++) {
+      const g = Math.floor(Math.random() * 60) + 120;
+      ctx.fillStyle = `rgba(34, ${g}, 50, ${Math.random() * 0.4 + 0.1})`;
+      const x = Math.random() * size;
+      const y = Math.random() * size;
+      const w = Math.random() * 1.5 + 0.5;
+      const h = Math.random() * 10 + 4;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate((Math.random() - 0.5) * 0.3);
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
     }
   } else if (type === 'concrete') {
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillStyle = '#cbd5e1';
     ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 8000; i++) {
-      ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-      ctx.fillRect(Math.random() * size, Math.random() * size, 1, 1);
+    for (let i = 0; i < 40000; i++) {
+      const v = Math.floor(Math.random() * 50) + 180;
+      ctx.fillStyle = `rgba(${v}, ${v}, ${v}, ${Math.random() * 0.15})`;
+      ctx.fillRect(Math.random() * size, Math.random() * size, Math.random() * 2 + 1, Math.random() * 2 + 1);
+    }
+    for (let i=0; i<50; i++) {
+        ctx.beginPath();
+        ctx.arc(Math.random()*size, Math.random()*size, Math.random()*20+5, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(0,0,0,${Math.random()*0.03})`;
+        ctx.fill();
     }
   } else if (type === 'asphalt') {
-    ctx.fillStyle = '#334155';
+    ctx.fillStyle = '#1e293b';
     ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 10000; i++) {
-      ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.15)';
-      ctx.fillRect(Math.random() * size, Math.random() * size, 1.5, 1.5);
+    for (let i = 0; i < 50000; i++) {
+      const v = Math.floor(Math.random() * 60) + 20;
+      ctx.fillStyle = `rgba(${v}, ${v}, ${v}, ${Math.random() * 0.3 + 0.1})`;
+      ctx.fillRect(Math.random() * size, Math.random() * size, Math.random() * 2.5 + 0.5, Math.random() * 2.5 + 0.5);
     }
   } else if (type === 'mulch') {
-    ctx.fillStyle = '#78350f';
+    ctx.fillStyle = '#451a03';
     ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 3000; i++) {
-      ctx.fillStyle = Math.random() > 0.5 ? '#451a03' : '#92400e';
+    for (let i = 0; i < 15000; i++) {
+      const isDark = Math.random() > 0.5;
+      ctx.fillStyle = isDark ? '#270e01' : '#78350f';
       ctx.save();
       ctx.translate(Math.random() * size, Math.random() * size);
       ctx.rotate(Math.random() * Math.PI);
-      ctx.fillRect(0, 0, 8, 3);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, Math.random() * 8 + 4, Math.random() * 2 + 1, 0, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
     }
   } else if (type === 'dirt') {
     ctx.fillStyle = '#7a5c3a';
     ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 5000; i++) {
-      ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-      ctx.fillRect(Math.random() * size, Math.random() * size, 2, 2);
+    for (let i = 0; i < 20000; i++) {
+      const v = Math.random() > 0.5 ? 0 : 255;
+      ctx.fillStyle = `rgba(${v},${v},${v}, ${Math.random() * 0.06})`;
+      ctx.fillRect(Math.random() * size, Math.random() * size, Math.random() * 3 + 1, Math.random() * 3 + 1);
+    }
+    for (let i=0; i<100; i++) {
+        ctx.beginPath();
+        ctx.arc(Math.random()*size, Math.random()*size, Math.random()*10+2, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(60,40,20,${Math.random()*0.1})`;
+        ctx.fill();
     }
   } else if (type === 'gravel') {
     ctx.fillStyle = '#a8a29e';
     ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 4000; i++) {
+    for (let i = 0; i < 15000; i++) {
       ctx.beginPath();
-      ctx.arc(Math.random() * size, Math.random() * size, Math.random() * 3 + 1, 0, Math.PI * 2);
-      ctx.fillStyle = Math.random() > 0.5 ? '#d6d3d1' : '#78716c';
+      const x = Math.random() * size;
+      const y = Math.random() * size;
+      const r = Math.random() * 4 + 1.5;
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      const v = Math.floor(Math.random() * 100) + 100;
+      ctx.fillStyle = `rgba(${v}, ${v}, ${v}, 0.9)`;
       ctx.fill();
+      ctx.strokeStyle = `rgba(0,0,0,0.2)`;
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
     }
   } else if (type === 'sand') {
     ctx.fillStyle = '#fcd34d';
     ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 8000; i++) {
-      ctx.fillStyle = Math.random() > 0.5 ? '#fde68a' : '#fbbf24';
-      ctx.fillRect(Math.random() * size, Math.random() * size, 1.5, 1.5);
+    for (let i = 0; i < 40000; i++) {
+      const r = Math.random();
+      if (r < 0.3) ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      else if (r < 0.6) ctx.fillStyle = 'rgba(0,0,0,0.05)';
+      else ctx.fillStyle = 'rgba(217, 119, 6, 0.15)';
+      ctx.fillRect(Math.random() * size, Math.random() * size, 1, 1);
     }
   } else if (type === 'water') {
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = '#0284c7';
     ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 1500; i++) {
-      ctx.fillStyle = 'rgba(255,255,255,0.2)';
-      ctx.fillRect(Math.random() * size, Math.random() * size, Math.random()*20+10, 2);
+    for (let i = 0; i < 3000; i++) {
+      ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.15})`;
+      const w = Math.random() * 40 + 10;
+      const h = Math.random() * 2 + 1;
+      ctx.fillRect(Math.random() * size, Math.random() * size, w, h);
     }
   } else if (type === 'wood') {
-    ctx.fillStyle = '#b45309';
+    ctx.fillStyle = '#92400e';
     ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < size; i+= 8) {
-      ctx.fillStyle = 'rgba(0,0,0,0.15)';
-      ctx.fillRect(0, i + Math.random() * 2, size, 2);
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      ctx.fillRect(0, i, size, 1);
+    for (let y = 0; y < size; y += 16) {
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(0, y, size, 1.5);
+      for(let x = 0; x < size; x+= Math.random()*20+10) {
+         ctx.fillStyle = `rgba(0,0,0,${Math.random()*0.15})`;
+         ctx.fillRect(x, y + Math.random()*15, Math.random()*40+20, 1.5);
+      }
     }
   }
   return canvas;
