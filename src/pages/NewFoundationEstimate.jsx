@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Save, ArrowLeft, Trash2, Crosshair } from 'lucide-react';
+import { Plus, Save, ArrowLeft, Trash2, Crosshair, Move } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import WallSection from '@/components/WallSection';
@@ -147,7 +147,7 @@ export default function NewFoundationEstimate() {
           pole.signs[designerSignIdx] = { ...pole.signs[designerSignIdx], ...signData };
       } else {
           // Add new
-          pole.signs.push({ ...signData, y_offset_inches: pole.height_inches / 2 || 60, z_offset_inches: 12 });
+          pole.signs.push({ ...signData, y_offset_inches: pole.height_inches / 2 || 60, z_offset_inches: 0 });
       }
       setPolesData(arr);
       markDirty();
@@ -867,6 +867,15 @@ export default function NewFoundationEstimate() {
                                <Crosshair className="w-3 h-3 mr-1.5" /> 
                                {canvasMode === 'place' ? 'Click on Canvas to Place' : 'Place on Canvas'}
                            </Button>
+                           <Button
+                             size="sm"
+                             variant={canvasMode === 'move_pole' ? 'default' : 'outline'}
+                             onClick={() => setCanvasMode(canvasMode === 'move_pole' ? 'draw' : 'move_pole')}
+                             className="w-full h-8 text-xs mt-2"
+                           >
+                               <Move className="w-3 h-3 mr-1.5" />
+                               Move Pole
+                           </Button>
                         </div>
                       </div>
 
@@ -886,14 +895,29 @@ export default function NewFoundationEstimate() {
                               <div key={pole.id || idx} className={`border rounded-lg ${isSelected ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-400' : 'border-slate-200 bg-white hover:border-slate-300'} cursor-pointer overflow-hidden transition-colors`} onClick={() => setSelectedPlacedIdx(idx)}>
                                 <div className="p-1.5 px-2 flex justify-between items-center bg-slate-50/50 border-b border-slate-100">
                                   <span className="font-semibold text-xs text-slate-700">Pole {idx + 1}</span>
-                                  <Button size="icon" variant="ghost" className="h-5 w-5 text-red-500 hover:bg-red-100 rounded-md" onClick={(e) => {
-                                      e.stopPropagation();
-                                      setPolesData(polesData.filter((_, i) => i !== idx));
-                                      if (selectedPlacedIdx === idx) setSelectedPlacedIdx(null);
-                                      else if (selectedPlacedIdx > idx) setSelectedPlacedIdx(selectedPlacedIdx - 1);
-                                  }}>
-                                      <Trash2 className="w-3 h-3" />
-                                  </Button>
+                                  <div className="flex items-center gap-2">
+                                    <input 
+                                      type="color" 
+                                      value={pole.pole_color || '#475569'} 
+                                      onChange={(e) => {
+                                        const arr = [...polesData];
+                                        arr[idx].pole_color = e.target.value;
+                                        setPolesData(arr);
+                                        markDirty();
+                                      }}
+                                      className="w-5 h-5 rounded cursor-pointer border border-slate-300 p-0 overflow-hidden"
+                                      title="Pole Color"
+                                      onClick={e => e.stopPropagation()}
+                                    />
+                                    <Button size="icon" variant="ghost" className="h-5 w-5 text-red-500 hover:bg-red-100 rounded-md" onClick={(e) => {
+                                        e.stopPropagation();
+                                        setPolesData(polesData.filter((_, i) => i !== idx));
+                                        if (selectedPlacedIdx === idx) setSelectedPlacedIdx(null);
+                                        else if (selectedPlacedIdx > idx) setSelectedPlacedIdx(selectedPlacedIdx - 1);
+                                    }}>
+                                        <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
                                 </div>
                                 
                                 {isSelected && (

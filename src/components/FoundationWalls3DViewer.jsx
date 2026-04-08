@@ -736,7 +736,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
         const topOfPole = topOfFoundation - yOffFt + hFt;
         const yCenter = topOfPole - hFt / 2;
 
-        let mat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3, metalness: 0.8 }); // default steel
+        let mat = new THREE.MeshStandardMaterial({ color: p.pole_color || 0x475569, roughness: 0.3, metalness: 0.8 }); // default steel
         if (p.paint) mat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.6 });
         
         const group = new THREE.Group();
@@ -800,23 +800,31 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
                 const signGeo = new THREE.ExtrudeGeometry(signShape, extrudeSettings);
                 signGeo.translate(0, 0, -depthFt / 2);
                 
-                let signMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
+                let faceColorHex = 0xffffff;
+                let sideColorHex = 0x475569;
+                if (sign.face_color) faceColorHex = parseInt(sign.face_color.replace('#', ''), 16);
+                if (sign.side_color) sideColorHex = parseInt(sign.side_color.replace('#', ''), 16);
+
+                let signMat;
                 if (sign.image_url) {
                     const texLoader = new THREE.TextureLoader();
                     texLoader.setCrossOrigin('anonymous');
                     const tex = texLoader.load(sign.image_url);
                     tex.colorSpace = THREE.SRGBColorSpace;
                     
-                    // Assign texture only to the front face (face 0)
-                    const faceMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.2 });
-                    const sideMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 });
+                    const faceMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.2, color: faceColorHex });
+                    const sideMat = new THREE.MeshStandardMaterial({ color: sideColorHex, roughness: 0.5 });
+                    signMat = [faceMat, sideMat];
+                } else {
+                    const faceMat = new THREE.MeshStandardMaterial({ color: faceColorHex, roughness: 0.2 });
+                    const sideMat = new THREE.MeshStandardMaterial({ color: sideColorHex, roughness: 0.5 });
                     signMat = [faceMat, sideMat];
                 }
                 
                 const signMesh = new THREE.Mesh(signGeo, signMat);
                 
                 const syOffsetFt = (sign.y_offset_inches || 0) / 12;
-                const szOffsetFt = (sign.z_offset_inches || 12) / 12;
+                const szOffsetFt = (sign.z_offset_inches || 0) / 12;
                 
                 signMesh.position.set(0, (topOfFoundation + syOffsetFt) - yCenter, szOffsetFt);
                 signMesh.castShadow = true;

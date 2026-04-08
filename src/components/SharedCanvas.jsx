@@ -603,8 +603,9 @@ export default function SharedCanvas({
       let clickedIdx = -1;
       for (let i = polesData.length - 1; i >= 0; i--) {
           const p = polesData[i];
-          const dist = Math.sqrt((p.x_inches - worldPt.x)**2 + (p.z_inches - worldPt.y)**2);
-          if (dist < 10) {
+          const pScreen = toCanvas({ x: p.x_inches, y: p.z_inches });
+          const distPx = Math.sqrt((pScreen.x - rawX)**2 + (pScreen.y - rawY)**2);
+          if (distPx < 25) { // 25 pixels hit radius
               clickedIdx = i;
               break;
           }
@@ -899,7 +900,7 @@ export default function SharedCanvas({
           ref={canvasRef}
           width={canvasW}
           height={canvasH}
-          style={{ cursor: mode === 'pan' ? 'grab' : (mode === 'move_wall' || mode === 'move_foundation' ? 'move' : (mode === 'edit_points' ? 'crosshair' : ((activeWallIndex !== null && nearFirstPoint && points.length >= 3 && !closed) ? 'pointer' : 'crosshair'))), display: 'block', maxWidth: '100%' }}
+          style={{ cursor: mode === 'pan' ? 'grab' : (mode === 'move_wall' || mode === 'move_foundation' || mode === 'move_pole' ? 'move' : (mode === 'edit_points' ? 'crosshair' : ((activeWallIndex !== null && nearFirstPoint && points.length >= 3 && !closed) ? 'pointer' : 'crosshair'))), display: 'block', maxWidth: '100%' }}
           onMouseMove={handleMouseMove}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
