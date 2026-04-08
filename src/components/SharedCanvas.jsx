@@ -627,6 +627,7 @@ export default function SharedCanvas({
           };
           onChangePoles([...polesData, newPole]);
           setSelectedPlacedIdx(polesData.length);
+          setMode('draw');
       }
     }
   };

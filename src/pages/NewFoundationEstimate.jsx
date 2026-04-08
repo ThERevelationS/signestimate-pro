@@ -229,19 +229,22 @@ export default function NewFoundationEstimate() {
     setSettings(sMap);
 
     if (editId) {
-      const proj = await FoundationProjectEntity.filter({ id: editId });
-      if (proj && proj[0]) {
-        const p = proj[0];
-        setProject(p);
-        setItems(p.items?.length ? p.items.map(i => ({ 
-          ...i, 
-          excavation_method: i.excavation_method || p.excavation_method || 'hand_dig',
-          selected_concrete_id: i.selected_concrete_id || p.selected_concrete_id || '',
-          _id: i._id || Date.now() + Math.random() 
-        })) : [newItem()]);
-        setWalls(p.walls?.length ? p.walls.map(w => ({ ...w, _id: w._id || Date.now() + Math.random() })) : []);
-        setPolesData(p.poles || []);
-        setSelectedEquipmentList(p.selected_equipment?.length ? p.selected_equipment.map(e => ({ ...e, _id: e._id || Date.now() + Math.random() })) : []);
+      try {
+        const p = await FoundationProjectEntity.get(editId);
+        if (p) {
+          setProject(p);
+          setItems(p.items?.length ? p.items.map(i => ({ 
+            ...i, 
+            excavation_method: i.excavation_method || p.excavation_method || 'hand_dig',
+            selected_concrete_id: i.selected_concrete_id || p.selected_concrete_id || '',
+            _id: i._id || Date.now() + Math.random() 
+          })) : [newItem()]);
+          setWalls(p.walls?.length ? p.walls.map(w => ({ ...w, _id: w._id || Date.now() + Math.random() })) : []);
+          setPolesData(p.poles || []);
+          setSelectedEquipmentList(p.selected_equipment?.length ? p.selected_equipment.map(e => ({ ...e, _id: e._id || Date.now() + Math.random() })) : []);
+        }
+      } catch (err) {
+        console.error("Error loading project:", err);
       }
     }
     setLoading(false);
