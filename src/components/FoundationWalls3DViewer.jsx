@@ -720,6 +720,75 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         scene.add(mesh);
+
+        // Render signs
+        if (p.signs && p.signs.length > 0) {
+            p.signs.forEach(sign => {
+                if (!sign.shape || !sign.shape.points) return;
+                
+                const signShape = new THREE.Shape();
+                const scale = sign.scale_multiplier || 1.0;
+                const pts = sign.shape.points;
+                
+                if (pts.length === 0) return;
+                
+                // Map canvas pixels to feet. 
+                const ptScale = scale / 12;
+                
+                // Y is inverted in canvas vs 3D
+                signShape.moveTo(pts[0].x * ptScale, -pts[0].y * ptScale);
+                
+                for(let i = 0; i < pts.length; i++) {
+                    const pt = pts[i];
+                    const nextPt = pts[(i+1)%pts.length];
+                    if (pt.type === 'curve' && pt.cx !== undefined) {
+                        signShape.quadraticCurveTo(
+                            pt.cx * ptScale, -pt.cy * ptScale,
+                            nextPt.x * ptScale, -nextPt.y * ptScale
+                        );
+                    } else {
+                        signShape.lineTo(nextPt.x * ptScale, -nextPt.y * ptScale);
+                    }
+                }
+                
+                const depthFt = (sign.depth_inches || 12) / 12;
+                
+                const extrudeSettings = {
+                    steps: 1,
+                    depth: depthFt,
+                    bevelEnabled: true,
+                    bevelThickness: 0.5 / 12,
+                    bevelSize: 0.5 / 12,
+                    bevelOffset: 0,
+                    bevelSegments: 2
+                };
+                
+                const signGeo = new THREE.ExtrudeGeometry(signShape, extrudeSettings);
+                signGeo.translate(0, 0, -depthFt / 2);
+                
+                let signMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
+                if (sign.image_url) {
+                    const texLoader = new THREE.TextureLoader();
+                    texLoader.setCrossOrigin('anonymous');
+                    const tex = texLoader.load(sign.image_url);
+                    tex.colorSpace = THREE.SRGBColorSpace;
+                    
+                    // Assign texture only to the front face (face 0)
+                    const faceMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.2 });
+                    const sideMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 });
+                    signMat = [faceMat, sideMat];
+                }
+                
+                const signMesh = new THREE.Mesh(signGeo, signMat);
+                
+                const syOffsetFt = (sign.y_offset_inches || 0) / 12;
+                const szOffsetFt = (sign.z_offset_inches || 12) / 12;
+                
+                signMesh.position.set(cx, topOfFoundation + syOffsetFt, cz + szOffsetFt);
+                signMesh.castShadow = true;
+                scene.add(signMesh);
+            });
+        }
     });
 
     // ── Camera framing ────────────────────────────────────────────────────────

@@ -20,8 +20,9 @@ import SummaryTab from '@/components/foundation/SummaryTab';
 import BOMTab from '@/components/foundation/BOMTab';
 import EquipmentTab from '@/components/foundation/EquipmentTab';
 import BeautifyCanvas from '@/components/BeautifyCanvas';
+import SignDesignerModal from '@/components/SignDesignerModal';
 import AIEngineeringCalculatorModal from '@/components/foundation/AIEngineeringCalculatorModal';
-import { Bot } from 'lucide-react';
+import { Bot, PenTool } from 'lucide-react';
 
 const FoundationProjectEntity = base44.entities.FoundationProject;
 const FoundationInventoryEntity = base44.entities.FoundationInventory;
@@ -118,6 +119,33 @@ export default function NewFoundationEstimate() {
   const [selectedPoleId, setSelectedPoleId] = useState('');
   const [selectedPlacedIdx, setSelectedPlacedIdx] = useState(null);
   const [canvasMode, setCanvasMode] = useState('draw');
+  
+  // Sign Designer State
+  const [designerOpen, setDesignerOpen] = useState(false);
+  const [designerPoleIdx, setDesignerPoleIdx] = useState(null);
+  const [designerSignIdx, setDesignerSignIdx] = useState(null);
+
+  const openSignDesigner = (pIdx, sIdx) => {
+      setDesignerPoleIdx(pIdx);
+      setDesignerSignIdx(sIdx);
+      setDesignerOpen(true);
+  };
+
+  const handleSaveSign = (signData) => {
+      const arr = [...polesData];
+      const pole = arr[designerPoleIdx];
+      if (!pole.signs) pole.signs = [];
+      
+      if (designerSignIdx !== null) {
+          // Update
+          pole.signs[designerSignIdx] = { ...pole.signs[designerSignIdx], ...signData };
+      } else {
+          // Add new
+          pole.signs.push({ ...signData, y_offset_inches: pole.height_inches / 2 || 60, z_offset_inches: 12 });
+      }
+      setPolesData(arr);
+      markDirty();
+  };
 
   // History state for undo/redo
   const [history, setHistory] = useState([]);
@@ -566,6 +594,15 @@ export default function NewFoundationEstimate() {
         </div>
       </div>
 
+      {designerOpen && (
+        <SignDesignerModal
+          open={designerOpen}
+          onClose={() => setDesignerOpen(false)}
+          onSave={handleSaveSign}
+          initialSign={designerPoleIdx !== null && designerSignIdx !== null ? polesData[designerPoleIdx]?.signs[designerSignIdx] : null}
+        />
+      )}
+
       {/* Two-panel body */}
       <div className="flex flex-1 overflow-hidden relative">
 
@@ -583,7 +620,7 @@ export default function NewFoundationEstimate() {
                   <TabsTrigger value="equipment">Equipment {selectedEquipmentList.length > 0 ? `(${selectedEquipmentList.length})` : ''}</TabsTrigger>
                 )}
                 <TabsTrigger value="walls_poles">Walls & Poles ({walls.length + polesData.length})</TabsTrigger>
-                <TabsTrigger value="beautify">Beautify</TabsTrigger>
+                <TabsTrigger value="beautify">Signage & Landscape</TabsTrigger>
                 <TabsTrigger value="summary">Cost Summary</TabsTrigger>
                 <TabsTrigger value="bom">Bill of Materials</TabsTrigger>
               </TabsList>
@@ -883,6 +920,56 @@ export default function NewFoundationEstimate() {
                                           <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 flex-1 bg-white border border-slate-200 shadow-sm rounded-sm mr-0.5" onClick={() => centerPole(idx, 'both')} title="Center X/Y">C/C</Button>
                                           <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 flex-1 bg-white border border-slate-200 shadow-sm rounded-sm mr-0.5" onClick={() => centerPole(idx, 'horizontal')} title="Center Horizontally">Horiz</Button>
                                           <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 flex-1 bg-white border border-slate-200 shadow-sm rounded-sm" onClick={() => centerPole(idx, 'vertical')} title="Center Vertically">Vert</Button>
+                                        </div>
+                                    </div>
+
+                                    {/* Signs on Pole */}
+                                    <div className="pt-2 mt-2 border-t border-slate-200">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <Label className="text-[10px] text-slate-500 font-semibold uppercase block">Cabinets / Signs ({(pole.signs || []).length})</Label>
+                                            <Button variant="outline" size="sm" className="h-5 text-[10px] px-1.5 py-0 bg-white" onClick={() => openSignDesigner(idx, null)}>+ Add</Button>
+                                        </div>
+                                        
+                                        <div className="space-y-1">
+                                            {(pole.signs || []).map((sign, sIdx) => (
+                                                <div key={sign.id || sIdx} className="bg-slate-100 border border-slate-200 rounded p-1.5 text-[10px]">
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <span className="font-semibold text-slate-700 truncate">{sign.name}</span>
+                                                        <div className="flex gap-1">
+                                                            <Button size="icon" variant="ghost" className="h-4 w-4" onClick={() => openSignDesigner(idx, sIdx)}>
+                                                                <PenTool className="w-2.5 h-2.5 text-blue-600" />
+                                                            </Button>
+                                                            <Button size="icon" variant="ghost" className="h-4 w-4" onClick={() => {
+                                                                const arr = [...polesData];
+                                                                arr[idx].signs.splice(sIdx, 1);
+                                                                setPolesData(arr);
+                                                                markDirty();
+                                                            }}>
+                                                                <Trash2 className="w-2.5 h-2.5 text-red-500" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="grid grid-cols-2 gap-1">
+                                                        <div>
+                                                            <span className="text-[9px] text-slate-400">Y Offset (in): </span>
+                                                            <Input type="number" className="h-5 text-[10px] px-1" value={sign.y_offset_inches || 0} onChange={e => {
+                                                                const arr = [...polesData];
+                                                                arr[idx].signs[sIdx].y_offset_inches = parseFloat(e.target.value) || 0;
+                                                                setPolesData(arr); markDirty();
+                                                            }} />
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[9px] text-slate-400">Z Offset (in): </span>
+                                                            <Input type="number" className="h-5 text-[10px] px-1" value={sign.z_offset_inches || 0} onChange={e => {
+                                                                const arr = [...polesData];
+                                                                arr[idx].signs[sIdx].z_offset_inches = parseFloat(e.target.value) || 0;
+                                                                setPolesData(arr); markDirty();
+                                                            }} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                   </div>

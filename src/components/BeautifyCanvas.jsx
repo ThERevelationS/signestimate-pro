@@ -6,7 +6,7 @@ import { Trash2, Paintbrush, Square, Circle, Minus, Undo, Redo, Hexagon, Droplet
 import { Badge } from '@/components/ui/badge';
 
 const CANVAS_SIZE = 1024;
-const WORLD_SIZE = 200; // 200 feet
+const WORLD_SIZE = 100; // 100 feet
 const PX_PER_FT = CANVAS_SIZE / WORLD_SIZE;
 
 const MATERIALS = [
@@ -675,7 +675,7 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
         )}
         
         <div className="absolute bottom-4 left-4 text-[10px] font-medium text-white/90 bg-black/60 rounded px-2.5 py-1.5 pointer-events-none shadow-sm backdrop-blur-sm border border-white/10">
-          Scale: 200ft × 200ft Area
+          Scale: 100ft × 100ft Area
         </div>
       </div>
     </div>
