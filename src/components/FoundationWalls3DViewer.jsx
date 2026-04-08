@@ -92,6 +92,26 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
     ground.userData.isGround = true;
     scene.add(ground);
 
+    // Overlay plane for beautify paint strokes
+    const overlayMat = new THREE.MeshStandardMaterial({ 
+      transparent: true, 
+      opacity: 0, 
+      roughness: 1.0, 
+      side: THREE.DoubleSide, 
+      depthWrite: false 
+    });
+    const overlay = new THREE.Mesh(
+      new THREE.PlaneGeometry(200, 200),
+      overlayMat
+    );
+    overlay.rotation.x = -Math.PI / 2;
+    overlay.position.y = 0.001; // slightly above dirt ground
+    overlay.receiveShadow = true;
+    overlay.userData.isOverlay = true;
+    scene.add(overlay);
+
+    groundMatRef.current = overlayMat;
+
     // Removed grid per user request
 
     const animate = () => {
@@ -637,35 +657,18 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.onload = () => {
-        // Create composite canvas to merge dirt background with beautify transparent layers
-        const compCanvas = document.createElement('canvas');
-        compCanvas.width = 1024;
-        compCanvas.height = 1024;
-        const ctx = compCanvas.getContext('2d');
-        
-        // Fill dirt background
-        if (dirtTexRef.current && dirtTexRef.current.image) {
-            const dirtPattern = ctx.createPattern(dirtTexRef.current.image, 'repeat');
-            ctx.fillStyle = dirtPattern;
-            ctx.fillRect(0, 0, 1024, 1024);
-        }
-        
-        // Draw the strokes on top
-        ctx.drawImage(img, 0, 0, 1024, 1024);
-
-        const tex = new THREE.Texture(compCanvas);
+        const tex = new THREE.Texture(img);
         tex.needsUpdate = true;
         tex.colorSpace = THREE.SRGBColorSpace;
         groundMatRef.current.map = tex;
-        groundMatRef.current.color.setHex(0xffffff); // Remove tint so original color shows
+        groundMatRef.current.color.setHex(0xffffff); 
         groundMatRef.current.opacity = 1.0;
         groundMatRef.current.needsUpdate = true;
       };
       img.src = beautifyDataUrl;
     } else {
-      groundMatRef.current.map = dirtTexRef.current;
-      groundMatRef.current.color.setHex(0xffffff);
-      groundMatRef.current.opacity = 0.55;
+      groundMatRef.current.map = null;
+      groundMatRef.current.opacity = 0;
       groundMatRef.current.needsUpdate = true;
     }
   }, [beautifyDataUrl]);

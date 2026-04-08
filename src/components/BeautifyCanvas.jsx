@@ -21,17 +21,7 @@ const MATERIALS = [
   { id: 'water', name: 'Water', color: '#38bdf8', icon: <Droplets className="w-4 h-4 text-sky-400" /> },
 ];
 
-const TEXTURE_URLS = {
-  grass: 'https://images.unsplash.com/photo-1589923188900-85dae523342b?w=512&q=80',
-  dirt: 'https://images.unsplash.com/photo-1579930815181-799bc5f5cce1?w=512&q=80',
-  concrete: 'https://images.unsplash.com/photo-1621252179027-94459d278660?w=512&q=80',
-  asphalt: 'https://images.unsplash.com/photo-1584284449830-a9160cc124b6?w=512&q=80',
-  gravel: 'https://images.unsplash.com/photo-1517454848028-2d8c3639893e?w=512&q=80',
-  sand: 'https://images.unsplash.com/photo-1555502696-2cd3b5b63bc6?w=512&q=80',
-  mulch: 'https://images.unsplash.com/photo-1550989460-0adf9ea622e2?w=512&q=80',
-  wood: 'https://images.unsplash.com/photo-1510524458319-f538ed6b1857?w=512&q=80',
-  water: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=512&q=80',
-};
+// Using high-performance procedural seamless patterns
 
 const generateTexture = (type) => {
   const size = 256;
@@ -135,38 +125,13 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   
-  const [texturesLoaded, setTexturesLoaded] = useState(false);
-  const imagesRef = useRef({});
+  const [texturesLoaded, setTexturesLoaded] = useState(true);
   const textureCacheRef = useRef({});
-
-  useEffect(() => {
-    const promises = Object.entries(TEXTURE_URLS).map(([key, url]) => {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-          imagesRef.current[key] = img;
-          resolve();
-        };
-        img.onerror = () => {
-          resolve(); // Fallback to generated textures
-        };
-        img.src = url;
-      });
-    });
-    Promise.all(promises).then(() => {
-        setTexturesLoaded(true);
-    });
-  }, []);
 
   const getPattern = (ctx, type) => {
     if (!textureCacheRef.current[type]) {
-       if (imagesRef.current[type] && imagesRef.current[type].complete && imagesRef.current[type].naturalWidth > 0) {
-           textureCacheRef.current[type] = ctx.createPattern(imagesRef.current[type], 'repeat');
-       } else {
-           const canvas = generateTexture(type);
-           textureCacheRef.current[type] = ctx.createPattern(canvas, 'repeat');
-       }
+       const canvas = generateTexture(type);
+       textureCacheRef.current[type] = ctx.createPattern(canvas, 'repeat');
     }
     return textureCacheRef.current[type];
   };
