@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 
-function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInternalWall, wallHeightInches, mortarGapInches, internalMortarGapInches, settings }) {
+function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInternalWall, wallHeightInches, internalWallHeightInches, mortarGapInches, internalMortarGapInches, settings }) {
   if (!wallShape || !wallMaterial || !wallShape.segments) return null;
 
   const isConcrete = wallMaterial.wall_material_subtype === 'concrete';
@@ -61,7 +61,7 @@ function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInter
     const intUnitH = internalMaterial.wall_unit_height_inches || 2.25;
     const intMortar = intIsConcrete ? 0 : (internalMortarGapInches || 0.375);
     const intCourseH = intUnitH + intMortar;
-    const intNumCourses = Math.floor(wallHeightInches / intCourseH);
+    const intNumCourses = Math.floor(internalWallHeightInches / intCourseH);
     const intBrickPitch = intUnitL + intMortar;
 
     // For each segment, inner centerline length is reduced based on both outer and inner widths.
@@ -81,7 +81,7 @@ function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInter
 
     internalMaterialCost = internalTotalBricks * (internalMaterial.cost_per_unit || 0);
     
-    const intSurfaceAreaSqFtSingleSide = (internalTotalLinearInches * wallHeightInches) / 144;
+    const intSurfaceAreaSqFtSingleSide = (internalTotalLinearInches * internalWallHeightInches) / 144;
     
     if (!intIsConcrete) {
       const intSurfaceAreaSqFtMortar = intSurfaceAreaSqFtSingleSide * 2;
@@ -138,6 +138,7 @@ export default function WallSection({
     internalMaterial: wall.selectedInternalMaterial,
     includeInternalWall: wall.includeInternalWall,
     wallHeightInches: wall.heightInches || 24,
+    internalWallHeightInches: wall.internalWallHeightInches ?? (wall.heightInches || 24),
     mortarGapInches: wall.mortarGapInches || 0.375,
     internalMortarGapInches: wall.internalMortarGapInches || 0.375,
     settings,
@@ -275,30 +276,48 @@ export default function WallSection({
             </div>
             
             {wall.includeInternalWall && (
-              <div className="bg-orange-50/50 p-3 rounded-lg border border-orange-100 mb-4">
-                <div className="w-full">
-                  <Label className="text-xs">Internal Wall Material</Label>
-                  <Select
-                    value={wall.internalMaterialId || ''}
-                    onValueChange={v => {
-                      const mat = fillMaterials.find(m => m.id === v);
-                      onChange({ ...wall, internalMaterialId: v, selectedInternalMaterial: mat || null });
-                    }}
-                  >
-                    <SelectTrigger className="h-8 text-sm bg-white">
-                      <SelectValue placeholder="Select fill material" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fillMaterials.length === 0 && (
-                        <SelectItem value="_none" disabled>No wall fill materials in inventory</SelectItem>
-                      )}
-                      {fillMaterials.map(m => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.material_name} ({m.wall_material_subtype})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="bg-orange-50/50 p-3 rounded-lg border border-orange-100 mb-4 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Internal Wall Material</Label>
+                    <Select
+                      value={wall.internalMaterialId || ''}
+                      onValueChange={v => {
+                        const mat = fillMaterials.find(m => m.id === v);
+                        onChange({ ...wall, internalMaterialId: v, selectedInternalMaterial: mat || null });
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-sm bg-white">
+                        <SelectValue placeholder="Select fill material" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fillMaterials.length === 0 && (
+                          <SelectItem value="_none" disabled>No wall fill materials in inventory</SelectItem>
+                        )}
+                        {fillMaterials.map(m => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.material_name} ({m.wall_material_subtype})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Internal Height (in)</Label>
+                    <Input
+                      type="number"
+                      className="h-8 text-sm bg-white"
+                      value={wall.internalWallHeightInches ?? (wall.heightInches || 24)}
+                      onChange={e => {
+                        let val = parseFloat(e.target.value) || 0;
+                        if (val > (wall.heightInches || 24)) val = wall.heightInches || 24;
+                        update('internalWallHeightInches', val);
+                      }}
+                      max={wall.heightInches || 24}
+                      min={1}
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">Max: {wall.heightInches || 24}"</p>
+                  </div>
                 </div>
               </div>
             )}
