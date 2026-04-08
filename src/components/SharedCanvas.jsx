@@ -136,6 +136,7 @@ export default function SharedCanvas({
 
       const userOffsetX = (item.offset_x_inches || 0) / 12;
       const userOffsetZ = (item.offset_z_inches || 0) / 12;
+      const rotation_degrees = item.rotation_degrees || 0;
 
       for (let i = 0; i < qty; i++) {
         const col = i % gridSize;
@@ -152,7 +153,8 @@ export default function SharedCanvas({
             isPillar: !isSpread,
             centerX: ox * 12,
             centerY: oz * 12,
-            radius: (diaFt * 12) / 2
+            radius: (diaFt * 12) / 2,
+            rotation_degrees
         });
       }
       cumulativeOffsetX += gridSize * spacingX + 2;
@@ -169,7 +171,16 @@ export default function SharedCanvas({
         return (dx * dx + dy * dy) <= r.radius * r.radius;
       }
       const py = pt.y !== undefined ? pt.y : pt.z;
-      return pt.x >= r.minX && pt.x <= r.maxX && py >= r.minY && py <= r.maxY;
+      
+      const rad = -(r.rotation_degrees || 0) * Math.PI / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      const dx = pt.x - r.centerX;
+      const dy = py - r.centerY;
+      const localX = r.centerX + dx * cos - dy * sin;
+      const localY = r.centerY + dx * sin + dy * cos;
+      
+      return localX >= r.minX && localX <= r.maxX && localY >= r.minY && localY <= r.maxY;
     });
   }
 
@@ -220,25 +231,28 @@ export default function SharedCanvas({
       ctx.fillStyle = 'rgba(245,158,11,0.07)';
       
       fRects.forEach((r, i) => {
-        const topLeft = toCanvas({ x: r.minX, y: r.minY });
         const w = (r.maxX - r.minX) * scale;
         const h = (r.maxY - r.minY) * scale;
+        const center = toCanvas({ x: r.centerX, y: r.centerY });
         
         if (r.isPillar) {
-            const center = toCanvas({ x: r.centerX, y: r.centerY });
             const radiusPx = r.radius * scale;
             ctx.beginPath();
             ctx.arc(center.x, center.y, radiusPx, 0, 2 * Math.PI);
             ctx.stroke();
             ctx.fill();
         } else {
-            ctx.strokeRect(topLeft.x, topLeft.y, w, h);
-            ctx.fillRect(topLeft.x, topLeft.y, w, h);
+            ctx.save();
+            ctx.translate(center.x, center.y);
+            ctx.rotate((r.rotation_degrees || 0) * Math.PI / 180);
+            ctx.strokeRect(-w/2, -h/2, w, h);
+            ctx.fillRect(-w/2, -h/2, w, h);
+            ctx.restore();
         }
         
         ctx.fillStyle = '#92400e';
         ctx.font = '11px sans-serif';
-        ctx.fillText(`Foundation ${r.itemIdx + 1}`, topLeft.x + 4, topLeft.y + 14);
+        ctx.fillText(`Foundation ${r.itemIdx + 1}`, center.x - 30, center.y + 4);
         ctx.fillStyle = 'rgba(245,158,11,0.07)'; 
       });
       ctx.setLineDash([]);
@@ -375,15 +389,20 @@ export default function SharedCanvas({
         ctx.strokeStyle = '#1e3a8a';
         ctx.lineWidth = isSelected ? 3 : 1.5;
 
+        ctx.save();
+        ctx.translate(cp.x, cp.y);
+        ctx.rotate((p.rotation_degrees || 0) * Math.PI / 180);
+
         if (inv?.pole_shape === 'round') {
             ctx.beginPath();
-            ctx.arc(cp.x, cp.y, pw / 2, 0, Math.PI * 2);
+            ctx.arc(0, 0, pw / 2, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
         } else {
-            ctx.fillRect(cp.x - pw/2, cp.y - pd/2, pw, pd);
-            ctx.strokeRect(cp.x - pw/2, cp.y - pd/2, pw, pd);
+            ctx.fillRect(-pw/2, -pd/2, pw, pd);
+            ctx.strokeRect(-pw/2, -pd/2, pw, pd);
         }
+        ctx.restore();
 
         ctx.fillStyle = '#fff';
         ctx.font = '10px sans-serif';
@@ -765,6 +784,33 @@ export default function SharedCanvas({
       updateShape(newPts, closed);
   };
 
+  const rotateActiveWall = (degrees) => {
+      if (activeWallIndex === null || points.length === 0) return;
+      let minX = points[0].x, maxX = points[0].x, minY = points[0].y, maxY = points[0].y;
+      for (const p of points) {
+          if (p.x < minX) minX = p.x;
+          if (p.x > maxX) maxX = p.x;
+          if (p.y < minY) minY = p.y;
+          if (p.y > maxY) maxY = p.y;
+      }
+      const cx = (minX + maxX) / 2;
+      const cy = (minY + maxY) / 2;
+      
+      const rad = degrees * Math.PI / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+
+      const newPts = points.map(p => {
+          const dx = p.x - cx;
+          const dy = p.y - cy;
+          return {
+              x: cx + dx * cos - dy * sin,
+              y: cy + dx * sin + dy * cos
+          };
+      });
+      updateShape(newPts, closed);
+  };
+
   return (
     <div className="space-y-4 flex-1 flex flex-col h-full min-h-[500px]">
       <div className="flex items-start gap-4 flex-wrap bg-slate-50 p-3 rounded-lg border border-slate-200 shadow-sm shrink-0">
@@ -788,11 +834,12 @@ export default function SharedCanvas({
 
         {activeWallIndex !== null && closed && points.length > 0 && (
           <div className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Center Wall</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Center & Rotate</span>
             <div className="flex bg-white border border-slate-200 rounded-md shadow-sm">
-                <Button size="sm" variant="ghost" className="h-8 text-xs px-3 rounded-none border-r border-slate-100 rounded-l-md" onClick={() => centerActiveWall('both')}>Center X/Y</Button>
-                <Button size="sm" variant="ghost" className="h-8 text-xs px-3 rounded-none border-r border-slate-100" onClick={() => centerActiveWall('horizontal')}>Center Horizontally</Button>
-                <Button size="sm" variant="ghost" className="h-8 text-xs px-3 rounded-none rounded-r-md" onClick={() => centerActiveWall('vertical')}>Center Vertically</Button>
+                <Button size="sm" variant="ghost" className="h-8 text-xs px-2 rounded-none border-r border-slate-100 rounded-l-md" onClick={() => centerActiveWall('both')}>Cen X/Y</Button>
+                <Button size="sm" variant="ghost" className="h-8 text-xs px-2 rounded-none border-r border-slate-100" onClick={() => centerActiveWall('horizontal')}>Cen H</Button>
+                <Button size="sm" variant="ghost" className="h-8 text-xs px-2 rounded-none border-r border-slate-100" onClick={() => centerActiveWall('vertical')}>Cen V</Button>
+                <Button size="sm" variant="ghost" className="h-8 text-xs px-2 rounded-none rounded-r-md" onClick={() => rotateActiveWall(90)}>Rot 90°</Button>
             </div>
           </div>
         )}

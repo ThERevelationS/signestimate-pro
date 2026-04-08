@@ -937,6 +937,18 @@ export default function NewFoundationEstimate() {
                                             }} />
                                         </div>
                                     </div>
+
+                                    <div className="grid grid-cols-1 gap-1.5 mt-1.5">
+                                        <div>
+                                            <Label className="text-[10px] text-slate-500 font-semibold uppercase mb-0.5 block">Rotation (°)</Label>
+                                            <Input type="number" className="h-6 text-[10px] px-1 bg-white" value={pole.rotation_degrees || 0} onChange={e => {
+                                                const arr = [...polesData];
+                                                arr[idx].rotation_degrees = parseFloat(e.target.value) || 0;
+                                                setPolesData(arr);
+                                                markDirty();
+                                            }} />
+                                        </div>
+                                    </div>
                                     
                                     <div className="pt-1">
                                         <Label className="text-[10px] text-slate-500 font-semibold uppercase mb-1 block">Center on Found</Label>
@@ -1224,6 +1236,10 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
                 <div>
                   <Label className="text-xs">Height relative to grade (inches)</Label>
                   <Input type="number" className="h-8" value={item.grade_offset_inches} onChange={e => onUpdate('grade_offset_inches', e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Rotation (°)</Label>
+                  <Input type="number" className="h-8" value={item.rotation_degrees || 0} onChange={e => onUpdate('rotation_degrees', parseFloat(e.target.value) || 0)} />
                 </div>
               </>
             ) : (

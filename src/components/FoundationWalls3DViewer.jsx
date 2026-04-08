@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
  * Wall shape points are in world inches (origin = foundation origin).
  * Foundation item 0 is placed at world origin; its center is at (L/2, 0, W/2) in feet.
  */
+import { Eye } from 'lucide-react';
+
 export default function FoundationWalls3DViewer({ items = [], walls = [], polesData = [], polesInventory = [], formingInventory = [], beautifyDataUrl = null, onUndo, onRedo, canUndo, canRedo }) {
   const mountRef = useRef(null);
   const rendererRef = useRef(null);
@@ -22,6 +24,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [measureMode, setMeasureMode] = useState(false);
+  const [xrayMode, setXrayMode] = useState(false);
   const [measurePoints, setMeasurePoints] = useState([]);
   const downPos = useRef({ x: 0, y: 0 });
 
@@ -260,7 +263,16 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
     const concTex = new THREE.CanvasTexture(concreteCanvas);
     concTex.wrapS = concTex.wrapT = THREE.RepeatWrapping;
     concTex.repeat.set(2, 2);
-    const concMat = new THREE.MeshStandardMaterial({ map: concTex, roughness: 0.9, metalness: 0.05 });
+    
+    const concMat = new THREE.MeshStandardMaterial({ 
+        map: xrayMode ? null : concTex, 
+        color: xrayMode ? 0x9ca3af : 0xffffff,
+        roughness: 0.9, 
+        metalness: 0.05,
+        transparent: xrayMode,
+        opacity: xrayMode ? 0.35 : 1.0,
+        depthWrite: !xrayMode
+    });
 
     let cumulativeOffsetX = 0;
     const foundationCenters = []; // track where each item's center is for camera framing
@@ -290,6 +302,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
 
         const group = new THREE.Group();
         group.position.set(ox, 0, oz);
+        group.rotation.y = -(item.rotation_degrees || 0) * Math.PI / 180;
 
         if (isSpread) {
           const geo = new THREE.BoxGeometry(lenFt, depFt, widFt);
@@ -726,6 +739,10 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
         let mat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3, metalness: 0.8 }); // default steel
         if (p.paint) mat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.6 });
         
+        const group = new THREE.Group();
+        group.position.set(cx, yCenter, cz);
+        group.rotation.y = -(p.rotation_degrees || 0) * Math.PI / 180;
+
         let mesh;
         if (inv.pole_shape === 'round') {
             mesh = new THREE.Mesh(new THREE.CylinderGeometry(widFt/2, widFt/2, hFt, 16), mat);
@@ -733,10 +750,10 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
             mesh = new THREE.Mesh(new THREE.BoxGeometry(widFt, hFt, depFt), mat);
         }
         
-        mesh.position.set(cx, yCenter, cz);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
-        scene.add(mesh);
+        group.add(mesh);
+        scene.add(group);
 
         // Render signs
         if (p.signs && p.signs.length > 0) {
@@ -801,9 +818,9 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
                 const syOffsetFt = (sign.y_offset_inches || 0) / 12;
                 const szOffsetFt = (sign.z_offset_inches || 12) / 12;
                 
-                signMesh.position.set(cx, topOfFoundation + syOffsetFt, cz + szOffsetFt);
+                signMesh.position.set(0, (topOfFoundation + syOffsetFt) - yCenter, szOffsetFt);
                 signMesh.castShadow = true;
-                scene.add(signMesh);
+                group.add(signMesh);
             });
         }
     });
@@ -822,7 +839,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
       controlsRef.current.target.set(cx, 0, cz);
       controlsRef.current.update();
     }
-  }, [items, walls, polesData]);
+  }, [items, walls, polesData, xrayMode]);
 
   // ── Update Ground Texture ───────────────────────────────────────────────────
   useEffect(() => {
@@ -878,6 +895,9 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
             </Button>
           </div>
         )}
+        <Button onClick={() => setXrayMode(!xrayMode)} variant={xrayMode ? "default" : "secondary"} size="sm" className={`shadow-sm text-xs h-8 ${xrayMode ? "bg-indigo-600 hover:bg-indigo-700" : "bg-white/80 hover:bg-white backdrop-blur-sm"}`}>
+          <Eye className="w-3 h-3 mr-1" /> {xrayMode ? "Solid Mode" : "X-Ray Mode"}
+        </Button>
         <Button onClick={() => setMeasureMode(!measureMode)} variant={measureMode ? "default" : "secondary"} size="sm" className={`shadow-sm text-xs h-8 ${measureMode ? "bg-blue-600 hover:bg-blue-700" : "bg-white/80 hover:bg-white backdrop-blur-sm"}`}>
           <Ruler className="w-3 h-3 mr-1" /> {measureMode ? "Stop Measuring" : "Measure"}
         </Button>
