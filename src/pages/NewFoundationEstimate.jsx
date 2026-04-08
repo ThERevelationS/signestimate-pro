@@ -124,6 +124,7 @@ export default function NewFoundationEstimate() {
   const [designerOpen, setDesignerOpen] = useState(false);
   const [designerPoleIdx, setDesignerPoleIdx] = useState(null);
   const [designerSignIdx, setDesignerSignIdx] = useState(null);
+  const [shakePoleDropdown, setShakePoleDropdown] = useState(false);
 
   const openSignDesigner = (pIdx, sIdx) => {
       setDesignerPoleIdx(pIdx);
@@ -809,6 +810,10 @@ export default function NewFoundationEstimate() {
                         showPoles={showPoles}
                         mode={canvasMode}
                         setMode={setCanvasMode}
+                        onPlaceWithoutPole={() => {
+                          setShakePoleDropdown(true);
+                          setTimeout(() => setShakePoleDropdown(false), 800);
+                        }}
                      />
                   </div>
 
@@ -818,7 +823,7 @@ export default function NewFoundationEstimate() {
                       
                       <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 shadow-sm">
                         <h3 className="font-semibold text-slate-800 text-xs uppercase mb-2">Add Pole</h3>
-                        <div className="space-y-2">
+                        <div className={`space-y-2 ${shakePoleDropdown ? 'animate-pulse ring-2 ring-red-500 rounded p-1 transition-all bg-red-50' : ''}`}>
                            <Select value={selectedPoleId} onValueChange={setSelectedPoleId}>
                               <SelectTrigger className="h-8 text-xs bg-white">
                                  <SelectValue placeholder="Select Pole..." />
@@ -993,55 +998,55 @@ export default function NewFoundationEstimate() {
                       const isInternalConcrete = wall.selectedInternalMaterial?.wall_material_subtype === 'concrete';
 
                       return (
-                        <div key={`cost-${wall._id}`} className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 space-y-3 text-sm">
-                          <p className="font-semibold text-emerald-900">Wall #{idx + 1}: {wall.name || 'Untitled Wall'}</p>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div key={`cost-${wall._id}`} className="bg-emerald-50 border border-emerald-100 rounded-lg p-2 space-y-1 text-sm">
+                          <p className="font-bold text-emerald-900">Wall #{idx + 1}: {wall.name || 'Untitled Wall'}</p>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                             <div>
-                              <p className="text-xs text-emerald-700/70">Outer Units Needed</p>
-                              <p className="font-semibold text-emerald-900">{costs.totalBricks}</p>
+                              <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Outer Units Needed</p>
+                              <p className="text-base font-bold text-emerald-900">{costs.totalBricks}</p>
                             </div>
                             <div>
-                              <p className="text-xs text-emerald-700/70">Outer Material Cost</p>
-                              <p className="font-semibold text-emerald-900">${costs.materialCost.toFixed(2)}</p>
+                              <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Outer Material Cost</p>
+                              <p className="text-base font-bold text-emerald-900">${costs.materialCost.toFixed(2)}</p>
                             </div>
                             {!isConcrete && (
                               <div>
-                                <p className="text-xs text-emerald-700/70">Outer Mortar Cost</p>
-                                <p className="font-semibold text-emerald-900">${costs.mortarCost.toFixed(2)}</p>
+                                <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Outer Mortar Cost</p>
+                                <p className="text-base font-bold text-emerald-900">${costs.mortarCost.toFixed(2)}</p>
                               </div>
                             )}
                             <div>
-                              <p className="text-xs text-emerald-700/70">Outer Labor Cost ({costs.laborHours.toFixed(1)} hrs)</p>
-                              <p className="font-semibold text-emerald-900">${costs.laborCost.toFixed(2)}</p>
+                              <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Outer Labor ({costs.laborHours.toFixed(1)}h)</p>
+                              <p className="text-base font-bold text-emerald-900">${costs.laborCost.toFixed(2)}</p>
                             </div>
                           </div>
                           
                           {wall.includeInternalWall && (
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 border-t border-emerald-200/50 pt-3">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 border-t border-emerald-200/50 pt-2 mt-2">
                               <div>
-                                <p className="text-xs text-emerald-700/70">Internal Units Needed</p>
-                                <p className="font-semibold text-emerald-900">{costs.internalTotalBricks}</p>
+                                <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Int. Units Needed</p>
+                                <p className="text-base font-bold text-emerald-900">{costs.internalTotalBricks}</p>
                               </div>
                               <div>
-                                <p className="text-xs text-emerald-700/70">Internal Material Cost</p>
-                                <p className="font-semibold text-emerald-900">${costs.internalMaterialCost.toFixed(2)}</p>
+                                <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Int. Material Cost</p>
+                                <p className="text-base font-bold text-emerald-900">${costs.internalMaterialCost.toFixed(2)}</p>
                               </div>
                               {!isInternalConcrete && (
                                 <div>
-                                  <p className="text-xs text-emerald-700/70">Internal Mortar Cost</p>
-                                  <p className="font-semibold text-emerald-900">${costs.internalMortarCost.toFixed(2)}</p>
+                                  <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Int. Mortar Cost</p>
+                                  <p className="text-base font-bold text-emerald-900">${costs.internalMortarCost.toFixed(2)}</p>
                                 </div>
                               )}
                               <div>
-                                <p className="text-xs text-emerald-700/70">Internal Labor ({costs.internalLaborHours.toFixed(1)} hrs)</p>
-                                <p className="font-semibold text-emerald-900">${costs.internalLaborCost.toFixed(2)}</p>
+                                <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Int. Labor ({costs.internalLaborHours.toFixed(1)}h)</p>
+                                <p className="text-base font-bold text-emerald-900">${costs.internalLaborCost.toFixed(2)}</p>
                               </div>
                             </div>
                           )}
 
-                          <div className="border-t border-emerald-200/50 pt-2 flex items-center justify-between">
-                            <p className="text-xs text-emerald-700/70">Total Wall Assembly Cost</p>
-                            <p className="text-base font-bold text-emerald-700">${costs.totalCost.toFixed(2)}</p>
+                          <div className="border-t border-emerald-200/50 pt-2 mt-2 flex items-center justify-between">
+                            <p className="text-xs font-semibold text-emerald-700/80 uppercase tracking-wide">Total Wall Assembly Cost</p>
+                            <p className="text-xl font-extrabold text-emerald-800">${costs.totalCost.toFixed(2)}</p>
                           </div>
                         </div>
                       );
@@ -1073,6 +1078,51 @@ export default function NewFoundationEstimate() {
 
               {/* BEAUTIFY */}
               <TabsContent value="beautify" className="space-y-4 pt-4">
+                <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200 shadow-sm">
+                   <div>
+                       <h3 className="font-bold text-slate-800">Signage Cabinets on Poles</h3>
+                       <p className="text-xs text-slate-500">Add cabinets and signs to your placed poles. Place poles in the "Walls & Poles" tab.</p>
+                   </div>
+                </div>
+                
+                {polesData.length === 0 ? (
+                   <p className="text-sm text-slate-500 italic bg-white border border-slate-200 p-4 rounded-lg">No poles placed yet. Go to the "Walls & Poles" tab to add poles first.</p>
+                ) : (
+                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                     {polesData.map((pole, pIdx) => (
+                        <div key={pIdx} className="bg-white border border-slate-200 shadow-sm rounded-lg p-3">
+                           <div className="flex justify-between items-center mb-3">
+                              <h4 className="font-semibold text-slate-800 text-sm">Pole {pIdx + 1}</h4>
+                              <Button size="sm" variant="outline" className="h-7 text-xs bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" onClick={() => openSignDesigner(pIdx, null)}>+ Add Cabinet</Button>
+                           </div>
+                           <div className="space-y-2">
+                              {(pole.signs || []).length === 0 && <p className="text-xs text-slate-400">No cabinets added.</p>}
+                              {(pole.signs || []).map((sign, sIdx) => (
+                                 <div key={sIdx} className="bg-slate-50 border border-slate-100 rounded p-2 text-xs flex justify-between items-center">
+                                    <span className="font-medium text-slate-700 truncate">{sign.name || `Cabinet ${sIdx + 1}`}</span>
+                                    <div className="flex gap-1 flex-shrink-0">
+                                       <Button size="icon" variant="ghost" className="h-6 w-6 hover:bg-blue-100" onClick={() => openSignDesigner(pIdx, sIdx)}><PenTool className="w-3 h-3 text-blue-600" /></Button>
+                                       <Button size="icon" variant="ghost" className="h-6 w-6 hover:bg-red-100" onClick={() => {
+                                          const arr = [...polesData];
+                                          arr[pIdx].signs.splice(sIdx, 1);
+                                          setPolesData(arr); markDirty();
+                                       }}><Trash2 className="w-3 h-3 text-red-500" /></Button>
+                                    </div>
+                                 </div>
+                              ))}
+                           </div>
+                        </div>
+                     ))}
+                   </div>
+                )}
+
+                <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200 shadow-sm">
+                   <div>
+                       <h3 className="font-bold text-slate-800">Landscape Designer</h3>
+                       <p className="text-xs text-slate-500">Draw landscaping features, paths, and site boundaries.</p>
+                   </div>
+                </div>
+                
                 <BeautifyCanvas
                   dataUrl={project.beautify_data_url}
                   foundationItems={items}

@@ -176,54 +176,55 @@ export default function WallSection({
       className={`border shadow-sm overflow-hidden mb-4 transition-colors ${isActive ? 'border-orange-500 ring-1 ring-orange-500' : 'border-orange-200 cursor-pointer hover:border-orange-300'}`}
       onClick={() => { if (!isActive) onSetActive(); }}
     >
-      <CardHeader className="py-3 px-4 bg-orange-50/60 border-b border-orange-100">
+      <CardHeader className="py-1.5 px-3 bg-orange-50/60 border-b border-orange-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-base font-semibold text-orange-900">
+            <CardTitle className="text-sm font-semibold text-orange-900">
               Wall #{index + 1}: {wall.name || 'Untitled Wall'}
             </CardTitle>
             {costs && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-[10px]">
                 {costs.totalBricks} units · ${costs.totalCost.toFixed(2)}
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-1">
-            <Button size="sm" variant="ghost" onClick={() => setExpanded(s => !s)}>
-              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          <div className="flex items-center gap-0">
+            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setExpanded(s => !s)}>
+              {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </Button>
-            <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700" onClick={onDelete}>
-              <Trash2 className="w-4 h-4" />
+            <Button size="icon" variant="ghost" className="h-6 w-6 text-red-600 hover:text-red-700" onClick={onDelete}>
+              <Trash2 className="w-3 h-3" />
             </Button>
           </div>
         </div>
       </CardHeader>
 
       {expanded && (
-        <CardContent className="px-4 pb-4 space-y-5">
+        <CardContent className="px-3 pb-3 pt-2 space-y-3">
           {/* Basic settings */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             <div>
-              <Label className="text-xs">Wall Name</Label>
+              <Label className="text-xs mb-1 block text-slate-700 font-semibold">Wall Name</Label>
               <Input
-                className="h-8 text-sm"
+                className="h-7 text-xs"
                 value={wall.name || ''}
                 onChange={e => update('name', e.target.value)}
                 placeholder="e.g. Front Wall"
               />
             </div>
             <div>
-              <Label className="text-xs">Wall Height (inches)</Label>
+              <Label className="text-xs mb-1 block text-slate-700 font-semibold">Wall Height (inches) {selectedMat && !isConcrete ? `(Steps of ${selectedMat.wall_unit_height_inches || 2.25}")` : ''}</Label>
               <Input
                 type="number"
-                className="h-8 text-sm"
+                className="h-7 text-xs"
                 value={wall.heightInches || 24}
                 onChange={e => update('heightInches', parseFloat(e.target.value) || 24)}
-                min={1}
+                min={!isConcrete ? (selectedMat?.wall_unit_height_inches || 1) : 1}
+                step={!isConcrete ? (selectedMat?.wall_unit_height_inches || 1) : 1}
               />
             </div>
             <div>
-              <Label className="text-xs">Wall Material</Label>
+              <Label className="text-xs mb-1 block text-slate-700 font-semibold">Wall Material</Label>
               <div className={`transition-all duration-300 ${shakeMaterial ? 'ring-2 ring-red-500 ring-offset-2 rounded-md bg-red-50 -mx-1 px-1 scale-105' : ''}`}>
               <Select
                 value={wall.materialId || ''}
@@ -232,7 +233,7 @@ export default function WallSection({
                   onChange({ ...wall, materialId: v, selectedMaterial: mat || null });
                 }}
               >
-                <SelectTrigger className="h-8 text-sm">
+                <SelectTrigger className="h-7 text-xs">
                   <SelectValue placeholder="Select material" />
                 </SelectTrigger>
                 <SelectContent>
@@ -248,14 +249,15 @@ export default function WallSection({
               </Select>
               </div>
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end pb-0.5">
               <div className="flex items-center gap-2">
                 <Checkbox
                   checked={wall.useExistingFoundation || false}
                   onCheckedChange={v => update('useExistingFoundation', v)}
                   id={`uef-${index}`}
+                  className="w-4 h-4"
                 />
-                <Label htmlFor={`uef-${index}`} className="text-xs cursor-pointer">
+                <Label htmlFor={`uef-${index}`} className="text-xs font-semibold text-slate-700 cursor-pointer">
                   Use Existing Foundation
                 </Label>
               </div>
@@ -264,11 +266,12 @@ export default function WallSection({
 
           {/* Internal Wall Toggle */}
           <div className="pt-2 border-t border-orange-100">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-2">
               <Checkbox
                 checked={wall.includeInternalWall || false}
                 onCheckedChange={v => update('includeInternalWall', v)}
                 id={`internal-${index}`}
+                className="w-4 h-4"
               />
               <Label htmlFor={`internal-${index}`} className="text-sm font-semibold text-orange-900 cursor-pointer">
                 Add Internal Wall (Fill Material)
@@ -276,10 +279,10 @@ export default function WallSection({
             </div>
             
             {wall.includeInternalWall && (
-              <div className="bg-orange-50/50 p-3 rounded-lg border border-orange-100 mb-4 space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+              <div className="bg-orange-50/50 p-2 rounded-lg border border-orange-100 mb-2 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="text-xs">Internal Wall Material</Label>
+                    <Label className="text-xs mb-1 block text-slate-700 font-semibold">Internal Wall Material</Label>
                     <Select
                       value={wall.internalMaterialId || ''}
                       onValueChange={v => {
@@ -287,7 +290,7 @@ export default function WallSection({
                         onChange({ ...wall, internalMaterialId: v, selectedInternalMaterial: mat || null });
                       }}
                     >
-                      <SelectTrigger className="h-8 text-sm bg-white">
+                      <SelectTrigger className="h-7 text-xs bg-white">
                         <SelectValue placeholder="Select fill material" />
                       </SelectTrigger>
                       <SelectContent>
@@ -303,10 +306,12 @@ export default function WallSection({
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs">Internal Height (in)</Label>
+                    <Label className="text-xs mb-1 block text-slate-700 font-semibold">
+                      Internal Height (in) {selectedIntMat && !isInternalConcrete ? `(Steps of ${selectedIntMat.wall_unit_height_inches || 2.25}")` : ''}
+                    </Label>
                     <Input
                       type="number"
-                      className="h-8 text-sm bg-white"
+                      className="h-7 text-xs bg-white"
                       value={wall.internalWallHeightInches ?? (wall.heightInches || 24)}
                       onChange={e => {
                         let val = parseFloat(e.target.value) || 0;
@@ -314,7 +319,8 @@ export default function WallSection({
                         update('internalWallHeightInches', val);
                       }}
                       max={wall.heightInches || 24}
-                      min={1}
+                      min={!isInternalConcrete ? (selectedIntMat?.wall_unit_height_inches || 1) : 1}
+                      step={!isInternalConcrete ? (selectedIntMat?.wall_unit_height_inches || 1) : 1}
                     />
                     <p className="text-[10px] text-slate-500 mt-1">Max: {wall.heightInches || 24}"</p>
                   </div>

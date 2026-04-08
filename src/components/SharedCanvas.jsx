@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Trash2, Undo2, Plus, Move, RotateCcw, Crosshair, ZoomIn, ZoomOut } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 
 const BASE_SCALE = 4;
 const SNAP_DISTANCE = 14;
@@ -51,7 +52,8 @@ export default function SharedCanvas({
   
   showPoles = false,
   mode = 'draw',
-  setMode = () => {}
+  setMode = () => {},
+  onPlaceWithoutPole = null
 }) {
   const canvasRef = useRef(null);
   
@@ -490,7 +492,7 @@ export default function SharedCanvas({
 
   const handleMouseDown = (e) => {
     if (activeWallIndex !== null && !wallMaterial && mode !== 'place') {
-        alert("Please select a Wall Material first.");
+        toast.error("Please select a Wall Material first.");
         return;
     }
 
@@ -594,7 +596,11 @@ export default function SharedCanvas({
           return;
       }
 
-      if (mode === 'place' && selectedPoleId) {
+      if (mode === 'place') {
+          if (!selectedPoleId) {
+             if (onPlaceWithoutPole) onPlaceWithoutPole();
+             return;
+          }
           const fRect = fRects.find(r => {
              if (r.isPillar) {
                 const dx = worldPt.x - r.centerX;
@@ -835,18 +841,7 @@ export default function SharedCanvas({
         )}
       </div>
 
-      <div className="flex items-center gap-3 shrink-0">
-        {activeWallIndex !== null && totalPerimeterInches > 0 && (
-          <Badge variant="outline" className="bg-white text-sm px-3 py-1.5 font-medium border-slate-300">
-            Perimeter: {totalFt > 0 ? `${totalFt}' ` : ''}{totalInch}"
-          </Badge>
-        )}
-        {activeWallIndex !== null && closed && (
-          <Badge className="bg-emerald-500 hover:bg-emerald-600 text-sm px-3 py-1.5 font-medium border-0 text-white">
-            Shape Closed ✓
-          </Badge>
-        )}
-      </div>
+      {/* Perimeter and Shape Closed badges removed per user request */}
 
       <div ref={containerRef} className="relative border border-slate-300 rounded-xl overflow-hidden bg-slate-100 w-full flex-1 shadow-inner min-h-[600px] flex justify-center items-center">
         <div className="w-full h-full overflow-auto custom-scrollbar flex items-center justify-center relative">

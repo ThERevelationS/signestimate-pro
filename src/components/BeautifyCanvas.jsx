@@ -393,7 +393,7 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
           bgCtx.fill();
           
           bgCtx.globalCompositeOperation = 'source-over';
-          
+          clearFoundations();
           setPolygonPoints([]);
           renderDisplay();
           saveState();
@@ -457,6 +457,51 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
     ctx.setLineDash([]);
   };
 
+  const clearFoundations = () => {
+    const bgCtx = bgCanvasRef.current.getContext('2d', { willReadFrequently: true });
+    bgCtx.save();
+    bgCtx.globalCompositeOperation = 'destination-out';
+    bgCtx.fillStyle = 'rgba(0,0,0,1)';
+    
+    let cumulativeOffsetX = 0;
+    foundationItems.forEach((item) => {
+      const qty = item.quantity || 1;
+      const gridSize = Math.ceil(Math.sqrt(qty));
+      const isSpread = item.foundation_type !== 'pillar';
+      const lenFt = (item.length_inches || 48) / 12;
+      const widFt = (item.width_inches || 48) / 12;
+      const diaFt = (item.diameter || 24) / 12;
+      const footprintX = isSpread ? lenFt : diaFt;
+      const footprintZ = isSpread ? widFt : diaFt;
+      const spacingX = footprintX * 1.5 + 1;
+      const spacingZ = footprintZ * 1.5 + 1;
+
+      const userOffsetX = (item.offset_x_inches || 0) / 12;
+      const userOffsetZ = (item.offset_z_inches || 0) / 12;
+
+      for (let i = 0; i < qty; i++) {
+        const col = i % gridSize;
+        const row = Math.floor(i / gridSize);
+        const ox = userOffsetX + cumulativeOffsetX + col * spacingX + footprintX / 2;
+        const oz = userOffsetZ + row * spacingZ + footprintZ / 2;
+
+        const c = worldToCanvas(ox, oz);
+        const wPx = footprintX * PX_PER_FT;
+        const hPx = footprintZ * PX_PER_FT;
+
+        if (isSpread) {
+          bgCtx.fillRect(c.x - wPx / 2, c.y - hPx / 2, wPx, hPx);
+        } else {
+          bgCtx.beginPath();
+          bgCtx.arc(c.x, c.y, wPx / 2, 0, Math.PI * 2);
+          bgCtx.fill();
+        }
+      }
+      cumulativeOffsetX += gridSize * spacingX + 2;
+    });
+    bgCtx.restore();
+  };
+
   const drawShapeFinal = (start, end) => {
     const ctx = bgCanvasRef.current.getContext('2d', { willReadFrequently: true });
     
@@ -490,6 +535,7 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
     }
     
     ctx.globalCompositeOperation = 'source-over';
+    clearFoundations();
     renderDisplay();
   };
 
@@ -513,6 +559,7 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
     bgCtx.stroke();
     
     bgCtx.globalCompositeOperation = 'source-over';
+    clearFoundations();
     renderDisplay();
   };
 

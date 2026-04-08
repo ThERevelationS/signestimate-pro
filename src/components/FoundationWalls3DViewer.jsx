@@ -449,12 +449,13 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
       const drawWallLayer = (material, isInternal) => {
         if (!material) return;
         const mortarGap = isInternal ? (wall.internalMortarGapInches ?? 0.375) : (wall.mortarGapInches ?? 0.375);
+        const layerHeightInches = isInternal ? (wall.internalWallHeightInches ?? wall.heightInches ?? 24) : (wall.heightInches ?? 24);
         const brickL = (material.wall_unit_length_inches || material.brick_length_inches || 7.625) * INCH;
         const brickH = (material.wall_unit_height_inches || material.brick_height_inches || 2.25) * INCH;
         const brickW = (material.wall_unit_width_inches || material.brick_width_inches || 3.625) * INCH;
         const mortarFt = mortarGap * INCH;
         const courseH = brickH + mortarFt;
-        const numCourses = Math.max(1, Math.round(heightInches * INCH / courseH));
+        const numCourses = Math.max(1, Math.round(layerHeightInches * INCH / courseH));
         const wallTopY = gradeOffsetFt + numCourses * courseH;
 
         let colorHex = 0xb5451b;
