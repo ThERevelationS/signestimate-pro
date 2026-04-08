@@ -635,12 +635,26 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
     
     if (beautifyDataUrl) {
       const img = new Image();
+      img.crossOrigin = "anonymous";
       img.onload = () => {
-        const tex = new THREE.Texture(img);
+        // Create composite canvas to merge dirt background with beautify transparent layers
+        const compCanvas = document.createElement('canvas');
+        compCanvas.width = 1024;
+        compCanvas.height = 1024;
+        const ctx = compCanvas.getContext('2d');
+        
+        // Fill dirt background
+        if (dirtTexRef.current && dirtTexRef.current.image) {
+            const dirtPattern = ctx.createPattern(dirtTexRef.current.image, 'repeat');
+            ctx.fillStyle = dirtPattern;
+            ctx.fillRect(0, 0, 1024, 1024);
+        }
+        
+        // Draw the strokes on top
+        ctx.drawImage(img, 0, 0, 1024, 1024);
+
+        const tex = new THREE.Texture(compCanvas);
         tex.needsUpdate = true;
-        // flipY is true by default for THREE.Texture, but our canvas is drawn with standard origin top-left
-        // Three.js maps 0,0 to bottom-left. We need to match.
-        // By default it flips Y, which might make it match since canvas is top-left.
         tex.colorSpace = THREE.SRGBColorSpace;
         groundMatRef.current.map = tex;
         groundMatRef.current.color.setHex(0xffffff); // Remove tint so original color shows

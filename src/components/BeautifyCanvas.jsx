@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Paintbrush, Square, Circle, Minus, Undo, Redo, Hexagon, Droplets, Grid3x3 } from 'lucide-react';
+import { Trash2, Paintbrush, Square, Circle, Minus, Undo, Redo, Hexagon, Droplets, Grid3x3, Layers } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 const CANVAS_SIZE = 1024;
@@ -20,6 +20,18 @@ const MATERIALS = [
   { id: 'wood', name: 'Wood Decking', color: '#b45309', icon: <div className="w-4 h-4 bg-amber-700 rounded" /> },
   { id: 'water', name: 'Water', color: '#38bdf8', icon: <Droplets className="w-4 h-4 text-sky-400" /> },
 ];
+
+const TEXTURE_URLS = {
+  grass: 'https://images.unsplash.com/photo-1589923188900-85dae523342b?w=512&q=80',
+  dirt: 'https://images.unsplash.com/photo-1579930815181-799bc5f5cce1?w=512&q=80',
+  concrete: 'https://images.unsplash.com/photo-1621252179027-94459d278660?w=512&q=80',
+  asphalt: 'https://images.unsplash.com/photo-1584284449830-a9160cc124b6?w=512&q=80',
+  gravel: 'https://images.unsplash.com/photo-1517454848028-2d8c3639893e?w=512&q=80',
+  sand: 'https://images.unsplash.com/photo-1555502696-2cd3b5b63bc6?w=512&q=80',
+  mulch: 'https://images.unsplash.com/photo-1550989460-0adf9ea622e2?w=512&q=80',
+  wood: 'https://images.unsplash.com/photo-1510524458319-f538ed6b1857?w=512&q=80',
+  water: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=512&q=80',
+};
 
 const generateTexture = (type) => {
   const size = 256;
@@ -118,16 +130,43 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
   
   const [polygonPoints, setPolygonPoints] = useState([]); // For polygon tool
   
+  const [preventOverlap, setPreventOverlap] = useState(true);
   const [initialized, setInitialized] = useState(false);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   
+  const [texturesLoaded, setTexturesLoaded] = useState(false);
+  const imagesRef = useRef({});
   const textureCacheRef = useRef({});
+
+  useEffect(() => {
+    const promises = Object.entries(TEXTURE_URLS).map(([key, url]) => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          imagesRef.current[key] = img;
+          resolve();
+        };
+        img.onerror = () => {
+          resolve(); // Fallback to generated textures
+        };
+        img.src = url;
+      });
+    });
+    Promise.all(promises).then(() => {
+        setTexturesLoaded(true);
+    });
+  }, []);
 
   const getPattern = (ctx, type) => {
     if (!textureCacheRef.current[type]) {
-       const canvas = generateTexture(type);
-       textureCacheRef.current[type] = ctx.createPattern(canvas, 'repeat');
+       if (imagesRef.current[type] && imagesRef.current[type].complete && imagesRef.current[type].naturalWidth > 0) {
+           textureCacheRef.current[type] = ctx.createPattern(imagesRef.current[type], 'repeat');
+       } else {
+           const canvas = generateTexture(type);
+           textureCacheRef.current[type] = ctx.createPattern(canvas, 'repeat');
+       }
     }
     return textureCacheRef.current[type];
   };
@@ -151,7 +190,7 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
         bgCtx.drawImage(img, 0, 0);
         renderDisplay();
         
-        const initialData = bgCanvasRef.current.toDataURL('image/jpeg', 0.8);
+        const initialData = bgCanvasRef.current.toDataURL('image/png');
         setHistory([initialData]);
         setHistoryIndex(0);
         setInitialized(true);
@@ -164,7 +203,7 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
   }, [dataUrl, initialized]);
 
   const saveState = () => {
-    const data = bgCanvasRef.current.toDataURL('image/jpeg', 0.8);
+    const data = bgCanvasRef.current.toDataURL('image/png');
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(data);
     if (newHistory.length > 20) newHistory.shift();
@@ -206,12 +245,11 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
 
   const resetCanvas = (isInitial = false) => {
     const bgCtx = bgCanvasRef.current.getContext('2d', { willReadFrequently: true });
-    bgCtx.fillStyle = getPattern(bgCtx, 'dirt');
-    bgCtx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    bgCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
     
     renderDisplay();
     
-    const initialData = bgCanvasRef.current.toDataURL('image/jpeg', 0.8);
+    const initialData = bgCanvasRef.current.toDataURL('image/png');
     if (isInitial) {
         setHistory([initialData]);
         setHistoryIndex(0);
@@ -225,6 +263,10 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
     if (!displayCanvasRef.current || !bgCanvasRef.current) return;
     const ctx = displayCanvasRef.current.getContext('2d');
     ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    
+    ctx.fillStyle = getPattern(ctx, 'dirt');
+    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
     ctx.drawImage(bgCanvasRef.current, 0, 0);
 
     // Render Polygon Preview
@@ -339,7 +381,14 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
   const handleDoubleClick = (e) => {
       if (tool === 'polygon' && polygonPoints.length >= 2) {
           const bgCtx = bgCanvasRef.current.getContext('2d', { willReadFrequently: true });
-          bgCtx.fillStyle = getPattern(bgCtx, matId);
+          
+          if (matId === 'dirt') {
+              bgCtx.globalCompositeOperation = 'destination-out';
+              bgCtx.fillStyle = 'rgba(0,0,0,1)';
+          } else {
+              bgCtx.globalCompositeOperation = preventOverlap ? 'destination-over' : 'source-over';
+              bgCtx.fillStyle = getPattern(bgCtx, matId);
+          }
           
           bgCtx.beginPath();
           bgCtx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
@@ -348,6 +397,8 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
           }
           bgCtx.closePath();
           bgCtx.fill();
+          
+          bgCtx.globalCompositeOperation = 'source-over';
           
           setPolygonPoints([]);
           renderDisplay();
@@ -415,9 +466,17 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
   const drawShapeFinal = (start, end) => {
     const ctx = bgCanvasRef.current.getContext('2d', { willReadFrequently: true });
     
-    const pattern = getPattern(ctx, matId);
-    ctx.strokeStyle = pattern;
-    ctx.fillStyle = pattern;
+    if (matId === 'dirt') {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = 'rgba(0,0,0,1)';
+        ctx.strokeStyle = 'rgba(0,0,0,1)';
+    } else {
+        ctx.globalCompositeOperation = preventOverlap ? 'destination-over' : 'source-over';
+        const pattern = getPattern(ctx, matId);
+        ctx.strokeStyle = pattern;
+        ctx.fillStyle = pattern;
+    }
+
     ctx.lineWidth = brushSize;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -435,23 +494,42 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
         ctx.arc(start.x, start.y, radius, 0, Math.PI * 2);
         ctx.fill();
     }
+    
+    ctx.globalCompositeOperation = 'source-over';
     renderDisplay();
   };
 
   const drawStroke = (start, end) => {
     const bgCtx = bgCanvasRef.current.getContext('2d', { willReadFrequently: true });
     
+    if (matId === 'dirt') {
+        bgCtx.globalCompositeOperation = 'destination-out';
+        bgCtx.strokeStyle = 'rgba(0,0,0,1)';
+    } else {
+        bgCtx.globalCompositeOperation = preventOverlap ? 'destination-over' : 'source-over';
+        bgCtx.strokeStyle = getPattern(bgCtx, matId);
+    }
+
     bgCtx.beginPath();
     bgCtx.moveTo(start.x, start.y);
     bgCtx.lineTo(end.x, end.y);
-    bgCtx.strokeStyle = getPattern(bgCtx, matId);
     bgCtx.lineWidth = brushSize;
     bgCtx.lineCap = 'round';
     bgCtx.lineJoin = 'round';
     bgCtx.stroke();
     
+    bgCtx.globalCompositeOperation = 'source-over';
     renderDisplay();
   };
+
+  if (!texturesLoaded) {
+      return (
+          <div className="flex items-center justify-center h-full min-h-[500px] bg-slate-100 rounded-xl text-slate-500 flex-col gap-3">
+              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="font-medium text-sm">Loading High-Res Textures...</p>
+          </div>
+      );
+  }
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 h-full">
@@ -510,6 +588,23 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
             className="w-full accent-blue-500"
             disabled={tool === 'polygon'}
           />
+        </div>
+
+        <div className="h-px bg-slate-200 w-full my-1"></div>
+        
+        <div className="flex flex-col gap-2">
+          <Button 
+            variant={preventOverlap ? 'secondary' : 'outline'} 
+            size="sm" 
+            onClick={() => setPreventOverlap(!preventOverlap)} 
+            className={`w-full text-xs h-8 ${preventOverlap ? 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200' : ''}`}
+          >
+            <Layers className="w-3 h-3 mr-1.5" />
+            {preventOverlap ? 'Smart Fill: ON' : 'Smart Fill: OFF'}
+          </Button>
+          <p className="text-[10px] text-slate-400 leading-tight">
+            {preventOverlap ? 'Prevents overlapping other materials. Dirt tool always erases.' : 'Draws over existing materials.'}
+          </p>
         </div>
 
         <div className="h-px bg-slate-200 w-full my-1"></div>
