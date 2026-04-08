@@ -147,6 +147,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
     sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -60;
     scene.add(sun);
 
+    measureGroupRef.current.userData.isMeasureGroup = true;
     scene.add(measureGroupRef.current);
 
     // Ground
@@ -235,7 +236,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
 
     // Remove all dynamic objects
     scene.children
-      .filter(c => !c.userData.isGround && !c.userData.isGrid && !(c instanceof THREE.AmbientLight) && !(c instanceof THREE.DirectionalLight))
+      .filter(c => !c.userData.isGround && !c.userData.isOverlay && !c.userData.isMeasureGroup && !c.userData.isGrid && !(c instanceof THREE.AmbientLight) && !(c instanceof THREE.DirectionalLight))
       .forEach(o => scene.remove(o));
 
     const INCH = 1 / 12; // 1 inch in feet

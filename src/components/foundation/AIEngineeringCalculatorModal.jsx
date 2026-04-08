@@ -100,6 +100,38 @@ export default function AIEngineeringCalculatorModal({ onSave }) {
             <Label className="text-xs">Additional Information</Label>
             <Textarea value={formData.additionalInfo} onChange={e => setFormData({...formData, additionalInfo: e.target.value})} className="mt-1 min-h-[60px]" placeholder="Any other criteria or special wind zone requirements..." />
           </div>
+          <div className="col-span-2">
+            <Label className="text-xs">Supporting Documents (Image/PDF)</Label>
+            <Input 
+              type="file" 
+              accept="image/*,application/pdf" 
+              onChange={async (e) => {
+                 const file = e.target.files[0];
+                 if (!file) return;
+                 try {
+                     setLoading(true);
+                     const reader = new FileReader();
+                     reader.onloadend = async () => {
+                         const b64 = reader.result;
+                         try {
+                             const res = await base44.integrations.Core.UploadFile({ file: b64 });
+                             setFormData(prev => ({...prev, documentUrl: res.file_url}));
+                         } catch (err) {
+                             console.error(err);
+                         } finally {
+                             setLoading(false);
+                         }
+                     };
+                     reader.readAsDataURL(file);
+                 } catch(err) {
+                     console.error("Upload failed", err);
+                     setLoading(false);
+                 }
+              }} 
+              className="mt-1 text-xs" 
+            />
+            {formData.documentUrl && <p className="text-xs text-green-600 mt-1">Document uploaded successfully.</p>}
+          </div>
         </div>
 
         <Button onClick={handleCalculate} disabled={loading} className="w-full mt-4 bg-slate-900 text-white">

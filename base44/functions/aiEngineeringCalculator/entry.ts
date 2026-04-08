@@ -28,6 +28,7 @@ Provide an EXTREMELY CONCISE, highly professional breakdown. Provide ONLY the re
     const result = await base44.integrations.Core.InvokeLLM({
       prompt: prompt,
       model: 'claude_sonnet_4_6',
+      file_urls: body.documentUrl ? [body.documentUrl] : undefined,
     });
 
     return Response.json({ recommendation: result });
