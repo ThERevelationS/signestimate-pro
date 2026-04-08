@@ -180,7 +180,7 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
 
   // Init canvas
   useEffect(() => {
-    if (initialized) return;
+    if (initialized || !texturesLoaded || !bgCanvasRef.current) return;
     const bgCtx = bgCanvasRef.current.getContext('2d', { willReadFrequently: true });
     if (dataUrl) {
       const img = new Image();
@@ -200,7 +200,7 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
       resetCanvas(true);
       setInitialized(true);
     }
-  }, [dataUrl, initialized]);
+  }, [dataUrl, initialized, texturesLoaded]);
 
   const saveState = () => {
     const data = bgCanvasRef.current.toDataURL('image/png');
