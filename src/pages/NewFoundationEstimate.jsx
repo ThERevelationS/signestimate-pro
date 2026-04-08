@@ -694,9 +694,9 @@ export default function NewFoundationEstimate() {
                   </div>
                 </div>
 
-                <div className="flex flex-col lg:flex-row gap-4">
+                <div className="flex flex-col xl:flex-row gap-5 items-start">
                   {/* Left: Canvas */}
-                  <div className="flex-1 space-y-4">
+                  <div className="flex-1 space-y-4 min-w-0 w-full">
                      <SharedCanvas 
                         foundationItems={items}
                         onFoundationUpdate={updateItem}
@@ -723,7 +723,7 @@ export default function NewFoundationEstimate() {
 
                   {/* Right: Poles List */}
                   {showPoles && (
-                    <div className="w-full lg:w-[240px] xl:w-[260px] space-y-4 flex-shrink-0">
+                    <div className="w-full xl:w-[240px] 2xl:w-[280px] space-y-4 flex-shrink-0">
                       
                       <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 shadow-sm">
                         <h3 className="font-semibold text-slate-800 text-xs uppercase mb-2">Add Pole</h3>

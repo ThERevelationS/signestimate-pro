@@ -98,8 +98,22 @@ export default function SharedCanvas({
   const [draggingFoundationIndex, setDraggingFoundationIndex] = useState(null);
   const [dragFoundStart, setDragFoundStart] = useState(null);
 
-  const canvasW = 700;
-  const canvasH = 450;
+  const containerRef = useRef(null);
+  const [canvasSize, setCanvasSize] = useState({ w: 800, h: 500 });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver(entries => {
+      for (let entry of entries) {
+         setCanvasSize({ w: entry.contentRect.width, h: Math.max(500, entry.contentRect.height) });
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const canvasW = canvasSize.w;
+  const canvasH = canvasSize.h;
 
   const fRects = useMemo(() => {
     if (activeWallIndex !== null && useExistingFoundation) return [];
@@ -743,84 +757,99 @@ export default function SharedCanvas({
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-1.5 flex-wrap bg-slate-50 p-1.5 rounded-lg border border-slate-200 shadow-sm">
+    <div className="space-y-4 flex-1 flex flex-col h-full min-h-[500px]">
+      <div className="flex items-start gap-4 flex-wrap bg-slate-50 p-3 rounded-lg border border-slate-200 shadow-sm shrink-0">
+        
         {activeWallIndex !== null && (
-          <div className="flex bg-white border border-slate-200 rounded-md shadow-sm">
-            <Button size="sm" variant={mode === 'draw' ? 'secondary' : 'ghost'} className="h-7 text-xs px-2.5 rounded-none rounded-l-md border-r border-slate-100" onClick={() => setMode('draw')}>
-              <Plus className="w-3 h-3 mr-1.5" /> Draw
-            </Button>
-            <Button size="sm" variant={mode === 'edit_points' ? 'secondary' : 'ghost'} className="h-7 text-xs px-2.5 rounded-none border-r border-slate-100" onClick={() => setMode('edit_points')}>
-              <Crosshair className="w-3 h-3 mr-1.5" /> Edit Points
-            </Button>
-            <Button size="sm" variant={mode === 'move_wall' ? 'secondary' : 'ghost'} className="h-7 text-xs px-2.5 rounded-none" onClick={() => setMode('move_wall')}>
-              <Move className="w-3 h-3 mr-1.5" /> Move Wall
-            </Button>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Add Wall</span>
+            <div className="flex bg-white border border-slate-200 rounded-md shadow-sm">
+              <Button size="sm" variant={mode === 'draw' ? 'secondary' : 'ghost'} className="h-8 text-xs px-3 rounded-none rounded-l-md border-r border-slate-100" onClick={() => setMode('draw')}>
+                <Plus className="w-3 h-3 mr-1.5" /> Draw
+              </Button>
+              <Button size="sm" variant={mode === 'edit_points' ? 'secondary' : 'ghost'} className="h-8 text-xs px-3 rounded-none border-r border-slate-100" onClick={() => setMode('edit_points')}>
+                <Crosshair className="w-3 h-3 mr-1.5" /> Edit Points
+              </Button>
+              <Button size="sm" variant={mode === 'move_wall' ? 'secondary' : 'ghost'} className="h-8 text-xs px-3 rounded-none" onClick={() => setMode('move_wall')}>
+                <Move className="w-3 h-3 mr-1.5" /> Move Wall
+              </Button>
+            </div>
           </div>
         )}
 
         {activeWallIndex !== null && closed && points.length > 0 && (
-            <div className="flex bg-white border border-slate-200 rounded-md shadow-sm items-center">
-                <div className="px-1.5 h-7 flex items-center text-[10px] font-semibold text-slate-400 border-r border-slate-100 bg-slate-50 rounded-l-md uppercase">Center</div>
-                <Button size="sm" variant="ghost" className="h-7 text-[10px] px-1.5 rounded-none border-r border-slate-100" onClick={() => centerActiveWall('both')} title="Center X/Y">C/C</Button>
-                <Button size="sm" variant="ghost" className="h-7 text-[10px] px-1.5 rounded-none border-r border-slate-100" onClick={() => centerActiveWall('horizontal')} title="Center Horizontally">Horiz</Button>
-                <Button size="sm" variant="ghost" className="h-7 text-[10px] px-1.5 rounded-none" onClick={() => centerActiveWall('vertical')} title="Center Vertically">Vert</Button>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Center Wall</span>
+            <div className="flex bg-white border border-slate-200 rounded-md shadow-sm">
+                <Button size="sm" variant="ghost" className="h-8 text-xs px-3 rounded-none border-r border-slate-100 rounded-l-md" onClick={() => centerActiveWall('both')}>Center X/Y</Button>
+                <Button size="sm" variant="ghost" className="h-8 text-xs px-3 rounded-none border-r border-slate-100" onClick={() => centerActiveWall('horizontal')}>Center Horizontally</Button>
+                <Button size="sm" variant="ghost" className="h-8 text-xs px-3 rounded-none rounded-r-md" onClick={() => centerActiveWall('vertical')}>Center Vertically</Button>
             </div>
+          </div>
         )}
 
-
-
-        <div className="flex items-center bg-white border border-slate-200 rounded-md shadow-sm">
-           <Button size="sm" variant={mode === 'pan' ? 'secondary' : 'ghost'} className={`h-7 text-[11px] px-2 rounded-none rounded-l-md ${(!useExistingFoundation && foundationItems.length > 0) ? 'border-r border-slate-100' : 'rounded-r-md'}`} onClick={() => setMode('pan')}>
-             <Move className="w-3 h-3 mr-1.5" /> Pan
-           </Button>
-           {(!useExistingFoundation && foundationItems.length > 0) && (
-               <Button size="sm" variant={mode === 'move_foundation' ? 'secondary' : 'ghost'} className="h-7 text-[11px] px-2 rounded-none rounded-r-md" onClick={() => setMode('move_foundation')}>
-                 <Move className="w-3 h-3 mr-1.5" /> Move Fnd
-               </Button>
-           )}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Canvas View</span>
+          <div className="flex bg-white border border-slate-200 rounded-md shadow-sm">
+             <Button size="sm" variant={mode === 'pan' ? 'secondary' : 'ghost'} className={`h-8 text-xs px-3 rounded-none rounded-l-md ${(!useExistingFoundation && foundationItems.length > 0) ? 'border-r border-slate-100' : 'rounded-r-md'}`} onClick={() => setMode('pan')}>
+               <Move className="w-3 h-3 mr-1.5" /> Pan
+             </Button>
+             {(!useExistingFoundation && foundationItems.length > 0) && (
+                 <Button size="sm" variant={mode === 'move_foundation' ? 'secondary' : 'ghost'} className="h-8 text-xs px-3 rounded-none rounded-r-md" onClick={() => setMode('move_foundation')}>
+                   <Move className="w-3 h-3 mr-1.5" /> Move Foundation
+                 </Button>
+             )}
+          </div>
         </div>
 
-        <div className="flex items-center bg-white border border-slate-200 rounded-md shadow-sm">
-            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-l-md rounded-r-none border-r border-slate-100" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}>
-                <ZoomOut className="w-3 h-3" />
-            </Button>
-            <span className="text-[10px] font-medium w-9 text-center text-slate-600">{Math.round(zoom * 100)}%</span>
-            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-r-md rounded-l-none border-l border-slate-100" onClick={() => setZoom(z => Math.min(3, z + 0.2))}>
-                <ZoomIn className="w-3 h-3" />
-            </Button>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Zoom</span>
+          <div className="flex items-center bg-white border border-slate-200 rounded-md shadow-sm h-8">
+              <Button size="icon" variant="ghost" className="h-8 w-8 rounded-l-md rounded-r-none border-r border-slate-100" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}>
+                  <ZoomOut className="w-4 h-4" />
+              </Button>
+              <span className="text-xs font-medium w-12 text-center text-slate-600">{Math.round(zoom * 100)}%</span>
+              <Button size="icon" variant="ghost" className="h-8 w-8 rounded-r-md rounded-l-none border-l border-slate-100" onClick={() => setZoom(z => Math.min(3, z + 0.2))}>
+                  <ZoomIn className="w-4 h-4" />
+              </Button>
+          </div>
         </div>
 
         {activeWallIndex !== null && (
-          <div className="flex items-center gap-0.5 ml-auto">
-            <Button size="icon" variant="outline" className="h-7 w-7 bg-white" onClick={handleUndo} disabled={points.length === 0} title="Undo">
-              <Undo2 className="w-3 h-3" />
-            </Button>
-            {selectedPointIndex !== null && (
-              <Button size="icon" variant="outline" className="h-7 w-7 bg-white text-red-500 hover:text-red-600 hover:bg-red-50" onClick={deleteSelectedPoint} title="Delete Point">
-                <Trash2 className="w-3 h-3" />
+          <div className="flex flex-col gap-1.5 ml-auto">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Actions</span>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" className="h-8 bg-white" onClick={handleUndo} disabled={points.length === 0}>
+                <Undo2 className="w-3 h-3 mr-1.5" /> Undo
               </Button>
-            )}
-            <Button size="icon" variant="outline" className="h-7 w-7 bg-white" onClick={handleReset} title="Reset">
-              <RotateCcw className="w-3 h-3" />
-            </Button>
-            
-            {totalPerimeterInches > 0 && (
-              <Badge variant="outline" className="h-7 bg-white text-[10px] px-2 font-medium ml-1 border-slate-200">
-                P: {totalFt > 0 ? `${totalFt}' ` : ''}{totalInch}"
-              </Badge>
-            )}
-            
-            {closed && (
-              <Badge className="bg-emerald-500 hover:bg-emerald-600 h-7 text-[10px] px-2 font-medium border-0 ml-1">
-                Closed ✓
-              </Badge>
-            )}
+              {selectedPointIndex !== null && (
+                <Button size="sm" variant="outline" className="h-8 bg-white text-red-500 hover:text-red-600 hover:bg-red-50" onClick={deleteSelectedPoint}>
+                  <Trash2 className="w-3 h-3 mr-1.5" /> Delete Point
+                </Button>
+              )}
+              <Button size="sm" variant="outline" className="h-8 bg-white" onClick={handleReset}>
+                <RotateCcw className="w-3 h-3 mr-1.5" /> Reset
+              </Button>
+            </div>
           </div>
         )}
       </div>
 
-      <div className="relative border rounded-lg overflow-hidden bg-white" style={{ width: canvasW, maxWidth: '100%' }}>
+      <div className="flex items-center gap-3 shrink-0">
+        {activeWallIndex !== null && totalPerimeterInches > 0 && (
+          <Badge variant="outline" className="bg-white text-sm px-3 py-1.5 font-medium border-slate-300">
+            Perimeter: {totalFt > 0 ? `${totalFt}' ` : ''}{totalInch}"
+          </Badge>
+        )}
+        {activeWallIndex !== null && closed && (
+          <Badge className="bg-emerald-500 hover:bg-emerald-600 text-sm px-3 py-1.5 font-medium border-0 text-white">
+            Shape Closed ✓
+          </Badge>
+        )}
+      </div>
+
+      <div ref={containerRef} className="relative border border-slate-300 rounded-xl overflow-hidden bg-slate-100 w-full flex-1 shadow-inner min-h-[600px] flex justify-center items-center">
+        <div className="w-full h-full overflow-auto custom-scrollbar flex items-center justify-center relative">
         <canvas
           ref={canvasRef}
           width={canvasW}
@@ -861,6 +890,7 @@ export default function SharedCanvas({
                 <span className="text-xs text-slate-500 pr-1">in</span>
             </div>
         )}
+        </div>
       </div>
 
       {activeWallIndex !== null && (
