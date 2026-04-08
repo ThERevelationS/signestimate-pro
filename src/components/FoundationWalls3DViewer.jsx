@@ -190,7 +190,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
       depthWrite: false 
     });
     const overlay = new THREE.Mesh(
-      new THREE.PlaneGeometry(200, 200),
+      new THREE.PlaneGeometry(100, 100),
       overlayMat
     );
     overlay.rotation.x = -Math.PI / 2;
@@ -814,7 +814,9 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
     
     if (beautifyDataUrl) {
       const img = new Image();
-      img.crossOrigin = "anonymous";
+      if (!beautifyDataUrl.startsWith('data:')) {
+          img.crossOrigin = "anonymous";
+      }
       img.onload = () => {
         const tex = new THREE.Texture(img);
         tex.needsUpdate = true;

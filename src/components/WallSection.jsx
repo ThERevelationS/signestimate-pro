@@ -124,9 +124,9 @@ export default function WallSection({
   onChange,
   onDelete,
   onFoundationUpdate,
+  shakeMaterial = false,
 }) {
   const [expanded, setExpanded] = useState(true);
-  const [shakeMaterial, setShakeMaterial] = useState(false);
 
   const update = (field, value) => onChange({ ...wall, [field]: value });
 

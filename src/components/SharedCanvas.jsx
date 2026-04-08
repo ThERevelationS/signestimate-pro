@@ -53,7 +53,8 @@ export default function SharedCanvas({
   showPoles = false,
   mode = 'draw',
   setMode = () => {},
-  onPlaceWithoutPole = null
+  onPlaceWithoutPole = null,
+  onWallMaterialError = null
 }) {
   const canvasRef = useRef(null);
   
@@ -493,6 +494,7 @@ export default function SharedCanvas({
   const handleMouseDown = (e) => {
     if (activeWallIndex !== null && !wallMaterial && mode !== 'place') {
         toast.error("Please select a Wall Material first.");
+        if (onWallMaterialError) onWallMaterialError();
         return;
     }
 

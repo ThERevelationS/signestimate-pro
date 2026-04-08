@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Save, ArrowLeft, Trash2, Crosshair } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import WallSection from '@/components/WallSection';
 import SharedCanvas from '@/components/SharedCanvas';
@@ -27,9 +27,6 @@ import { Bot, PenTool } from 'lucide-react';
 const FoundationProjectEntity = base44.entities.FoundationProject;
 const FoundationInventoryEntity = base44.entities.FoundationInventory;
 const SettingsEntity = base44.entities.Settings;
-
-const urlParams = new URLSearchParams(window.location.search);
-const editId = urlParams.get('id');
 
 function newItem() {
   return {
@@ -83,6 +80,8 @@ function newWall() {
 
 export default function NewFoundationEstimate() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const editId = new URLSearchParams(location.search).get('id');
   const { isDirty, setIsDirty } = useContext(UnsavedChangesContext) || { isDirty: false, setIsDirty: () => {} };
 
   const [project, setProject] = useState({
@@ -125,6 +124,12 @@ export default function NewFoundationEstimate() {
   const [designerPoleIdx, setDesignerPoleIdx] = useState(null);
   const [designerSignIdx, setDesignerSignIdx] = useState(null);
   const [shakePoleDropdown, setShakePoleDropdown] = useState(false);
+  const [wallShakeIndex, setWallShakeIndex] = useState(null);
+
+  const handleWallMaterialError = (idx) => {
+     setWallShakeIndex(idx);
+     setTimeout(() => setWallShakeIndex(null), 800);
+  };
 
   const openSignDesigner = (pIdx, sIdx) => {
       setDesignerPoleIdx(pIdx);
@@ -502,13 +507,22 @@ export default function NewFoundationEstimate() {
     if (isAutoSave) setAutoSaving(true);
     else setSaving(true);
     
+    const total_excavation = items.reduce((sum, item) => sum + calcItemCost(item).excavationCost, 0);
+    const total_equipment = totals.equipmentTotal;
+    const total_labor = items.reduce((sum, item) => sum + calcItemCost(item).finishingCost, 0) + walls.reduce((sum, w) => sum + (w.calculatedCosts?.laborCost || 0) + (w.calculatedCosts?.internalLaborCost || 0), 0);
+    const total_materials = totals.grand - total_excavation - total_equipment - total_labor;
+
     const data = {
       ...project,
       items: items.map(({ _id, ...rest }) => rest),
       walls: walls.map(({ _id, ...rest }) => rest),
       poles: polesData.map(({ id, ...rest }) => rest),
       selected_equipment: selectedEquipmentList.map(({ _id, ...rest }) => rest),
-      total_labor_cost: totals.grand,
+      total_excavation_cost: total_excavation,
+      total_equipment_cost: total_equipment,
+      total_labor_cost: total_labor,
+      total_concrete_cost: total_materials,
+      total_rebar_cost: 0,
     };
     
     const currentId = project.id || editId;
@@ -770,6 +784,7 @@ export default function NewFoundationEstimate() {
                       settings={settings}
                       onChange={(updated) => updateWall(idx, updated)}
                       onDelete={() => { removeWall(idx); if (activeWallIndex === idx) setActiveWallIndex(0); }}
+                      shakeMaterial={wallShakeIndex === idx}
                     />
                   ))}
 
@@ -814,6 +829,7 @@ export default function NewFoundationEstimate() {
                           setShakePoleDropdown(true);
                           setTimeout(() => setShakePoleDropdown(false), 800);
                         }}
+                        onWallMaterialError={() => handleWallMaterialError(activeWallIndex)}
                      />
                   </div>
 
