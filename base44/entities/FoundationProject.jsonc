@@ -63,6 +63,10 @@
             "type": "number",
             "default": 0
           },
+          "rotation_degrees": {
+            "type": "number",
+            "default": 0
+          },
           "include_rebar": {
             "type": "boolean",
             "default": false
@@ -198,6 +202,37 @@
           },
           "custom_rebar_cost_per_ft": {
             "type": "number"
+          },
+          "rebar_layers": {
+            "type": "number"
+          },
+          "rebar_layer_separation_inches": {
+            "type": "number"
+          },
+          "pillar_rebar_size": {
+            "type": "string"
+          },
+          "pillar_rebar_hoop_diameter": {
+            "type": "number"
+          },
+          "pillar_rebar_layer_separation_inches": {
+            "type": "number"
+          },
+          "pillar_rebar_layers": {
+            "type": "number"
+          },
+          "pillar_vertical_rebar_count": {
+            "type": "number"
+          },
+          "selected_concrete_id": {
+            "type": "string"
+          },
+          "excavation_method": {
+            "type": "string",
+            "enum": [
+              "hand_dig",
+              "equipment_excavation"
+            ]
           }
         }
       }
@@ -205,6 +240,45 @@
     "beautify_data_url": {
       "type": "string",
       "description": "Base64 encoded JPEG of the ground texture"
+    },
+    "poles": {
+      "type": "array",
+      "description": "Poles placed on foundations",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pole_id": {
+            "type": "string"
+          },
+          "x_inches": {
+            "type": "number"
+          },
+          "z_inches": {
+            "type": "number"
+          },
+          "height_inches": {
+            "type": "number"
+          },
+          "y_offset_inches": {
+            "type": "number"
+          },
+          "foundation_idx": {
+            "type": "number"
+          },
+          "paint": {
+            "type": "boolean"
+          },
+          "rotation_degrees": {
+            "type": "number"
+          },
+          "signs": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      }
     },
     "walls": {
       "type": "array",
@@ -221,6 +295,18 @@
           },
           "materialId": {
             "type": "string"
+          },
+          "internalMaterialId": {
+            "type": "string"
+          },
+          "includeInternalWall": {
+            "type": "boolean"
+          },
+          "internalWallHeightInches": {
+            "type": "number"
+          },
+          "internalMortarGapInches": {
+            "type": "number"
           },
           "useExistingFoundation": {
             "type": "boolean",
@@ -273,6 +359,27 @@
                 "type": "number"
               },
               "totalCost": {
+                "type": "number"
+              },
+              "totalLinearInches": {
+                "type": "number"
+              },
+              "numCourses": {
+                "type": "number"
+              },
+              "internalTotalBricks": {
+                "type": "number"
+              },
+              "internalMaterialCost": {
+                "type": "number"
+              },
+              "internalMortarCost": {
+                "type": "number"
+              },
+              "internalLaborCost": {
+                "type": "number"
+              },
+              "internalLaborHours": {
                 "type": "number"
               }
             }

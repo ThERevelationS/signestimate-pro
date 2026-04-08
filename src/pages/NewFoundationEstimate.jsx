@@ -239,7 +239,12 @@ export default function NewFoundationEstimate() {
             selected_concrete_id: i.selected_concrete_id || p.selected_concrete_id || '',
             _id: i._id || Date.now() + Math.random() 
           })) : [newItem()]);
-          setWalls(p.walls?.length ? p.walls.map(w => ({ ...w, _id: w._id || Date.now() + Math.random() })) : []);
+          setWalls(p.walls?.length ? p.walls.map(w => ({ 
+            ...w, 
+            selectedMaterial: w.selectedMaterial || inv.find(m => m.id === w.materialId) || null,
+            selectedInternalMaterial: w.selectedInternalMaterial || inv.find(m => m.id === w.internalMaterialId) || null,
+            _id: w._id || Date.now() + Math.random() 
+          })) : []);
           setPolesData(p.poles || []);
           setSelectedEquipmentList(p.selected_equipment?.length ? p.selected_equipment.map(e => ({ ...e, _id: e._id || Date.now() + Math.random() })) : []);
         }
