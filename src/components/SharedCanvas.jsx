@@ -744,86 +744,96 @@ export default function SharedCanvas({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 flex-wrap bg-slate-50 p-2 rounded-lg border border-slate-200">
+      <div className="flex items-center gap-1.5 flex-wrap bg-slate-50 p-1.5 rounded-lg border border-slate-200 shadow-sm">
         {activeWallIndex !== null && (
-          <>
-            <Button size="sm" variant={mode === 'draw' ? 'default' : 'outline'} onClick={() => setMode('draw')}>
-              <Plus className="w-3 h-3 mr-1" /> Draw
+          <div className="flex bg-white border border-slate-200 rounded-md shadow-sm">
+            <Button size="sm" variant={mode === 'draw' ? 'secondary' : 'ghost'} className="h-7 text-xs px-2.5 rounded-none rounded-l-md border-r border-slate-100" onClick={() => setMode('draw')}>
+              <Plus className="w-3 h-3 mr-1.5" /> Draw
             </Button>
-            <Button size="sm" variant={mode === 'edit_points' ? 'default' : 'outline'} onClick={() => setMode('edit_points')}>
-              <Crosshair className="w-3 h-3 mr-1" /> Edit Points
+            <Button size="sm" variant={mode === 'edit_points' ? 'secondary' : 'ghost'} className="h-7 text-xs px-2.5 rounded-none border-r border-slate-100" onClick={() => setMode('edit_points')}>
+              <Crosshair className="w-3 h-3 mr-1.5" /> Edit Points
             </Button>
-            <Button size="sm" variant={mode === 'move_wall' ? 'default' : 'outline'} onClick={() => setMode('move_wall')}>
-              <Move className="w-3 h-3 mr-1" /> Move Wall
+            <Button size="sm" variant={mode === 'move_wall' ? 'secondary' : 'ghost'} className="h-7 text-xs px-2.5 rounded-none" onClick={() => setMode('move_wall')}>
+              <Move className="w-3 h-3 mr-1.5" /> Move Wall
             </Button>
-            {closed && points.length > 0 && (
-                <div className="flex bg-slate-200 rounded-md p-0.5 mx-1 items-center gap-0.5">
-                    <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => centerActiveWall('both')}>Center C</Button>
-                    <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => centerActiveWall('horizontal')}>Center H</Button>
-                    <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => centerActiveWall('vertical')}>Center V</Button>
-                </div>
-            )}
-          </>
+          </div>
         )}
+
+        {activeWallIndex !== null && closed && points.length > 0 && (
+            <div className="flex bg-white border border-slate-200 rounded-md shadow-sm items-center">
+                <div className="px-1.5 h-7 flex items-center text-[10px] font-semibold text-slate-400 border-r border-slate-100 bg-slate-50 rounded-l-md uppercase">Center</div>
+                <Button size="sm" variant="ghost" className="h-7 text-[10px] px-1.5 rounded-none border-r border-slate-100" onClick={() => centerActiveWall('both')} title="Center X/Y">C/C</Button>
+                <Button size="sm" variant="ghost" className="h-7 text-[10px] px-1.5 rounded-none border-r border-slate-100" onClick={() => centerActiveWall('horizontal')} title="Center Horizontally">Horiz</Button>
+                <Button size="sm" variant="ghost" className="h-7 text-[10px] px-1.5 rounded-none" onClick={() => centerActiveWall('vertical')} title="Center Vertically">Vert</Button>
+            </div>
+        )}
+
         {showPoles && (
-          <div className="flex items-center gap-1 ml-2 border-l border-slate-300 pl-2">
-             <span className="text-[10px] font-semibold text-slate-500 uppercase">Pole:</span>
+          <div className="flex items-center bg-white border border-slate-200 rounded-md shadow-sm">
+             <div className="px-1.5 h-7 flex items-center text-[10px] font-semibold text-slate-400 border-r border-slate-100 bg-slate-50 rounded-l-md uppercase">Pole</div>
              <Select value={selectedPoleId} onValueChange={setSelectedPoleId}>
-                <SelectTrigger className="h-7 text-xs w-[140px] bg-white">
-                   <SelectValue placeholder="Select Pole..." />
+                <SelectTrigger className="h-7 text-[11px] w-[130px] border-0 rounded-none focus:ring-0 shadow-none">
+                   <SelectValue placeholder="Select..." />
                 </SelectTrigger>
                 <SelectContent>
                    {polesInventory.map(p => (
-                      <SelectItem key={p.id} value={p.id} className="text-xs">{p.material_name}</SelectItem>
+                      <SelectItem key={p.id} value={p.id} className="text-[11px]">{p.material_name}</SelectItem>
                    ))}
                 </SelectContent>
              </Select>
-             <Button size="sm" variant={mode === 'place' ? 'default' : 'outline'} onClick={() => setMode('place')} className="h-7 px-2">
+             <Button size="sm" variant={mode === 'place' ? 'secondary' : 'ghost'} onClick={() => setMode('place')} className="h-7 text-[11px] px-2 rounded-none rounded-r-md border-l border-slate-100 bg-slate-50 hover:bg-slate-100 text-slate-700">
                  <Crosshair className="w-3 h-3 mr-1" /> Place
              </Button>
           </div>
         )}
-        <Button size="sm" variant={mode === 'pan' ? 'default' : 'outline'} onClick={() => setMode('pan')}>
-          <Move className="w-3 h-3 mr-1" /> Pan
-        </Button>
-        
-        {(!useExistingFoundation && foundationItems.length > 0) && (
-            <Button size="sm" variant={mode === 'move_foundation' ? 'default' : 'outline'} onClick={() => setMode('move_foundation')}>
-            <Move className="w-3 h-3 mr-1" /> Move Foundation
-            </Button>
-        )}
 
-        {/* Zoom Controls */}
-        <div className="flex items-center gap-1 border-l border-r border-slate-300 px-2 mx-1">
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}>
-                <ZoomOut className="w-4 h-4" />
+        <div className="flex items-center bg-white border border-slate-200 rounded-md shadow-sm">
+           <Button size="sm" variant={mode === 'pan' ? 'secondary' : 'ghost'} className={`h-7 text-[11px] px-2 rounded-none rounded-l-md ${(!useExistingFoundation && foundationItems.length > 0) ? 'border-r border-slate-100' : 'rounded-r-md'}`} onClick={() => setMode('pan')}>
+             <Move className="w-3 h-3 mr-1.5" /> Pan
+           </Button>
+           {(!useExistingFoundation && foundationItems.length > 0) && (
+               <Button size="sm" variant={mode === 'move_foundation' ? 'secondary' : 'ghost'} className="h-7 text-[11px] px-2 rounded-none rounded-r-md" onClick={() => setMode('move_foundation')}>
+                 <Move className="w-3 h-3 mr-1.5" /> Move Fnd
+               </Button>
+           )}
+        </div>
+
+        <div className="flex items-center bg-white border border-slate-200 rounded-md shadow-sm">
+            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-l-md rounded-r-none border-r border-slate-100" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}>
+                <ZoomOut className="w-3 h-3" />
             </Button>
-            <span className="text-xs font-medium w-10 text-center">{Math.round(zoom * 100)}%</span>
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setZoom(z => Math.min(3, z + 0.2))}>
-                <ZoomIn className="w-4 h-4" />
+            <span className="text-[10px] font-medium w-9 text-center text-slate-600">{Math.round(zoom * 100)}%</span>
+            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-r-md rounded-l-none border-l border-slate-100" onClick={() => setZoom(z => Math.min(3, z + 0.2))}>
+                <ZoomIn className="w-3 h-3" />
             </Button>
         </div>
 
         {activeWallIndex !== null && (
-          <>
-            <Button size="sm" variant="outline" onClick={handleUndo} disabled={points.length === 0}>
-              <Undo2 className="w-3 h-3 mr-1" /> Undo
+          <div className="flex items-center gap-0.5 ml-auto">
+            <Button size="icon" variant="outline" className="h-7 w-7 bg-white" onClick={handleUndo} disabled={points.length === 0} title="Undo">
+              <Undo2 className="w-3 h-3" />
             </Button>
             {selectedPointIndex !== null && (
-              <Button size="sm" variant="outline" onClick={deleteSelectedPoint}>
-                <Trash2 className="w-3 h-3 mr-1" /> Del Point
+              <Button size="icon" variant="outline" className="h-7 w-7 bg-white text-red-500 hover:text-red-600 hover:bg-red-50" onClick={deleteSelectedPoint} title="Delete Point">
+                <Trash2 className="w-3 h-3" />
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={handleReset}>
-              <RotateCcw className="w-3 h-3 mr-1" /> Reset
+            <Button size="icon" variant="outline" className="h-7 w-7 bg-white" onClick={handleReset} title="Reset">
+              <RotateCcw className="w-3 h-3" />
             </Button>
+            
             {totalPerimeterInches > 0 && (
-              <Badge variant="secondary" className="ml-auto">
-                Perimeter: {totalFt > 0 ? `${totalFt}' ` : ''}{totalInch}"
+              <Badge variant="outline" className="h-7 bg-white text-[10px] px-2 font-medium ml-1 border-slate-200">
+                P: {totalFt > 0 ? `${totalFt}' ` : ''}{totalInch}"
               </Badge>
             )}
-            {closed && <Badge className="bg-green-600">Shape Closed ✓</Badge>}
-          </>
+            
+            {closed && (
+              <Badge className="bg-emerald-500 hover:bg-emerald-600 h-7 text-[10px] px-2 font-medium border-0 ml-1">
+                Closed ✓
+              </Badge>
+            )}
+          </div>
         )}
       </div>
 
