@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Paintbrush, Square, Circle, Minus, Undo, Redo, Hexagon, Droplets, Grid3x3, Layers } from 'lucide-react';
+import { Trash2, Paintbrush, Square, Circle, Minus, Undo, Redo, Hexagon, Droplets, Grid3x3, Layers, Save } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 const CANVAS_SIZE = 1024;
@@ -128,12 +128,41 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
   const [texturesLoaded, setTexturesLoaded] = useState(true);
   const textureCacheRef = useRef({});
 
+  const [presets, setPresets] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('beautify_presets')) || [];
+    } catch {
+      return [];
+    }
+  });
+
+  const savePreset = () => {
+    const name = prompt('Enter preset name (e.g. "Grass Fill"):');
+    if (!name) return;
+    const newPreset = { id: Date.now(), name, matId, brushSize, preventOverlap };
+    const updated = [...presets, newPreset];
+    setPresets(updated);
+    localStorage.setItem('beautify_presets', JSON.stringify(updated));
+  };
+  
+  const loadPreset = (p) => {
+    setMatId(p.matId);
+    setBrushSize(p.brushSize);
+    setPreventOverlap(p.preventOverlap);
+  };
+
+  const deletePreset = (id) => {
+    if (!confirm('Delete this preset?')) return;
+    const updated = presets.filter(p => p.id !== id);
+    setPresets(updated);
+    localStorage.setItem('beautify_presets', JSON.stringify(updated));
+  };
+
   const getPattern = (ctx, type) => {
     if (!textureCacheRef.current[type]) {
-       const canvas = generateTexture(type);
-       textureCacheRef.current[type] = ctx.createPattern(canvas, 'repeat');
+       textureCacheRef.current[type] = generateTexture(type);
     }
-    return textureCacheRef.current[type];
+    return ctx.createPattern(textureCacheRef.current[type], 'repeat');
   };
 
   function worldToCanvas(x_ft, z_ft) {
@@ -514,6 +543,31 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
                 <span className="font-medium text-center leading-tight truncate w-full">{m.name.split('/')[0]}</span>
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="h-px bg-slate-200 w-full my-1"></div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Presets</Label>
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" size="sm" onClick={savePreset} className="h-8 text-xs bg-white text-slate-600 border-dashed">
+              <Save className="w-3 h-3 mr-1.5" /> Save Current as Preset
+            </Button>
+            {presets.length > 0 && (
+              <div className="flex flex-col gap-1">
+                {presets.map(p => (
+                  <div key={p.id} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded px-2 py-1">
+                    <button onClick={() => loadPreset(p)} className="text-xs font-medium text-slate-700 hover:text-blue-600 truncate text-left flex-1" title="Load preset">
+                      {p.name}
+                    </button>
+                    <button onClick={() => deletePreset(p.id)} className="text-slate-400 hover:text-red-500 ml-2" title="Delete preset">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

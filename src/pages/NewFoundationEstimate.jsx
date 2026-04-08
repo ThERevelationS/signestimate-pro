@@ -119,6 +119,60 @@ export default function NewFoundationEstimate() {
   const [selectedPlacedIdx, setSelectedPlacedIdx] = useState(null);
   const [canvasMode, setCanvasMode] = useState('draw');
 
+  // History state for undo/redo
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const skipHistoryRef = useRef(false);
+
+  const saveHistory = () => {
+    if (skipHistoryRef.current || loading) return;
+    const currentState = {
+      items: JSON.parse(JSON.stringify(items)),
+      walls: JSON.parse(JSON.stringify(walls)),
+      polesData: JSON.parse(JSON.stringify(polesData))
+    };
+    
+    setHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push(currentState);
+      if (newHistory.length > 50) newHistory.shift();
+      return newHistory;
+    });
+    setHistoryIndex(prev => Math.min(prev + 1, 49));
+  };
+
+  useEffect(() => {
+    if (loading) return;
+    const t = setTimeout(saveHistory, 800);
+    return () => clearTimeout(t);
+  }, [items, walls, polesData, loading]);
+
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      skipHistoryRef.current = true;
+      const h = history[historyIndex - 1];
+      setItems(h.items);
+      setWalls(h.walls);
+      setPolesData(h.polesData);
+      setHistoryIndex(prev => prev - 1);
+      markDirty();
+      setTimeout(() => skipHistoryRef.current = false, 100);
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      skipHistoryRef.current = true;
+      const h = history[historyIndex + 1];
+      setItems(h.items);
+      setWalls(h.walls);
+      setPolesData(h.polesData);
+      setHistoryIndex(prev => prev + 1);
+      markDirty();
+      setTimeout(() => skipHistoryRef.current = false, 100);
+    }
+  };
+
   useEffect(() => {
      if (walls.length === 0) setActiveWallIndex(null);
      else if (activeWallIndex === null || activeWallIndex >= walls.length) setActiveWallIndex(0);
@@ -976,6 +1030,10 @@ export default function NewFoundationEstimate() {
                  polesInventory={poles} 
                  formingInventory={formingInventory} 
                  beautifyDataUrl={project.beautify_data_url} 
+                 onUndo={handleUndo}
+                 onRedo={handleRedo}
+                 canUndo={historyIndex > 0}
+                 canRedo={historyIndex < history.length - 1}
               />
             </div>
           )}

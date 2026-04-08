@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { Camera, Maximize, Minimize } from 'lucide-react';
+import { Camera, Maximize, Minimize, Ruler, Undo, Redo, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /**
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
  * Wall shape points are in world inches (origin = foundation origin).
  * Foundation item 0 is placed at world origin; its center is at (L/2, 0, W/2) in feet.
  */
-export default function FoundationWalls3DViewer({ items = [], walls = [], polesData = [], polesInventory = [], formingInventory = [], beautifyDataUrl = null }) {
+export default function FoundationWalls3DViewer({ items = [], walls = [], polesData = [], polesInventory = [], formingInventory = [], beautifyDataUrl = null, onUndo, onRedo, canUndo, canRedo }) {
   const mountRef = useRef(null);
   const rendererRef = useRef(null);
   const sceneRef = useRef(null);
@@ -18,8 +18,95 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
   const animFrameRef = useRef(null);
   const groundMatRef = useRef(null);
   const dirtTexRef = useRef(null);
+  const measureGroupRef = useRef(new THREE.Group());
 
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [measureMode, setMeasureMode] = useState(false);
+  const [measurePoints, setMeasurePoints] = useState([]);
+  const downPos = useRef({ x: 0, y: 0 });
+
+  const clearMeasurements = () => setMeasurePoints([]);
+
+  const totalDistance = measurePoints.reduce((acc, p, i) => {
+    if (i === 0) return 0;
+    return acc + p.distanceTo(measurePoints[i-1]);
+  }, 0);
+
+  let areaSqFt = 0;
+  if (measurePoints.length > 2) {
+    let sum = 0;
+    for (let i = 0; i < measurePoints.length; i++) {
+      const p1 = measurePoints[i];
+      const p2 = measurePoints[(i + 1) % measurePoints.length];
+      sum += (p1.x * p2.z - p2.x * p1.z);
+    }
+    areaSqFt = Math.abs(sum) / 2;
+  }
+
+  const handlePointerDown = (e) => {
+    downPos.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handlePointerUp = (e) => {
+    if (!measureMode || !cameraRef.current || !sceneRef.current || !mountRef.current) return;
+    const dx = e.clientX - downPos.current.x;
+    const dy = e.clientY - downPos.current.y;
+    if (Math.sqrt(dx*dx + dy*dy) > 5) return; // it was a drag
+
+    const rect = mountRef.current.getBoundingClientRect();
+    const mouse = new THREE.Vector2(
+      ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      -((e.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, cameraRef.current);
+    const intersects = raycaster.intersectObjects(sceneRef.current.children, true);
+    
+    // Ignore overlay
+    const valid = intersects.find(i => i.object.visible && !i.object.userData.isOverlay && !i.object.userData.isMeasure);
+    if (valid) {
+      setMeasurePoints(prev => [...prev, valid.point.clone()]);
+    }
+  };
+
+  useEffect(() => {
+    const group = measureGroupRef.current;
+    if (!group) return;
+    group.clear();
+    
+    if (measurePoints.length === 0) return;
+    
+    const mat = new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 2, depthTest: false });
+    const ptsMat = new THREE.MeshBasicMaterial({ color: 0xef4444, depthTest: false });
+    const sphereGeo = new THREE.SphereGeometry(0.15, 8, 8);
+    
+    measurePoints.forEach((p, i) => {
+      const sphere = new THREE.Mesh(sphereGeo, ptsMat);
+      sphere.position.copy(p);
+      sphere.renderOrder = 999;
+      sphere.userData.isMeasure = true;
+      group.add(sphere);
+      
+      if (i > 0) {
+        const prev = measurePoints[i - 1];
+        const geo = new THREE.BufferGeometry().setFromPoints([prev, p]);
+        const line = new THREE.Line(geo, mat);
+        line.renderOrder = 999;
+        group.add(line);
+      }
+    });
+
+    if (measurePoints.length > 2) {
+      const p1 = measurePoints[0];
+      const p2 = measurePoints[measurePoints.length - 1];
+      const geo = new THREE.BufferGeometry().setFromPoints([p2, p1]);
+      const dashMat = new THREE.LineDashedMaterial({ color: 0xef4444, dashSize: 0.5, gapSize: 0.5, depthTest: false });
+      const line = new THREE.Line(geo, dashMat);
+      line.computeLineDistances();
+      line.renderOrder = 999;
+      group.add(line);
+    }
+  }, [measurePoints]);
 
   // ── Scene setup (once) ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -59,6 +146,8 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
     sun.shadow.camera.left = -60; sun.shadow.camera.right = 60;
     sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -60;
     scene.add(sun);
+
+    scene.add(measureGroupRef.current);
 
     // Ground
     const dirtCanvas = document.createElement('canvas');
@@ -684,13 +773,31 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
 
   return (
     <div className={isFullscreen ? "fixed inset-0 z-[100] bg-slate-200 flex flex-col" : "relative w-full h-full rounded-xl overflow-hidden bg-slate-200"}>
-      <div ref={mountRef} className="w-full h-full flex-1" />
-      <div className="absolute top-2 right-2 flex gap-2">
+      <div 
+        ref={mountRef} 
+        className={`w-full h-full flex-1 ${measureMode ? 'cursor-crosshair' : ''}`} 
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+      />
+      <div className="absolute top-2 right-2 flex gap-2 flex-wrap justify-end max-w-[70%]">
+        {onUndo && (
+          <div className="flex gap-1 mr-2">
+            <Button onClick={onUndo} disabled={!canUndo} variant="secondary" size="sm" className="bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm text-xs h-8">
+              <Undo className="w-3 h-3 mr-1" /> Undo
+            </Button>
+            <Button onClick={onRedo} disabled={!canRedo} variant="secondary" size="sm" className="bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm text-xs h-8">
+              <Redo className="w-3 h-3 mr-1" /> Redo
+            </Button>
+          </div>
+        )}
+        <Button onClick={() => setMeasureMode(!measureMode)} variant={measureMode ? "default" : "secondary"} size="sm" className={`shadow-sm text-xs h-8 ${measureMode ? "bg-blue-600 hover:bg-blue-700" : "bg-white/80 hover:bg-white backdrop-blur-sm"}`}>
+          <Ruler className="w-3 h-3 mr-1" /> {measureMode ? "Stop Measuring" : "Measure"}
+        </Button>
         <Button
           onClick={handleSaveImage}
           variant="secondary"
           size="sm"
-          className="bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm text-xs"
+          className="bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm text-xs h-8"
         >
           <Camera className="w-3 h-3 mr-1" /> Save View
         </Button>
@@ -701,11 +808,33 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
           }}
           variant="secondary"
           size="sm"
-          className="bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm text-xs"
+          className="bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm text-xs h-8"
         >
           {isFullscreen ? <><Minimize className="w-3 h-3 mr-1" /> Exit Full Screen</> : <><Maximize className="w-3 h-3 mr-1" /> Full Screen</>}
         </Button>
       </div>
+
+      {measureMode && (
+        <div className="absolute top-14 right-2 bg-white/90 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-slate-200 text-xs min-w-[200px]">
+          <div className="font-semibold text-slate-800 mb-2 flex items-center justify-between">
+            Measurement Tool
+            {measurePoints.length > 0 && (
+              <Button variant="ghost" size="icon" className="h-5 w-5 text-red-500 hover:bg-red-50" onClick={clearMeasurements}>
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            )}
+          </div>
+          <div className="space-y-1 text-slate-600">
+            <p>Points: <span className="font-medium text-slate-900">{measurePoints.length}</span></p>
+            <p>Distance: <span className="font-medium text-slate-900">{totalDistance.toFixed(2)} ft</span></p>
+            {measurePoints.length > 2 && (
+              <p>Area (Ground): <span className="font-medium text-slate-900">{areaSqFt.toFixed(2)} sq ft</span></p>
+            )}
+          </div>
+          <p className="text-[10px] text-slate-400 mt-2 leading-tight">Click on any object or the ground to add points. The tool measures direct distances.</p>
+        </div>
+      )}
+
       <div className="absolute bottom-2 left-2 text-xs text-white bg-black/60 rounded px-3 py-2 pointer-events-none border border-white/20 shadow-lg">
         <div className="font-semibold mb-1">3D Viewer Controls:</div>
         <ul className="list-disc pl-4 space-y-0.5">
