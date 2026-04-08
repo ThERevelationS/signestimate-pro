@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Trash2, Undo2, Plus, Move, RotateCcw, Crosshair, ZoomIn, ZoomOut } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const BASE_SCALE = 4;
 const SNAP_DISTANCE = 14;
@@ -43,6 +44,7 @@ export default function SharedCanvas({
   polesData = [],
   polesInventory = [],
   selectedPoleId = '',
+  setSelectedPoleId = () => {},
   onChangePoles = () => {},
   selectedPlacedIdx = null,
   setSelectedPlacedIdx = () => {},
@@ -764,9 +766,22 @@ export default function SharedCanvas({
           </>
         )}
         {showPoles && (
-          <Button size="sm" variant={mode === 'place' ? 'default' : 'outline'} onClick={() => setMode('place')}>
-              <Crosshair className="w-3 h-3 mr-1" /> Place/Select Pole
-          </Button>
+          <div className="flex items-center gap-1 ml-2 border-l border-slate-300 pl-2">
+             <span className="text-[10px] font-semibold text-slate-500 uppercase">Pole:</span>
+             <Select value={selectedPoleId} onValueChange={setSelectedPoleId}>
+                <SelectTrigger className="h-7 text-xs w-[140px] bg-white">
+                   <SelectValue placeholder="Select Pole..." />
+                </SelectTrigger>
+                <SelectContent>
+                   {polesInventory.map(p => (
+                      <SelectItem key={p.id} value={p.id} className="text-xs">{p.material_name}</SelectItem>
+                   ))}
+                </SelectContent>
+             </Select>
+             <Button size="sm" variant={mode === 'place' ? 'default' : 'outline'} onClick={() => setMode('place')} className="h-7 px-2">
+                 <Crosshair className="w-3 h-3 mr-1" /> Place
+             </Button>
+          </div>
         )}
         <Button size="sm" variant={mode === 'pan' ? 'default' : 'outline'} onClick={() => setMode('pan')}>
           <Move className="w-3 h-3 mr-1" /> Pan

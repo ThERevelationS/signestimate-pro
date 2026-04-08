@@ -709,6 +709,7 @@ export default function NewFoundationEstimate() {
                         polesData={polesData}
                         polesInventory={poles}
                         selectedPoleId={selectedPoleId}
+                        setSelectedPoleId={setSelectedPoleId}
                         onChangePoles={v => { setPolesData(v); markDirty(); }}
                         selectedPlacedIdx={selectedPlacedIdx}
                         setSelectedPlacedIdx={setSelectedPlacedIdx}
@@ -718,24 +719,9 @@ export default function NewFoundationEstimate() {
 
                   {/* Right: Poles List */}
                   {showPoles && (
-                    <div className="w-full lg:w-[280px] space-y-3 flex-shrink-0">
-                      <div className="bg-blue-50/30 border border-blue-100 rounded-lg p-3 shadow-sm mb-2">
-                        <Label className="text-[10px] uppercase font-bold text-blue-900 mb-1 block">Active Pole to Place</Label>
-                        <Select value={selectedPoleId} onValueChange={setSelectedPoleId}>
-                          <SelectTrigger className="w-full h-8 text-xs bg-white">
-                            <SelectValue placeholder="Choose a pole..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {poles.map(p => (
-                              <SelectItem key={p.id} value={p.id}>{p.material_name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-[10px] text-blue-700 mt-1">Select a pole and click on the canvas to place it.</p>
-                      </div>
-                      
+                    <div className="w-full lg:w-[260px] space-y-2 flex-shrink-0">
                       <h3 className="font-semibold text-slate-800 text-sm">Placed Poles ({polesData.length})</h3>
-                      <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                      <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
                         {polesData.length === 0 && (
                           <p className="text-sm text-slate-500 italic">No poles added yet. Select a pole and click "Add Pole" or place it on the canvas.</p>
                         )}
