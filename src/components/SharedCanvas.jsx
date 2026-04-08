@@ -49,7 +49,9 @@ export default function SharedCanvas({
   selectedPlacedIdx = null,
   setSelectedPlacedIdx = () => {},
   
-  showPoles = false
+  showPoles = false,
+  mode = 'draw',
+  setMode = () => {}
 }) {
   const canvasRef = useRef(null);
   
@@ -59,8 +61,6 @@ export default function SharedCanvas({
   const [offset, setOffset] = useState({ x: 40, y: 40 });
   const [panning, setPanning] = useState(false);
   const [panStart, setPanStart] = useState(null);
-  
-  const [mode, setMode] = useState('draw');
 
   // Wall state
   const activeWall = activeWallIndex !== null ? walls[activeWallIndex] : null;
@@ -768,24 +768,7 @@ export default function SharedCanvas({
             </div>
         )}
 
-        {showPoles && (
-          <div className="flex items-center bg-white border border-slate-200 rounded-md shadow-sm">
-             <div className="px-1.5 h-7 flex items-center text-[10px] font-semibold text-slate-400 border-r border-slate-100 bg-slate-50 rounded-l-md uppercase">Pole</div>
-             <Select value={selectedPoleId} onValueChange={setSelectedPoleId}>
-                <SelectTrigger className="h-7 text-[11px] w-[130px] border-0 rounded-none focus:ring-0 shadow-none">
-                   <SelectValue placeholder="Select..." />
-                </SelectTrigger>
-                <SelectContent>
-                   {polesInventory.map(p => (
-                      <SelectItem key={p.id} value={p.id} className="text-[11px]">{p.material_name}</SelectItem>
-                   ))}
-                </SelectContent>
-             </Select>
-             <Button size="sm" variant={mode === 'place' ? 'secondary' : 'ghost'} onClick={() => setMode('place')} className="h-7 text-[11px] px-2 rounded-none rounded-r-md border-l border-slate-100 bg-slate-50 hover:bg-slate-100 text-slate-700">
-                 <Crosshair className="w-3 h-3 mr-1" /> Place
-             </Button>
-          </div>
-        )}
+
 
         <div className="flex items-center bg-white border border-slate-200 rounded-md shadow-sm">
            <Button size="sm" variant={mode === 'pan' ? 'secondary' : 'ghost'} className={`h-7 text-[11px] px-2 rounded-none rounded-l-md ${(!useExistingFoundation && foundationItems.length > 0) ? 'border-r border-slate-100' : 'rounded-r-md'}`} onClick={() => setMode('pan')}>

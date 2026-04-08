@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Save, ArrowLeft, Trash2 } from 'lucide-react';
+import { Plus, Save, ArrowLeft, Trash2, Crosshair } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import WallSection from '@/components/WallSection';
@@ -117,6 +117,7 @@ export default function NewFoundationEstimate() {
   const [showPoles, setShowPoles] = useState(false);
   const [selectedPoleId, setSelectedPoleId] = useState('');
   const [selectedPlacedIdx, setSelectedPlacedIdx] = useState(null);
+  const [canvasMode, setCanvasMode] = useState('draw');
 
   useEffect(() => {
      if (walls.length === 0) setActiveWallIndex(null);
@@ -715,6 +716,8 @@ export default function NewFoundationEstimate() {
                         selectedPlacedIdx={selectedPlacedIdx}
                         setSelectedPlacedIdx={setSelectedPlacedIdx}
                         showPoles={showPoles}
+                        mode={canvasMode}
+                        setMode={setCanvasMode}
                      />
                   </div>
 
@@ -722,89 +725,48 @@ export default function NewFoundationEstimate() {
                   {showPoles && (
                     <div className="w-full lg:w-[240px] xl:w-[260px] space-y-4 flex-shrink-0">
                       
-                      {selectedPlacedIdx !== null && polesData[selectedPlacedIdx] && (() => {
-                        const pole = polesData[selectedPlacedIdx];
-                        const idx = selectedPlacedIdx;
-                        return (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 shadow-sm">
-                            <div className="flex items-center justify-between mb-3 border-b border-blue-100 pb-2">
-                              <Label className="text-xs font-bold text-blue-900 uppercase">Pole {idx + 1} Settings</Label>
-                            </div>
-                            <div className="space-y-3">
-                              <div>
-                                <Label className="text-[10px] text-slate-600 font-semibold uppercase mb-0.5 block">Foundation</Label>
-                                <Select 
-                                  value={String(pole.foundation_idx)} 
-                                  onValueChange={v => {
-                                      const arr = [...polesData];
-                                      arr[idx].foundation_idx = parseInt(v);
-                                      setPolesData(arr);
-                                      markDirty();
-                                  }}
-                                >
-                                  <SelectTrigger className="h-8 text-xs bg-white">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {items.map((f, fIdx) => (
-                                      <SelectItem key={fIdx} value={String(fIdx)} className="text-xs">
-                                        Foundation {fIdx + 1} {f.description ? `(${f.description})` : ''}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-
-                              <div className="grid grid-cols-1 gap-2">
-                                  <div>
-                                      <Label className="text-[10px] text-slate-600 font-semibold uppercase mb-0.5 block">Height Above Ground (in)</Label>
-                                      <Input type="number" className="h-8 text-xs px-2 bg-white" value={pole.height_inches} onChange={e => {
-                                          const arr = [...polesData];
-                                          arr[idx].height_inches = parseFloat(e.target.value) || 0;
-                                          setPolesData(arr);
-                                          markDirty();
-                                      }} />
-                                  </div>
-                                  <div>
-                                      <Label className="text-[10px] text-slate-600 font-semibold uppercase mb-0.5 block">Depth in Ground (in)</Label>
-                                      <Input type="number" className="h-8 text-xs px-2 bg-white" value={pole.y_offset_inches} onChange={e => {
-                                          const arr = [...polesData];
-                                          arr[idx].y_offset_inches = parseFloat(e.target.value) || 0;
-                                          setPolesData(arr);
-                                          markDirty();
-                                      }} />
-                                  </div>
-                              </div>
-                              
-                              <div className="pt-1">
-                                  <Label className="text-[10px] text-slate-600 font-semibold uppercase mb-1 block">Center on Found</Label>
-                                  <div className="flex items-center bg-white p-0.5 rounded-md border border-slate-200">
-                                    <Button variant="ghost" size="sm" className="h-7 text-[10px] px-1 flex-1 border-r border-slate-100 rounded-none hover:bg-slate-50" onClick={() => centerPole(idx, 'both')} title="Center X/Y">C/C</Button>
-                                    <Button variant="ghost" size="sm" className="h-7 text-[10px] px-1 flex-1 border-r border-slate-100 rounded-none hover:bg-slate-50" onClick={() => centerPole(idx, 'horizontal')} title="Center Horizontally">Horiz</Button>
-                                    <Button variant="ghost" size="sm" className="h-7 text-[10px] px-1 flex-1 rounded-none hover:bg-slate-50" onClick={() => centerPole(idx, 'vertical')} title="Center Vertically">Vert</Button>
-                                  </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })()}
+                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 shadow-sm">
+                        <h3 className="font-semibold text-slate-800 text-xs uppercase mb-2">Add Pole</h3>
+                        <div className="space-y-2">
+                           <Select value={selectedPoleId} onValueChange={setSelectedPoleId}>
+                              <SelectTrigger className="h-8 text-xs bg-white">
+                                 <SelectValue placeholder="Select Pole..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                 {poles.map(p => (
+                                    <SelectItem key={p.id} value={p.id} className="text-xs">{p.material_name}</SelectItem>
+                                 ))}
+                              </SelectContent>
+                           </Select>
+                           <Button 
+                             size="sm" 
+                             variant={canvasMode === 'place' ? 'default' : 'outline'} 
+                             onClick={() => setCanvasMode(canvasMode === 'place' ? 'draw' : 'place')} 
+                             className="w-full h-8 text-xs"
+                           >
+                               <Crosshair className="w-3 h-3 mr-1.5" /> 
+                               {canvasMode === 'place' ? 'Click on Canvas to Place' : 'Place on Canvas'}
+                           </Button>
+                        </div>
+                      </div>
 
                       <div>
                         <div className="flex items-center justify-between border-b border-slate-200 pb-1 mb-2">
                           <h3 className="font-semibold text-slate-800 text-sm">Placed Poles ({polesData.length})</h3>
                         </div>
-                        <div className="space-y-1.5 max-h-[600px] overflow-y-auto pr-1">
+                        <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
                           {polesData.length === 0 && (
                             <p className="text-xs text-slate-500 italic bg-slate-50 p-3 rounded-lg border border-slate-100">
-                              No poles added yet. Select a pole from the toolbar and click on the canvas to place it.
+                              No poles added yet. Select a pole from the bubble above and click on the canvas to place it.
                             </p>
                           )}
                           {polesData.map((pole, idx) => {
                             const isSelected = selectedPlacedIdx === idx;
                             return (
-                              <div key={pole.id || idx} className={`border rounded-lg ${isSelected ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-400' : 'border-slate-200 bg-white hover:border-slate-300'} cursor-pointer overflow-hidden transition-colors flex justify-between items-center p-2 px-3`} onClick={() => setSelectedPlacedIdx(idx)}>
-                                  <span className={`font-semibold text-xs ${isSelected ? 'text-blue-900' : 'text-slate-700'}`}>Pole {idx + 1}</span>
-                                  <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500 hover:bg-red-100 rounded-md" onClick={(e) => {
+                              <div key={pole.id || idx} className={`border rounded-lg ${isSelected ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-400' : 'border-slate-200 bg-white hover:border-slate-300'} cursor-pointer overflow-hidden transition-colors`} onClick={() => setSelectedPlacedIdx(idx)}>
+                                <div className="p-1.5 px-2 flex justify-between items-center bg-slate-50/50 border-b border-slate-100">
+                                  <span className="font-semibold text-xs text-slate-700">Pole {idx + 1}</span>
+                                  <Button size="icon" variant="ghost" className="h-5 w-5 text-red-500 hover:bg-red-100 rounded-md" onClick={(e) => {
                                       e.stopPropagation();
                                       setPolesData(polesData.filter((_, i) => i !== idx));
                                       if (selectedPlacedIdx === idx) setSelectedPlacedIdx(null);
@@ -812,6 +774,65 @@ export default function NewFoundationEstimate() {
                                   }}>
                                       <Trash2 className="w-3 h-3" />
                                   </Button>
+                                </div>
+                                
+                                {isSelected && (
+                                  <div className="p-2 space-y-2" onClick={e => e.stopPropagation()}>
+                                    <div>
+                                      <Label className="text-[10px] text-slate-500 font-semibold uppercase mb-0.5 block">Foundation</Label>
+                                      <Select 
+                                        value={String(pole.foundation_idx)} 
+                                        onValueChange={v => {
+                                            const arr = [...polesData];
+                                            arr[idx].foundation_idx = parseInt(v);
+                                            setPolesData(arr);
+                                            markDirty();
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-6 text-[10px] bg-white">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {items.map((f, fIdx) => (
+                                            <SelectItem key={fIdx} value={String(fIdx)} className="text-[10px]">
+                                              Foundation {fIdx + 1} {f.description ? `(${f.description})` : ''}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                        <div>
+                                            <Label className="text-[10px] text-slate-500 font-semibold uppercase mb-0.5 block">Height Above Ground</Label>
+                                            <Input type="number" className="h-6 text-[10px] px-1 bg-white" value={pole.height_inches} onChange={e => {
+                                                const arr = [...polesData];
+                                                arr[idx].height_inches = parseFloat(e.target.value) || 0;
+                                                setPolesData(arr);
+                                                markDirty();
+                                            }} />
+                                        </div>
+                                        <div>
+                                            <Label className="text-[10px] text-slate-500 font-semibold uppercase mb-0.5 block">Depth in Ground</Label>
+                                            <Input type="number" className="h-6 text-[10px] px-1 bg-white" value={pole.y_offset_inches} onChange={e => {
+                                                const arr = [...polesData];
+                                                arr[idx].y_offset_inches = parseFloat(e.target.value) || 0;
+                                                setPolesData(arr);
+                                                markDirty();
+                                            }} />
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="pt-1">
+                                        <Label className="text-[10px] text-slate-500 font-semibold uppercase mb-1 block">Center on Found</Label>
+                                        <div className="flex items-center bg-slate-100 p-0.5 rounded-md border border-slate-200">
+                                          <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 flex-1 bg-white border border-slate-200 shadow-sm rounded-sm mr-0.5" onClick={() => centerPole(idx, 'both')} title="Center X/Y">C/C</Button>
+                                          <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 flex-1 bg-white border border-slate-200 shadow-sm rounded-sm mr-0.5" onClick={() => centerPole(idx, 'horizontal')} title="Center Horizontally">Horiz</Button>
+                                          <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 flex-1 bg-white border border-slate-200 shadow-sm rounded-sm" onClick={() => centerPole(idx, 'vertical')} title="Center Vertically">Vert</Button>
+                                        </div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
