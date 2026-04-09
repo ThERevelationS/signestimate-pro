@@ -195,10 +195,11 @@ export default function NewFoundationEstimate() {
 
   // Auto-select pole if inventory loads and no pole selected
   useEffect(() => {
-    if (poles.length > 0 && !selectedPoleId) {
-      setSelectedPoleId(poles[0].id);
+    const availablePoles = inventory.filter(i => i.material_type === 'pole');
+    if (availablePoles.length > 0 && !selectedPoleId) {
+      setSelectedPoleId(availablePoles[0].id);
     }
-  }, [poles, selectedPoleId]);
+  }, [inventory, selectedPoleId]);
 
   const handleWallMaterialError = (idx) => {
      setWallShakeIndex(idx);
