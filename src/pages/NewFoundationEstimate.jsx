@@ -401,10 +401,15 @@ export default function NewFoundationEstimate() {
     // Find the selected rebar from inventory (matching the #size)
     const selectedRebar = inventory.find(r => r.material_type === 'rebar' && r.rebar_size === item.rebar_size);
     const rebar_cost = item.custom_rebar_cost_per_ft || selectedRebar?.cost_per_unit || 0;
-    const rebar_labor_cross_section = getSetting('foundation_rebar_labor_cross_section', 0.5);
-    const rebar_labor_linear_ft = getSetting('foundation_rebar_labor_linear_ft', 0.2);
-    const forming_labor = getSetting('foundation_forming_labor_rate', 55);
-    const finishing_labor = getSetting('foundation_finishing_labor_rate', 50);
+    
+    const main_labor_rate = getSetting('foundation_main_labor_rate', 60);
+    const rebar_time_cross_section = getSetting('foundation_rebar_time_cross_section', 0.05);
+    const rebar_time_linear_ft = getSetting('foundation_rebar_time_linear_ft', 0.02);
+    
+    const forming_cost_per_sqft = getSetting('foundation_forming_cost_per_sqft', 2.50);
+    const pouring_cost_per_cy = getSetting('foundation_pouring_cost_per_cy', 15);
+    const finishing_cost_per_sqft = getSetting('foundation_finishing_cost_per_sqft', 1.25);
+    
     const forming_mult = item.foundation_type === 'spread_foot'
       ? getSetting('foundation_forming_materials_spread_foot', 0.5)
       : getSetting('foundation_forming_materials_pillar', 0.75);
@@ -456,7 +461,8 @@ export default function NewFoundationEstimate() {
       const totalIntersections = numIntersections * (parseInt(item.quantity) || 1);
       
       const materialCost = totalFt * rebar_cost;
-      const laborCost = (totalIntersections * rebar_labor_cross_section) + (totalFt * rebar_labor_linear_ft);
+      const totalTimeHours = (totalIntersections * rebar_time_cross_section) + (totalFt * rebar_time_linear_ft);
+      const laborCost = totalTimeHours * main_labor_rate;
       rebarCost = materialCost + laborCost;
     } else if (item.include_rebar && item.foundation_type === 'pillar') {
       const hoopDia = parseFloat(item.pillar_rebar_hoop_diameter) || Math.max(0, diaIn - 4);
@@ -477,7 +483,8 @@ export default function NewFoundationEstimate() {
       const pillarRebarCostPerFt = item.custom_rebar_cost_per_ft || pillarSelectedRebar?.cost_per_unit || 0;
       
       const materialCost = totalFt * pillarRebarCostPerFt;
-      const laborCost = (totalIntersections * rebar_labor_cross_section) + (totalFt * rebar_labor_linear_ft);
+      const totalTimeHours = (totalIntersections * rebar_time_cross_section) + (totalFt * rebar_time_linear_ft);
+      const laborCost = totalTimeHours * main_labor_rate;
       rebarCost = materialCost + laborCost;
     }
 
@@ -486,7 +493,10 @@ export default function NewFoundationEstimate() {
       const perim = item.foundation_type === 'spread_foot'
         ? 2 * (lenIn + widIn) / 12
         : Math.PI * diaIn / 12;
-      formingCost = perim * 0.25 * (parseInt(item.quantity) || 1) * forming_labor + concreteCost * forming_mult;
+      // Forming area = perimeter * depth (in feet)
+      const formingAreaSqFt = perim * (depIn / 12);
+      const laborCost = formingAreaSqFt * (parseInt(item.quantity) || 1) * forming_cost_per_sqft;
+      formingCost = laborCost + concreteCost * forming_mult;
     }
 
     let finishingCost = 0;
@@ -494,15 +504,19 @@ export default function NewFoundationEstimate() {
       const topArea = item.foundation_type === 'spread_foot'
         ? (lenIn * widIn) / 144
         : Math.PI * ((diaIn / 2 / 12) ** 2);
-      finishingCost = topArea * 0.1 * (parseInt(item.quantity) || 1) * finishing_labor;
+      finishingCost = topArea * (parseInt(item.quantity) || 1) * finishing_cost_per_sqft;
     }
+
+    let pouringCost = volumeCY * pouring_cost_per_cy;
 
     let excavationCost = 0;
     const excVol = volumeCY * 1.25;
     if (item.excavation_method === 'hand_dig' || !item.excavation_method) {
-      excavationCost = excVol * getSetting('foundation_hand_dig_cost_per_cy', getSetting('foundation_hand_dig_labor_rate', 45));
+      const timePerCy = getSetting('foundation_hand_dig_time_per_cy', 2.0);
+      excavationCost = excVol * timePerCy * main_labor_rate;
     } else {
-      excavationCost = excVol * getSetting('foundation_equipment_excavation_cost_per_cy', getSetting('foundation_equipment_excavation_labor_rate', 35));
+      const timePerCy = getSetting('foundation_equipment_excavation_time_per_cy', 0.5);
+      excavationCost = excVol * timePerCy * main_labor_rate;
     }
 
     return { 
@@ -512,8 +526,9 @@ export default function NewFoundationEstimate() {
       rebarCost, 
       formingCost, 
       finishingCost, 
+      pouringCost,
       excavationCost, 
-      total: concreteCost + rebarCost + formingCost + finishingCost + excavationCost 
+      total: concreteCost + rebarCost + formingCost + finishingCost + pouringCost + excavationCost 
     };
   };
 
@@ -597,7 +612,10 @@ export default function NewFoundationEstimate() {
     
     const total_excavation = items.reduce((sum, item) => sum + calcItemCost(item).excavationCost, 0);
     const total_equipment = totals.equipmentTotal;
-    const total_labor = items.reduce((sum, item) => sum + calcItemCost(item).finishingCost, 0) + walls.reduce((sum, w) => sum + (w.calculatedCosts?.laborCost || 0) + (w.calculatedCosts?.internalLaborCost || 0), 0);
+    const total_labor = items.reduce((sum, item) => {
+      const c = calcItemCost(item);
+      return sum + c.finishingCost + c.pouringCost + c.formingCost; // Includes forming cost logic
+    }, 0) + walls.reduce((sum, w) => sum + (w.calculatedCosts?.laborCost || 0) + (w.calculatedCosts?.internalLaborCost || 0), 0);
     const total_materials = totals.grand - total_excavation - total_equipment - total_labor;
 
     const data = {
@@ -907,7 +925,7 @@ export default function NewFoundationEstimate() {
                     <h3 className="text-base font-bold text-slate-900">Layout Canvas</h3>
                     <p className="text-sm text-slate-600">Draw walls and place poles on your foundations.</p>
                   </div>
-                  <div className={`flex items-center gap-3 bg-slate-100 p-3 rounded-xl border-2 transition-all duration-500 cursor-pointer ${walls.length > 0 && polesData.length === 0 ? 'border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)] animate-pulse' : 'border-slate-200'}`} onClick={() => setShowPoles(!showPoles)}>
+                  <div className={`flex items-center gap-3 bg-slate-100 p-3 rounded-xl border-2 transition-all duration-500 cursor-pointer ${walls.length > 0 && polesData.length === 0 && !showPoles ? 'border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)] animate-pulse' : 'border-slate-200'}`} onClick={() => setShowPoles(!showPoles)}>
                     <Checkbox id="add-poles" checked={showPoles} onCheckedChange={setShowPoles} className="w-5 h-5 pointer-events-none" />
                     <Label htmlFor="add-poles" className="font-bold text-sm cursor-pointer pointer-events-none">Add Pole/s</Label>
                   </div>
@@ -1601,6 +1619,7 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
               </div>
               <div><p className="text-emerald-700/70">Rebar</p><p className="font-medium text-emerald-900">${costs.rebarCost.toFixed(2)}</p></div>
               <div><p className="text-emerald-700/70">Forming</p><p className="font-medium text-emerald-900">${costs.formingCost.toFixed(2)}</p></div>
+              <div><p className="text-emerald-700/70">Pouring</p><p className="font-medium text-emerald-900">${costs.pouringCost.toFixed(2)}</p></div>
               <div><p className="text-emerald-700/70">Finishing</p><p className="font-medium text-emerald-900">${costs.finishingCost.toFixed(2)}</p></div>
               <div><p className="text-emerald-700/70">Excavation</p><p className="font-medium text-emerald-900">${costs.excavationCost.toFixed(2)}</p></div>
             </div>

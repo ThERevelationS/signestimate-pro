@@ -17,7 +17,7 @@ function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInter
   const unitH = wallMaterial.wall_unit_height_inches || 2.25;
   const mortar = isConcrete ? 0 : mortarGapInches;
   const courseH = unitH + mortar;
-  const numCourses = Math.floor(wallHeightInches / courseH);
+  const numCourses = wallHeightInches / courseH;
   const brickPitch = unitL + (isConcrete ? 0 : mortar);
 
   const totalLinearInches = wallShape.segments.reduce((s, seg) => s + seg.length, 0);
@@ -61,7 +61,7 @@ function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInter
     const intUnitH = internalMaterial.wall_unit_height_inches || 2.25;
     const intMortar = intIsConcrete ? 0 : (internalMortarGapInches || 0.375);
     const intCourseH = intUnitH + intMortar;
-    const intNumCourses = Math.floor(internalWallHeightInches / intCourseH);
+    const intNumCourses = internalWallHeightInches / intCourseH;
     const intBrickPitch = intUnitL + intMortar;
 
     // For each segment, inner centerline length is reduced based on both outer and inner widths.
@@ -213,14 +213,14 @@ export default function WallSection({
               />
             </div>
             <div>
-              <Label className="text-xs mb-1 block text-slate-700 font-semibold">Wall Height (inches) {selectedMat && !isConcrete ? `(Steps of ${selectedMat.wall_unit_height_inches || 2.25}")` : ''}</Label>
+              <Label className="text-xs mb-1 block text-slate-700 font-semibold">Wall Height (inches)</Label>
               <Input
                 type="number"
                 className="h-7 text-xs"
                 value={wall.heightInches || 24}
                 onChange={e => update('heightInches', parseFloat(e.target.value) || 24)}
-                min={!isConcrete ? (selectedMat?.wall_unit_height_inches || 1) : 1}
-                step={!isConcrete ? (selectedMat?.wall_unit_height_inches || 1) : 1}
+                min={1}
+                step="any"
               />
             </div>
             <div>
@@ -307,7 +307,7 @@ export default function WallSection({
                   </div>
                   <div>
                     <Label className="text-xs mb-1 block text-slate-700 font-semibold">
-                      Internal Height (in) {selectedIntMat && !isInternalConcrete ? `(Steps of ${selectedIntMat.wall_unit_height_inches || 2.25}")` : ''}
+                      Internal Height (in)
                     </Label>
                     <Input
                       type="number"
@@ -319,8 +319,8 @@ export default function WallSection({
                         update('internalWallHeightInches', val);
                       }}
                       max={wall.heightInches || 24}
-                      min={!isInternalConcrete ? (selectedIntMat?.wall_unit_height_inches || 1) : 1}
-                      step={!isInternalConcrete ? (selectedIntMat?.wall_unit_height_inches || 1) : 1}
+                      min={1}
+                      step="any"
                     />
                     <p className="text-[10px] text-slate-500 mt-1">Max: {wall.heightInches || 24}"</p>
                   </div>

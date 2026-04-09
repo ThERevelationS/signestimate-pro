@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Trash2, Undo2, Plus, Move, RotateCcw, Crosshair, ZoomIn, ZoomOut } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 const BASE_SCALE = 4;
@@ -100,6 +102,10 @@ export default function SharedCanvas({
   // Foundation state
   const [draggingFoundationIndex, setDraggingFoundationIndex] = useState(null);
   const [dragFoundStart, setDragFoundStart] = useState(null);
+  
+  const [customSizeOpen, setCustomSizeOpen] = useState(false);
+  const [customSizeX, setCustomSizeX] = useState('');
+  const [customSizeY, setCustomSizeY] = useState('');
 
   const containerRef = useRef(null);
   const [canvasSize, setCanvasSize] = useState({ w: 800, h: 500 });
@@ -705,7 +711,7 @@ export default function SharedCanvas({
                 index: i,
                 x: mx,
                 y: my,
-                initialValue: Math.round(lenIn)
+                initialValue: Number(lenIn.toFixed(2))
             });
             return;
         }
@@ -785,6 +791,36 @@ export default function SharedCanvas({
       updateShape(newPts, closed);
   };
 
+  const applyCustomSize = () => {
+    const w = parseFloat(customSizeX);
+    const h = parseFloat(customSizeY);
+    if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
+      toast.error("Please enter valid positive dimensions.");
+      return;
+    }
+    
+    let fMinX = 0, fMaxX = 0, fMinZ = 0, fMaxZ = 0;
+    if (fRects.length > 0) {
+        fMinX = Math.min(...fRects.map(r => r.isPillar ? r.centerX - r.radius : r.minX));
+        fMaxX = Math.max(...fRects.map(r => r.isPillar ? r.centerX + r.radius : r.maxX));
+        fMinZ = Math.min(...fRects.map(r => r.isPillar ? r.centerY - r.radius : r.minY));
+        fMaxZ = Math.max(...fRects.map(r => r.isPillar ? r.centerY + r.radius : r.maxY));
+    }
+    const fCX = fRects.length > 0 ? (fMinX + fMaxX) / 2 : 0;
+    const fCZ = fRects.length > 0 ? (fMinZ + fMaxZ) / 2 : 0;
+
+    const newPts = [
+        { x: fCX - w/2, y: fCZ - h/2 },
+        { x: fCX + w/2, y: fCZ - h/2 },
+        { x: fCX + w/2, y: fCZ + h/2 },
+        { x: fCX - w/2, y: fCZ + h/2 },
+    ];
+    updateShape(newPts, true);
+    setCustomSizeOpen(false);
+    setCustomSizeX('');
+    setCustomSizeY('');
+  };
+
   const rotateActiveWall = (degrees) => {
       if (activeWallIndex === null || points.length === 0) return;
       let minX = points[0].x, maxX = points[0].x, minY = points[0].y, maxY = points[0].y;
@@ -826,9 +862,33 @@ export default function SharedCanvas({
               <Button size="sm" variant={mode === 'edit_points' ? 'secondary' : 'ghost'} className="h-8 text-xs px-3 rounded-none border-r border-slate-100" onClick={() => setMode('edit_points')}>
                 <Crosshair className="w-3 h-3 mr-1.5" /> Edit Points
               </Button>
-              <Button size="sm" variant={mode === 'move_wall' ? 'secondary' : 'ghost'} className="h-8 text-xs px-3 rounded-none" onClick={() => setMode('move_wall')}>
+              <Button size="sm" variant={mode === 'move_wall' ? 'secondary' : 'ghost'} className="h-8 text-xs px-3 rounded-none border-r border-slate-100" onClick={() => setMode('move_wall')}>
                 <Move className="w-3 h-3 mr-1.5" /> Move Wall
               </Button>
+              
+              <Dialog open={customSizeOpen} onOpenChange={setCustomSizeOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="ghost" className="h-8 text-xs px-3 rounded-none rounded-r-md" onClick={() => setCustomSizeOpen(true)}>
+                    <Plus className="w-3 h-3 mr-1.5" /> Custom Size
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[320px]">
+                  <DialogHeader>
+                    <DialogTitle>Custom Wall Size</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="width" className="text-right">Width (in)</Label>
+                      <Input id="width" type="number" value={customSizeX} onChange={(e) => setCustomSizeX(e.target.value)} className="col-span-3" />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="height" className="text-right">Height/Depth (in)</Label>
+                      <Input id="height" type="number" value={customSizeY} onChange={(e) => setCustomSizeY(e.target.value)} className="col-span-3" />
+                    </div>
+                  </div>
+                  <Button onClick={applyCustomSize} className="w-full">Apply to Foundation</Button>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         )}
@@ -961,7 +1021,7 @@ export default function SharedCanvas({
                                 <Input 
                                     type="number" 
                                     className="h-7 w-20 text-xs" 
-                                    value={Math.round(lenIn)} 
+                                    value={Number(lenIn.toFixed(2))} 
                                     onChange={(e) => {
                                         const val = parseFloat(e.target.value);
                                         if (!isNaN(val) && val > 0) handleSegmentChange(i, val);

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Settings } from "@/entities/all";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,6 +62,15 @@ export default function FormulaViewer() {
     machine_rate: 100,
     handling_percentage: 15,
     laser_labor_rate: 45,
+    
+    // Foundation demo values
+    length_inches: 48,
+    width_inches: 48,
+    depth_inches: 36,
+    quantity_foundation: 1,
+    main_labor_rate: 60,
+    excavation_time_per_cy: 2.0,
+    forming_cost_per_sqft: 2.50,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -429,6 +437,71 @@ export default function FormulaViewer() {
     );
   };
 
+  const renderFoundationFormulas = () => {
+    const lenFt = demoValues.length_inches / 12;
+    const widFt = demoValues.width_inches / 12;
+    const depFt = demoValues.depth_inches / 12;
+    const volCY = (lenFt * widFt * depFt) / 27;
+    const excVolCY = volCY * 1.25;
+    const excCost = excVolCY * demoValues.excavation_time_per_cy * demoValues.main_labor_rate;
+
+    const perimFt = 2 * (lenFt + widFt);
+    const formingArea = perimFt * depFt;
+    const formingCost = formingArea * demoValues.forming_cost_per_sqft * demoValues.quantity_foundation;
+
+    return (
+      <div className="space-y-6">
+        <div className="grid md:grid-cols-2 gap-6">
+          <div>
+            <h3 className="font-semibold text-slate-900 mb-4">Demo Values (Editable)</h3>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div><Label>Length (in)</Label><Input type="number" value={demoValues.length_inches} onChange={(e) => updateDemoValue('length_inches', e.target.value)} /></div>
+                <div><Label>Width (in)</Label><Input type="number" value={demoValues.width_inches} onChange={(e) => updateDemoValue('width_inches', e.target.value)} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><Label>Depth (in)</Label><Input type="number" value={demoValues.depth_inches} onChange={(e) => updateDemoValue('depth_inches', e.target.value)} /></div>
+                <div><Label>Quantity</Label><Input type="number" value={demoValues.quantity_foundation} onChange={(e) => updateDemoValue('quantity_foundation', e.target.value)} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><Label>Main Labor Rate ($/hr)</Label><Input type="number" value={demoValues.main_labor_rate} onChange={(e) => updateDemoValue('main_labor_rate', e.target.value)} /></div>
+                <div><Label>Excavation Time (hrs/CY)</Label><Input type="number" value={demoValues.excavation_time_per_cy} onChange={(e) => updateDemoValue('excavation_time_per_cy', e.target.value)} /></div>
+              </div>
+              <div><Label>Forming Rate ($/sqft)</Label><Input type="number" value={demoValues.forming_cost_per_sqft} onChange={(e) => updateDemoValue('forming_cost_per_sqft', e.target.value)} /></div>
+            </div>
+          </div>
+          
+          <div className="bg-slate-50 p-4 rounded-lg">
+            <h3 className="font-semibold text-slate-900 mb-4">Live Calculations (Spread Footing)</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>Volume (CY):</span>
+                <span className="font-mono">({lenFt.toFixed(2)}' × {widFt.toFixed(2)}' × {depFt.toFixed(2)}') ÷ 27 = {volCY.toFixed(2)} CY</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Excavation Volume (1.25x factor):</span>
+                <span className="font-mono">{volCY.toFixed(2)} CY × 1.25 = {excVolCY.toFixed(2)} CY</span>
+              </div>
+              <div className="flex justify-between font-semibold border-t pt-2 mt-2">
+                <span>Excavation Labor Cost:</span>
+                <span className="font-mono">{excVolCY.toFixed(2)} CY × {demoValues.excavation_time_per_cy} hrs × ${demoValues.main_labor_rate}/hr = ${(excCost * demoValues.quantity_foundation).toFixed(2)}</span>
+              </div>
+              
+              <div className="flex justify-between border-t pt-2 mt-2">
+                <span>Forming Area:</span>
+                <span className="font-mono">({lenFt.toFixed(2)}' + {widFt.toFixed(2)}') × 2 × {depFt.toFixed(2)}' = {formingArea.toFixed(2)} sqft</span>
+              </div>
+              <div className="flex justify-between font-semibold border-t pt-2 mt-2">
+                <span>Forming Cost:</span>
+                <span className="font-mono">{formingArea.toFixed(2)} sqft × ${demoValues.forming_cost_per_sqft} = ${formingCost.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderLaserFormulas = () => {
     const cutTimeMinutes = demoValues.cut_length / demoValues.cut_speed;
     const engraveTimeMinutes = demoValues.engrave_area / demoValues.engrave_speed;
@@ -543,6 +616,12 @@ export default function FormulaViewer() {
                       Metal Module
                     </div>
                   </SelectItem>
+                  <SelectItem value="foundation">
+                    <div className="flex items-center gap-2">
+                      <Calculator className="w-4 h-4" />
+                      Concrete | Masonry | Poles
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -550,6 +629,7 @@ export default function FormulaViewer() {
           <CardContent>
             {selectedModule === 'painting' && renderPaintingFormulas()}
             {selectedModule === 'laser' && renderLaserFormulas()}
+            {selectedModule === 'foundation' && renderFoundationFormulas()}
             {selectedModule === 'cnc' && <p className="text-slate-500">CNC formulas coming soon...</p>}
             {selectedModule === 'metal' && <p className="text-slate-500">Metal fabrication formulas coming soon...</p>}
           </CardContent>

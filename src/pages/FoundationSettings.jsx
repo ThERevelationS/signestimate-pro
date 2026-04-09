@@ -13,13 +13,14 @@ const DEFAULT_SETTINGS = {
   // Concrete
   foundation_min_excavation_time: { value: '1.0', label: 'Min Excavation Time (hrs)', category: 'foundation_labor', type: 'number' },
   // Labor rates
-  foundation_rebar_labor_cross_section: { value: '0.5', label: 'Rebar Labor Cost Per Cross Section ($)', category: 'foundation_labor', type: 'number' },
-  foundation_rebar_labor_linear_ft: { value: '0.2', label: 'Rebar Labor Cost Per Linear Ft ($)', category: 'foundation_labor', type: 'number' },
-  foundation_forming_labor_rate: { value: '55', label: 'Forming Labor Rate ($/hr)', category: 'foundation_labor', type: 'number' },
-  foundation_pouring_labor_rate: { value: '60', label: 'Pouring Labor Rate ($/hr)', category: 'foundation_labor', type: 'number' },
-  foundation_finishing_labor_rate: { value: '50', label: 'Finishing Labor Rate ($/hr)', category: 'foundation_labor', type: 'number' },
-  foundation_hand_dig_cost_per_cy: { value: '45', label: 'Hand Dig Cost ($/CY)', category: 'foundation_labor', type: 'number' },
-  foundation_equipment_excavation_cost_per_cy: { value: '35', label: 'Equipment Excavation Cost ($/CY)', category: 'foundation_labor', type: 'number' },
+  foundation_main_labor_rate: { value: '60', label: 'Main Labor Rate ($/hr)', category: 'foundation_labor', type: 'number' },
+  foundation_rebar_time_cross_section: { value: '0.05', label: 'Rebar Labor Time Per Cross Section (hrs)', category: 'foundation_labor', type: 'number' },
+  foundation_rebar_time_linear_ft: { value: '0.02', label: 'Rebar Labor Time Per Linear Ft (hrs)', category: 'foundation_labor', type: 'number' },
+  foundation_forming_cost_per_sqft: { value: '2.50', label: 'Forming Rate ($/sqft)', category: 'foundation_labor', type: 'number' },
+  foundation_pouring_cost_per_cy: { value: '15', label: 'Pouring Labor Rate ($/CY)', category: 'foundation_labor', type: 'number' },
+  foundation_finishing_cost_per_sqft: { value: '1.25', label: 'Finishing Labor Rate ($/sqft)', category: 'foundation_labor', type: 'number' },
+  foundation_hand_dig_time_per_cy: { value: '2.0', label: 'Hand Dig Time (hrs/CY)', category: 'foundation_labor', type: 'number' },
+  foundation_equipment_excavation_time_per_cy: { value: '0.5', label: 'Equipment Excavation Time (hrs/CY)', category: 'foundation_labor', type: 'number' },
   // Forming materials
   foundation_forming_materials_spread_foot: { value: '0.5', label: 'Forming Material Cost Multiplier - Spread Foot', category: 'foundation_calc', type: 'number' },
   foundation_forming_materials_pillar: { value: '0.75', label: 'Forming Material Cost Multiplier - Pillar', category: 'foundation_calc', type: 'number' },
@@ -142,35 +143,44 @@ export default function FoundationSettings() {
           </TabsList>
 
           <TabsContent value="labor" className="space-y-4 pt-4">
+            <Card className="bg-amber-50 border-amber-200">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base text-amber-900">Main Labor Rate</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SettingInput settingKey="foundation_main_labor_rate" />
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Excavation Rates</CardTitle>
+                <CardTitle className="text-base">Excavation Time (Hours/CY)</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <SettingInput settingKey="foundation_hand_dig_cost_per_cy" />
-                <SettingInput settingKey="foundation_equipment_excavation_cost_per_cy" />
+                <SettingInput settingKey="foundation_hand_dig_time_per_cy" />
+                <SettingInput settingKey="foundation_equipment_excavation_time_per_cy" />
                 <SettingInput settingKey="foundation_min_excavation_time" />
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Rebar Labor Rates</CardTitle>
+                <CardTitle className="text-base">Rebar Labor Time (Hours)</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <SettingInput settingKey="foundation_rebar_labor_cross_section" />
-                <SettingInput settingKey="foundation_rebar_labor_linear_ft" />
+                <SettingInput settingKey="foundation_rebar_time_cross_section" />
+                <SettingInput settingKey="foundation_rebar_time_linear_ft" />
               </CardContent>
             </Card>
             
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Forming & Finishing Rates</CardTitle>
+                <CardTitle className="text-base">Forming, Pouring & Finishing Unit Costs</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <SettingInput settingKey="foundation_forming_labor_rate" />
-                <SettingInput settingKey="foundation_pouring_labor_rate" />
-                <SettingInput settingKey="foundation_finishing_labor_rate" />
+                <SettingInput settingKey="foundation_forming_cost_per_sqft" />
+                <SettingInput settingKey="foundation_pouring_cost_per_cy" />
+                <SettingInput settingKey="foundation_finishing_cost_per_sqft" />
               </CardContent>
             </Card>
             <Card className="bg-indigo-50 border-indigo-100">
@@ -178,10 +188,11 @@ export default function FoundationSettings() {
                 <CardTitle className="text-sm text-indigo-900">How Labor Rates are Calculated</CardTitle>
               </CardHeader>
               <CardContent className="text-xs text-indigo-800 space-y-2">
-                <p><strong>Rebar Labor Cost:</strong> (Total Linear Feet × Linear Ft Rate) + (Total Intersections/Cross Sections × Cross Section Rate).</p>
-                <p><strong>Excavation Cost:</strong> (Volume in Cubic Yards × 1.25 Expansion Factor) × Excavation Labor Rate.</p>
-                <p><strong>Forming Cost:</strong> (Perimeter in Feet × 0.25 Hours) × Forming Labor Rate.</p>
-                <p><strong>Finishing Cost:</strong> (Top Surface Area in Sq. Feet × 0.10 Hours) × Finishing Labor Rate.</p>
+                <p><strong>Rebar Labor Cost:</strong> ((Total Linear Feet × Time Per Linear Ft) + (Total Intersections × Time Per Cross Section)) × Main Labor Rate.</p>
+                <p><strong>Excavation Cost:</strong> (Volume in Cubic Yards × 1.25 Expansion Factor) × Time Per CY × Main Labor Rate.</p>
+                <p><strong>Forming Cost:</strong> (Perimeter in Feet × Depth in Feet) × Forming Rate per SQFT.</p>
+                <p><strong>Pouring Cost:</strong> Volume in Cubic Yards × Pouring Rate per CY.</p>
+                <p><strong>Finishing Cost:</strong> Top Surface Area in Sq. Feet × Finishing Rate per SQFT.</p>
               </CardContent>
             </Card>
           </TabsContent>

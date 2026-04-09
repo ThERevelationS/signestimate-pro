@@ -42,7 +42,7 @@ Provide an EXTREMELY CONCISE, highly professional breakdown. Provide ONLY the re
       }
     });
 
-    return Response.json({ recommendation: result.recommendation, ai_engineering_data: result });
+    return Response.json({ recommendation: result.recommendation || result?.response?.recommendation || JSON.stringify(result), ai_engineering_data: result.response || result });
 
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
