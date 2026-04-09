@@ -758,77 +758,96 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
         // Render signs
         if (p.signs && p.signs.length > 0) {
             p.signs.forEach(sign => {
-                if (!sign.shape || !sign.shape.points) return;
+                const signGroup = new THREE.Group();
+                const elements = sign.elements && sign.elements.length > 0 ? sign.elements : [sign];
                 
-                const signShape = new THREE.Shape();
-                const scale = sign.scale_multiplier || 1.0;
-                const pts = sign.shape.points;
-                
-                if (pts.length === 0) return;
-                
-                // Map canvas pixels to feet. 
-                const ptScale = scale / 12;
-                
-                // Y is inverted in canvas vs 3D
-                signShape.moveTo(pts[0].x * ptScale, -pts[0].y * ptScale);
-                
-                for(let i = 0; i < pts.length; i++) {
-                    const pt = pts[i];
-                    const nextPt = pts[(i+1)%pts.length];
-                    if (pt.type === 'curve' && pt.cx !== undefined) {
-                        signShape.quadraticCurveTo(
-                            pt.cx * ptScale, -pt.cy * ptScale,
-                            nextPt.x * ptScale, -nextPt.y * ptScale
-                        );
-                    } else {
-                        signShape.lineTo(nextPt.x * ptScale, -nextPt.y * ptScale);
-                    }
-                }
-                
-                const depthFt = (sign.depth_inches || 12) / 12;
-                
-                const extrudeSettings = {
-                    steps: 1,
-                    depth: depthFt,
-                    bevelEnabled: true,
-                    bevelThickness: 0.5 / 12,
-                    bevelSize: 0.5 / 12,
-                    bevelOffset: 0,
-                    bevelSegments: 2
-                };
-                
-                const signGeo = new THREE.ExtrudeGeometry(signShape, extrudeSettings);
-                signGeo.translate(0, 0, -depthFt / 2);
-                
-                let faceColorHex = 0xffffff;
-                let sideColorHex = 0x475569;
-                if (sign.face_color) faceColorHex = parseInt(sign.face_color.replace('#', ''), 16);
-                if (sign.side_color) sideColorHex = parseInt(sign.side_color.replace('#', ''), 16);
-
-                let signMat;
-                if (sign.image_url) {
-                    const texLoader = new THREE.TextureLoader();
-                    texLoader.setCrossOrigin('anonymous');
-                    const tex = texLoader.load(sign.image_url);
-                    tex.colorSpace = THREE.SRGBColorSpace;
+                elements.forEach(el => {
+                    const signShape = new THREE.Shape();
+                    let pts = [];
                     
-                    const faceMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.2, color: faceColorHex });
-                    const sideMat = new THREE.MeshStandardMaterial({ color: sideColorHex, roughness: 0.5 });
-                    signMat = [faceMat, sideMat];
-                } else {
-                    const faceMat = new THREE.MeshStandardMaterial({ color: faceColorHex, roughness: 0.2 });
-                    const sideMat = new THREE.MeshStandardMaterial({ color: sideColorHex, roughness: 0.5 });
-                    signMat = [faceMat, sideMat];
-                }
-                
-                const signMesh = new THREE.Mesh(signGeo, signMat);
+                    if (el.type === 'custom') {
+                        pts = el.points || [];
+                    } else {
+                        const w2 = (el.width || 48) / 2;
+                        const h2 = (el.height || 24) / 2;
+                        if (el.type === 'rectangle') {
+                            pts = [
+                                { x: -w2, y: -h2, type: 'line' },
+                                { x: w2, y: -h2, type: 'line' },
+                                { x: w2, y: h2, type: 'line' },
+                                { x: -w2, y: h2, type: 'line' }
+                            ];
+                        } else if (el.type === 'circle') {
+                            for (let i = 0; i < 32; i++) {
+                                const theta = (i / 32) * Math.PI * 2;
+                                pts.push({ x: Math.cos(theta) * w2, y: Math.sin(theta) * h2, type: 'line' });
+                            }
+                        }
+                    }
+
+                    if (pts.length === 0) return;
+                    
+                    const ptScale = 1 / 12;
+                    signShape.moveTo(pts[0].x * ptScale, -pts[0].y * ptScale);
+                    for(let i = 0; i < pts.length; i++) {
+                        const pt = pts[i];
+                        const nextPt = pts[(i+1)%pts.length];
+                        if (pt.type === 'curve' && pt.cx !== undefined) {
+                            signShape.quadraticCurveTo(
+                                pt.cx * ptScale, -pt.cy * ptScale,
+                                nextPt.x * ptScale, -nextPt.y * ptScale
+                            );
+                        } else {
+                            signShape.lineTo(nextPt.x * ptScale, -nextPt.y * ptScale);
+                        }
+                    }
+                    
+                    const depthFt = (sign.depth_inches || 12) / 12;
+                    const extrudeSettings = {
+                        steps: 1, depth: depthFt, bevelEnabled: true,
+                        bevelThickness: 0.5 / 12, bevelSize: 0.5 / 12,
+                        bevelOffset: 0, bevelSegments: 2
+                    };
+                    
+                    const signGeo = new THREE.ExtrudeGeometry(signShape, extrudeSettings);
+                    signGeo.translate(0, 0, -depthFt / 2);
+                    
+                    let faceColorHex = 0xffffff;
+                    let sideColorHex = 0x475569;
+                    if (sign.face_color) faceColorHex = parseInt(sign.face_color.replace('#', ''), 16);
+                    if (sign.return_color || sign.side_color) sideColorHex = parseInt((sign.return_color || sign.side_color).replace('#', ''), 16);
+
+                    let signMat;
+                    const signOpacity = xrayMode ? 0.35 : 1.0;
+                    if (sign.image_url && elements.length === 1) {
+                        const texLoader = new THREE.TextureLoader();
+                        texLoader.setCrossOrigin('anonymous');
+                        const tex = texLoader.load(sign.image_url);
+                        tex.colorSpace = THREE.SRGBColorSpace;
+                        
+                        const faceMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.2, color: faceColorHex, transparent: xrayMode, opacity: signOpacity, depthWrite: !xrayMode });
+                        const sideMat = new THREE.MeshStandardMaterial({ color: sideColorHex, roughness: 0.5, transparent: xrayMode, opacity: signOpacity, depthWrite: !xrayMode });
+                        signMat = [faceMat, sideMat];
+                    } else {
+                        const faceMat = new THREE.MeshStandardMaterial({ color: faceColorHex, roughness: 0.2, transparent: xrayMode, opacity: signOpacity, depthWrite: !xrayMode });
+                        const sideMat = new THREE.MeshStandardMaterial({ color: sideColorHex, roughness: 0.5, transparent: xrayMode, opacity: signOpacity, depthWrite: !xrayMode });
+                        signMat = [faceMat, sideMat];
+                    }
+                    
+                    const elMesh = new THREE.Mesh(signGeo, signMat);
+                    const exFt = (el.x || 0) / 12;
+                    const eyFt = -(el.y || 0) / 12; // inverted y for 3d
+                    elMesh.position.set(exFt, eyFt, 0);
+                    elMesh.castShadow = true;
+                    signGroup.add(elMesh);
+                });
                 
                 const syOffsetFt = (sign.y_offset_inches || 0) / 12;
+                const sxOffsetFt = (sign.x_offset_inches || 0) / 12;
                 const szOffsetFt = (sign.z_offset_inches || 0) / 12;
                 
-                signMesh.position.set(0, (topOfFoundation + syOffsetFt) - yCenter, szOffsetFt);
-                signMesh.castShadow = true;
-                group.add(signMesh);
+                signGroup.position.set(sxOffsetFt, (topOfFoundation + syOffsetFt) - yCenter, szOffsetFt);
+                group.add(signGroup);
             });
         }
     });

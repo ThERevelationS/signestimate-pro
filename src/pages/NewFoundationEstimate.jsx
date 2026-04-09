@@ -24,6 +24,73 @@ import SignDesignerModal from '@/components/SignDesignerModal';
 import AIEngineeringCalculatorModal from '@/components/foundation/AIEngineeringCalculatorModal';
 import { Bot, PenTool } from 'lucide-react';
 
+function SignPositioningTools({ pole, pIdx, sign, sIdx, polesData, onUpdate }) {
+  const [tempY, setTempY] = useState(0);
+  const [tempX, setTempX] = useState(0);
+
+  const applyOffset = () => {
+    onUpdate({
+      y_offset_inches: (sign.y_offset_inches || 0) + (parseFloat(tempY) || 0),
+      x_offset_inches: (sign.x_offset_inches || 0) + (parseFloat(tempX) || 0)
+    });
+    setTempY(0);
+    setTempX(0);
+  };
+
+  const alignTop = () => {
+    const signHeight = sign.elements && sign.elements.length > 0 
+      ? Math.max(...sign.elements.map(e => e.height || 0))
+      : (sign.height_inches || 24);
+      
+    // pole height - sign height/2 + 0.125
+    onUpdate({ y_offset_inches: pole.height_inches - (signHeight / 2) + 0.125 });
+  };
+
+  const alignBottom = () => {
+    const signHeight = sign.elements && sign.elements.length > 0 
+      ? Math.max(...sign.elements.map(e => e.height || 0))
+      : (sign.height_inches || 24);
+      
+    // pole height + sign height/2
+    onUpdate({ y_offset_inches: pole.height_inches + (signHeight / 2) });
+  };
+
+  const centerBetweenPoles = () => {
+    if (polesData.length >= 2) {
+      const otherPole = polesData.find((p, i) => i !== pIdx);
+      if (otherPole) {
+        // Find distance between them on X axis and midpoint
+        const currentX = pole.x_inches || 0;
+        const otherX = otherPole.x_inches || 0;
+        const midpointX = (currentX + otherX) / 2;
+        onUpdate({ x_offset_inches: midpointX - currentX });
+      }
+    }
+  };
+
+  return (
+    <div className="mt-2 bg-slate-100 p-2 rounded-md border border-slate-200">
+       <Label className="text-[10px] font-bold text-slate-600 uppercase mb-1.5 block">Positioning Tools</Label>
+       <div className="flex flex-wrap gap-1.5 mb-2">
+         <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 bg-white" onClick={alignTop}>Align Top</Button>
+         <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 bg-white" onClick={alignBottom}>Align Bottom</Button>
+         {polesData.length >= 2 && <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 bg-white" onClick={centerBetweenPoles}>Center on 2 Poles</Button>}
+       </div>
+       <div className="flex items-center gap-2">
+         <div className="flex items-center gap-1">
+           <Label className="text-[10px] text-slate-500">Y (Up/Dn):</Label>
+           <Input type="number" className="h-6 w-14 text-[10px] px-1 bg-white" value={tempY} onChange={e => setTempY(e.target.value)} />
+         </div>
+         <div className="flex items-center gap-1">
+           <Label className="text-[10px] text-slate-500">X (L/R):</Label>
+           <Input type="number" className="h-6 w-14 text-[10px] px-1 bg-white" value={tempX} onChange={e => setTempX(e.target.value)} />
+         </div>
+         <Button size="sm" className="h-6 text-[10px] px-2" onClick={applyOffset}>Apply</Button>
+       </div>
+    </div>
+  );
+}
+
 const FoundationProjectEntity = base44.entities.FoundationProject;
 const FoundationInventoryEntity = base44.entities.FoundationInventory;
 const SettingsEntity = base44.entities.Settings;
@@ -125,6 +192,13 @@ export default function NewFoundationEstimate() {
   const [designerSignIdx, setDesignerSignIdx] = useState(null);
   const [shakePoleDropdown, setShakePoleDropdown] = useState(false);
   const [wallShakeIndex, setWallShakeIndex] = useState(null);
+
+  // Auto-select pole if inventory loads and no pole selected
+  useEffect(() => {
+    if (poles.length > 0 && !selectedPoleId) {
+      setSelectedPoleId(poles[0].id);
+    }
+  }, [poles, selectedPoleId]);
 
   const handleWallMaterialError = (idx) => {
      setWallShakeIndex(idx);
@@ -263,7 +337,12 @@ export default function NewFoundationEstimate() {
     setItems(prev => { const arr = [...prev]; arr[idx] = { ...arr[idx], [field]: value }; return arr; });
     markDirty();
   };
-  const addWall = () => { setWalls(prev => [...prev, newWall()]); markDirty(); };
+  const addWall = () => { 
+    const mat = wallMaterials.length > 0 ? wallMaterials[0] : null;
+    const matId = mat ? mat.id : '';
+    setWalls(prev => [...prev, { ...newWall(), materialId: matId, selectedMaterial: mat }]); 
+    markDirty(); 
+  };
   const removeWall = (idx) => { setWalls(prev => prev.filter((_, i) => i !== idx)); markDirty(); };
   const updateWall = (idx, wallData) => {
     setWalls(prev => { const arr = [...prev]; arr[idx] = wallData; return arr; });
@@ -803,9 +882,9 @@ export default function NewFoundationEstimate() {
                     <h3 className="text-base font-bold text-slate-900">Layout Canvas</h3>
                     <p className="text-sm text-slate-600">Draw walls and place poles on your foundations.</p>
                   </div>
-                  <div className="flex items-center gap-2 bg-slate-100 p-2 rounded-lg border border-slate-200">
-                    <Checkbox id="add-poles" checked={showPoles} onCheckedChange={setShowPoles} />
-                    <Label htmlFor="add-poles" className="font-semibold cursor-pointer">Add Pole/s</Label>
+                  <div className={`flex items-center gap-3 bg-slate-100 p-3 rounded-xl border-2 transition-all duration-500 cursor-pointer ${walls.length > 0 && polesData.length === 0 ? 'border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)] animate-pulse' : 'border-slate-200'}`} onClick={() => setShowPoles(!showPoles)}>
+                    <Checkbox id="add-poles" checked={showPoles} onCheckedChange={setShowPoles} className="w-5 h-5 pointer-events-none" />
+                    <Label htmlFor="add-poles" className="font-bold text-sm cursor-pointer pointer-events-none">Add Pole/s</Label>
                   </div>
                 </div>
 
@@ -896,19 +975,21 @@ export default function NewFoundationEstimate() {
                                 <div className="p-1.5 px-2 flex justify-between items-center bg-slate-50/50 border-b border-slate-100">
                                   <span className="font-semibold text-xs text-slate-700">Pole {idx + 1}</span>
                                   <div className="flex items-center gap-2">
-                                    <input 
-                                      type="color" 
-                                      value={pole.pole_color || '#475569'} 
-                                      onChange={(e) => {
-                                        const arr = [...polesData];
-                                        arr[idx].pole_color = e.target.value;
-                                        setPolesData(arr);
-                                        markDirty();
-                                      }}
-                                      className="w-5 h-5 rounded cursor-pointer border border-slate-300 p-0 overflow-hidden"
-                                      title="Pole Color"
-                                      onClick={e => e.stopPropagation()}
-                                    />
+                                    <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                                      <Label className="text-[10px] text-slate-500 font-semibold uppercase cursor-pointer" htmlFor={`pole-color-${idx}`}>Color</Label>
+                                      <input 
+                                        id={`pole-color-${idx}`}
+                                        type="color" 
+                                        defaultValue={pole.pole_color || '#475569'} 
+                                        onBlur={(e) => {
+                                          const arr = [...polesData];
+                                          arr[idx].pole_color = e.target.value;
+                                          setPolesData(arr);
+                                          markDirty();
+                                        }}
+                                        className="w-5 h-5 rounded cursor-pointer border border-slate-300 p-0 overflow-hidden"
+                                      />
+                                    </div>
                                     <Button size="icon" variant="ghost" className="h-5 w-5 text-red-500 hover:bg-red-100 rounded-md" onClick={(e) => {
                                         e.stopPropagation();
                                         setPolesData(polesData.filter((_, i) => i !== idx));
@@ -986,6 +1067,17 @@ export default function NewFoundationEstimate() {
                                           <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 flex-1 bg-white border border-slate-200 shadow-sm rounded-sm mr-0.5" onClick={() => centerPole(idx, 'horizontal')} title="Center Horizontally">Horiz</Button>
                                           <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 flex-1 bg-white border border-slate-200 shadow-sm rounded-sm" onClick={() => centerPole(idx, 'vertical')} title="Center Vertically">Vert</Button>
                                         </div>
+                                    </div>
+                                    
+                                    <div className="pt-1 flex gap-1">
+                                       <Button 
+                                          size="sm" 
+                                          variant={canvasMode === 'move_pole' && selectedPlacedIdx === idx ? 'default' : 'outline'} 
+                                          onClick={(e) => { e.stopPropagation(); setCanvasMode(canvasMode === 'move_pole' ? 'draw' : 'move_pole'); }}
+                                          className="h-6 text-[10px] px-2 flex-1 bg-white border border-slate-200 shadow-sm rounded-sm"
+                                      >
+                                          <Move className="w-3 h-3 mr-1" /> Move Pole
+                                      </Button>
                                     </div>
 
 
@@ -1110,17 +1202,25 @@ export default function NewFoundationEstimate() {
                            <div className="space-y-2">
                               {(pole.signs || []).length === 0 && <p className="text-xs text-slate-400">No cabinets added.</p>}
                               {(pole.signs || []).map((sign, sIdx) => (
-                                 <div key={sIdx} className="bg-slate-50 border border-slate-100 rounded p-2 text-xs flex justify-between items-center">
-                                    <span className="font-medium text-slate-700 truncate">{sign.name || `Cabinet ${sIdx + 1}`}</span>
-                                    <div className="flex gap-1 flex-shrink-0">
-                                       <Button size="icon" variant="ghost" className="h-6 w-6 hover:bg-blue-100" onClick={() => openSignDesigner(pIdx, sIdx)}><PenTool className="w-3 h-3 text-blue-600" /></Button>
-                                       <Button size="icon" variant="ghost" className="h-6 w-6 hover:bg-red-100" onClick={() => {
-                                          const arr = [...polesData];
-                                          arr[pIdx].signs.splice(sIdx, 1);
-                                          setPolesData(arr); markDirty();
-                                       }}><Trash2 className="w-3 h-3 text-red-500" /></Button>
-                                    </div>
-                                 </div>
+                                 <React.Fragment key={sIdx}>
+                                   <div className="bg-slate-50 border border-slate-100 rounded p-2 text-xs flex justify-between items-center">
+                                      <span className="font-medium text-slate-700 truncate">{sign.name || `Cabinet ${sIdx + 1}`}</span>
+                                      <div className="flex gap-1 flex-shrink-0">
+                                         <Button size="icon" variant="ghost" className="h-6 w-6 hover:bg-blue-100" onClick={() => openSignDesigner(pIdx, sIdx)}><PenTool className="w-3 h-3 text-blue-600" /></Button>
+                                         <Button size="icon" variant="ghost" className="h-6 w-6 hover:bg-red-100" onClick={() => {
+                                            const arr = [...polesData];
+                                            arr[pIdx].signs.splice(sIdx, 1);
+                                            setPolesData(arr); markDirty();
+                                         }}><Trash2 className="w-3 h-3 text-red-500" /></Button>
+                                      </div>
+                                   </div>
+                                   <SignPositioningTools pole={pole} pIdx={pIdx} sign={sign} sIdx={sIdx} polesData={polesData} onUpdate={(updates) => {
+                                       const arr = [...polesData];
+                                       arr[pIdx].signs[sIdx] = { ...arr[pIdx].signs[sIdx], ...updates };
+                                       setPolesData(arr);
+                                       markDirty();
+                                   }} />
+                                 </React.Fragment>
                               ))}
                            </div>
                         </div>

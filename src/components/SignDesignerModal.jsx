@@ -4,90 +4,122 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Image as ImageIcon, Sparkles, PenTool, Shapes, Trash2, MousePointer2, Plus, Move } from 'lucide-react';
+import { Image as ImageIcon, Sparkles, PenTool, Shapes, Trash2, MousePointer2, Plus, Move, Circle, Square } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 export default function SignDesignerModal({ open, onClose, onSave, initialSign }) {
-  const [activeTab, setActiveTab] = useState('dimensions');
+  const [activeTab, setActiveTab] = useState('elements');
   
   const [signName, setSignName] = useState('Custom Sign');
-  const [shapeType, setShapeType] = useState('rectangle'); // rectangle, circle, custom
-  const [widthInches, setWidthInches] = useState(48);
-  const [heightInches, setHeightInches] = useState(24);
   const [depthInches, setDepthInches] = useState(12);
-  
   const [faceColor, setFaceColor] = useState('#ffffff');
-  const [sideColor, setSideColor] = useState('#475569');
+  const [returnColor, setReturnColor] = useState('#475569');
   const [imageFileUrl, setImageFileUrl] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
 
-  const [customPoints, setCustomPoints] = useState([]);
+  const [elements, setElements] = useState([]);
+  const [selectedElId, setSelectedElId] = useState(null);
+
   const canvasRef = useRef(null);
-  const [mode, setMode] = useState('select');
-  const [selectedIdx, setSelectedIdx] = useState(null);
+  const [mode, setMode] = useState('select'); // select, add_point
   const [draggingTarget, setDraggingTarget] = useState(null);
+  const [selectedPointIdx, setSelectedPointIdx] = useState(null);
 
   // Initialize
   useEffect(() => {
     if (open) {
       if (initialSign) {
         setSignName(initialSign.name || 'Custom Sign');
-        setShapeType(initialSign.shapeType || 'rectangle');
-        setWidthInches(initialSign.width_inches || 48);
-        setHeightInches(initialSign.height_inches || 24);
         setDepthInches(initialSign.depth_inches || 12);
         setFaceColor(initialSign.face_color || '#ffffff');
-        setSideColor(initialSign.side_color || '#475569');
+        setReturnColor(initialSign.side_color || initialSign.return_color || '#475569');
         setImageFileUrl(initialSign.image_url || '');
-        setCustomPoints(JSON.parse(JSON.stringify(initialSign.shape?.points || [])));
+        
+        if (initialSign.elements && initialSign.elements.length > 0) {
+            setElements(JSON.parse(JSON.stringify(initialSign.elements)));
+        } else if (initialSign.shape) {
+            // legacy fallback
+            setElements([{
+                id: 1,
+                type: initialSign.shapeType || 'rectangle',
+                width: initialSign.width_inches || 48,
+                height: initialSign.height_inches || 24,
+                x: 0,
+                y: 0,
+                points: initialSign.shape.points || []
+            }]);
+        } else {
+            setElements([]);
+        }
       } else {
         // Defaults
         setSignName('Cabinet Sign');
-        setShapeType('rectangle');
-        setWidthInches(48);
-        setHeightInches(24);
         setDepthInches(12);
         setFaceColor('#ffffff');
-        setSideColor('#475569');
+        setReturnColor('#475569');
         setImageFileUrl('');
-        setCustomPoints([]);
+        setElements([
+            { id: Date.now(), type: 'rectangle', width: 48, height: 24, x: 0, y: 0 }
+        ]);
       }
-      setActiveTab('dimensions');
+      setActiveTab('elements');
       setMode('select');
-      setSelectedIdx(null);
+      setSelectedElId(null);
+      setSelectedPointIdx(null);
     }
   }, [open, initialSign]);
 
-  // Generate points based on selected shape type
-  const getGeneratedPoints = () => {
-    if (shapeType === 'custom') return customPoints;
-    
-    const w2 = widthInches / 2;
-    const h2 = heightInches / 2;
-    
-    if (shapeType === 'rectangle') {
-      return [
-        { x: -w2, y: -h2, type: 'line' },
-        { x: w2, y: -h2, type: 'line' },
-        { x: w2, y: h2, type: 'line' },
-        { x: -w2, y: h2, type: 'line' }
-      ];
-    } else if (shapeType === 'circle') {
-      const pts = [];
-      for (let i = 0; i < 32; i++) {
-        const theta = (i / 32) * Math.PI * 2;
-        pts.push({
-          x: Math.cos(theta) * w2,
-          y: Math.sin(theta) * h2,
-          type: 'line'
-        });
-      }
-      return pts;
-    }
-    return [];
+  const addElement = (type) => {
+      const newEl = {
+          id: Date.now(),
+          type,
+          width: 48,
+          height: 24,
+          x: 0,
+          y: 0,
+          points: type === 'custom' ? [
+              { x: -24, y: -12, type: 'line' },
+              { x: 24, y: -12, type: 'line' },
+              { x: 24, y: 12, type: 'line' },
+              { x: -24, y: 12, type: 'line' }
+          ] : []
+      };
+      setElements([...elements, newEl]);
+      setSelectedElId(newEl.id);
   };
 
-  const currentPoints = getGeneratedPoints();
+  const removeElement = (id) => {
+      setElements(elements.filter(e => e.id !== id));
+      if (selectedElId === id) setSelectedElId(null);
+  };
+
+  const updateElement = (id, updates) => {
+      setElements(elements.map(e => e.id === id ? { ...e, ...updates } : e));
+  };
+
+  const selectedEl = elements.find(e => e.id === selectedElId);
+
+  const getPointsForElement = (el) => {
+      if (el.type === 'custom') return el.points;
+      const w2 = el.width / 2;
+      const h2 = el.height / 2;
+      if (el.type === 'rectangle') {
+          return [
+              { x: -w2, y: -h2, type: 'line' },
+              { x: w2, y: -h2, type: 'line' },
+              { x: w2, y: h2, type: 'line' },
+              { x: -w2, y: h2, type: 'line' }
+          ];
+      } else if (el.type === 'circle') {
+          const pts = [];
+          for (let i = 0; i < 32; i++) {
+              const theta = (i / 32) * Math.PI * 2;
+              pts.push({ x: Math.cos(theta) * w2, y: Math.sin(theta) * h2, type: 'line' });
+          }
+          return pts;
+      }
+      return [];
+  };
 
   // Draw canvas preview
   useEffect(() => {
@@ -114,17 +146,18 @@ export default function SignDesignerModal({ open, onClose, onSave, initialSign }
     ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.stroke();
 
-    if (currentPoints.length === 0) return;
+    if (elements.length === 0) return;
 
     // Find bounding box to scale view
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    currentPoints.forEach(p => {
-      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
-      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
-      if(p.type === 'curve' && p.cx !== undefined) {
-        minX = Math.min(minX, p.cx); maxX = Math.max(maxX, p.cx);
-        minY = Math.min(minY, p.cy); maxY = Math.max(maxY, p.cy);
-      }
+    elements.forEach(el => {
+        const pts = getPointsForElement(el);
+        pts.forEach(p => {
+            const absX = p.x + el.x;
+            const absY = p.y + el.y;
+            minX = Math.min(minX, absX); maxX = Math.max(maxX, absX);
+            minY = Math.min(minY, absY); maxY = Math.max(maxY, absY);
+        });
     });
 
     const boxW = Math.max(1, maxX - minX);
@@ -135,70 +168,82 @@ export default function SignDesignerModal({ open, onClose, onSave, initialSign }
     ctx.translate(cx, cy);
     ctx.scale(viewScale, viewScale);
 
-    // Draw filled shape
-    ctx.beginPath();
-    ctx.moveTo(currentPoints[0].x, currentPoints[0].y);
-    for (let i = 0; i < currentPoints.length; i++) {
-      const p = currentPoints[i];
-      const nextIdx = (i + 1) % currentPoints.length;
-      const nextP = currentPoints[nextIdx];
-      
-      if (p.type === 'curve' && p.cx !== undefined) {
-        ctx.quadraticCurveTo(p.cx, p.cy, nextP.x, nextP.y);
-      } else {
-        ctx.lineTo(nextP.x, nextP.y);
-      }
-    }
-    ctx.closePath();
-    ctx.fillStyle = faceColor;
-    ctx.fill();
-    
-    ctx.strokeStyle = sideColor;
-    ctx.lineWidth = 2 / viewScale;
-    ctx.stroke();
+    // Draw all elements
+    elements.forEach(el => {
+        const pts = getPointsForElement(el);
+        if(pts.length === 0) return;
 
-    // If custom shape, draw editable points
-    if (shapeType === 'custom') {
-      currentPoints.forEach((p, i) => {
-        if (p.type === 'curve' && p.cx !== undefined) {
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p.cx, p.cy);
-          const nextP = currentPoints[(i + 1) % currentPoints.length];
-          ctx.lineTo(nextP.x, nextP.y);
-          ctx.strokeStyle = '#94a3b8';
-          ctx.lineWidth = 1 / viewScale;
-          ctx.stroke();
-          
-          ctx.beginPath();
-          ctx.arc(p.cx, p.cy, 5 / viewScale, 0, Math.PI * 2);
-          ctx.fillStyle = '#f59e0b';
-          ctx.fill();
-        }
-        
+        ctx.save();
+        ctx.translate(el.x, el.y);
+
         ctx.beginPath();
-        ctx.arc(p.x, p.y, (i === selectedIdx ? 7 : 5) / viewScale, 0, Math.PI * 2);
-        ctx.fillStyle = i === selectedIdx ? '#ef4444' : '#ffffff';
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 0; i < pts.length; i++) {
+          const p = pts[i];
+          const nextIdx = (i + 1) % pts.length;
+          const nextP = pts[nextIdx];
+          
+          if (p.type === 'curve' && p.cx !== undefined) {
+            ctx.quadraticCurveTo(p.cx, p.cy, nextP.x, nextP.y);
+          } else {
+            ctx.lineTo(nextP.x, nextP.y);
+          }
+        }
+        ctx.closePath();
+        
+        ctx.fillStyle = el.id === selectedElId ? faceColor : faceColor + '88';
         ctx.fill();
-        ctx.strokeStyle = '#2563eb';
-        ctx.lineWidth = 2 / viewScale;
+        ctx.strokeStyle = el.id === selectedElId ? '#2563eb' : returnColor;
+        ctx.lineWidth = (el.id === selectedElId ? 3 : 2) / viewScale;
         ctx.stroke();
-      });
-    }
+
+        // Draw points for custom shapes if selected
+        if (el.id === selectedElId && el.type === 'custom') {
+            pts.forEach((p, i) => {
+                if (p.type === 'curve' && p.cx !== undefined) {
+                  ctx.beginPath();
+                  ctx.moveTo(p.x, p.y);
+                  ctx.lineTo(p.cx, p.cy);
+                  ctx.lineTo(pts[(i + 1) % pts.length].x, pts[(i + 1) % pts.length].y);
+                  ctx.strokeStyle = '#94a3b8';
+                  ctx.lineWidth = 1 / viewScale;
+                  ctx.stroke();
+                  
+                  ctx.beginPath();
+                  ctx.arc(p.cx, p.cy, 5 / viewScale, 0, Math.PI * 2);
+                  ctx.fillStyle = '#f59e0b';
+                  ctx.fill();
+                }
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, (i === selectedPointIdx ? 7 : 5) / viewScale, 0, Math.PI * 2);
+                ctx.fillStyle = i === selectedPointIdx ? '#ef4444' : '#ffffff';
+                ctx.fill();
+                ctx.strokeStyle = '#2563eb';
+                ctx.lineWidth = 2 / viewScale;
+                ctx.stroke();
+            });
+        }
+        ctx.restore();
+    });
 
     ctx.restore();
-  }, [currentPoints, selectedIdx, faceColor, sideColor, shapeType, widthInches, heightInches]);
+  }, [elements, selectedElId, selectedPointIdx, faceColor, returnColor]);
 
-  // Mouse handlers for custom shapes
+  // Mouse handlers
   const getMousePos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
     const cx = canvasRef.current.width / 2;
     const cy = canvasRef.current.height / 2;
     
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    currentPoints.forEach(p => {
-      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
-      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+    elements.forEach(el => {
+        const pts = getPointsForElement(el);
+        pts.forEach(p => {
+            const absX = p.x + el.x;
+            const absY = p.y + el.y;
+            minX = Math.min(minX, absX); maxX = Math.max(maxX, absX);
+            minY = Math.min(minY, absY); maxY = Math.max(maxY, absY);
+        });
     });
     const boxW = Math.max(1, maxX - minX);
     const boxH = Math.max(1, maxY - minY);
@@ -211,46 +256,78 @@ export default function SignDesignerModal({ open, onClose, onSave, initialSign }
   };
 
   const handlePointerDown = (e) => {
-    if (shapeType !== 'custom') return;
     const pos = getMousePos(e);
     
-    if (mode === 'add') {
-      const newPts = [...customPoints];
-      newPts.push({ x: pos.x, y: pos.y, type: 'line' });
-      setCustomPoints(newPts);
-      setSelectedIdx(newPts.length - 1);
-      return;
-    }
-    
-    for (let i = 0; i < customPoints.length; i++) {
-      const p = customPoints[i];
-      if (Math.hypot(p.x - pos.x, p.y - pos.y) < 15) {
-        setSelectedIdx(i);
-        setDraggingTarget({ type: 'point', index: i });
-        return;
-      }
-      if (p.type === 'curve' && p.cx !== undefined) {
-        if (Math.hypot(p.cx - pos.x, p.cy - pos.y) < 15) {
-          setDraggingTarget({ type: 'control', index: i });
+    // If we have a selected custom shape, check its points
+    if (selectedEl && selectedEl.type === 'custom') {
+        const pts = selectedEl.points;
+        const localPos = { x: pos.x - selectedEl.x, y: pos.y - selectedEl.y };
+        
+        if (mode === 'add') {
+          const newPts = [...pts];
+          newPts.push({ x: localPos.x, y: localPos.y, type: 'line' });
+          updateElement(selectedEl.id, { points: newPts });
+          setSelectedPointIdx(newPts.length - 1);
           return;
         }
-      }
+
+        for (let i = 0; i < pts.length; i++) {
+          const p = pts[i];
+          if (Math.hypot(p.x - localPos.x, p.y - localPos.y) < 15) {
+            setSelectedPointIdx(i);
+            setDraggingTarget({ type: 'point', index: i });
+            return;
+          }
+          if (p.type === 'curve' && p.cx !== undefined) {
+            if (Math.hypot(p.cx - localPos.x, p.cy - localPos.y) < 15) {
+              setDraggingTarget({ type: 'control', index: i });
+              return;
+            }
+          }
+        }
     }
-    setSelectedIdx(null);
+
+    // Otherwise, check if we clicked inside any element to select it (bounding box approximation)
+    for (let i = elements.length - 1; i >= 0; i--) {
+        const el = elements[i];
+        let w2 = el.width/2;
+        let h2 = el.height/2;
+        if (el.type === 'custom') {
+            w2 = Math.max(...el.points.map(p=>Math.abs(p.x)));
+            h2 = Math.max(...el.points.map(p=>Math.abs(p.y)));
+        }
+        if (pos.x >= el.x - w2 && pos.x <= el.x + w2 && pos.y >= el.y - h2 && pos.y <= el.y + h2) {
+            setSelectedElId(el.id);
+            setSelectedPointIdx(null);
+            setDraggingTarget({ type: 'shape', id: el.id, startX: pos.x, startY: pos.y, initX: el.x, initY: el.y });
+            return;
+        }
+    }
+    
+    setSelectedElId(null);
+    setSelectedPointIdx(null);
   };
 
   const handlePointerMove = (e) => {
-    if (!draggingTarget || shapeType !== 'custom') return;
+    if (!draggingTarget) return;
     const pos = getMousePos(e);
-    const newPts = [...customPoints];
-    if (draggingTarget.type === 'point') {
-      newPts[draggingTarget.index].x = pos.x;
-      newPts[draggingTarget.index].y = pos.y;
-    } else {
-      newPts[draggingTarget.index].cx = pos.x;
-      newPts[draggingTarget.index].cy = pos.y;
+    
+    if (draggingTarget.type === 'shape') {
+        const dx = pos.x - draggingTarget.startX;
+        const dy = pos.y - draggingTarget.startY;
+        updateElement(draggingTarget.id, { x: draggingTarget.initX + dx, y: draggingTarget.initY + dy });
+    } else if (selectedEl && selectedEl.type === 'custom') {
+        const localPos = { x: pos.x - selectedEl.x, y: pos.y - selectedEl.y };
+        const newPts = [...selectedEl.points];
+        if (draggingTarget.type === 'point') {
+          newPts[draggingTarget.index].x = localPos.x;
+          newPts[draggingTarget.index].y = localPos.y;
+        } else {
+          newPts[draggingTarget.index].cx = localPos.x;
+          newPts[draggingTarget.index].cy = localPos.y;
+        }
+        updateElement(selectedEl.id, { points: newPts });
     }
-    setCustomPoints(newPts);
   };
 
   const handlePointerUp = () => setDraggingTarget(null);
@@ -271,15 +348,13 @@ export default function SignDesignerModal({ open, onClose, onSave, initialSign }
 
   const handleSave = () => {
     onSave({
-      shape: { points: currentPoints, closed: true },
-      shapeType,
-      width_inches: widthInches,
-      height_inches: heightInches,
+      elements,
       depth_inches: depthInches,
       scale_multiplier: 1.0,
       image_url: imageFileUrl,
       face_color: faceColor,
-      side_color: sideColor,
+      side_color: returnColor,
+      return_color: returnColor,
       id: initialSign?.id || `sign_${Date.now()}`,
       name: signName
     });
@@ -301,73 +376,73 @@ export default function SignDesignerModal({ open, onClose, onSave, initialSign }
                 <Label className="text-xs text-slate-500">Cabinet Name</Label>
                 <Input value={signName} onChange={e => setSignName(e.target.value)} className="mt-1 h-8 text-sm" />
               </div>
-              
-              <div className="pt-2">
-                <Label className="text-xs text-slate-500">Shape Type</Label>
-                <Select value={shapeType} onValueChange={v => {
-                  setShapeType(v);
-                  if (v === 'custom' && customPoints.length === 0) {
-                    setCustomPoints([
-                        { x: -widthInches/2, y: -heightInches/2, type: 'line' },
-                        { x: widthInches/2, y: -heightInches/2, type: 'line' },
-                        { x: widthInches/2, y: heightInches/2, type: 'line' },
-                        { x: -widthInches/2, y: heightInches/2, type: 'line' }
-                    ]);
-                  }
-                }}>
-                  <SelectTrigger className="mt-1 h-8 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="rectangle">Rectangle</SelectItem>
-                    <SelectItem value="circle">Oval / Circle</SelectItem>
-                    <SelectItem value="custom">Custom Vector</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="pt-2 flex flex-wrap gap-2">
+                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => addElement('rectangle')}><Square className="w-3 h-3 mr-1" /> Add Box</Button>
+                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => addElement('circle')}><Circle className="w-3 h-3 mr-1" /> Add Oval</Button>
+                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => addElement('custom')}><PenTool className="w-3 h-3 mr-1" /> Add Custom</Button>
               </div>
             </div>
 
-            {shapeType !== 'custom' && (
+            {selectedEl && (
               <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                <Label className="text-xs font-bold text-slate-700 uppercase">Size (Inches)</Label>
+                <div className="flex justify-between items-center mb-1">
+                    <Label className="text-xs font-bold text-slate-700 uppercase">Selected Element</Label>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500 hover:bg-red-50" onClick={() => removeElement(selectedEl.id)}><Trash2 className="w-3 h-3" /></Button>
+                </div>
+                
+                {selectedEl.type !== 'custom' && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs text-slate-500">Width</Label>
+                        <Input type="number" value={selectedEl.width} onChange={e => updateElement(selectedEl.id, { width: parseFloat(e.target.value)||1 })} className="mt-1 h-8 text-sm" />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Height</Label>
+                        <Input type="number" value={selectedEl.height} onChange={e => updateElement(selectedEl.id, { height: parseFloat(e.target.value)||1 })} className="mt-1 h-8 text-sm" />
+                      </div>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-slate-500">Width</Label>
-                    <Input type="number" value={widthInches} onChange={e => setWidthInches(parseFloat(e.target.value)||1)} className="mt-1 h-8 text-sm" />
+                    <Label className="text-xs text-slate-500">Offset X</Label>
+                    <Input type="number" value={selectedEl.x} onChange={e => updateElement(selectedEl.id, { x: parseFloat(e.target.value)||0 })} className="mt-1 h-8 text-sm" />
                   </div>
                   <div>
-                    <Label className="text-xs text-slate-500">Height</Label>
-                    <Input type="number" value={heightInches} onChange={e => setHeightInches(parseFloat(e.target.value)||1)} className="mt-1 h-8 text-sm" />
+                    <Label className="text-xs text-slate-500">Offset Y</Label>
+                    <Input type="number" value={selectedEl.y} onChange={e => updateElement(selectedEl.id, { y: parseFloat(e.target.value)||0 })} className="mt-1 h-8 text-sm" />
                   </div>
                 </div>
-              </div>
-            )}
 
-            {shapeType === 'custom' && (
-              <div className="space-y-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                <Label className="text-xs font-bold text-blue-800 uppercase">Vector Tools</Label>
-                <div className="flex bg-white rounded-md border p-1 shadow-sm gap-1">
-                  <Button variant={mode === 'select' ? 'secondary' : 'ghost'} size="sm" className="flex-1 text-xs" onClick={() => setMode('select')}>
-                    <MousePointer2 className="w-3 h-3 mr-1" /> Select
-                  </Button>
-                  <Button variant={mode === 'add' ? 'secondary' : 'ghost'} size="sm" className="flex-1 text-xs" onClick={() => setMode('add')}>
-                    <Plus className="w-3 h-3 mr-1" /> Add Pt
-                  </Button>
-                </div>
-                {selectedIdx !== null && (
-                  <Button variant="destructive" size="sm" className="w-full text-xs" onClick={() => {
-                    setCustomPoints(customPoints.filter((_, i) => i !== selectedIdx));
-                    setSelectedIdx(null);
-                  }}>
-                    <Trash2 className="w-3 h-3 mr-1" /> Delete Point
-                  </Button>
+                {selectedEl.type === 'custom' && (
+                  <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <Label className="text-xs font-bold text-blue-800 uppercase mb-2 block">Vector Tools</Label>
+                    <div className="flex bg-white rounded-md border p-1 shadow-sm gap-1 mb-2">
+                      <Button variant={mode === 'select' ? 'secondary' : 'ghost'} size="sm" className="flex-1 text-xs" onClick={() => setMode('select')}>
+                        <MousePointer2 className="w-3 h-3 mr-1" /> Select
+                      </Button>
+                      <Button variant={mode === 'add' ? 'secondary' : 'ghost'} size="sm" className="flex-1 text-xs" onClick={() => setMode('add')}>
+                        <Plus className="w-3 h-3 mr-1" /> Add Pt
+                      </Button>
+                    </div>
+                    {selectedPointIdx !== null && (
+                      <Button variant="destructive" size="sm" className="w-full text-xs" onClick={() => {
+                        const newPts = selectedEl.points.filter((_, i) => i !== selectedPointIdx);
+                        updateElement(selectedEl.id, { points: newPts });
+                        setSelectedPointIdx(null);
+                      }}>
+                        <Trash2 className="w-3 h-3 mr-1" /> Delete Point
+                      </Button>
+                    )}
+                  </div>
                 )}
-                <p className="text-[10px] text-blue-700 leading-tight">Click on the canvas to add or select points. Drag points to modify your custom shape. All coordinates are in inches relative to the center.</p>
               </div>
             )}
 
             <div className="space-y-3">
-              <Label className="text-sm font-bold text-slate-800">Materials & Colors</Label>
+              <Label className="text-sm font-bold text-slate-800">Global Materials & Colors</Label>
               <div>
-                <Label className="text-xs text-slate-500">Depth / Thickness (inches)</Label>
+                <Label className="text-xs text-slate-500">Total Depth / Thickness (inches)</Label>
                 <Input type="number" value={depthInches} onChange={e => setDepthInches(parseFloat(e.target.value)||1)} className="mt-1 h-8 text-sm" />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -378,9 +453,9 @@ export default function SignDesignerModal({ open, onClose, onSave, initialSign }
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs text-slate-500">Side Color</Label>
+                  <Label className="text-xs text-slate-500">Return Color</Label>
                   <div className="flex items-center gap-2 mt-1">
-                    <input type="color" value={sideColor} onChange={e => setSideColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer border border-slate-300" />
+                    <input type="color" value={returnColor} onChange={e => setReturnColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer border border-slate-300" />
                   </div>
                 </div>
               </div>
@@ -413,7 +488,7 @@ export default function SignDesignerModal({ open, onClose, onSave, initialSign }
                 width={800}
                 height={600}
                 className="block max-w-full h-auto touch-none"
-                style={{ cursor: shapeType === 'custom' && mode === 'add' ? 'crosshair' : 'default' }}
+                style={{ cursor: selectedEl && selectedEl.type === 'custom' && mode === 'add' ? 'crosshair' : 'default' }}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
@@ -421,7 +496,7 @@ export default function SignDesignerModal({ open, onClose, onSave, initialSign }
               />
             </div>
             <p className="mt-4 text-xs text-slate-400 text-center max-w-md">
-              This is a 2D preview of your sign cabinet. The final 3D model will be generated with your specified depth and attached to the pole.
+              Drag shapes to move them. Overlapping shapes will be combined into a single sign cabinet structure when rendered in 3D.
             </p>
           </div>
         </div>
