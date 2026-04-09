@@ -517,6 +517,10 @@
     },
     "ai_engineering_recommendation": {
       "type": "string"
+    },
+    "ai_engineering_data": {
+      "type": "object",
+      "additionalProperties": true
     }
   },
   "required": [

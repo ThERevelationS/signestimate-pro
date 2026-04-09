@@ -29,9 +29,20 @@ Provide an EXTREMELY CONCISE, highly professional breakdown. Provide ONLY the re
       prompt: prompt,
       model: 'claude_sonnet_4_6',
       file_urls: body.documentUrl ? [body.documentUrl] : undefined,
+      response_json_schema: {
+        type: "object",
+        properties: {
+          recommendation: { type: "string", description: "The concise, 3-bullet list recommendation" },
+          foundation_type: { type: "string", enum: ["spread_foot", "pillar"] },
+          length_inches: { type: "number" },
+          width_inches: { type: "number" },
+          depth_inches: { type: "number" },
+          diameter: { type: "number" }
+        }
+      }
     });
 
-    return Response.json({ recommendation: result });
+    return Response.json({ recommendation: result.recommendation, ai_engineering_data: result });
 
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

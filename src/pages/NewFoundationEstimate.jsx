@@ -500,9 +500,9 @@ export default function NewFoundationEstimate() {
     let excavationCost = 0;
     const excVol = volumeCY * 1.25;
     if (item.excavation_method === 'hand_dig' || !item.excavation_method) {
-      excavationCost = excVol * getSetting('foundation_hand_dig_labor_rate', 45);
+      excavationCost = excVol * getSetting('foundation_hand_dig_cost_per_cy', getSetting('foundation_hand_dig_labor_rate', 45));
     } else {
-      excavationCost = excVol * getSetting('foundation_equipment_excavation_labor_rate', 35);
+      excavationCost = excVol * getSetting('foundation_equipment_excavation_cost_per_cy', getSetting('foundation_equipment_excavation_labor_rate', 35));
     }
 
     return { 
@@ -777,7 +777,10 @@ export default function NewFoundationEstimate() {
                       <h3 className="text-base font-bold text-indigo-900 flex items-center gap-2"><Bot className="w-5 h-5 text-indigo-600"/> AI Engineering Assistant</h3>
                       <p className="text-sm text-indigo-700 mt-1">Generate concise wind load calculations and sizing recommendations for your foundation and poles.</p>
                     </div>
-                    <AIEngineeringCalculatorModal onSave={(recommendation) => updateProject('ai_engineering_recommendation', recommendation)} />
+                    <AIEngineeringCalculatorModal onSave={(recommendation, aiData) => {
+                        setProject(prev => ({ ...prev, ai_engineering_recommendation: recommendation, ai_engineering_data: aiData }));
+                        markDirty();
+                    }} />
                   </div>
                   
                   {project.ai_engineering_recommendation && (
@@ -787,7 +790,28 @@ export default function NewFoundationEstimate() {
                           <Bot className="w-4 h-4 text-indigo-600" />
                           AI Engineering Recommendations
                         </div>
-                        <span className="group-open:rotate-180 transition-transform duration-200">▼</span>
+                        <div className="flex items-center gap-4">
+                          {project.ai_engineering_data && (
+                             <Button 
+                                size="sm" 
+                                className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                                onClick={(e) => {
+                                   e.preventDefault();
+                                   if (items.length > 0) {
+                                      const data = project.ai_engineering_data;
+                                      if (data.foundation_type) updateItem(0, 'foundation_type', data.foundation_type);
+                                      if (data.length_inches) updateItem(0, 'length_inches', data.length_inches);
+                                      if (data.width_inches) updateItem(0, 'width_inches', data.width_inches);
+                                      if (data.depth_inches) updateItem(0, 'depth_inches', data.depth_inches);
+                                      if (data.diameter) updateItem(0, 'diameter', data.diameter);
+                                   }
+                                }}
+                             >
+                                Apply to Foundation
+                             </Button>
+                          )}
+                          <span className="group-open:rotate-180 transition-transform duration-200">▼</span>
+                        </div>
                       </summary>
                       <div className="p-5 border border-t-0 border-indigo-200 bg-indigo-50/30 rounded-b-lg -mt-1 text-sm text-indigo-950 whitespace-pre-wrap font-medium leading-relaxed">
                         {project.ai_engineering_recommendation}

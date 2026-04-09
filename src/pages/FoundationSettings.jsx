@@ -18,8 +18,8 @@ const DEFAULT_SETTINGS = {
   foundation_forming_labor_rate: { value: '55', label: 'Forming Labor Rate ($/hr)', category: 'foundation_labor', type: 'number' },
   foundation_pouring_labor_rate: { value: '60', label: 'Pouring Labor Rate ($/hr)', category: 'foundation_labor', type: 'number' },
   foundation_finishing_labor_rate: { value: '50', label: 'Finishing Labor Rate ($/hr)', category: 'foundation_labor', type: 'number' },
-  foundation_hand_dig_labor_rate: { value: '45', label: 'Hand Dig Labor Rate ($/hr)', category: 'foundation_labor', type: 'number' },
-  foundation_equipment_excavation_labor_rate: { value: '35', label: 'Equipment Excavation Labor Rate ($/hr)', category: 'foundation_labor', type: 'number' },
+  foundation_hand_dig_cost_per_cy: { value: '45', label: 'Hand Dig Cost ($/CY)', category: 'foundation_labor', type: 'number' },
+  foundation_equipment_excavation_cost_per_cy: { value: '35', label: 'Equipment Excavation Cost ($/CY)', category: 'foundation_labor', type: 'number' },
   // Forming materials
   foundation_forming_materials_spread_foot: { value: '0.5', label: 'Forming Material Cost Multiplier - Spread Foot', category: 'foundation_calc', type: 'number' },
   foundation_forming_materials_pillar: { value: '0.75', label: 'Forming Material Cost Multiplier - Pillar', category: 'foundation_calc', type: 'number' },
@@ -144,17 +144,33 @@ export default function FoundationSettings() {
           <TabsContent value="labor" className="space-y-4 pt-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Labor Rates</CardTitle>
+                <CardTitle className="text-base">Excavation Rates</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <SettingInput settingKey="foundation_hand_dig_cost_per_cy" />
+                <SettingInput settingKey="foundation_equipment_excavation_cost_per_cy" />
+                <SettingInput settingKey="foundation_min_excavation_time" />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Rebar Labor Rates</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <SettingInput settingKey="foundation_rebar_labor_cross_section" />
                 <SettingInput settingKey="foundation_rebar_labor_linear_ft" />
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Forming & Finishing Rates</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <SettingInput settingKey="foundation_forming_labor_rate" />
                 <SettingInput settingKey="foundation_pouring_labor_rate" />
                 <SettingInput settingKey="foundation_finishing_labor_rate" />
-                <SettingInput settingKey="foundation_hand_dig_labor_rate" />
-                <SettingInput settingKey="foundation_equipment_excavation_labor_rate" />
-                <SettingInput settingKey="foundation_min_excavation_time" />
               </CardContent>
             </Card>
             <Card className="bg-indigo-50 border-indigo-100">

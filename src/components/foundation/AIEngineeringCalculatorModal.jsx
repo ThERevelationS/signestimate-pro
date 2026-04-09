@@ -23,14 +23,17 @@ export default function AIEngineeringCalculatorModal({ onSave }) {
     qtyPoles: '',
     additionalInfo: ''
   });
+  const [aiData, setAiData] = useState(null);
 
   const handleCalculate = async () => {
     setLoading(true);
     setResult('');
+    setAiData(null);
     try {
       const response = await base44.functions.invoke('aiEngineeringCalculator', formData);
       if (response.data && response.data.recommendation) {
         setResult(response.data.recommendation);
+        setAiData(response.data.ai_engineering_data);
       }
     } catch (err) {
       console.error(err);
@@ -40,7 +43,7 @@ export default function AIEngineeringCalculatorModal({ onSave }) {
   };
 
   const handleSave = () => {
-    onSave(result);
+    onSave(result, aiData);
     setOpen(false);
   };
 
