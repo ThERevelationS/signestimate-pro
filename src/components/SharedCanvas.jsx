@@ -738,20 +738,13 @@ export default function SharedCanvas({
     const arr = [...points];
     if (closed) {
         if (points.length === 4) {
-            // Handle rectangular scaling
-            if (idx === 0) {
-                arr[1] = { x: arr[1].x + deltaX, y: arr[1].y + deltaY };
-                arr[2] = { x: arr[2].x + deltaX, y: arr[2].y + deltaY };
-            } else if (idx === 1) {
-                arr[2] = { x: arr[2].x + deltaX, y: arr[2].y + deltaY };
-                arr[3] = { x: arr[3].x + deltaX, y: arr[3].y + deltaY };
-            } else if (idx === 2) {
-                arr[3] = { x: arr[3].x + deltaX, y: arr[3].y + deltaY };
-                arr[0] = { x: arr[0].x + deltaX, y: arr[0].y + deltaY };
-            } else if (idx === 3) {
-                arr[0] = { x: arr[0].x + deltaX, y: arr[0].y + deltaY };
-                arr[1] = { x: arr[1].x + deltaX, y: arr[1].y + deltaY };
-            }
+            // Handle rectangular scaling symmetrically from center
+            const hdx = deltaX / 2;
+            const hdy = deltaY / 2;
+            arr[idx] = { x: arr[idx].x - hdx, y: arr[idx].y - hdy };
+            arr[(idx + 1) % 4] = { x: arr[(idx + 1) % 4].x + hdx, y: arr[(idx + 1) % 4].y + hdy };
+            arr[(idx + 2) % 4] = { x: arr[(idx + 2) % 4].x + hdx, y: arr[(idx + 2) % 4].y + hdy };
+            arr[(idx + 3) % 4] = { x: arr[(idx + 3) % 4].x - hdx, y: arr[(idx + 3) % 4].y - hdy };
         } else {
             return;
         }
