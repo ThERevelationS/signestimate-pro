@@ -1202,7 +1202,7 @@ export default function NewFoundationEstimate() {
                            <div className="space-y-2">
                               {(pole.signs || []).length === 0 && <p className="text-xs text-slate-400">No cabinets added.</p>}
                               {(pole.signs || []).map((sign, sIdx) => (
-                                 <React.Fragment key={sIdx}>
+                                 <div key={sIdx} className="space-y-1">
                                    <div className="bg-slate-50 border border-slate-100 rounded p-2 text-xs flex justify-between items-center">
                                       <span className="font-medium text-slate-700 truncate">{sign.name || `Cabinet ${sIdx + 1}`}</span>
                                       <div className="flex gap-1 flex-shrink-0">
@@ -1220,7 +1220,7 @@ export default function NewFoundationEstimate() {
                                        setPolesData(arr);
                                        markDirty();
                                    }} />
-                                 </React.Fragment>
+                                 </div>
                               ))}
                            </div>
                         </div>
