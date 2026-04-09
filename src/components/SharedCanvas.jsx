@@ -693,7 +693,7 @@ export default function SharedCanvas({
   };
 
   const handleDoubleClick = (e) => {
-    if (activeWallIndex === null || closed || points.length < 2) return;
+    if (activeWallIndex === null || points.length < 2) return;
     const { rawX, rawY } = getRawCanvasPoint(e);
     const segs = closed ? points.length : points.length - 1;
     for (let i = 0; i < segs; i++) {
@@ -737,7 +737,24 @@ export default function SharedCanvas({
 
     const arr = [...points];
     if (closed) {
-        return; 
+        if (points.length === 4) {
+            // Handle rectangular scaling
+            if (idx === 0) {
+                arr[1] = { x: arr[1].x + deltaX, y: arr[1].y + deltaY };
+                arr[2] = { x: arr[2].x + deltaX, y: arr[2].y + deltaY };
+            } else if (idx === 1) {
+                arr[2] = { x: arr[2].x + deltaX, y: arr[2].y + deltaY };
+                arr[3] = { x: arr[3].x + deltaX, y: arr[3].y + deltaY };
+            } else if (idx === 2) {
+                arr[3] = { x: arr[3].x + deltaX, y: arr[3].y + deltaY };
+                arr[0] = { x: arr[0].x + deltaX, y: arr[0].y + deltaY };
+            } else if (idx === 3) {
+                arr[0] = { x: arr[0].x + deltaX, y: arr[0].y + deltaY };
+                arr[1] = { x: arr[1].x + deltaX, y: arr[1].y + deltaY };
+            }
+        } else {
+            return;
+        }
     } else {
         for (let i = idx + 1; i < arr.length; i++) {
             arr[i] = { x: arr[i].x + deltaX, y: arr[i].y + deltaY };
@@ -856,13 +873,13 @@ export default function SharedCanvas({
           <div className="flex flex-col gap-1.5">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Add Wall</span>
             <div className="flex bg-white border border-slate-200 rounded-md shadow-sm">
-              <Button size="sm" variant={mode === 'draw' ? 'secondary' : 'ghost'} className="h-8 text-xs px-3 rounded-none rounded-l-md border-r border-slate-100" onClick={() => setMode('draw')}>
+              <Button size="sm" variant={mode === 'draw' ? 'secondary' : 'ghost'} className={`h-8 text-xs px-3 rounded-none rounded-l-md border-r border-slate-100 ${mode === 'draw' ? 'bg-slate-200' : ''}`} onClick={() => setMode('draw')}>
                 <Plus className="w-3 h-3 mr-1.5" /> Draw
               </Button>
-              <Button size="sm" variant={mode === 'edit_points' ? 'secondary' : 'ghost'} className="h-8 text-xs px-3 rounded-none border-r border-slate-100" onClick={() => setMode('edit_points')}>
+              <Button size="sm" variant={mode === 'edit_points' ? 'secondary' : 'ghost'} className={`h-8 text-xs px-3 rounded-none border-r border-slate-100 ${mode === 'edit_points' ? 'bg-slate-200' : ''}`} onClick={() => setMode('edit_points')}>
                 <Crosshair className="w-3 h-3 mr-1.5" /> Edit Points
               </Button>
-              <Button size="sm" variant={mode === 'move_wall' ? 'secondary' : 'ghost'} className="h-8 text-xs px-3 rounded-none border-r border-slate-100" onClick={() => setMode('move_wall')}>
+              <Button size="sm" variant={mode === 'move_wall' ? 'secondary' : 'ghost'} className={`h-8 text-xs px-3 rounded-none border-r border-slate-100 ${mode === 'move_wall' ? 'bg-slate-200' : ''}`} onClick={() => setMode('move_wall')}>
                 <Move className="w-3 h-3 mr-1.5" /> Move Wall
               </Button>
               
@@ -877,13 +894,13 @@ export default function SharedCanvas({
                     <DialogTitle>Custom Wall Size</DialogTitle>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="width" className="text-right">Width (in)</Label>
-                      <Input id="width" type="number" value={customSizeX} onChange={(e) => setCustomSizeX(e.target.value)} className="col-span-3" />
+                    <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
+                      <Label htmlFor="length" className="text-right">Length (in)</Label>
+                      <Input id="length" type="number" value={customSizeX} onChange={(e) => setCustomSizeX(e.target.value)} />
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="height" className="text-right">Height/Depth (in)</Label>
-                      <Input id="height" type="number" value={customSizeY} onChange={(e) => setCustomSizeY(e.target.value)} className="col-span-3" />
+                    <div className="grid grid-cols-[1fr_3fr] items-center gap-4">
+                      <Label htmlFor="width" className="text-right">Width (in)</Label>
+                      <Input id="width" type="number" value={customSizeY} onChange={(e) => setCustomSizeY(e.target.value)} />
                     </div>
                   </div>
                   <Button onClick={applyCustomSize} className="w-full">Apply to Foundation</Button>
@@ -906,14 +923,19 @@ export default function SharedCanvas({
         )}
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Canvas View</span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Canvas Tools</span>
           <div className="flex bg-white border border-slate-200 rounded-md shadow-sm">
-             <Button size="sm" variant={mode === 'pan' ? 'secondary' : 'ghost'} className={`h-8 text-xs px-3 rounded-none rounded-l-md ${(!useExistingFoundation && foundationItems.length > 0) ? 'border-r border-slate-100' : 'rounded-r-md'}`} onClick={() => setMode('pan')}>
+             <Button size="sm" variant={mode === 'pan' ? 'secondary' : 'ghost'} className={`h-8 text-xs px-3 rounded-none ${(!useExistingFoundation && foundationItems.length === 0 && !showPoles) ? 'rounded-md' : 'rounded-l-md'} ${((!useExistingFoundation && foundationItems.length > 0) || showPoles) ? 'border-r border-slate-100' : ''} ${mode === 'pan' ? 'bg-slate-200' : ''}`} onClick={() => setMode('pan')}>
                <Move className="w-3 h-3 mr-1.5" /> Pan
              </Button>
              {(!useExistingFoundation && foundationItems.length > 0) && (
-                 <Button size="sm" variant={mode === 'move_foundation' ? 'secondary' : 'ghost'} className="h-8 text-xs px-3 rounded-none rounded-r-md" onClick={() => setMode('move_foundation')}>
+                 <Button size="sm" variant={mode === 'move_foundation' ? 'secondary' : 'ghost'} className={`h-8 text-xs px-3 rounded-none ${showPoles ? 'border-r border-slate-100' : 'rounded-r-md'} ${mode === 'move_foundation' ? 'bg-slate-200' : ''}`} onClick={() => setMode('move_foundation')}>
                    <Move className="w-3 h-3 mr-1.5" /> Move Foundation
+                 </Button>
+             )}
+             {showPoles && (
+                 <Button size="sm" variant={mode === 'place' ? 'secondary' : 'ghost'} className={`h-8 text-xs px-3 rounded-none ${(!useExistingFoundation && foundationItems.length === 0) ? 'rounded-l-md' : ''} rounded-r-md ${mode === 'place' ? 'bg-slate-200' : ''}`} onClick={() => setMode('place')}>
+                   <Crosshair className="w-3 h-3 mr-1.5" /> Place Pole
                  </Button>
              )}
           </div>
@@ -955,7 +977,7 @@ export default function SharedCanvas({
       {/* Perimeter and Shape Closed badges removed per user request */}
 
       <div ref={containerRef} className="relative border border-slate-300 rounded-xl overflow-hidden bg-slate-100 w-full flex-1 shadow-inner min-h-[600px] flex justify-center items-center">
-        <div className="w-full h-full overflow-auto custom-scrollbar flex items-center justify-center relative">
+        <div className="w-full h-full overflow-hidden flex items-center justify-center relative">
         <canvas
           ref={canvasRef}
           width={canvasW}
