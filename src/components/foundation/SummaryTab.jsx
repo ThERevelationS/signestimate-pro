@@ -32,9 +32,51 @@ function CopyValue({ label, value, className = '' }) {
   );
 }
 
-export default function SummaryTab({ items, walls, totals, calcItemCost, project }) {
+export default function SummaryTab({ items, walls, totals, calcItemCost, project, polesData = [], selectedEquipmentList = [], inventory = [] }) {
   const polesTotal = totals.polesTotal || 0;
   const [allCopied, setAllCopied] = useState(false);
+
+  const allAttachments = inventory.filter(i => i.material_type === 'attachment');
+  const allSubAttachments = inventory.filter(i => i.material_type === 'sub_attachment');
+  
+  const getEquipmentEntryCost = (entry) => {
+    const eq = inventory.find(i => i.id === entry.equipment_id);
+    if (!eq) return 0;
+    
+    const rentalPeriod = entry.rental_period || 'day';
+    const rentalDuration = entry.rental_duration || 1;
+    
+    const getRentalCost = (item) => {
+      if (rentalPeriod === 'day') return (item.cost_per_day || 0) * rentalDuration;
+      if (rentalPeriod === 'week') return (item.cost_per_week || 0) * rentalDuration;
+      if (rentalPeriod === 'month') return (item.cost_per_month || 0) * rentalDuration;
+      return 0;
+    };
+    
+    let entryTotal = getRentalCost(eq);
+    if (entry.include_delivery) entryTotal += (eq.pickup_delivery_cost || 0);
+    
+    if (entry.attachment_counts) {
+      Object.entries(entry.attachment_counts).forEach(([id, qty]) => {
+        const a = allAttachments.find(att => att.id === id);
+        if (a) entryTotal += getRentalCost(a) * qty;
+      });
+    } else if (entry.attachment_ids) {
+      entry.attachment_ids.forEach(id => {
+        const a = allAttachments.find(att => att.id === id);
+        if (a) entryTotal += getRentalCost(a);
+      });
+    }
+    
+    if (entry.sub_attachment_counts) {
+      Object.entries(entry.sub_attachment_counts).forEach(([id, qty]) => {
+        const s = allSubAttachments.find(sub => sub.id === id);
+        if (s) entryTotal += getRentalCost(s) * qty;
+      });
+    }
+    
+    return entryTotal;
+  };
 
   const buildTextSummary = () => {
     const lines = [];
@@ -55,17 +97,46 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
       lines.push('');
       lines.push('── WALLS ──');
       walls.forEach((w, i) => {
-        lines.push(`Wall #${i + 1}: ${w.name || 'Untitled'} — $${(w.calculatedCosts?.totalCost || 0).toFixed(2)}`);
+        const cc = w.calculatedCosts;
+        lines.push(`Wall #${i + 1}: ${w.name || 'Untitled'} — $${(cc?.totalCost || 0).toFixed(2)}`);
+        if (cc) {
+           lines.push(`  Outer Material: $${(cc.materialCost || 0).toFixed(2)}  |  Outer Mortar: $${(cc.mortarCost || 0).toFixed(2)}  |  Outer Labor: $${(cc.laborCost || 0).toFixed(2)}`);
+           if (w.includeInternalWall) {
+              lines.push(`  Internal Material: $${(cc.internalMaterialCost || 0).toFixed(2)}  |  Internal Mortar: $${(cc.internalMortarCost || 0).toFixed(2)}  |  Internal Labor: $${(cc.internalLaborCost || 0).toFixed(2)}`);
+           }
+        }
       });
       lines.push(`Walls Total: $${totals.wallTotal.toFixed(2)}`);
     }
-    lines.push('');
     if (polesTotal > 0) {
       lines.push('');
+      lines.push('── POLES ──');
+      polesData.forEach((p, i) => {
+          const inv = inventory.find(inv => inv.id === p.pole_id);
+          let cost = 0;
+          if (inv) {
+             if (inv.pole_pricing_mode === 'stock_price') {
+                 const stockLen = (inv.pole_stock_length_ft || 20) * 12;
+                 const pieces = Math.ceil(p.height_inches / stockLen);
+                 cost = (pieces * (inv.pole_stock_price || 0));
+             } else {
+                 cost = ((p.height_inches / 12) * (inv.cost_per_unit || 0));
+             }
+          }
+          lines.push(`Pole #${i + 1} (${p.height_inches}" height): $${cost.toFixed(2)}`);
+      });
       lines.push(`Poles Total: $${polesTotal.toFixed(2)}`);
     }
     if (totals.equipmentTotal > 0) {
       lines.push('');
+      lines.push('── EQUIPMENT ──');
+      selectedEquipmentList.forEach((entry, i) => {
+          const eq = inventory.find(inv => inv.id === entry.equipment_id);
+          if (eq) {
+              const cost = getEquipmentEntryCost(entry);
+              lines.push(`${eq.material_name} (${entry.rental_duration} ${entry.rental_period}s): $${cost.toFixed(2)}`);
+          }
+      });
       lines.push(`Equipment Total: $${totals.equipmentTotal.toFixed(2)}`);
     }
     lines.push(`GRAND TOTAL: $${totals.grand.toFixed(2)}`);
@@ -94,7 +165,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
     rows.push(['Foundation & Excavation Total', totals.itemsTotal.toFixed(2)]);
     if (walls.length > 0) {
       rows.push([]);
-      rows.push(['Wall', 'Total Cost', 'Material', 'Mortar', 'Labor', '', '']);
+      rows.push(['Wall', 'Total Cost', 'Material', 'Mortar', 'Labor', 'Internal Material', 'Internal Mortar', 'Internal Labor']);
       walls.forEach((w, i) => {
         const cc = w.calculatedCosts;
         rows.push([
@@ -103,12 +174,42 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
           (cc?.materialCost || 0).toFixed(2),
           (cc?.mortarCost || 0).toFixed(2),
           (cc?.laborCost || 0).toFixed(2),
+          w.includeInternalWall ? (cc?.internalMaterialCost || 0).toFixed(2) : '-',
+          w.includeInternalWall ? (cc?.internalMortarCost || 0).toFixed(2) : '-',
+          w.includeInternalWall ? (cc?.internalLaborCost || 0).toFixed(2) : '-'
         ]);
       });
       rows.push(['Walls Total', totals.wallTotal.toFixed(2)]);
     }
+    if (polesTotal > 0) {
+      rows.push([]);
+      rows.push(['Pole', 'Height (in)', 'Cost']);
+      polesData.forEach((p, i) => {
+          const inv = inventory.find(inv => inv.id === p.pole_id);
+          let cost = 0;
+          if (inv) {
+             if (inv.pole_pricing_mode === 'stock_price') {
+                 const stockLen = (inv.pole_stock_length_ft || 20) * 12;
+                 const pieces = Math.ceil(p.height_inches / stockLen);
+                 cost = (pieces * (inv.pole_stock_price || 0));
+             } else {
+                 cost = ((p.height_inches / 12) * (inv.cost_per_unit || 0));
+             }
+          }
+          rows.push([`Pole #${i + 1}`, p.height_inches, cost.toFixed(2)]);
+      });
+      rows.push(['Poles Total', totals.polesTotal.toFixed(2)]);
+    }
     if (totals.equipmentTotal > 0) {
       rows.push([]);
+      rows.push(['Equipment', 'Duration', 'Cost']);
+      selectedEquipmentList.forEach((entry, i) => {
+          const eq = inventory.find(inv => inv.id === entry.equipment_id);
+          if (eq) {
+              const cost = getEquipmentEntryCost(entry);
+              rows.push([eq.material_name, `${entry.rental_duration} ${entry.rental_period}s`, cost.toFixed(2)]);
+          }
+      });
       rows.push(['Equipment Total', totals.equipmentTotal.toFixed(2)]);
     }
     rows.push([]);
@@ -151,6 +252,11 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                 <span>Foundation #{idx + 1}{item.description ? ` — ${item.description}` : ''}</span>
                 <CopyValue value={`$${c.total.toFixed(2)}`} className="text-sm font-semibold" />
               </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] mb-2">
+                 <span className="text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
+                   Volume: {c.volumeCY?.toFixed(2)} CY {c.concreteBags ? `(${c.concreteBags} bags)` : ''}
+                 </span>
+              </div>
               <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
                 <CopyValue label="Concrete:" value={`$${c.concreteCost.toFixed(2)}`} />
                 <CopyValue label="Rebar:" value={`$${c.rebarCost.toFixed(2)}`} />
@@ -167,12 +273,38 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
           <CopyValue value={`$${totals.itemsTotal.toFixed(2)}`} className="font-semibold" />
         </div>
 
-        {walls.map((w, i) => (
-          <div key={w._id} className="flex justify-between py-1 text-sm text-slate-600">
-            <span>Wall #{i + 1}: {w.name || 'Untitled'}</span>
-            <CopyValue value={`$${(w.calculatedCosts?.totalCost || 0).toFixed(2)}`} />
-          </div>
-        ))}
+        {walls.length > 0 && <h4 className="text-sm font-bold text-slate-800 mt-4 mb-2">Walls</h4>}
+        {walls.map((w, i) => {
+          const cc = w.calculatedCosts;
+          return (
+            <div key={w._id} className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
+              <div className="flex justify-between items-center text-sm font-semibold text-slate-700 mb-2">
+                <span>Wall #{i + 1}: {w.name || 'Untitled'}</span>
+                <CopyValue value={`$${(cc?.totalCost || 0).toFixed(2)}`} className="text-sm font-semibold" />
+              </div>
+              {cc && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                    <CopyValue label="Outer Material:" value={`$${(cc.materialCost || 0).toFixed(2)}`} />
+                    <CopyValue label="Outer Mortar:" value={`$${(cc.mortarCost || 0).toFixed(2)}`} />
+                    <CopyValue label="Outer Labor:" value={`$${(cc.laborCost || 0).toFixed(2)}`} />
+                  </div>
+                  {w.includeInternalWall && (
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs pt-1 border-t border-slate-200/60">
+                      <CopyValue label="Internal Material:" value={`$${(cc.internalMaterialCost || 0).toFixed(2)}`} />
+                      <CopyValue label="Internal Mortar:" value={`$${(cc.internalMortarCost || 0).toFixed(2)}`} />
+                      <CopyValue label="Internal Labor:" value={`$${(cc.internalLaborCost || 0).toFixed(2)}`} />
+                    </div>
+                  )}
+                  <div className="text-[11px] text-slate-500 bg-white/60 p-1.5 rounded">
+                    Outer Units: {cc.totalBricks} | Labor: {cc.laborHours?.toFixed(1)}h
+                    {w.includeInternalWall && ` • Internal Units: ${cc.internalTotalBricks} | Int. Labor: ${cc.internalLaborHours?.toFixed(1)}h`}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {walls.length > 0 && (
           <div className="flex justify-between py-2 border-b font-semibold text-slate-700">
@@ -181,17 +313,55 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
           </div>
         )}
 
-        {polesTotal > 0 && (
-          <div className="flex justify-between py-2 border-b font-semibold text-slate-700">
-            <span>Poles Total</span>
-            <CopyValue value={`$${polesTotal.toFixed(2)}`} className="font-semibold" />
+        {polesData.length > 0 && (
+          <div className="mt-4">
+            <div className="flex justify-between py-2 border-b border-t font-semibold text-slate-700 mb-2 bg-slate-50/50 px-2 rounded-t-lg">
+              <span>Poles Total</span>
+              <CopyValue value={`$${polesTotal.toFixed(2)}`} className="font-semibold" />
+            </div>
+            <div className="space-y-1 px-2">
+              {polesData.map((p, i) => {
+                const inv = inventory.find(inv => inv.id === p.pole_id);
+                let cost = 0;
+                if (inv) {
+                   if (inv.pole_pricing_mode === 'stock_price') {
+                       const stockLen = (inv.pole_stock_length_ft || 20) * 12;
+                       const pieces = Math.ceil(p.height_inches / stockLen);
+                       cost = (pieces * (inv.pole_stock_price || 0));
+                   } else {
+                       cost = ((p.height_inches / 12) * (inv.cost_per_unit || 0));
+                   }
+                }
+                return (
+                  <div key={i} className="flex justify-between py-1 text-sm text-slate-600 border-b border-slate-100 last:border-0">
+                    <span>Pole #{i + 1} <span className="text-xs text-slate-400">({p.height_inches}" height)</span></span>
+                    <CopyValue value={`$${cost.toFixed(2)}`} />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
-        {totals.equipmentTotal > 0 && (
-          <div className="flex justify-between py-2 border-b font-semibold text-slate-700">
-            <span>Equipment Total</span>
-            <CopyValue value={`$${totals.equipmentTotal.toFixed(2)}`} className="font-semibold" />
+        {selectedEquipmentList.length > 0 && (
+          <div className="mt-4">
+            <div className="flex justify-between py-2 border-b border-t font-semibold text-slate-700 mb-2 bg-slate-50/50 px-2 rounded-t-lg">
+              <span>Equipment Total</span>
+              <CopyValue value={`$${totals.equipmentTotal.toFixed(2)}`} className="font-semibold" />
+            </div>
+            <div className="space-y-1 px-2">
+              {selectedEquipmentList.map((entry, i) => {
+                const eq = inventory.find(inv => inv.id === entry.equipment_id);
+                if (!eq) return null;
+                const cost = getEquipmentEntryCost(entry);
+                return (
+                  <div key={i} className="flex justify-between py-1 text-sm text-slate-600 border-b border-slate-100 last:border-0">
+                    <span>{eq.material_name} <span className="text-xs text-slate-400">({entry.rental_duration} {entry.rental_period}s)</span></span>
+                    <CopyValue value={`$${cost.toFixed(2)}`} />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
