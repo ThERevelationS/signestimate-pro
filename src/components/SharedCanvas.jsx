@@ -74,6 +74,7 @@ export default function SharedCanvas({
   const useExistingFoundation = activeWall?.useExistingFoundation || false;
   const wallMaterial = activeWall?.selectedMaterial || null;
   const otherWalls = activeWallIndex !== null ? walls.filter((_, i) => i !== activeWallIndex) : [];
+  const wallWidth = activeWallIndex !== null && wallMaterial ? (wallMaterial.wall_unit_width_inches || 8) : 8;
 
   const updateShape = useCallback((newPoints, newClosed) => {
     if (activeWallIndex === null) return;
@@ -318,7 +319,7 @@ export default function SharedCanvas({
             const cp2 = toCanvas(p2);
             const mx = (cp1.x + cp2.x) / 2;
             const my = (cp1.y + cp2.y) / 2;
-            const lenIn = segmentLengthInches(p1, p2);
+            const lenIn = segmentLengthInches(p1, p2) + wallWidth;
             const ft = Math.floor(lenIn / 12);
             const inch = Math.round(lenIn % 12);
             const label = ft > 0 ? `${ft}'-${inch}"` : `${inch}"`;
@@ -371,7 +372,7 @@ export default function SharedCanvas({
             ctx.stroke();
             ctx.setLineDash([]);
 
-            const lenIn = segmentLengthInches(points[points.length - 1], hoverInches);
+            const lenIn = segmentLengthInches(points[points.length - 1], hoverInches) + wallWidth;
             const ft = Math.floor(lenIn / 12);
             const inch = Math.round(lenIn % 12);
             const label = nearFirstPoint && points.length >= 3 ? 'Close shape' : (ft > 0 ? `${ft}'-${inch}"` : `${inch}"`);
@@ -706,7 +707,7 @@ export default function SharedCanvas({
         
         const distToMid = Math.sqrt((rawX - mx)**2 + (rawY - my)**2);
         if (distToMid < 20) {
-            const lenIn = segmentLengthInches(p1, p2);
+            const lenIn = segmentLengthInches(p1, p2) + wallWidth;
             setEditingSegment({
                 index: i,
                 x: mx,
@@ -719,6 +720,7 @@ export default function SharedCanvas({
   };
 
   const handleSegmentChange = (idx, newLengthInches) => {
+    const targetCenterLength = Math.max(0, newLengthInches - wallWidth);
     const p1 = points[idx];
     const p2 = points[(idx + 1) % points.length];
     const dx = p2.x - p1.x;
@@ -726,7 +728,7 @@ export default function SharedCanvas({
     const currentLen = Math.sqrt(dx * dx + dy * dy);
     if (currentLen === 0) return;
     
-    const scaleLen = newLengthInches / currentLen;
+    const scaleLen = targetCenterLength / currentLen;
     const newP2 = {
         x: p1.x + dx * scaleLen,
         y: p1.y + dy * scaleLen
@@ -809,6 +811,9 @@ export default function SharedCanvas({
       return;
     }
     
+    const centerW = Math.max(0, w - wallWidth);
+    const centerH = Math.max(0, h - wallWidth);
+
     let fMinX = 0, fMaxX = 0, fMinZ = 0, fMaxZ = 0;
     if (fRects.length > 0) {
         fMinX = Math.min(...fRects.map(r => r.isPillar ? r.centerX - r.radius : r.minX));
@@ -820,10 +825,10 @@ export default function SharedCanvas({
     const fCZ = fRects.length > 0 ? (fMinZ + fMaxZ) / 2 : 0;
 
     const newPts = [
-        { x: fCX - w/2, y: fCZ - h/2 },
-        { x: fCX + w/2, y: fCZ - h/2 },
-        { x: fCX + w/2, y: fCZ + h/2 },
-        { x: fCX - w/2, y: fCZ + h/2 },
+        { x: fCX - centerW/2, y: fCZ - centerH/2 },
+        { x: fCX + centerW/2, y: fCZ - centerH/2 },
+        { x: fCX + centerW/2, y: fCZ + centerH/2 },
+        { x: fCX - centerW/2, y: fCZ + centerH/2 },
     ];
     updateShape(newPts, true);
     setCustomSizeOpen(false);
@@ -1029,7 +1034,7 @@ export default function SharedCanvas({
                     {Array.from({ length: closed ? points.length : points.length - 1 }).map((_, i) => {
                         const p1 = points[i];
                         const p2 = points[(i + 1) % points.length];
-                        const lenIn = segmentLengthInches(p1, p2);
+                        const lenIn = segmentLengthInches(p1, p2) + wallWidth;
                         return (
                             <div key={i} className="flex items-center gap-2">
                                 <span className="text-xs text-slate-500 font-medium">Seg {i+1}:</span>
