@@ -1163,7 +1163,7 @@ export default function NewFoundationEstimate() {
                               </div>
                             )}
                             <div>
-                              <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Outer Labor ({costs.laborHours.toFixed(1)}h)</p>
+                              <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Outer Labor ({costs.laborHours.toFixed(1)} Hours)</p>
                               <p className="text-base font-bold text-emerald-900">${costs.laborCost.toFixed(2)}</p>
                             </div>
                           </div>
@@ -1171,21 +1171,21 @@ export default function NewFoundationEstimate() {
                           {wall.includeInternalWall && (
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 border-t border-emerald-200/50 pt-2 mt-2">
                               <div>
-                                <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Int. Units Needed</p>
+                                <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Internal Units Needed</p>
                                 <p className="text-base font-bold text-emerald-900">{costs.internalTotalBricks}</p>
                               </div>
                               <div>
-                                <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Int. Material Cost</p>
+                                <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Internal Material Cost</p>
                                 <p className="text-base font-bold text-emerald-900">${costs.internalMaterialCost.toFixed(2)}</p>
                               </div>
                               {!isInternalConcrete && (
                                 <div>
-                                  <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Int. Mortar Cost</p>
+                                  <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Internal Mortar Cost</p>
                                   <p className="text-base font-bold text-emerald-900">${costs.internalMortarCost.toFixed(2)}</p>
                                 </div>
                               )}
                               <div>
-                                <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Int. Labor ({costs.internalLaborHours.toFixed(1)}h)</p>
+                                <p className="text-[11px] text-emerald-700/80 uppercase font-semibold">Internal Labor ({costs.internalLaborHours.toFixed(1)} Hours)</p>
                                 <p className="text-base font-bold text-emerald-900">${costs.internalLaborCost.toFixed(2)}</p>
                               </div>
                             </div>

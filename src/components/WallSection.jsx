@@ -22,8 +22,12 @@ function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInter
 
   const totalLinearInches = wallShape.segments.reduce((s, seg) => s + seg.length, 0);
 
-  const bricksPerCoursePerLinearInch = 1 / brickPitch;
-  const totalBricks = Math.ceil(numCourses * totalLinearInches * bricksPerCoursePerLinearInch);
+  const numCoursesRounded = Math.ceil(numCourses);
+  let totalBricks = 0;
+  wallShape.segments.forEach(seg => {
+    const bricksThisCourse = Math.ceil(seg.length / brickPitch);
+    totalBricks += bricksThisCourse * numCoursesRounded;
+  });
 
   const materialCost = totalBricks * (wallMaterial.cost_per_unit || 0);
 
@@ -61,7 +65,7 @@ function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInter
     const intUnitH = internalMaterial.wall_unit_height_inches || 2.25;
     const intMortar = intIsConcrete ? 0 : (internalMortarGapInches || 0.375);
     const intCourseH = intUnitH + intMortar;
-    const intNumCourses = internalWallHeightInches / intCourseH;
+    const intNumCourses = Math.ceil(internalWallHeightInches / intCourseH);
     const intBrickPitch = intUnitL + intMortar;
 
     // For each segment, inner centerline length is reduced based on both outer and inner widths.
