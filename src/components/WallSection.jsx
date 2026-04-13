@@ -173,6 +173,8 @@ export default function WallSection({
     wall.internalMaterialId,
     wall.includeInternalWall,
     wall.heightInches,
+    wall.selectedMaterial?.custom_cost_per_unit,
+    wall.selectedInternalMaterial?.custom_cost_per_unit
   ]);
 
   return (
