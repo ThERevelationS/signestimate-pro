@@ -34,7 +34,7 @@ const tourData = {
     { targetId: "wall-configurations", text: "Click 'Add Wall Type' to configure masonry walls. You can select both outer and inner (core) materials." },
     { targetId: "layout-canvas", text: "This is your 2D Layout Canvas. Click and drag to draw walls. They will snap to your foundations." },
     { targetId: "add-poles-toggle", text: "Check 'Add Pole/s' to enable the pole placement tool." },
-    { targetId: null, text: "Once poles are enabled, select a pole from the dropdown and click on the canvas to place it exactly where you need it." },
+    { targetId: null, text: "Once poles are enabled, select a pole from the dropdown and click the 'Place on Canvas' button, then click on the canvas to place it exactly where you need it." },
     { targetId: null, text: "Click on any placed pole in the right-hand list to adjust its height, depth in ground, and rotation." }
   ],
   beautify: [
@@ -53,12 +53,18 @@ const tourData = {
   ]
 };
 
-export default function HelpAssistant({ activeTab, manualTrigger, onManualTriggerClose }) {
+export default function HelpAssistant({ activeTab, manualTrigger, onManualTriggerClose, onStepChange }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [bubbleStyle, setBubbleStyle] = useState({ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', opacity: 0 });
 
   const steps = tourData[activeTab] || [];
+
+  useEffect(() => {
+    if (open && steps.length > 0 && onStepChange) {
+      onStepChange(step, steps[step]);
+    }
+  }, [step, open, steps, onStepChange]);
 
   const handleClose = () => {
     localStorage.setItem(`help_seen_foundation_${activeTab}`, 'true');
@@ -161,21 +167,33 @@ export default function HelpAssistant({ activeTab, manualTrigger, onManualTrigge
         </div>
         
         <div className="flex items-center justify-between mt-4">
-          <div className="flex gap-1.5 flex-wrap w-2/3">
+          <div className="flex gap-1.5 flex-wrap flex-1 mr-2">
             {steps.map((_, i) => (
               <div key={i} className={cn("w-1.5 h-1.5 rounded-full transition-colors flex-shrink-0", i === step ? "bg-indigo-500 w-3" : "bg-indigo-200")} />
             ))}
           </div>
           
-          <Button 
-            size="sm" 
-            onClick={() => step < steps.length - 1 ? setStep(s => s + 1) : handleClose()}
-            className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700 rounded-full px-4"
-          >
-            {step < steps.length - 1 ? (
-               <>Next <ChevronRight className="w-3 h-3 ml-1 -mr-1" /></>
-            ) : 'Got it!'}
-          </Button>
+          <div className="flex gap-2">
+            {step > 0 && (
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => setStep(s => s - 1)}
+                className="h-7 text-xs rounded-full px-3 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+              >
+                Back
+              </Button>
+            )}
+            <Button 
+              size="sm" 
+              onClick={() => step < steps.length - 1 ? setStep(s => s + 1) : handleClose()}
+              className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700 rounded-full px-4"
+            >
+              {step < steps.length - 1 ? (
+                 <>Next <ChevronRight className="w-3 h-3 ml-1 -mr-1" /></>
+              ) : 'Got it!'}
+            </Button>
+          </div>
         </div>
         
         {/* Tail */}

@@ -850,6 +850,26 @@ export default function NewFoundationEstimate() {
         activeTab={activeTab} 
         manualTrigger={helpTrigger} 
         onManualTriggerClose={() => setHelpTrigger(false)} 
+        onStepChange={(stepIdx, stepObj) => {
+          if (activeTab === 'foundation' && items.length > 0) {
+            setItems(prev => {
+              const arr = [...prev];
+              const it = { ...arr[0] };
+              let changed = false;
+              if (stepObj.targetId === 'foundation-toggles-0') {
+                 it.include_forming = false; it.include_rebar = false; it.include_finishing = false; changed = true;
+              } else if (stepObj.targetId === 'foundation-forming-0') {
+                 it.include_forming = true; it.include_rebar = false; it.include_finishing = false; changed = true;
+              } else if (stepObj.targetId === 'foundation-rebar-0') {
+                 it.include_forming = true; it.include_rebar = true; it.include_finishing = false; changed = true;
+              } else if (stepObj.targetId === 'foundation-excavation-0') {
+                 it.include_forming = true; it.include_rebar = true; it.include_finishing = true; changed = true;
+              }
+              if (changed) { arr[0] = it; return arr; }
+              return prev;
+            });
+          }
+        }}
       />
 
       {designerOpen && (
