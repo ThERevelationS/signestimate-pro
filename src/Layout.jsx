@@ -97,7 +97,7 @@ export default function Layout({ children, currentPageName }) {
         console.error('Error loading layout prerequisites:', error);
         setCurrentUser(null);
         setModuleStatuses({
-          painting: true, laser: true, cnc: true, metal_fabrication: true, channel_letter_installation: true, foundation: true, brick_stone: true
+          painting: true, laser: true, cnc: true, metal_fabrication: true, channel_letter_installation: true, foundation: true
         });
       }
       setIsLoading(false);
@@ -181,7 +181,7 @@ export default function Layout({ children, currentPageName }) {
     },
     {
       id: 'foundation',
-      name: 'Concrete | Masonry | Poles',
+      name: 'Concrete',
       icon: Anchor,
       projectsPage: 'FoundationProjects',
       newEstimatePage: 'NewFoundationEstimate',
@@ -190,18 +190,6 @@ export default function Layout({ children, currentPageName }) {
       color: 'text-amber-600',
       bgColor: 'bg-amber-50',
       hoverColor: 'hover:bg-amber-100'
-    },
-    {
-      id: 'brick_stone_2',
-      name: 'Brick & Stone',
-      icon: Server,
-      projectsPage: 'BrickStoneProjects2',
-      newEstimatePage: 'NewBrickStoneEstimate2',
-      settingsPage: 'BrickStoneSettings2',
-      inventoryPage: 'BrickStoneInventory2',
-      color: 'text-pink-600',
-      bgColor: 'bg-pink-50',
-      hoverColor: 'hover:bg-pink-100'
     }
   ];
 

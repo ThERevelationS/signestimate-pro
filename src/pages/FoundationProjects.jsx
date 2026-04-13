@@ -80,9 +80,9 @@ export default function FoundationProjects() {
           <div>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
               <Anchor className="w-8 h-8" />
-              Concrete | Masonry | Poles Projects
+              Concrete Projects
             </h1>
-            <p className="text-slate-600">Manage your concrete, masonry & pole estimates</p>
+            <p className="text-slate-600">Manage your concrete & pole estimates</p>
           </div>
           <Link to={createPageUrl("NewFoundationEstimate")}>
             <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3">

@@ -47,12 +47,6 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
-import BrickStoneInventory from './pages/BrickStoneInventory';
-import BrickStoneInventory2 from './pages/BrickStoneInventory2';
-import BrickStoneProjects from './pages/BrickStoneProjects';
-import BrickStoneProjects2 from './pages/BrickStoneProjects2';
-import BrickStoneSettings from './pages/BrickStoneSettings';
-import BrickStoneSettings2 from './pages/BrickStoneSettings2';
 import CNCProjects from './pages/CNCProjects';
 import CNCSettings from './pages/CNCSettings';
 import ChannelLetterInstallationProjects from './pages/ChannelLetterInstallationProjects';
@@ -69,8 +63,6 @@ import LaserSettings from './pages/LaserSettings';
 import MetalProjects from './pages/MetalProjects';
 import MetalSettings from './pages/MetalSettings';
 import MyProfile from './pages/MyProfile';
-import NewBrickStoneEstimate from './pages/NewBrickStoneEstimate';
-import NewBrickStoneEstimate2 from './pages/NewBrickStoneEstimate2';
 import NewCNCEstimate from './pages/NewCNCEstimate';
 import NewChannelLetterInstallation from './pages/NewChannelLetterInstallation';
 import NewFoundationEstimate from './pages/NewFoundationEstimate';
@@ -84,12 +76,6 @@ import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "BrickStoneInventory": BrickStoneInventory,
-    "BrickStoneInventory2": BrickStoneInventory2,
-    "BrickStoneProjects": BrickStoneProjects,
-    "BrickStoneProjects2": BrickStoneProjects2,
-    "BrickStoneSettings": BrickStoneSettings,
-    "BrickStoneSettings2": BrickStoneSettings2,
     "CNCProjects": CNCProjects,
     "CNCSettings": CNCSettings,
     "ChannelLetterInstallationProjects": ChannelLetterInstallationProjects,
@@ -106,8 +92,6 @@ export const PAGES = {
     "MetalProjects": MetalProjects,
     "MetalSettings": MetalSettings,
     "MyProfile": MyProfile,
-    "NewBrickStoneEstimate": NewBrickStoneEstimate,
-    "NewBrickStoneEstimate2": NewBrickStoneEstimate2,
     "NewCNCEstimate": NewCNCEstimate,
     "NewChannelLetterInstallation": NewChannelLetterInstallation,
     "NewFoundationEstimate": NewFoundationEstimate,

@@ -698,7 +698,7 @@ export default function NewFoundationEstimate() {
             <Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
           </Link>
           <div>
-            <h1 className="text-lg font-bold text-slate-900">{(editId || project.id) ? 'Edit Concrete | Masonry | Poles Estimate' : 'Concrete | Masonry | Poles'}</h1>
+            <h1 className="text-lg font-bold text-slate-900">{(editId || project.id) ? 'Edit Concrete Estimate' : 'Concrete'}</h1>
             <p className="text-xs text-slate-500">Engineering, foundation, excavation, wall & pole estimating</p>
           </div>
         </div>
