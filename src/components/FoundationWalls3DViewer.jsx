@@ -417,9 +417,9 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
         const segData = shape.segments.map((seg) => {
         const p1 = seg.p1, p2 = seg.p2;
         if (!p1 || !p2) return null;
-        // Move points from local 2D space to world 3D space by adding foundation center
-        const x1 = (p1.x / 12) + fc.x, z1 = (p1.y / 12) + fc.z;
-        const x2 = (p2.x / 12) + fc.x, z2 = (p2.y / 12) + fc.z;
+        // Points from SharedCanvas are already in world 3D space (in inches), just convert to feet
+        const x1 = (p1.x / 12), z1 = (p1.y / 12);
+        const x2 = (p2.x / 12), z2 = (p2.y / 12);
         const dx = x2 - x1, dz = z2 - z1;
           const len = Math.sqrt(dx * dx + dz * dz);
           if (len < 0.01) return null;
@@ -641,15 +641,11 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
         const widFt = (inv.pole_width_inches || 6) / 12;
         const depFt = (inv.pole_depth_inches || 6) / 12;
         
-        // The pole center should be centered on the foundation object plus user offsets
+        // The pole coordinates from SharedCanvas are already in absolute world space (inches)
         let cx = (p.x_inches || 0) / 12;
         let cz = (p.z_inches || 0) / 12;
 
         const fIdx = p.foundation_idx !== undefined ? p.foundation_idx : 0;
-        if(foundationCenters[fIdx]) {
-           cx += foundationCenters[fIdx].x;
-           cz += foundationCenters[fIdx].z;
-        }
         
         // y_offset is from top of foundation downwards.
         // top of foundation is at gradeOffsetFt.
