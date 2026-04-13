@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Copy, Check, Download, ClipboardCopy } from 'lucide-react';
 
 // Individual clickable cost value with tooltip
@@ -32,7 +33,34 @@ function CopyValue({ label, value, className = '' }) {
   );
 }
 
-export default function SummaryTab({ items, walls, totals, calcItemCost, project, polesData = [], selectedEquipmentList = [], inventory = [] }) {
+function CostRow({ label, unit, defaultRate, customRate, onRateChange, calculatedTotal, readOnly = false }) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1.5 border-b border-slate-100 last:border-0 gap-2">
+      <span className="text-sm text-slate-700 min-w-[120px]">{label}</span>
+      <div className="flex items-center gap-3 ml-auto">
+        {!readOnly && onRateChange && (
+          <div className="flex items-center gap-1.5 bg-white px-2 py-0.5 rounded border border-slate-200">
+            <span className="text-xs text-slate-500 font-medium">$</span>
+            <Input 
+              type="number" 
+              className="w-16 h-6 px-1 py-0 text-xs text-right border-none shadow-none focus-visible:ring-0 bg-transparent" 
+              value={customRate !== null && customRate !== undefined ? customRate : (defaultRate || 0)} 
+              onChange={e => onRateChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+              step="any"
+              min="0"
+            />
+            {unit && <span className="text-xs text-slate-500 font-medium whitespace-nowrap">/ {unit}</span>}
+          </div>
+        )}
+        <div className="w-20 text-right">
+          <CopyValue value={`$${calculatedTotal.toFixed(2)}`} className="justify-end" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function SummaryTab({ items, walls, totals, calcItemCost, project, polesData = [], selectedEquipmentList = [], inventory = [], onUpdateItem, onUpdateWall, onUpdatePole, onUpdateEquipment }) {
   const polesTotal = totals.polesTotal || 0;
   const [allCopied, setAllCopied] = useState(false);
 
@@ -118,9 +146,11 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
              if (inv.pole_pricing_mode === 'stock_price') {
                  const stockLen = (inv.pole_stock_length_ft || 20) * 12;
                  const pieces = Math.ceil(p.height_inches / stockLen);
-                 cost = (pieces * (inv.pole_stock_price || 0));
+                 const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : (inv.pole_stock_price || 0);
+                 cost = pieces * rate;
              } else {
-                 cost = ((p.height_inches / 12) * (inv.cost_per_unit || 0));
+                 const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : (inv.cost_per_unit || 0);
+                 cost = (p.height_inches / 12) * rate;
              }
           }
           lines.push(`Pole #${i + 1} (${p.height_inches}" height): $${cost.toFixed(2)}`);
@@ -191,9 +221,11 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
              if (inv.pole_pricing_mode === 'stock_price') {
                  const stockLen = (inv.pole_stock_length_ft || 20) * 12;
                  const pieces = Math.ceil(p.height_inches / stockLen);
-                 cost = (pieces * (inv.pole_stock_price || 0));
+                 const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : (inv.pole_stock_price || 0);
+                 cost = pieces * rate;
              } else {
-                 cost = ((p.height_inches / 12) * (inv.cost_per_unit || 0));
+                 const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : (inv.cost_per_unit || 0);
+                 cost = (p.height_inches / 12) * rate;
              }
           }
           rows.push([`Pole #${i + 1}`, p.height_inches, cost.toFixed(2)]);
@@ -246,23 +278,43 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
       <CardContent className="space-y-3">
         {items.map((item, idx) => {
           const c = calcItemCost(item);
+          const selectedConcrete = inventory.find(i => i.id === item.selected_concrete_id);
+          const defaultConcCost = selectedConcrete?.cost_per_unit || 0;
+          
+          const selectedRebar = inventory.find(r => r.material_type === 'rebar' && r.rebar_size === item.rebar_size);
+          const defaultRebarCost = selectedRebar?.cost_per_unit || 0;
+
           return (
-            <div key={item._id} className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-              <div className="flex justify-between items-center text-sm font-semibold text-slate-700 mb-2">
+            <div key={item._id} className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
+              <div className="flex justify-between items-center text-base font-bold text-slate-800 mb-3 border-b border-slate-200 pb-2">
                 <span>Foundation #{idx + 1}{item.description ? ` — ${item.description}` : ''}</span>
-                <CopyValue value={`$${c.total.toFixed(2)}`} className="text-sm font-semibold" />
+                <CopyValue value={`$${c.total.toFixed(2)}`} className="text-base font-bold text-slate-800" />
               </div>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] mb-2">
-                 <span className="text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
-                   Volume: {c.volumeCY?.toFixed(2)} CY {c.concreteBags ? `(${c.concreteBags} bags)` : ''}
+              <div className="mb-3 inline-block">
+                 <span className="text-slate-600 bg-white px-2 py-1 rounded-md border border-slate-200 text-xs font-semibold shadow-sm">
+                   Calculated Volume: {c.volumeCY?.toFixed(2)} CY {c.concreteBags ? `(${c.concreteBags} bags)` : ''}
                  </span>
               </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
-                <CopyValue label="Concrete:" value={`$${c.concreteCost.toFixed(2)}`} />
-                <CopyValue label="Rebar:" value={`$${c.rebarCost.toFixed(2)}`} />
-                <CopyValue label="Forming:" value={`$${c.formingCost.toFixed(2)}`} />
-                <CopyValue label="Finishing:" value={`$${c.finishingCost.toFixed(2)}`} />
-                <CopyValue label="Excavation:" value={`$${c.excavationCost.toFixed(2)}`} />
+              <div className="flex flex-col gap-1">
+                <CostRow 
+                  label="Concrete" 
+                  unit={selectedConcrete?.material_type === 'bagged_concrete' ? 'bag' : 'CY'} 
+                  defaultRate={defaultConcCost} 
+                  customRate={item.custom_concrete_cost_per_cy} 
+                  onRateChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_concrete_cost_per_cy: val })}
+                  calculatedTotal={c.concreteCost} 
+                />
+                <CostRow 
+                  label="Rebar" 
+                  unit="ft" 
+                  defaultRate={defaultRebarCost} 
+                  customRate={item.custom_rebar_cost_per_ft} 
+                  onRateChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_rebar_cost_per_ft: val })}
+                  calculatedTotal={c.rebarCost} 
+                />
+                <CostRow label="Forming" calculatedTotal={c.formingCost} readOnly />
+                <CostRow label="Finishing" calculatedTotal={c.finishingCost} readOnly />
+                <CostRow label="Excavation" calculatedTotal={c.excavationCost} readOnly />
               </div>
             </div>
           );
@@ -273,33 +325,58 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
           <CopyValue value={`$${totals.itemsTotal.toFixed(2)}`} className="font-semibold" />
         </div>
 
-        {walls.length > 0 && <h4 className="text-sm font-bold text-slate-800 mt-4 mb-2">Walls</h4>}
-        {walls.map((w, i) => {
+        {walls.length > 0 && <h4 className="text-base font-bold text-slate-800 mt-6 mb-2">Walls</h4>}
+        {walls.map((w, idx) => {
           const cc = w.calculatedCosts;
+          const mat = w.selectedMaterial;
+          const intMat = w.selectedInternalMaterial;
+          
           return (
-            <div key={w._id} className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-              <div className="flex justify-between items-center text-sm font-semibold text-slate-700 mb-2">
-                <span>Wall #{i + 1}: {w.name || 'Untitled'}</span>
-                <CopyValue value={`$${(cc?.totalCost || 0).toFixed(2)}`} className="text-sm font-semibold" />
+            <div key={w._id} className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
+              <div className="flex justify-between items-center text-base font-bold text-slate-800 mb-3 border-b border-slate-200 pb-2">
+                <span>Wall #{idx + 1}: {w.name || 'Untitled'}</span>
+                <CopyValue value={`$${(cc?.totalCost || 0).toFixed(2)}`} className="text-base font-bold text-slate-800" />
               </div>
+              
               {cc && (
-                <div className="flex flex-col gap-2">
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                    <CopyValue label="Outer Material:" value={`$${(cc.materialCost || 0).toFixed(2)}`} />
-                    <CopyValue label="Outer Mortar:" value={`$${(cc.mortarCost || 0).toFixed(2)}`} />
-                    <CopyValue label="Outer Labor:" value={`$${(cc.laborCost || 0).toFixed(2)}`} />
+                <div className="flex flex-col gap-1 mb-4">
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 mt-1">Outer Wall</div>
+                  <div className="mb-2">
+                    <span className="text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px]">
+                      Units: {cc.totalBricks}
+                    </span>
                   </div>
+                  <CostRow 
+                    label="Outer Material" 
+                    unit="unit"
+                    defaultRate={mat?.cost_per_unit || 0}
+                    customRate={w.custom_material_cost_per_unit}
+                    onRateChange={(val) => onUpdateWall && onUpdateWall(idx, { custom_material_cost_per_unit: val })}
+                    calculatedTotal={cc.materialCost || 0}
+                  />
+                  <CostRow label="Outer Mortar" calculatedTotal={cc.mortarCost || 0} readOnly />
+                  <CostRow label={`Outer Labor (${cc.laborHours?.toFixed(1)}h)`} calculatedTotal={cc.laborCost || 0} readOnly />
+                  
                   {w.includeInternalWall && (
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs pt-1 border-t border-slate-200/60">
-                      <CopyValue label="Internal Material:" value={`$${(cc.internalMaterialCost || 0).toFixed(2)}`} />
-                      <CopyValue label="Internal Mortar:" value={`$${(cc.internalMortarCost || 0).toFixed(2)}`} />
-                      <CopyValue label="Internal Labor:" value={`$${(cc.internalLaborCost || 0).toFixed(2)}`} />
-                    </div>
+                    <>
+                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 mt-4 border-t border-slate-200 pt-3">Internal Wall</div>
+                      <div className="mb-2">
+                        <span className="text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px]">
+                          Units: {cc.internalTotalBricks}
+                        </span>
+                      </div>
+                      <CostRow 
+                        label="Internal Material" 
+                        unit="unit"
+                        defaultRate={intMat?.cost_per_unit || 0}
+                        customRate={w.custom_internal_material_cost_per_unit}
+                        onRateChange={(val) => onUpdateWall && onUpdateWall(idx, { custom_internal_material_cost_per_unit: val })}
+                        calculatedTotal={cc.internalMaterialCost || 0}
+                      />
+                      <CostRow label="Internal Mortar" calculatedTotal={cc.internalMortarCost || 0} readOnly />
+                      <CostRow label={`Internal Labor (${cc.internalLaborHours?.toFixed(1)}h)`} calculatedTotal={cc.internalLaborCost || 0} readOnly />
+                    </>
                   )}
-                  <div className="text-[11px] text-slate-500 bg-white/60 p-1.5 rounded">
-                    Outer Units: {cc.totalBricks} | Labor: {cc.laborHours?.toFixed(1)}h
-                    {w.includeInternalWall && ` • Internal Units: ${cc.internalTotalBricks} | Int. Labor: ${cc.internalLaborHours?.toFixed(1)}h`}
-                  </div>
                 </div>
               )}
             </div>
@@ -314,53 +391,75 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
         )}
 
         {polesData.length > 0 && (
-          <div className="mt-4">
-            <div className="flex justify-between py-2 border-b border-t font-semibold text-slate-700 mb-2 bg-slate-50/50 px-2 rounded-t-lg">
-              <span>Poles Total</span>
-              <CopyValue value={`$${polesTotal.toFixed(2)}`} className="font-semibold" />
-            </div>
-            <div className="space-y-1 px-2">
+          <div className="mt-6">
+            <h4 className="text-base font-bold text-slate-800 mb-2">Poles</h4>
+            <div className="space-y-3">
               {polesData.map((p, i) => {
                 const inv = inventory.find(inv => inv.id === p.pole_id);
                 let cost = 0;
+                let defaultRate = 0;
+                let unitLabel = '';
+                
                 if (inv) {
                    if (inv.pole_pricing_mode === 'stock_price') {
                        const stockLen = (inv.pole_stock_length_ft || 20) * 12;
                        const pieces = Math.ceil(p.height_inches / stockLen);
-                       cost = (pieces * (inv.pole_stock_price || 0));
+                       defaultRate = inv.pole_stock_price || 0;
+                       unitLabel = 'piece';
+                       
+                       const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : defaultRate;
+                       cost = pieces * rate;
                    } else {
-                       cost = ((p.height_inches / 12) * (inv.cost_per_unit || 0));
+                       defaultRate = inv.cost_per_unit || 0;
+                       unitLabel = 'ft';
+                       
+                       const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : defaultRate;
+                       cost = (p.height_inches / 12) * rate;
                    }
                 }
                 return (
-                  <div key={i} className="flex justify-between py-1 text-sm text-slate-600 border-b border-slate-100 last:border-0">
-                    <span>Pole #{i + 1} <span className="text-xs text-slate-400">({p.height_inches}" height)</span></span>
-                    <CopyValue value={`$${cost.toFixed(2)}`} />
+                  <div key={i} className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 shadow-sm flex flex-col">
+                    <CostRow 
+                      label={`Pole #${i + 1} (${p.height_inches}" height)`} 
+                      unit={unitLabel}
+                      defaultRate={defaultRate}
+                      customRate={p.custom_cost_per_unit}
+                      onRateChange={(val) => onUpdatePole && onUpdatePole(i, { custom_cost_per_unit: val })}
+                      calculatedTotal={cost}
+                    />
                   </div>
                 );
               })}
+            </div>
+            <div className="flex justify-between py-2 border-b font-semibold text-slate-700 mt-2">
+              <span>Poles Total</span>
+              <CopyValue value={`$${polesTotal.toFixed(2)}`} className="font-semibold" />
             </div>
           </div>
         )}
 
         {selectedEquipmentList.length > 0 && (
-          <div className="mt-4">
-            <div className="flex justify-between py-2 border-b border-t font-semibold text-slate-700 mb-2 bg-slate-50/50 px-2 rounded-t-lg">
-              <span>Equipment Total</span>
-              <CopyValue value={`$${totals.equipmentTotal.toFixed(2)}`} className="font-semibold" />
-            </div>
-            <div className="space-y-1 px-2">
+          <div className="mt-6">
+            <h4 className="text-base font-bold text-slate-800 mb-2">Equipment</h4>
+            <div className="space-y-3">
               {selectedEquipmentList.map((entry, i) => {
                 const eq = inventory.find(inv => inv.id === entry.equipment_id);
                 if (!eq) return null;
                 const cost = getEquipmentEntryCost(entry);
                 return (
-                  <div key={i} className="flex justify-between py-1 text-sm text-slate-600 border-b border-slate-100 last:border-0">
-                    <span>{eq.material_name} <span className="text-xs text-slate-400">({entry.rental_duration} {entry.rental_period}s)</span></span>
-                    <CopyValue value={`$${cost.toFixed(2)}`} />
+                  <div key={i} className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 shadow-sm">
+                    <CostRow 
+                      label={`${eq.material_name} (${entry.rental_duration} ${entry.rental_period}s)`} 
+                      calculatedTotal={cost}
+                      readOnly
+                    />
                   </div>
                 );
               })}
+            </div>
+            <div className="flex justify-between py-2 border-b font-semibold text-slate-700 mt-2">
+              <span>Equipment Total</span>
+              <CopyValue value={`$${totals.equipmentTotal.toFixed(2)}`} className="font-semibold" />
             </div>
           </div>
         )}

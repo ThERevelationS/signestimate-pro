@@ -1,0 +1,28 @@
+{
+  "name": "Report",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "bug",
+        "feature"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "default": "open"
+    }
+  },
+  "required": [
+    "type",
+    "title",
+    "description"
+  ]
+}

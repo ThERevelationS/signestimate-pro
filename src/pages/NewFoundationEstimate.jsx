@@ -541,9 +541,11 @@ export default function NewFoundationEstimate() {
         if (inv.pole_pricing_mode === 'stock_price') {
             const stockLen = (inv.pole_stock_length_ft || 20) * 12;
             const pieces = Math.ceil(p.height_inches / stockLen);
-            return sum + (pieces * (inv.pole_stock_price || 0));
+            const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : (inv.pole_stock_price || 0);
+            return sum + (pieces * rate);
         } else {
-            return sum + ((p.height_inches / 12) * (inv.cost_per_unit || 0));
+            const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : (inv.cost_per_unit || 0);
+            return sum + ((p.height_inches / 12) * rate);
         }
     }, 0);
 
@@ -1287,7 +1289,35 @@ export default function NewFoundationEstimate() {
 
               {/* SUMMARY */}
               <TabsContent value="summary" className="space-y-4 pt-4">
-                <SummaryTab items={items} walls={walls} totals={totals} calcItemCost={calcItemCost} project={project} polesData={polesData} selectedEquipmentList={selectedEquipmentList} inventory={inventory} />
+                <SummaryTab 
+                  items={items} 
+                  walls={walls} 
+                  totals={totals} 
+                  calcItemCost={calcItemCost} 
+                  project={project} 
+                  polesData={polesData} 
+                  selectedEquipmentList={selectedEquipmentList} 
+                  inventory={inventory} 
+                  onUpdateItem={(idx, updates) => {
+                    const arr = [...items];
+                    arr[idx] = { ...arr[idx], ...updates };
+                    setItems(arr);
+                    markDirty();
+                  }}
+                  onUpdateWall={(idx, updates) => updateWall(idx, { ...walls[idx], ...updates })}
+                  onUpdatePole={(idx, updates) => {
+                    const arr = [...polesData];
+                    arr[idx] = { ...arr[idx], ...updates };
+                    setPolesData(arr);
+                    markDirty();
+                  }}
+                  onUpdateEquipment={(idx, updates) => {
+                    const arr = [...selectedEquipmentList];
+                    arr[idx] = { ...arr[idx], ...updates };
+                    setSelectedEquipmentList(arr);
+                    markDirty();
+                  }}
+                />
               </TabsContent>
 
               {/* BOM */}

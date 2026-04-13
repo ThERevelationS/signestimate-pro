@@ -29,7 +29,7 @@ function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInter
     totalBricks += bricksThisCourse * numCoursesRounded;
   });
 
-  const materialCost = totalBricks * (wallMaterial.cost_per_unit || 0);
+  const materialCost = totalBricks * (wallMaterial.custom_cost_per_unit !== undefined && wallMaterial.custom_cost_per_unit !== null ? wallMaterial.custom_cost_per_unit : (wallMaterial.cost_per_unit || 0));
 
   const surfaceAreaSqFtSingleSide = (totalLinearInches * wallHeightInches) / 144;
 
@@ -83,7 +83,7 @@ function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInter
       internalTotalBricks += bricksThisCourse * intNumCourses;
     });
 
-    internalMaterialCost = internalTotalBricks * (internalMaterial.cost_per_unit || 0);
+    internalMaterialCost = internalTotalBricks * (internalMaterial.custom_cost_per_unit !== undefined && internalMaterial.custom_cost_per_unit !== null ? internalMaterial.custom_cost_per_unit : (internalMaterial.cost_per_unit || 0));
     
     const intSurfaceAreaSqFtSingleSide = (internalTotalLinearInches * internalWallHeightInches) / 144;
     
