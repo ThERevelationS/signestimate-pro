@@ -18,6 +18,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [xrayMode, setXrayMode] = useState(true);
   const [hideGround, setHideGround] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(100);
 
   // ── Scene setup (once) ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -47,6 +48,13 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
     controls.enableDamping = true;
     controls.dampingFactor = 0.06;
     controlsRef.current = controls;
+
+    controls.addEventListener('change', () => {
+      if (cameraRef.current && controlsRef.current) {
+        const dist = cameraRef.current.position.distanceTo(controlsRef.current.target);
+        setZoomLevel(Math.max(1, Math.round((20 / Math.max(0.1, dist)) * 100)));
+      }
+    });
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.7));
     const sun = new THREE.DirectionalLight(0xffffff, 0.9);
@@ -820,38 +828,24 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
   const snapView = (direction) => {
     if (!cameraRef.current || !controlsRef.current) return;
     const target = controlsRef.current.target.clone();
-    const dist = cameraRef.current.position.distanceTo(target);
+    const dist = Math.max(10, cameraRef.current.position.distanceTo(target));
 
     let newPos;
-    if (direction === 'reset') {
-      // 0-plane: side profile view directly from the front (+z axis, looking towards -z)
+    if (direction === 'front') {
       newPos = new THREE.Vector3(target.x, target.y, target.z + dist);
-    } else {
-      // Current horizontal angle from target
-      const dx = cameraRef.current.position.x - target.x;
-      const dz = cameraRef.current.position.z - target.z;
-      const currentAzimuth = Math.atan2(dx, dz);
-      const currentElevation = Math.asin((cameraRef.current.position.y - target.y) / dist);
-      const step = Math.PI / 4; // 45 degrees
-
-      let azimuth = currentAzimuth;
-      let elevation = currentElevation;
-
-      if (direction === 'left') azimuth = Math.round(currentAzimuth / step) * step + step;
-      if (direction === 'right') azimuth = Math.round(currentAzimuth / step) * step - step;
-      if (direction === 'up') elevation = Math.min(Math.PI / 2 - 0.01, Math.round(currentElevation / step) * step + step);
-      if (direction === 'down') elevation = Math.max(-Math.PI / 2 + 0.01, Math.round(currentElevation / step) * step - step);
-
-      newPos = new THREE.Vector3(
-        target.x + dist * Math.sin(azimuth) * Math.cos(elevation),
-        target.y + dist * Math.sin(elevation),
-        target.z + dist * Math.cos(azimuth) * Math.cos(elevation)
-      );
+    } else if (direction === 'side') {
+      newPos = new THREE.Vector3(target.x + dist, target.y, target.z);
+    } else if (direction === 'top') {
+      newPos = new THREE.Vector3(target.x, target.y + dist, target.z + 0.01);
+    } else if (direction === 'reset') {
+      newPos = new THREE.Vector3(target.x + dist * 0.7, target.y + dist * 0.7, target.z + dist * 0.7);
     }
 
-    cameraRef.current.position.copy(newPos);
-    cameraRef.current.lookAt(target);
-    controlsRef.current.update();
+    if (newPos) {
+      cameraRef.current.position.copy(newPos);
+      cameraRef.current.lookAt(target);
+      controlsRef.current.update();
+    }
   };
 
   const handleSaveImage = () => {
@@ -881,11 +875,13 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
             </div>
           )}
           <div className="flex gap-1 items-center bg-white/90 backdrop-blur-sm rounded-md shadow-sm border border-slate-200 p-0.5">
-            <Button onClick={() => snapView('left')} variant="ghost" size="icon" className="h-7 w-7 text-slate-600 hover:text-slate-900" title="Snap Left 45°"><ArrowLeft className="w-3 h-3" /></Button>
-            <Button onClick={() => snapView('right')} variant="ghost" size="icon" className="h-7 w-7 text-slate-600 hover:text-slate-900" title="Snap Right 45°"><ArrowRight className="w-3 h-3" /></Button>
-            <Button onClick={() => snapView('up')} variant="ghost" size="icon" className="h-7 w-7 text-slate-600 hover:text-slate-900" title="Snap Up 45°"><ArrowUp className="w-3 h-3" /></Button>
-            <Button onClick={() => snapView('down')} variant="ghost" size="icon" className="h-7 w-7 text-slate-600 hover:text-slate-900" title="Snap Down 45°"><ArrowDown className="w-3 h-3" /></Button>
-            <Button onClick={() => snapView('reset')} variant="ghost" size="icon" className="h-7 w-7 text-blue-600 hover:text-blue-800" title="0-Plane Side View"><Crosshair className="w-3.5 h-3.5" /></Button>
+            <Button onClick={() => snapView('front')} variant="ghost" size="sm" className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900" title="Front View">Front</Button>
+            <Button onClick={() => snapView('side')} variant="ghost" size="sm" className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900" title="Side View">Side</Button>
+            <Button onClick={() => snapView('top')} variant="ghost" size="sm" className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900" title="Top View">Top</Button>
+            <div className="w-px h-4 bg-slate-300 mx-1"></div>
+            <Button onClick={() => snapView('reset')} variant="ghost" size="sm" className="h-7 px-2 text-xs text-blue-600 hover:text-blue-800" title="Default Perspective"><Crosshair className="w-3.5 h-3.5 mr-1" /> Reset</Button>
+            <div className="w-px h-4 bg-slate-300 mx-1"></div>
+            <div className="px-2 text-xs font-medium text-slate-500 min-w-[3rem] text-center" title="Zoom Level">{zoomLevel}%</div>
           </div>
         </div>
 
