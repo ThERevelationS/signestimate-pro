@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 
-function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInternalWall, wallHeightInches, internalWallHeightInches, mortarGapInches, internalMortarGapInches, settings }) {
+function calcWallCosts({ wall, wallShape, wallMaterial, internalMaterial, includeInternalWall, wallHeightInches, internalWallHeightInches, mortarGapInches, internalMortarGapInches, settings }) {
   if (!wallShape || !wallMaterial || !wallShape.segments) return null;
 
   const isConcrete = wallMaterial.wall_material_subtype === 'concrete';
@@ -29,18 +29,24 @@ function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInter
     totalBricks += bricksThisCourse * numCoursesRounded;
   });
 
-  const materialCost = totalBricks * (wallMaterial.custom_cost_per_unit !== undefined && wallMaterial.custom_cost_per_unit !== null ? wallMaterial.custom_cost_per_unit : (wallMaterial.cost_per_unit || 0));
+  const finalBricks = wallMaterial.custom_outer_material_qty !== undefined && wallMaterial.custom_outer_material_qty !== null ? wallMaterial.custom_outer_material_qty : totalBricks;
+  const materialCost = finalBricks * (wallMaterial.custom_cost_per_unit !== undefined && wallMaterial.custom_cost_per_unit !== null ? wallMaterial.custom_cost_per_unit : (wallMaterial.cost_per_unit || 0));
 
   const surfaceAreaSqFtSingleSide = (totalLinearInches * wallHeightInches) / 144;
 
   let mortarCost = 0;
+  let mortarBags = 0;
   if (!isConcrete) {
     const surfaceAreaSqFtMortar = surfaceAreaSqFtSingleSide * 2;
-    const mortarCostPerSqFt = parseFloat(settings?.wall_mortar_cost_per_sqft || 0.35);
-    mortarCost = surfaceAreaSqFtMortar * mortarCostPerSqFt;
+    // Assuming 1 bag of mortar covers ~30 sqft for estimation
+    mortarBags = Math.ceil(surfaceAreaSqFtMortar / 30);
+    const finalMortarBags = wallMaterial.custom_outer_mortar_qty !== undefined && wallMaterial.custom_outer_mortar_qty !== null ? wallMaterial.custom_outer_mortar_qty : mortarBags;
+    const mortarCostPerBag = parseFloat(settings?.wall_mortar_cost_per_bag || 10);
+    const finalMortarRate = wallMaterial.custom_outer_mortar_rate !== undefined && wallMaterial.custom_outer_mortar_rate !== null ? wallMaterial.custom_outer_mortar_rate : mortarCostPerBag;
+    mortarCost = finalMortarBags * finalMortarRate;
   }
 
-  const laborRatePerSqFt = parseFloat(settings?.wall_labor_rate || 45);
+  const laborRatePerSqFt = wallMaterial.custom_outer_labor_rate !== undefined && wallMaterial.custom_outer_labor_rate !== null ? wallMaterial.custom_outer_labor_rate : parseFloat(settings?.wall_labor_rate || 45);
   const minCharge = parseFloat(settings?.wall_minimum_charge || 150);
   
   let laborCost = surfaceAreaSqFtSingleSide * laborRatePerSqFt;
@@ -48,7 +54,7 @@ function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInter
     laborCost = minCharge;
   }
   
-  const laborHours = totalBricks / (parseFloat(settings?.wall_labor_bricks_per_hour || 50));
+  const laborHours = finalBricks / (parseFloat(settings?.wall_labor_bricks_per_hour || 50));
 
   // --- Internal Wall Calculation ---
   let internalTotalBricks = 0;
@@ -83,32 +89,43 @@ function calcWallCosts({ wallShape, wallMaterial, internalMaterial, includeInter
       internalTotalBricks += bricksThisCourse * intNumCourses;
     });
 
-    internalMaterialCost = internalTotalBricks * (internalMaterial.custom_cost_per_unit !== undefined && internalMaterial.custom_cost_per_unit !== null ? internalMaterial.custom_cost_per_unit : (internalMaterial.cost_per_unit || 0));
+    const finalInternalBricks = wall.custom_internal_material_qty !== undefined && wall.custom_internal_material_qty !== null ? wall.custom_internal_material_qty : internalTotalBricks;
+    internalMaterialCost = finalInternalBricks * (wall.custom_internal_material_cost_per_unit !== undefined && wall.custom_internal_material_cost_per_unit !== null ? wall.custom_internal_material_cost_per_unit : (internalMaterial.cost_per_unit || 0));
     
     const intSurfaceAreaSqFtSingleSide = (internalTotalLinearInches * internalWallHeightInches) / 144;
     
+    let internalMortarBags = 0;
     if (!intIsConcrete) {
       const intSurfaceAreaSqFtMortar = intSurfaceAreaSqFtSingleSide * 2;
-      const mortarCostPerSqFt = parseFloat(settings?.wall_mortar_cost_per_sqft || 0.35);
-      internalMortarCost = intSurfaceAreaSqFtMortar * mortarCostPerSqFt;
+      internalMortarBags = Math.ceil(intSurfaceAreaSqFtMortar / 30);
+      const finalInternalMortarBags = wall.custom_internal_mortar_qty !== undefined && wall.custom_internal_mortar_qty !== null ? wall.custom_internal_mortar_qty : internalMortarBags;
+      const internalMortarCostPerBag = parseFloat(settings?.wall_mortar_cost_per_bag || 10);
+      const finalInternalMortarRate = wall.custom_internal_mortar_rate !== undefined && wall.custom_internal_mortar_rate !== null ? wall.custom_internal_mortar_rate : internalMortarCostPerBag;
+      internalMortarCost = finalInternalMortarBags * finalInternalMortarRate;
     }
 
-    let rawIntLaborCost = intSurfaceAreaSqFtSingleSide * laborRatePerSqFt;
+    const internalLaborRatePerSqFt = wall.custom_internal_labor_rate !== undefined && wall.custom_internal_labor_rate !== null ? wall.custom_internal_labor_rate : parseFloat(settings?.wall_labor_rate || 45);
+    let rawIntLaborCost = intSurfaceAreaSqFtSingleSide * internalLaborRatePerSqFt;
     internalLaborCost = rawIntLaborCost;
-    internalLaborHours = internalTotalBricks / (parseFloat(settings?.wall_labor_bricks_per_hour || 50));
+    internalLaborHours = finalInternalBricks / (parseFloat(settings?.wall_labor_bricks_per_hour || 50));
   }
 
   return {
     totalBricks,
+    finalBricks,
     materialCost,
+    mortarBags,
+    finalMortarBags: !isConcrete ? (wallMaterial.custom_outer_mortar_qty !== undefined && wallMaterial.custom_outer_mortar_qty !== null ? wallMaterial.custom_outer_mortar_qty : mortarBags) : 0,
     mortarCost,
     laborHours,
+    laborRatePerSqFt,
     laborCost,
     totalCost: materialCost + mortarCost + laborCost + internalMaterialCost + internalMortarCost + internalLaborCost,
     totalLinearInches,
     numCourses,
     internalTotalBricks,
     internalMaterialCost,
+    internalMortarBags: includeInternalWall && internalMaterial && internalMaterial.wall_material_subtype !== 'concrete' ? Math.ceil(((internalTotalLinearInches * internalWallHeightInches) / 144) * 2 / 30) : 0,
     internalMortarCost,
     internalLaborCost,
     internalLaborHours
@@ -137,6 +154,7 @@ export default function WallSection({
   const isConcrete = wall.selectedMaterial?.wall_material_subtype === 'concrete';
   const isInternalConcrete = wall.selectedInternalMaterial?.wall_material_subtype === 'concrete';
   const costs = calcWallCosts({
+    wall,
     wallShape: wall.shape,
     wallMaterial: wall.selectedMaterial,
     internalMaterial: wall.selectedInternalMaterial,

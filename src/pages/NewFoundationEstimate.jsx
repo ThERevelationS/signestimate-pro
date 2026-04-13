@@ -396,11 +396,18 @@ export default function NewFoundationEstimate() {
 
   const calcItemCost = (item) => {
     const selectedConcrete = inventory.find(c => c.id === item.selected_concrete_id);
-    const conc_cost = item.custom_concrete_cost_per_cy || selectedConcrete?.cost_per_unit || 0;
+    const conc_cost = item.custom_concrete_cost_per_cy !== null && item.custom_concrete_cost_per_cy !== undefined 
+      ? item.custom_concrete_cost_per_cy 
+      : (selectedConcrete?.cost_per_unit || 0);
     
     // Find the selected rebar from inventory (matching the #size)
     const selectedRebar = inventory.find(r => r.material_type === 'rebar' && r.rebar_size === item.rebar_size);
-    const rebar_cost = item.custom_rebar_cost_per_ft || selectedRebar?.cost_per_unit || 0;
+    const pillarSelectedRebar = inventory.find(r => r.material_type === 'rebar' && r.rebar_size === (item.pillar_rebar_size || '#4'));
+    const activeRebar = item.foundation_type === 'spread_foot' ? selectedRebar : pillarSelectedRebar;
+    
+    const rebar_cost = item.custom_rebar_cost_per_ft !== null && item.custom_rebar_cost_per_ft !== undefined 
+      ? item.custom_rebar_cost_per_ft 
+      : (activeRebar?.cost_per_unit || 0);
     
     const main_labor_rate = getSetting('foundation_main_labor_rate', 60);
     const rebar_time_cross_section = getSetting('foundation_rebar_time_cross_section', 0.05);
@@ -414,24 +421,30 @@ export default function NewFoundationEstimate() {
       ? getSetting('foundation_forming_materials_spread_foot', 0.5)
       : getSetting('foundation_forming_materials_pillar', 0.75);
 
-    let volumeCY = 0;
+    let baseVolumeCY = 0;
     const lenIn = parseFloat(item.length_inches) || 0;
     const widIn = parseFloat(item.width_inches) || 0;
     const depIn = parseFloat(item.depth_inches) || 0;
     const diaIn = parseFloat(item.diameter) || 0;
     
     if (item.foundation_type === 'spread_foot') {
-      volumeCY = ((lenIn / 12) * (widIn / 12) * (depIn / 12)) / 27;
+      baseVolumeCY = ((lenIn / 12) * (widIn / 12) * (depIn / 12)) / 27;
     } else {
       const r = (diaIn / 2) / 12;
-      volumeCY = (Math.PI * r * r * (depIn / 12)) / 27;
+      baseVolumeCY = (Math.PI * r * r * (depIn / 12)) / 27;
     }
-    volumeCY = volumeCY * (item.quantity || 1);
+    baseVolumeCY = baseVolumeCY * (item.quantity || 1);
+    
+    const volumeCY = item.custom_concrete_qty !== null && item.custom_concrete_qty !== undefined ? item.custom_concrete_qty : baseVolumeCY;
 
     let concreteCost = 0;
+    let baseBags = null;
+    let concreteBags = null;
     if (selectedConcrete?.material_type === 'bagged_concrete') {
-      const bags = Math.ceil(volumeCY * 45); // ~45 80lb bags per CY
-      concreteCost = bags * (Number(selectedConcrete.cost_per_unit) || 5); // Fallback to $5/bag if not set
+      baseBags = Math.ceil(baseVolumeCY * 45); // ~45 80lb bags per CY
+      // If volumeCY is custom, adjust bags accordingly, unless custom_concrete_bags is set
+      concreteBags = item.custom_concrete_bags !== null && item.custom_concrete_bags !== undefined ? item.custom_concrete_bags : Math.ceil(volumeCY * 45);
+      concreteCost = concreteBags * (Number(conc_cost) || 5);
     } else {
       let baseRate = Number(conc_cost) || 0;
       if (selectedConcrete && Number(selectedConcrete.minimum_order_yards) > 0 && volumeCY < Number(selectedConcrete.minimum_order_yards)) {
@@ -447,6 +460,9 @@ export default function NewFoundationEstimate() {
     }
 
     let rebarCost = 0;
+    let baseRebarFt = 0;
+    let totalIntersections = 0;
+    
     if (item.include_rebar && item.foundation_type === 'spread_foot') {
       const nBarsL = Math.floor(widIn / (parseFloat(item.rebar_spacing_width) || 12)) + 1;
       const nBarsW = Math.floor(lenIn / (parseFloat(item.rebar_spacing_length) || 12)) + 1;
@@ -457,13 +473,8 @@ export default function NewFoundationEstimate() {
       const verticalLengthFt = Math.max(0, depIn - 6) / 12;
       const verticalFt = numIntersections * verticalLengthFt;
       
-      const totalFt = (horizontalFt + verticalFt) * (parseInt(item.quantity) || 1);
-      const totalIntersections = numIntersections * (parseInt(item.quantity) || 1);
-      
-      const materialCost = totalFt * rebar_cost;
-      const totalTimeHours = (totalIntersections * rebar_time_cross_section) + (totalFt * rebar_time_linear_ft);
-      const laborCost = totalTimeHours * main_labor_rate;
-      rebarCost = materialCost + laborCost;
+      baseRebarFt = (horizontalFt + verticalFt) * (parseInt(item.quantity) || 1);
+      totalIntersections = numIntersections * (parseInt(item.quantity) || 1);
     } else if (item.include_rebar && item.foundation_type === 'pillar') {
       const hoopDia = parseFloat(item.pillar_rebar_hoop_diameter) || Math.max(0, diaIn - 4);
       const safeHoopDia = Math.min(hoopDia, Math.max(0, diaIn - 4));
@@ -476,58 +487,103 @@ export default function NewFoundationEstimate() {
       const verticalLengthFt = Math.max(0, depIn - 6) / 12;
       const totalVerticalFt = verticalCount * verticalLengthFt;
       
-      const totalFt = (totalHoopFt + totalVerticalFt) * (parseInt(item.quantity) || 1);
-      const totalIntersections = (layers * verticalCount) * (parseInt(item.quantity) || 1);
-      
-      const pillarSelectedRebar = inventory.find(r => r.material_type === 'rebar' && r.rebar_size === (item.pillar_rebar_size || '#4'));
-      const pillarRebarCostPerFt = item.custom_rebar_cost_per_ft || pillarSelectedRebar?.cost_per_unit || 0;
-      
-      const materialCost = totalFt * pillarRebarCostPerFt;
-      const totalTimeHours = (totalIntersections * rebar_time_cross_section) + (totalFt * rebar_time_linear_ft);
+      baseRebarFt = (totalHoopFt + totalVerticalFt) * (parseInt(item.quantity) || 1);
+      totalIntersections = (layers * verticalCount) * (parseInt(item.quantity) || 1);
+    }
+    
+    const rebarFt = item.custom_rebar_qty !== null && item.custom_rebar_qty !== undefined ? item.custom_rebar_qty : baseRebarFt;
+    if (item.include_rebar) {
+      const materialCost = rebarFt * rebar_cost;
+      const totalTimeHours = (totalIntersections * rebar_time_cross_section) + (rebarFt * rebar_time_linear_ft);
       const laborCost = totalTimeHours * main_labor_rate;
       rebarCost = materialCost + laborCost;
     }
 
     let formingCost = 0;
+    let baseFormingQty = 0;
+    const selectedForming = inventory.find(i => i.id === item.selected_forming_id);
+    const forming_rate = item.custom_forming_rate !== null && item.custom_forming_rate !== undefined ? item.custom_forming_rate : (selectedForming?.cost_per_unit || 0);
+
     if (item.include_forming) {
       const perim = item.foundation_type === 'spread_foot'
         ? 2 * (lenIn + widIn) / 12
         : Math.PI * diaIn / 12;
-      // Forming area = perimeter * depth (in feet)
       const formingAreaSqFt = perim * (depIn / 12);
+      
+      // Calculate pcs based on perimeter
+      // standard 16ft lengths
+      baseFormingQty = Math.ceil(perim / 16) * (parseInt(item.quantity) || 1);
+      const formingQty = item.custom_forming_qty !== null && item.custom_forming_qty !== undefined ? item.custom_forming_qty : baseFormingQty;
+      
+      const formingMaterialCost = formingQty * forming_rate;
+      
+      // Keep old labor calculation logic
       const laborCost = formingAreaSqFt * (parseInt(item.quantity) || 1) * forming_cost_per_sqft;
-      formingCost = laborCost + concreteCost * forming_mult;
+      formingCost = laborCost + formingMaterialCost + (concreteCost * forming_mult);
     }
 
     let finishingCost = 0;
+    let baseFinishingHours = 0;
+    const finishing_rate = item.custom_finishing_rate !== null && item.custom_finishing_rate !== undefined ? item.custom_finishing_rate : main_labor_rate;
+
     if (item.include_finishing) {
       const topArea = item.foundation_type === 'spread_foot'
         ? (lenIn * widIn) / 144
         : Math.PI * ((diaIn / 2 / 12) ** 2);
-      finishingCost = topArea * (parseInt(item.quantity) || 1) * finishing_cost_per_sqft;
+        
+      // back out hours from sqft cost formula
+      const defaultFinishingCost = topArea * (parseInt(item.quantity) || 1) * finishing_cost_per_sqft;
+      baseFinishingHours = defaultFinishingCost / main_labor_rate;
+      const finishingHours = item.custom_finishing_hours !== null && item.custom_finishing_hours !== undefined ? item.custom_finishing_hours : baseFinishingHours;
+      
+      finishingCost = finishingHours * finishing_rate;
     }
 
     let pouringCost = volumeCY * pouring_cost_per_cy;
 
     let excavationCost = 0;
+    let baseExcavationHours = 0;
     const excVol = volumeCY * 1.25;
     if (item.excavation_method === 'hand_dig' || !item.excavation_method) {
       const timePerCy = getSetting('foundation_hand_dig_time_per_cy', 2.0);
-      excavationCost = excVol * timePerCy * main_labor_rate;
+      baseExcavationHours = excVol * timePerCy;
     } else {
       const timePerCy = getSetting('foundation_equipment_excavation_time_per_cy', 0.5);
-      excavationCost = excVol * timePerCy * main_labor_rate;
+      baseExcavationHours = excVol * timePerCy;
     }
+    
+    const excavationHours = item.custom_excavation_hours !== null && item.custom_excavation_hours !== undefined ? item.custom_excavation_hours : baseExcavationHours;
+    const excavation_rate = item.custom_excavation_rate !== null && item.custom_excavation_rate !== undefined ? item.custom_excavation_rate : main_labor_rate;
+    
+    excavationCost = excavationHours * excavation_rate;
 
     return { 
       concreteCost, 
-      concreteBags: selectedConcrete?.material_type === 'bagged_concrete' ? Math.ceil(volumeCY * 45) : null,
+      concreteBags,
       volumeCY,
+      baseVolumeCY,
+      baseBags,
       rebarCost, 
-      formingCost, 
+      rebarFt,
+      baseRebarFt,
+      formingCost,
+      formingQty: item.custom_forming_qty !== null && item.custom_forming_qty !== undefined ? item.custom_forming_qty : baseFormingQty,
+      baseFormingQty,
       finishingCost, 
+      finishingHours: item.custom_finishing_hours !== null && item.custom_finishing_hours !== undefined ? item.custom_finishing_hours : baseFinishingHours,
+      baseFinishingHours,
       pouringCost,
       excavationCost, 
+      excavationHours,
+      baseExcavationHours,
+      concreteRate: conc_cost,
+      rebarRate: rebar_cost,
+      formingRate: forming_rate,
+      finishingRate: finishing_rate,
+      excavationRate: excavation_rate,
+      selectedConcreteName: selectedConcrete?.material_name || '',
+      selectedRebarName: activeRebar?.material_name || '',
+      selectedFormingName: selectedForming?.material_name || '',
       total: concreteCost + rebarCost + formingCost + finishingCost + pouringCost + excavationCost 
     };
   };
@@ -559,15 +615,20 @@ export default function NewFoundationEstimate() {
       const rentalPeriod = entry.rental_period || 'day';
       const rentalDuration = entry.rental_duration || 1;
       
-      const getRentalCost = (item) => {
-        if (rentalPeriod === 'day') return (item.cost_per_day || 0) * rentalDuration;
-        if (rentalPeriod === 'week') return (item.cost_per_week || 0) * rentalDuration;
-        if (rentalPeriod === 'month') return (item.cost_per_month || 0) * rentalDuration;
+      const durationOverride = entry.custom_qty !== undefined && entry.custom_qty !== null ? entry.custom_qty : rentalDuration;
+      
+      const getRentalCost = (item, rateOverride) => {
+        if (rateOverride !== undefined && rateOverride !== null) return rateOverride * durationOverride;
+        if (rentalPeriod === 'day') return (item.cost_per_day || 0) * durationOverride;
+        if (rentalPeriod === 'week') return (item.cost_per_week || 0) * durationOverride;
+        if (rentalPeriod === 'month') return (item.cost_per_month || 0) * durationOverride;
         return 0;
       };
       
-      let entryTotal = getRentalCost(eq);
-      if (entry.include_delivery) entryTotal += (eq.pickup_delivery_cost || 0);
+      let entryTotal = getRentalCost(eq, entry.custom_rate);
+      const deliveryCharge = entry.custom_delivery_charge !== undefined && entry.custom_delivery_charge !== null ? entry.custom_delivery_charge : (eq.pickup_delivery_cost || 0);
+      
+      if (entry.include_delivery) entryTotal += deliveryCharge;
       
       if (entry.attachment_counts) {
         Object.entries(entry.attachment_counts).forEach(([id, qty]) => {
