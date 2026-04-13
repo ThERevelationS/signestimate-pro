@@ -16,7 +16,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
   const dirtTexRef = useRef(null);
   const groundMeshRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [xrayMode, setXrayMode] = useState(false);
+  const [xrayMode, setXrayMode] = useState(true);
   const [hideGround, setHideGround] = useState(false);
 
   // ── Scene setup (once) ──────────────────────────────────────────────────────
@@ -209,6 +209,10 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
         const group = new THREE.Group();
         group.position.set(ox, 0, oz);
         group.rotation.y = -(item.rotation_degrees || 0) * Math.PI / 180;
+        
+        // Expose center to easily grab it later
+        group.userData.centerX = ox;
+        group.userData.centerZ = oz;
 
         if (isSpread) {
           const geo = new THREE.BoxGeometry(lenFt, depFt, widFt);
@@ -378,7 +382,10 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
       const shape = wall.shape;
       const mat = wall.selectedMaterial;
       if (!shape || !shape.segments || shape.segments.length === 0 || !mat) return;
-
+      
+      // Wall points are relative to canvas 0,0. Let's move them to the foundation center.
+      const fc = foundationCenters[0] || { x: 0, z: 0 };
+      
       const heightInches = wall.heightInches || 24;
       
       const drawWallLayer = (material, isInternal) => {
@@ -408,11 +415,12 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
 
         // Pre-compute segment directions for corner overlap logic
         const segData = shape.segments.map((seg) => {
-          const p1 = seg.p1, p2 = seg.p2;
-          if (!p1 || !p2) return null;
-          const x1 = p1.x / 12, z1 = p1.y / 12;
-          const x2 = p2.x / 12, z2 = p2.y / 12;
-          const dx = x2 - x1, dz = z2 - z1;
+        const p1 = seg.p1, p2 = seg.p2;
+        if (!p1 || !p2) return null;
+        // Move points from local 2D space to world 3D space by adding foundation center
+        const x1 = (p1.x / 12) + fc.x, z1 = (p1.y / 12) + fc.z;
+        const x2 = (p2.x / 12) + fc.x, z2 = (p2.y / 12) + fc.z;
+        const dx = x2 - x1, dz = z2 - z1;
           const len = Math.sqrt(dx * dx + dz * dz);
           if (len < 0.01) return null;
           
@@ -633,8 +641,15 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
         const widFt = (inv.pole_width_inches || 6) / 12;
         const depFt = (inv.pole_depth_inches || 6) / 12;
         
-        const cx = p.x_inches / 12;
-        const cz = p.z_inches / 12;
+        // The pole center should be centered on the foundation object plus user offsets
+        let cx = (p.x_inches || 0) / 12;
+        let cz = (p.z_inches || 0) / 12;
+
+        const fIdx = p.foundation_idx !== undefined ? p.foundation_idx : 0;
+        if(foundationCenters[fIdx]) {
+           cx += foundationCenters[fIdx].x;
+           cz += foundationCenters[fIdx].z;
+        }
         
         // y_offset is from top of foundation downwards.
         // top of foundation is at gradeOffsetFt.

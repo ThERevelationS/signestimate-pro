@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -8,24 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Save, User as UserIcon, Mail, Phone, Briefcase, Building, LogOut, Paintbrush, Layout } from "lucide-react";
+import { Save, User as UserIcon, Mail, Phone, Briefcase, Building, LogOut, Layout } from "lucide-react";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { FoundationProject } from "@/entities/all";
 
-// Dummy data for projects and paint colors
-const dummyProjects = [
-  { id: "proj-1", name: "Living Room Renovation", description: "Complete overhaul of the living room including new paint, flooring, and furniture.", status: "In Progress", dueDate: "2024-08-15" },
-  { id: "proj-2", name: "Kitchen Cabinet Refinishing", description: "Sanding and repainting kitchen cabinets with a new finish. Client approved color 'Pearl White'.", status: "Completed", dueDate: "2024-06-30" },
-  { id: "proj-3", name: "Exterior Paint Job", description: "Painting the entire exterior of the house. Requires scaffolding.", status: "Pending", dueDate: "2024-09-01" },
-  { id: "proj-4", name: "Bathroom Remodel", description: "Installation of new tiles, vanity, and shower. Plumbing work scheduled.", status: "On Hold", dueDate: "2024-10-20" },
-];
-
-const dummyPaintColors = [
-  { id: "color-1", name: "Whisper White", hex: "#F8F8F8", suggestedFor: "Ceilings, Modern Interiors" },
-  { id: "color-2", name: "Sky Blue", hex: "#87CEEB", suggestedFor: "Bedrooms, Kids Rooms" },
-  { id: "color-3", name: "Forest Green", hex: "#228B22", suggestedFor: "Feature Walls, Nature-themed spaces" },
-  { id: "color-4", name: "Warm Grey", hex: "#A9A9A9", suggestedFor: "Living Rooms, Commercial Spaces" },
-  { id: "color-5", name: "Terracotta", hex: "#E2725B", suggestedFor: "Accents, Mediterranean style" },
-  { id: "color-6", name: "Navy Blue", hex: "#000080", suggestedFor: "Elegant spaces, Home Offices" },
-];
+// Dummy data for projects
+const dummyProjects = [];
 
 
 export default function MyProfile() {
@@ -35,17 +23,14 @@ export default function MyProfile() {
   const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [allUsers, setAllUsers] = useState([]);
   const [showUserDirectory, setShowUserDirectory] = useState(false);
-  // New state for projects and paint colors (using dummy data for now)
   const [userProjects, setUserProjects] = useState([]);
-  const [paintColorSuggestions, setPaintColorSuggestions] = useState([]);
 
 
   useEffect(() => {
     loadUserProfile();
     loadAllUsers();
-    // Simulate loading user-specific projects and paint suggestions
+    // Simulate loading user-specific projects
     setUserProjects(dummyProjects); // In a real app, this would be an API call based on user.id
-    setPaintColorSuggestions(dummyPaintColors); // In a real app, this could be dynamic
   }, []);
 
   const loadUserProfile = async () => {
@@ -69,6 +54,19 @@ export default function MyProfile() {
       console.error('Error loading users:', error);
     }
   };
+
+  const loadProjects = async () => {
+    try {
+      const projs = await FoundationProject.list();
+      setUserProjects(projs);
+    } catch(err) {
+      console.error("Error loading projects", err);
+    }
+  };
+
+  useEffect(() => {
+    loadProjects();
+  }, []);
 
   const updateProfile = async () => {
     if (!user) return;
@@ -162,13 +160,14 @@ export default function MyProfile() {
             <p className="text-slate-600">Manage your account information and view team members</p>
           </div>
           <div className="flex gap-3">
-            <Button
-              onClick={() => setShowUserDirectory(!showUserDirectory)}
-              variant="outline"
-              className="px-6 py-3"
-            >
-              {showUserDirectory ? 'Hide' : 'View'} Team Directory
-            </Button>
+            <Link to={createPageUrl("UserManagement")}>
+              <Button
+                variant="outline"
+                className="px-6 py-3"
+              >
+                View Team Directory
+              </Button>
+            </Link>
             <Button 
               onClick={updateProfile} 
               disabled={isSaving}
@@ -268,36 +267,7 @@ export default function MyProfile() {
               </CardContent>
             </Card>
             
-            {/* Team Directory */}
-            {showUserDirectory && (
-              <Card className="bg-white border-0 shadow-sm">
-                <CardHeader className="border-b border-slate-100">
-                  <CardTitle className="text-lg font-semibold text-slate-900">Team Directory</CardTitle>
-                  <p className="text-sm text-slate-600">Other users in your organization</p>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-6">
-                  {allUsers.filter(u => u.id !== user?.id).map((teamUser) => (
-                    <div key={teamUser.id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg">
-                      <div className="w-12 h-12 bg-gradient-to-br from-slate-600 to-slate-800 rounded-full flex items-center justify-center">
-                        <UserIcon className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-slate-900">{teamUser.full_name}</h4>
-                        <p className="text-sm text-slate-600">{teamUser.email}</p>
-                        {teamUser.job_title && <p className="text-sm text-slate-500">{teamUser.job_title}</p>}
-                        {teamUser.department && <p className="text-xs text-slate-500">{teamUser.department}</p>}
-                      </div>
-                      <Badge className={getRoleBadgeColor(teamUser.role)}>
-                        {teamUser.role === 'admin' ? 'Admin' : 'User'}
-                      </Badge>
-                    </div>
-                  ))}
-                  {allUsers.filter(u => u.id !== user?.id).length === 0 && (
-                    <p className="text-center text-slate-500 py-8">No other team members found.</p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+
 
             {/* User Projects Card */}
             <Card className="bg-white border-0 shadow-sm">
@@ -313,15 +283,13 @@ export default function MyProfile() {
                   userProjects.map((project) => (
                     <div key={project.id} className="p-4 bg-slate-50 rounded-lg border border-slate-100">
                       <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-medium text-slate-900">{project.name}</h4>
+                        <h4 className="font-medium text-slate-900">{project.project_name || "Unnamed Project"}</h4>
                         <Badge className={getProjectStatusColor(project.status)}>
-                          {project.status}
+                          {project.status || "Draft"}
                         </Badge>
                       </div>
-                      <p className="text-sm text-slate-600 mb-2">{project.description}</p>
-                      {project.dueDate && (
-                        <p className="text-xs text-slate-500">Due: {new Date(project.dueDate).toLocaleDateString()}</p>
-                      )}
+                      <p className="text-sm text-slate-600 mb-2">{project.client_name}</p>
+                      <p className="text-xs text-slate-500">Last updated: {new Date(project.updated_date).toLocaleDateString()}</p>
                     </div>
                   ))
                 ) : (
@@ -330,29 +298,7 @@ export default function MyProfile() {
               </CardContent>
             </Card>
 
-            {/* Paint Color Suggestions Card */}
-            <Card className="bg-white border-0 shadow-sm">
-              <CardHeader className="border-b border-slate-100">
-                <CardTitle className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                  <Paintbrush className="w-5 h-5 text-slate-500" />
-                  Paint Color Suggestions
-                </CardTitle>
-                <p className="text-sm text-slate-600">Explore popular color palettes for your next project</p>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
-                {paintColorSuggestions.length > 0 ? (
-                  paintColorSuggestions.map((color) => (
-                    <div key={color.id} className="flex flex-col items-center p-3 bg-slate-50 rounded-lg border border-slate-100 text-center">
-                      <div className="w-16 h-16 rounded-full border-2 border-slate-200 mb-2" style={{ backgroundColor: color.hex }}></div>
-                      <h4 className="font-medium text-slate-900 text-sm">{color.name}</h4>
-                      <p className="text-xs text-slate-500 mt-1">{color.suggestedFor}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-center text-slate-500 py-8 col-span-full">No color suggestions available.</p>
-                )}
-              </CardContent>
-            </Card>
+
 
           </div>
 
