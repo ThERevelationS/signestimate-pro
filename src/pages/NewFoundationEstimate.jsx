@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Save, ArrowLeft, Trash2, Crosshair, Move } from 'lucide-react';
+import { Plus, Save, ArrowLeft, Trash2, Crosshair, Move, Undo, Redo, Copy } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import WallSection from '@/components/WallSection';
@@ -717,6 +717,48 @@ export default function NewFoundationEstimate() {
     }
   };
 
+  const handleSaveAs = async () => {
+    if (saving || autoSaving) return;
+    
+    setSaving(true);
+    
+    const total_excavation = items.reduce((sum, item) => sum + calcItemCost(item).excavationCost, 0);
+    const total_equipment = totals.equipmentTotal;
+    const total_labor = items.reduce((sum, item) => {
+      const c = calcItemCost(item);
+      return sum + c.finishingCost + c.pouringCost + c.formingCost;
+    }, 0) + walls.reduce((sum, w) => sum + (w.calculatedCosts?.laborCost || 0) + (w.calculatedCosts?.internalLaborCost || 0), 0);
+    const total_materials = totals.grand - total_excavation - total_equipment - total_labor;
+
+    const data = {
+      ...project,
+      project_name: `${project.project_name || 'Project'} - Copy`,
+      items: items.map(({ _id, ...rest }) => rest),
+      walls: walls.map(({ _id, ...rest }) => rest),
+      poles: polesData.map(({ id, ...rest }) => rest),
+      selected_equipment: selectedEquipmentList.map(({ _id, ...rest }) => rest),
+      total_excavation_cost: total_excavation,
+      total_equipment_cost: total_equipment,
+      total_labor_cost: total_labor,
+      total_concrete_cost: total_materials,
+      total_rebar_cost: 0,
+    };
+    
+    delete data.id;
+    
+    try {
+      const created = await FoundationProjectEntity.create(data); 
+      setProject(prev => ({...prev, id: created.id, project_name: data.project_name}));
+      window.history.replaceState(null, '', `?id=${created.id}`);
+      setIsDirty(false);
+      setLastSaved(new Date());
+    } catch (e) {
+      console.error("Save As failed", e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   useEffect(() => {
     autoSaveRef.current = () => {
       if (isDirty && !saving && !autoSaving) {
@@ -772,8 +814,21 @@ export default function NewFoundationEstimate() {
             {isDirty && !autoSaving && <span className="text-xs text-slate-400">Unsaved changes...</span>}
           </div>
           <Badge variant="secondary" className="px-3 py-1">Total: ${totals.grand.toFixed(2)}</Badge>
-          <Button onClick={() => handleSave(false)} disabled={saving} className="bg-amber-600 hover:bg-amber-700 text-white" size="sm">
-            <Save className="w-4 h-4 mr-1" />{saving ? 'Saving...' : 'Save & Exit'}
+          <div className="flex items-center gap-0.5 border-x border-slate-200 px-1">
+            <Button onClick={handleUndo} disabled={historyIndex <= 0} variant="ghost" size="icon" className="h-8 w-8 text-slate-600" title="Undo">
+              <Undo className="w-4 h-4" />
+            </Button>
+            <Button onClick={handleRedo} disabled={historyIndex >= history.length - 1} variant="ghost" size="icon" className="h-8 w-8 text-slate-600" title="Redo">
+              <Redo className="w-4 h-4" />
+            </Button>
+          </div>
+          {(editId || project.id) && (
+             <Button onClick={handleSaveAs} disabled={saving} variant="outline" size="sm" className="h-8 text-xs bg-white">
+               <Copy className="w-3.5 h-3.5 mr-1" /> Save As Copy
+             </Button>
+          )}
+          <Button onClick={() => handleSave(false)} disabled={saving} className="bg-amber-600 hover:bg-amber-700 text-white h-8 text-xs" size="sm">
+            <Save className="w-3.5 h-3.5 mr-1" />{saving ? 'Saving...' : 'Save & Exit'}
           </Button>
         </div>
       </div>
