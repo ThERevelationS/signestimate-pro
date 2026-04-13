@@ -239,7 +239,7 @@ function WallMaterialForm({ item, onSave, onCancel, isFillMaterial }) {
 }
 
 // ─── Generic Tab Content ───────────────────────────────────────────────────
-function GenericTab({ tabKey, items, onEdit, onDelete, onAdd }) {
+function GenericTab({ tabKey, items, onEdit, onDelete, onAdd, isAdmin }) {
   const config = TAB_CONFIGS[tabKey];
 
   const displayFields = config.fields.filter(f =>
@@ -250,7 +250,7 @@ function GenericTab({ tabKey, items, onEdit, onDelete, onAdd }) {
     <div className="space-y-4 mt-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-600">{config.label} items used for cost estimation in foundation projects.</p>
-        <Button size="sm" onClick={onAdd}><Plus className="w-4 h-4 mr-1" /> Add {config.label}</Button>
+        {isAdmin && <Button size="sm" onClick={onAdd}><Plus className="w-4 h-4 mr-1" /> Add {config.label}</Button>}
       </div>
       {items.length === 0 ? (
         <Card className="border-dashed">
@@ -284,10 +284,12 @@ function GenericTab({ tabKey, items, onEdit, onDelete, onAdd }) {
                     {item.notes && <span className="text-xs text-slate-400 italic">{item.notes}</span>}
                   </div>
                 </div>
-                <div className="flex gap-1 flex-shrink-0">
-                  <Button size="sm" variant="ghost" onClick={() => onEdit(item)}><Edit className="w-3 h-3" /></Button>
-                  <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => onDelete(item.id)}><Trash2 className="w-3 h-3" /></Button>
-                </div>
+                {isAdmin && (
+                  <div className="flex gap-1 flex-shrink-0">
+                    <Button size="sm" variant="ghost" onClick={() => onEdit(item)}><Edit className="w-3 h-3" /></Button>
+                    <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => onDelete(item.id)}><Trash2 className="w-3 h-3" /></Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -302,6 +304,7 @@ export default function FoundationInventoryPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('wall_material');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Wall material dialog
   const [showWallForm, setShowWallForm] = useState(false);
@@ -313,7 +316,14 @@ export default function FoundationInventoryPage() {
   const [genericTabKey, setGenericTabKey] = useState(null);
   const [genericEditItem, setGenericEditItem] = useState(null);
 
-  useEffect(() => { loadItems(); }, []);
+  useEffect(() => {
+    const checkAuth = async () => {
+      const user = await base44.auth.me();
+      setIsAdmin(user?.role === 'admin');
+    };
+    checkAuth();
+    loadItems();
+  }, []);
 
   const loadItems = async () => {
     setLoading(true);
@@ -372,9 +382,11 @@ export default function FoundationInventoryPage() {
         <TabsContent value="wall_material" className="space-y-4 mt-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-slate-600">Brick, cinderblock, stone, and concrete units for building walls above the foundation.</p>
-            <Button size="sm" onClick={() => { setWallEditItem(null); setShowWallForm(true); }}>
-              <Plus className="w-4 h-4 mr-1" /> Add Wall Material
-            </Button>
+            {isAdmin && (
+              <Button size="sm" onClick={() => { setWallEditItem(null); setShowWallForm(true); }}>
+                <Plus className="w-4 h-4 mr-1" /> Add Wall Material
+              </Button>
+            )}
           </div>
           {loading ? <div className="text-center text-slate-400 py-8">Loading...</div>
             : wallMaterials.length === 0 ? (
@@ -397,10 +409,12 @@ export default function FoundationInventoryPage() {
                             <Badge variant="outline" className="text-xs capitalize">{m.wall_material_subtype}</Badge>
                           </div>
                         </div>
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => { setWallEditItem(m); setShowWallForm(true); }}><Edit className="w-3 h-3" /></Button>
-                          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDelete(m.id)}><Trash2 className="w-3 h-3" /></Button>
-                        </div>
+                        {isAdmin && (
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => { setWallEditItem(m); setShowWallForm(true); }}><Edit className="w-3 h-3" /></Button>
+                            <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDelete(m.id)}><Trash2 className="w-3 h-3" /></Button>
+                          </div>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent className="px-4 pb-3 text-xs text-slate-600 space-y-1">
@@ -420,9 +434,11 @@ export default function FoundationInventoryPage() {
         <TabsContent value="fill_material" className="space-y-4 mt-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-slate-600">Materials for internal walls (configured identically to Wall Materials).</p>
-            <Button size="sm" onClick={() => { setWallEditItem(null); setWallEditItemIsFill(true); setShowWallForm(true); }}>
-              <Plus className="w-4 h-4 mr-1" /> Add Wall Fill
-            </Button>
+            {isAdmin && (
+              <Button size="sm" onClick={() => { setWallEditItem(null); setWallEditItemIsFill(true); setShowWallForm(true); }}>
+                <Plus className="w-4 h-4 mr-1" /> Add Wall Fill
+              </Button>
+            )}
           </div>
           {loading ? <div className="text-center text-slate-400 py-8">Loading...</div>
             : fillMaterials.length === 0 ? (
@@ -445,10 +461,12 @@ export default function FoundationInventoryPage() {
                             <Badge variant="outline" className="text-xs capitalize">{m.wall_material_subtype}</Badge>
                           </div>
                         </div>
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => { setWallEditItem(m); setWallEditItemIsFill(true); setShowWallForm(true); }}><Edit className="w-3 h-3" /></Button>
-                          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDelete(m.id)}><Trash2 className="w-3 h-3" /></Button>
-                        </div>
+                        {isAdmin && (
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => { setWallEditItem(m); setWallEditItemIsFill(true); setShowWallForm(true); }}><Edit className="w-3 h-3" /></Button>
+                            <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDelete(m.id)}><Trash2 className="w-3 h-3" /></Button>
+                          </div>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent className="px-4 pb-3 text-xs text-slate-600 space-y-1">
@@ -466,7 +484,7 @@ export default function FoundationInventoryPage() {
 
         {/* EQUIPMENT (Custom UI) */}
         <TabsContent value="equipment">
-            <EquipmentInventoryTab allItems={items} loadItems={loadItems} />
+            <EquipmentInventoryTab allItems={items} loadItems={loadItems} isAdmin={isAdmin} />
         </TabsContent>
 
         {/* GENERIC TABS */}
@@ -478,6 +496,7 @@ export default function FoundationInventoryPage() {
               onAdd={() => openGenericAdd(tabKey)}
               onEdit={(item) => openGenericEdit(tabKey, item)}
               onDelete={handleDelete}
+              isAdmin={isAdmin}
             />
           </TabsContent>
         ))}

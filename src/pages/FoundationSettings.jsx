@@ -44,11 +44,7 @@ export default function FoundationSettings() {
   const loadSettings = async () => {
     setLoading(true);
     const user = await base44.auth.me();
-    if (user?.role !== 'admin') {
-      setLoading(false);
-      return;
-    }
-    setIsAdmin(true);
+    setIsAdmin(user?.role === 'admin');
     const raw = await SettingsEntity.filter({ category: ['foundation_pricing', 'foundation_labor', 'foundation_calc'] });
     const map = {};
     raw.forEach(s => { map[s.setting_name] = s; });
@@ -102,6 +98,7 @@ export default function FoundationSettings() {
           onChange={e => handleChange(settingKey, e.target.value)}
           step="0.01"
           min="0"
+          disabled={!isAdmin}
         />
       </div>
     );
@@ -109,16 +106,6 @@ export default function FoundationSettings() {
 
   if (loading) {
     return <div className="flex items-center justify-center p-12"><div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>;
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
-        <ShieldAlert className="w-16 h-16 text-slate-300" />
-        <h2 className="text-xl font-semibold text-slate-700">Access Restricted</h2>
-        <p className="text-slate-500">Only administrators can modify foundation settings.</p>
-      </div>
-    );
   }
 
   return (
@@ -129,10 +116,12 @@ export default function FoundationSettings() {
             <h1 className="text-2xl font-bold text-slate-900">Concrete | Masonry | Poles Settings</h1>
             <p className="text-slate-500 text-sm">Configure pricing and labor rates for concrete, masonry & pole estimates</p>
           </div>
-          <Button onClick={handleSave} className="bg-amber-600 hover:bg-amber-700 text-white">
-            <Save className="w-4 h-4 mr-2" />
-            {saved ? 'Saved!' : 'Save Settings'}
-          </Button>
+          {isAdmin && (
+            <Button onClick={handleSave} className="bg-amber-600 hover:bg-amber-700 text-white">
+              <Save className="w-4 h-4 mr-2" />
+              {saved ? 'Saved!' : 'Save Settings'}
+            </Button>
+          )}
         </div>
 
         <Tabs defaultValue="labor">

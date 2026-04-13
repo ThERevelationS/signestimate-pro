@@ -40,7 +40,7 @@ function MultiSelectDropdown({ label, options, selectedIds, onChange }) {
   );
 }
 
-export default function EquipmentInventoryTab({ allItems, loadItems }) {
+export default function EquipmentInventoryTab({ allItems, loadItems, isAdmin }) {
   const [activeSubTab, setActiveSubTab] = useState('excavation_equipment');
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
@@ -94,9 +94,11 @@ export default function EquipmentInventoryTab({ allItems, loadItems }) {
     <div className="space-y-4 mt-4 border rounded-lg p-4 bg-white">
       <div className="flex items-center justify-between mb-2">
         <p className="text-sm text-slate-600">Manage excavation equipment, attachments, and sub-attachments. Link them together to create a dependency tree.</p>
-        <Button size="sm" onClick={() => openAdd(activeSubTab)}>
-            <Plus className="w-4 h-4 mr-1" /> Add New
-        </Button>
+        {isAdmin && (
+          <Button size="sm" onClick={() => openAdd(activeSubTab)}>
+              <Plus className="w-4 h-4 mr-1" /> Add New
+          </Button>
+        )}
       </div>
 
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
@@ -107,13 +109,13 @@ export default function EquipmentInventoryTab({ allItems, loadItems }) {
         </TabsList>
 
         <TabsContent value="excavation_equipment">
-            <EquipmentList items={equipment} attachments={attachments} onEdit={openEdit} onDelete={handleDelete} onDragEnd={(res) => handleDragEnd(res, 'excavation_equipment')} />
+            <EquipmentList items={equipment} attachments={attachments} onEdit={openEdit} onDelete={handleDelete} onDragEnd={(res) => handleDragEnd(res, 'excavation_equipment')} isAdmin={isAdmin} />
         </TabsContent>
         <TabsContent value="attachment">
-            <EquipmentList items={attachments} subAttachments={subAttachments} equipment={equipment} onEdit={openEdit} onDelete={handleDelete} isAttachment onDragEnd={(res) => handleDragEnd(res, 'attachment')} />
+            <EquipmentList items={attachments} subAttachments={subAttachments} equipment={equipment} onEdit={openEdit} onDelete={handleDelete} isAttachment onDragEnd={(res) => handleDragEnd(res, 'attachment')} isAdmin={isAdmin} />
         </TabsContent>
         <TabsContent value="sub_attachment">
-            <EquipmentList items={subAttachments} attachments={attachments} onEdit={openEdit} onDelete={handleDelete} isSubAttachment onDragEnd={(res) => handleDragEnd(res, 'sub_attachment')} />
+            <EquipmentList items={subAttachments} attachments={attachments} onEdit={openEdit} onDelete={handleDelete} isSubAttachment onDragEnd={(res) => handleDragEnd(res, 'sub_attachment')} isAdmin={isAdmin} />
         </TabsContent>
       </Tabs>
 
@@ -141,7 +143,7 @@ export default function EquipmentInventoryTab({ allItems, loadItems }) {
   );
 }
 
-function EquipmentList({ items, equipment = [], attachments = [], subAttachments = [], onEdit, onDelete, isAttachment, isSubAttachment, onDragEnd }) {
+function EquipmentList({ items, equipment = [], attachments = [], subAttachments = [], onEdit, onDelete, isAttachment, isSubAttachment, onDragEnd, isAdmin }) {
     if (items.length === 0) return <div className="text-center py-8 text-slate-400 text-sm italic border rounded bg-slate-50">No items found in this category.</div>;
     
     const sortedItems = [...items].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
@@ -162,18 +164,22 @@ function EquipmentList({ items, equipment = [], attachments = [], subAttachments
                                         <Card className="hover:shadow-sm">
                                             <CardHeader className="py-3 px-4 flex flex-row items-start justify-between">
                                                 <div className="flex items-center gap-3">
-                                                    <div {...provided.dragHandleProps} className="cursor-grab hover:text-indigo-600 text-slate-400">
-                                                        <GripVertical className="w-5 h-5" />
-                                                    </div>
+                                                    {isAdmin && (
+                                                      <div {...provided.dragHandleProps} className="cursor-grab hover:text-indigo-600 text-slate-400">
+                                                          <GripVertical className="w-5 h-5" />
+                                                      </div>
+                                                    )}
                                                     <div>
                                                         <CardTitle className="text-sm">{item.material_name}</CardTitle>
                                                         {item.allow_multiple && <Badge variant="outline" className="text-[10px] mt-1 bg-blue-50 text-blue-700">Allows Multiple</Badge>}
                                                     </div>
                                                 </div>
-                                                <div className="flex gap-1">
-                                                    <Button size="icon" variant="ghost" onClick={() => onEdit(item)} className="h-6 w-6"><Edit className="w-3 h-3" /></Button>
-                                                    <Button size="icon" variant="ghost" onClick={() => onDelete(item.id)} className="h-6 w-6 text-red-500"><Trash2 className="w-3 h-3" /></Button>
-                                                </div>
+                                                {isAdmin && (
+                                                  <div className="flex gap-1">
+                                                      <Button size="icon" variant="ghost" onClick={() => onEdit(item)} className="h-6 w-6"><Edit className="w-3 h-3" /></Button>
+                                                      <Button size="icon" variant="ghost" onClick={() => onDelete(item.id)} className="h-6 w-6 text-red-500"><Trash2 className="w-3 h-3" /></Button>
+                                                  </div>
+                                                )}
                                             </CardHeader>
                                             <CardContent className="px-4 pb-3 space-y-2 pl-12">
                                                 <div className="flex gap-4 text-xs text-slate-600">

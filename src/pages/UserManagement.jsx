@@ -247,6 +247,16 @@ export default function UserManagement() {
     </Card>
   );
 
+  if (!isLoading && currentUser?.role !== 'admin') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
+        <Shield className="w-16 h-16 text-slate-300" />
+        <h2 className="text-xl font-semibold text-slate-700">Access Restricted</h2>
+        <p className="text-slate-500">Only administrators can access User Management.</p>
+      </div>
+    );
+  }
+
   const managementContent = (
     <Tabs defaultValue="permissions" className="w-full">
       <TabsList className="grid w-full grid-cols-3">
