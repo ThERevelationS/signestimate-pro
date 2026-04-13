@@ -18,11 +18,17 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
     
+    let toEmail = 'me';
+    const settings = await base44.asServiceRole.entities.Settings.filter({ setting_name: 'bug_report_email' });
+    if (settings.length > 0 && settings[0].setting_value) {
+      toEmail = settings[0].setting_value;
+    }
+    
     const subject = `New ${data.type} report: ${data.title}`;
     const bodyText = `A new ${data.type} has been reported:\n\nTitle: ${data.title}\n\nDescription:\n${data.description}\n\nReported By: ${data.created_by}`;
     
     const message = [
-      'To: me', 
+      `To: ${toEmail}`, 
       'Subject: =?utf-8?B?' + btoa(unescape(encodeURIComponent(subject))) + '?=',
       'Content-Type: text/plain; charset="UTF-8"',
       '',

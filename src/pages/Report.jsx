@@ -15,6 +15,9 @@ export default function Report() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [bugReportEmail, setBugReportEmail] = useState('');
+  const [savingEmail, setSavingEmail] = useState(false);
   const { toast } = useToast();
   
   const [form, setForm] = useState({
@@ -23,19 +26,49 @@ export default function Report() {
     description: ''
   });
 
-  useEffect(() => {
-    loadReports();
-  }, []);
-
-  const loadReports = async () => {
+  const loadData = async () => {
     setLoading(true);
     try {
+      const user = await base44.auth.me();
+      setCurrentUser(user);
       const data = await base44.entities.Report.list('-created_date');
       setReports(data);
+      if (user?.role === 'admin') {
+        const settings = await base44.entities.Settings.filter({ setting_name: 'bug_report_email' });
+        if (settings.length > 0) {
+          setBugReportEmail(settings[0].setting_value);
+        }
+      }
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const saveBugReportEmail = async () => {
+    setSavingEmail(true);
+    try {
+      const settings = await base44.entities.Settings.filter({ setting_name: 'bug_report_email' });
+      if (settings.length > 0) {
+        await base44.entities.Settings.update(settings[0].id, { setting_value: bugReportEmail });
+      } else {
+        await base44.entities.Settings.create({
+          setting_name: 'bug_report_email',
+          setting_value: bugReportEmail,
+          setting_type: 'text',
+          description: 'Email to receive bug reports',
+          category: 'general'
+        });
+      }
+      toast({ title: "Success", description: "Bug report email saved." });
+    } catch (e) {
+      toast({ title: "Error", description: "Failed to save email.", variant: "destructive" });
+    }
+    setSavingEmail(false);
   };
 
   const handleSubmit = async (e) => {
@@ -47,7 +80,7 @@ export default function Report() {
       await base44.entities.Report.create(form);
       toast({ title: "Success", description: "Report submitted successfully!" });
       setForm({ type: 'bug', title: '', description: '' });
-      loadReports();
+      loadData();
     } catch (e) {
       toast({ title: "Error", description: "Failed to submit report.", variant: "destructive" });
     }
@@ -63,6 +96,28 @@ export default function Report() {
             <p className="text-slate-600">Submit bugs or request new features.</p>
           </div>
         </div>
+
+        {currentUser?.role === 'admin' && (
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardHeader className="py-4">
+              <CardTitle className="text-lg text-blue-900">Admin Settings</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col sm:flex-row items-end gap-4">
+              <div className="flex-1 max-w-sm w-full">
+                <Label>Destination Email for Reports</Label>
+                <Input 
+                  className="mt-1 bg-white" 
+                  placeholder="admin@example.com" 
+                  value={bugReportEmail} 
+                  onChange={e => setBugReportEmail(e.target.value)} 
+                />
+              </div>
+              <Button onClick={saveBugReportEmail} disabled={savingEmail}>
+                {savingEmail ? 'Saving...' : 'Save Email'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid md:grid-cols-3 gap-6">
           <div className="md:col-span-1">
