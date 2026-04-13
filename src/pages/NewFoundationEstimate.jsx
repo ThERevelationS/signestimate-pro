@@ -820,11 +820,11 @@ export default function NewFoundationEstimate() {
             <HelpCircle className="w-3.5 h-3.5 mr-1.5" /> Help
           </Button>
           <div className="flex items-center gap-0.5 border-x border-slate-200 px-1">
-            <Button onClick={handleUndo} disabled={historyIndex <= 0} variant="ghost" size="icon" className="h-8 w-8 text-slate-600" title="Undo">
-              <Undo className="w-4 h-4" />
+            <Button onClick={handleUndo} disabled={historyIndex <= 0} variant="ghost" size="sm" className="h-8 px-2 text-xs text-slate-600" title="Undo">
+              <Undo className="w-3.5 h-3.5 mr-1" /> Undo
             </Button>
-            <Button onClick={handleRedo} disabled={historyIndex >= history.length - 1} variant="ghost" size="icon" className="h-8 w-8 text-slate-600" title="Redo">
-              <Redo className="w-4 h-4" />
+            <Button onClick={handleRedo} disabled={historyIndex >= history.length - 1} variant="ghost" size="sm" className="h-8 px-2 text-xs text-slate-600" title="Redo">
+              <Redo className="w-3.5 h-3.5 mr-1" /> Redo
             </Button>
           </div>
           {(editId || project.id) && (
@@ -882,7 +882,7 @@ export default function NewFoundationEstimate() {
                 <Card className="border-indigo-200 shadow-sm overflow-hidden">
                   <CardHeader className="bg-indigo-50/50 border-b border-indigo-100"><CardTitle className="text-base text-indigo-900">Project Information</CardTitle></CardHeader>
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+                    <div id="info-client-name">
                       <Label className={`text-xs transition-colors duration-300 ${missingFields.includes('client_name') ? 'text-red-600 font-bold' : ''}`}>Client Name *</Label>
                       <Input 
                         className={`h-9 transition-all duration-300 ${missingFields.includes('client_name') ? 'border-red-500 ring-2 ring-red-200 bg-red-50 animate-pulse' : ''}`}
@@ -890,7 +890,7 @@ export default function NewFoundationEstimate() {
                         onChange={e => updateProject('client_name', e.target.value)} 
                       />
                     </div>
-                    <div>
+                    <div id="info-project-name">
                       <Label className={`text-xs transition-colors duration-300 ${missingFields.includes('project_name') ? 'text-red-600 font-bold' : ''}`}>Project Name *</Label>
                       <Input 
                         className={`h-9 transition-all duration-300 ${missingFields.includes('project_name') ? 'border-red-500 ring-2 ring-red-200 bg-red-50 animate-pulse' : ''}`}
@@ -898,15 +898,15 @@ export default function NewFoundationEstimate() {
                         onChange={e => updateProject('project_name', e.target.value)} 
                       />
                     </div>
-                    <div>
+                    <div id="info-estimate-number">
                       <Label className="text-xs">Estimate Number</Label>
                       <Input className="h-9" value={project.estimate_number} onChange={e => updateProject('estimate_number', e.target.value)} />
                     </div>
-                    <div>
+                    <div id="info-reference-link">
                       <Label className="text-xs">Reference Link</Label>
                       <Input className="h-9" value={project.hyperlink} onChange={e => updateProject('hyperlink', e.target.value)} placeholder="https://" />
                     </div>
-                    <div className="col-span-1 md:col-span-2">
+                    <div className="col-span-1 md:col-span-2" id="info-notes">
                       <Label className="text-xs">Notes</Label>
                       <Textarea className="min-h-[70px]" value={project.notes} onChange={e => updateProject('notes', e.target.value)} />
                     </div>
@@ -1522,7 +1522,7 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
         <CardContent className="px-4 pb-4 space-y-4">
           {/* Basic */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div>
+            <div id={`foundation-type-${index}`}>
               <Label className="text-xs">Foundation Type</Label>
               <Select value={item.foundation_type} onValueChange={v => {
                   onUpdate('foundation_type', v);
@@ -1535,7 +1535,7 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div id={`foundation-quantity-${index}`}>
               <Label className="text-xs">Quantity</Label>
               <Input type="number" className="h-8" value={item.quantity} onChange={e => onUpdate('quantity', parseInt(e.target.value) || 1)} min={1} />
             </div>
@@ -1641,7 +1641,7 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
 
           {/* Rebar spacing — only shown when rebar is checked */}
           {item.include_rebar && item.foundation_type === 'spread_foot' && (
-            <div className="grid grid-cols-3 gap-3 bg-amber-50 rounded-lg p-3">
+            <div id={`foundation-rebar-${index}`} className="grid grid-cols-3 gap-3 bg-amber-50 rounded-lg p-3">
               <div>
                 <Label className="text-xs">Rebar Size</Label>
                 <Select value={item.rebar_size || '#4'} onValueChange={v => onUpdate('rebar_size', v)}>
@@ -1678,7 +1678,7 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
 
           {/* Pillar rebar spacing */}
           {item.include_rebar && item.foundation_type === 'pillar' && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 bg-amber-50 rounded-lg p-3">
+            <div id={`foundation-rebar-${index}`} className="grid grid-cols-2 md:grid-cols-5 gap-3 bg-amber-50 rounded-lg p-3">
               <div>
                 <Label className="text-xs">Rebar Size</Label>
                 <Select value={item.pillar_rebar_size || '#4'} onValueChange={v => onUpdate('pillar_rebar_size', v)}>
@@ -1720,7 +1720,7 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
           )}
 
           {/* Excavation & Concrete Type */}
-          <div className="bg-indigo-50/50 border border-indigo-100 rounded-lg p-3 grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div id={`foundation-excavation-${index}`} className="bg-indigo-50/50 border border-indigo-100 rounded-lg p-3 grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
               <Label className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">Excavation Method</Label>
               <Select value={item.excavation_method || 'hand_dig'} onValueChange={v => onUpdate('excavation_method', v)}>
@@ -1734,7 +1734,7 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
                 <p className="text-sm text-red-600 mt-1 font-medium">See Equipment Tab to Select Equipment for the Project.</p>
               )}
             </div>
-            <div>
+            <div id={`foundation-concrete-${index}`}>
               <Label className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">Concrete Type</Label>
               <Select value={item.selected_concrete_id || ''} onValueChange={v => onUpdate('selected_concrete_id', v)}>
                 <SelectTrigger className="h-8 mt-1 bg-white"><SelectValue placeholder="Select concrete..." /></SelectTrigger>
@@ -1771,7 +1771,7 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
 
           {/* Cost breakdown */}
           {costs && (
-            <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 grid grid-cols-2 md:grid-cols-5 gap-2 text-xs mt-4">
+            <div id={`foundation-costs-${index}`} className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 grid grid-cols-2 md:grid-cols-5 gap-2 text-xs mt-4">
               <div>
                 <p className="text-emerald-700/70">Concrete {costs.concreteBags ? `(${costs.concreteBags} bags)` : ''}</p>
                 <p className="font-medium text-emerald-900">${costs.concreteCost.toFixed(2)}</p>

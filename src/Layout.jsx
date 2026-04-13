@@ -66,16 +66,7 @@ export default function Layout({ children, currentPageName }) {
     setExpandedModule(prev => prev === moduleId ? null : moduleId);
   };
 
-  useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      if (isDirty) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDirty]);
+
 
   useEffect(() => {
     const loadData = async () => {

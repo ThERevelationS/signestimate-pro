@@ -864,16 +864,6 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
         
         {/* Left side tools */}
         <div className="flex gap-2 flex-wrap pointer-events-auto max-w-[50%]">
-          {onUndo && (
-            <div className="flex gap-1">
-              <Button onClick={onUndo} disabled={!canUndo} variant="secondary" size="sm" className="bg-white/90 hover:bg-white shadow-sm backdrop-blur-sm text-xs h-8">
-                <Undo className="w-3 h-3 mr-1" /> Undo
-              </Button>
-              <Button onClick={onRedo} disabled={!canRedo} variant="secondary" size="sm" className="bg-white/90 hover:bg-white shadow-sm backdrop-blur-sm text-xs h-8">
-                <Redo className="w-3 h-3 mr-1" /> Redo
-              </Button>
-            </div>
-          )}
           <div className="flex gap-1 items-center bg-white/90 backdrop-blur-sm rounded-md shadow-sm border border-slate-200 p-0.5">
             <Button onClick={() => snapView('front')} variant="ghost" size="sm" className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900" title="Front View">Front</Button>
             <Button onClick={() => snapView('side')} variant="ghost" size="sm" className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900" title="Side View">Side</Button>
