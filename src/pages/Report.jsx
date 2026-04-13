@@ -71,6 +71,16 @@ export default function Report() {
     setSavingEmail(false);
   };
 
+  const handleMarkComplete = async (id) => {
+    try {
+      await base44.entities.Report.update(id, { status: 'closed' });
+      toast({ title: "Success", description: "Report marked as complete." });
+      loadData();
+    } catch (e) {
+      toast({ title: "Error", description: "Failed to update report.", variant: "destructive" });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title || !form.description) return;
@@ -175,9 +185,16 @@ export default function Report() {
                         </div>
                       </div>
                     </div>
-                    <Badge variant={r.status === 'open' ? 'secondary' : 'default'} className="uppercase text-[10px]">
-                      {r.status}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge variant={r.status === 'open' ? 'secondary' : 'default'} className="uppercase text-[10px]">
+                        {r.status}
+                      </Badge>
+                      {currentUser?.role === 'admin' && r.status === 'open' && (
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleMarkComplete(r.id)}>
+                          <CheckCircle2 className="w-3 h-3 mr-1" /> Mark Complete
+                        </Button>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent className="p-4 text-sm text-slate-700 whitespace-pre-wrap">
                     {r.description}
