@@ -352,8 +352,9 @@ export default function NewFoundationEstimate() {
     markDirty();
   };
 
-  const getFoundationCenter = (fIdx) => {
+  const getFoundationCenter = (globalFIdx) => {
       let cumulativeOffsetX = 0;
+      let gIdx = 0;
       for(let i=0; i<items.length; i++) {
           const item = items[i];
           const qty = item.quantity || 1;
@@ -363,16 +364,23 @@ export default function NewFoundationEstimate() {
           const footprintZ = isSpread ? (item.width_inches || 48) / 12 : (item.diameter || 24) / 12;
           const spacingX = footprintX * 1.5 + 1;
           const spacingZ = footprintZ * 1.5 + 1;
-          const userOffsetX = (item.offset_x_inches || 0) / 12;
-          const userOffsetZ = (item.offset_z_inches || 0) / 12;
           
-          if (i === parseInt(fIdx)) {
-              const groupW = (gridSize - 1) * spacingX;
-              const rows = Math.ceil(qty / gridSize);
-              const groupH = (rows - 1) * spacingZ;
-              const ox = cumulativeOffsetX + groupW / 2 + footprintX / 2 + userOffsetX;
-              const oz = groupH / 2 + footprintZ / 2 + userOffsetZ;
-              return { x: ox * 12, z: oz * 12 };
+          for (let q = 0; q < qty; q++) {
+              if (gIdx === parseInt(globalFIdx)) {
+                  const col = q % gridSize;
+                  const row = Math.floor(q / gridSize);
+                  
+                  const baseUserOffsetX = (item.offset_x_inches || 0) / 12;
+                  const baseUserOffsetZ = (item.offset_z_inches || 0) / 12;
+                  
+                  const userOffsetX = (item.offsets && item.offsets[q] && item.offsets[q].x !== undefined) ? item.offsets[q].x / 12 : baseUserOffsetX;
+                  const userOffsetZ = (item.offsets && item.offsets[q] && item.offsets[q].z !== undefined) ? item.offsets[q].z / 12 : baseUserOffsetZ;
+
+                  const ox = cumulativeOffsetX + col * spacingX + footprintX / 2 + userOffsetX;
+                  const oz = row * spacingZ + footprintZ / 2 + userOffsetZ;
+                  return { x: ox * 12, z: oz * 12 };
+              }
+              gIdx++;
           }
           cumulativeOffsetX += gridSize * spacingX + 2;
       }
@@ -1180,7 +1188,7 @@ export default function NewFoundationEstimate() {
                                     <div>
                                       <Label className="text-[10px] text-slate-500 font-semibold uppercase mb-0.5 block">Foundation</Label>
                                       <Select 
-                                        value={String(pole.foundation_idx)} 
+                                        value={String(pole.foundation_idx || 0)} 
                                         onValueChange={v => {
                                             const arr = [...polesData];
                                             arr[idx].foundation_idx = parseInt(v);
@@ -1192,11 +1200,22 @@ export default function NewFoundationEstimate() {
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          {items.map((f, fIdx) => (
-                                            <SelectItem key={fIdx} value={String(fIdx)} className="text-[10px]">
-                                              Foundation {fIdx + 1} {f.description ? `(${f.description})` : ''}
-                                            </SelectItem>
-                                          ))}
+                                          {(() => {
+                                            const opts = [];
+                                            let gIdx = 0;
+                                            items.forEach((f, fIdx) => {
+                                              const qty = f.quantity || 1;
+                                              for (let q = 0; q < qty; q++) {
+                                                opts.push(
+                                                  <SelectItem key={gIdx} value={String(gIdx)} className="text-[10px]">
+                                                    Foundation {gIdx + 1} {f.description ? `(${f.description})` : ''}
+                                                  </SelectItem>
+                                                );
+                                                gIdx++;
+                                              }
+                                            });
+                                            return opts;
+                                          })()}
                                         </SelectContent>
                                       </Select>
                                     </div>

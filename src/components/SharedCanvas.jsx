@@ -129,6 +129,7 @@ export default function SharedCanvas({
     if (activeWallIndex !== null && useExistingFoundation) return [];
     let cumulativeOffsetX = 0;
     const rects = [];
+    let globalFoundIdx = 0;
     foundationItems.forEach((item, itemIdx) => {
       const qty = item.quantity || 1;
       const gridSize = Math.ceil(Math.sqrt(qty));
@@ -141,18 +142,25 @@ export default function SharedCanvas({
       const spacingX = footprintX * 1.5 + 1;
       const spacingZ = footprintZ * 1.5 + 1;
 
-      const userOffsetX = (item.offset_x_inches || 0) / 12;
-      const userOffsetZ = (item.offset_z_inches || 0) / 12;
       const rotation_degrees = item.rotation_degrees || 0;
 
       for (let i = 0; i < qty; i++) {
         const col = i % gridSize;
         const row = Math.floor(i / gridSize);
+        
+        const baseUserOffsetX = (item.offset_x_inches || 0) / 12;
+        const baseUserOffsetZ = (item.offset_z_inches || 0) / 12;
+        
+        const userOffsetX = (item.offsets && item.offsets[i] && item.offsets[i].x !== undefined) ? item.offsets[i].x / 12 : baseUserOffsetX;
+        const userOffsetZ = (item.offsets && item.offsets[i] && item.offsets[i].z !== undefined) ? item.offsets[i].z / 12 : baseUserOffsetZ;
+
         const ox = cumulativeOffsetX + col * spacingX + footprintX / 2 + userOffsetX;
         const oz = row * spacingZ + footprintZ / 2 + userOffsetZ;
         
         rects.push({
             itemIdx,
+            subIdx: i,
+            globalFoundIdx: globalFoundIdx++,
             minX: (ox - footprintX/2) * 12,
             maxX: (ox + footprintX/2) * 12,
             minY: (oz - footprintZ/2) * 12,
@@ -259,7 +267,7 @@ export default function SharedCanvas({
         
         ctx.fillStyle = '#92400e';
         ctx.font = '11px sans-serif';
-        ctx.fillText(`Foundation ${r.itemIdx + 1}`, center.x - 30, center.y + 4);
+        ctx.fillText(`Foundation ${r.globalFoundIdx + 1}`, center.x - 30, center.y + 4);
         ctx.fillStyle = 'rgba(245,158,11,0.07)'; 
       });
       ctx.setLineDash([]);
@@ -461,15 +469,23 @@ export default function SharedCanvas({
     }
 
     if (draggingFoundationIndex !== null && dragFoundStart) {
+        const { itemIdx, subIdx } = draggingFoundationIndex;
         const dx = worldPt.x - dragFoundStart.x;
         const dz = worldPt.y - dragFoundStart.y;
         
         if (dx !== 0 || dz !== 0) {
-            const item = foundationItems[draggingFoundationIndex];
-            const newOx = (item.offset_x_inches || 0) + dx;
-            const newOz = (item.offset_z_inches || 0) + dz;
-            onFoundationUpdate(draggingFoundationIndex, 'offset_x_inches', newOx);
-            onFoundationUpdate(draggingFoundationIndex, 'offset_z_inches', newOz);
+            const item = foundationItems[itemIdx];
+            let offsets = item.offsets ? [...item.offsets] : [];
+            while(offsets.length < (item.quantity || 1)) {
+              offsets.push({x: (item.offset_x_inches || 0), z: (item.offset_z_inches || 0)});
+            }
+            
+            offsets[subIdx] = {
+               ...offsets[subIdx],
+               x: (offsets[subIdx].x || 0) + dx * 12,
+               z: (offsets[subIdx].z || 0) + dz * 12
+            };
+            onFoundationUpdate(itemIdx, 'offsets', offsets);
             setDragFoundStart(worldPt);
         }
         return;
@@ -544,7 +560,7 @@ export default function SharedCanvas({
             return worldPt.x >= r.minX && worldPt.x <= r.maxX && worldPt.y >= r.minY && worldPt.y <= r.maxY;
         });
         if (clickedRect) {
-            setDraggingFoundationIndex(clickedRect.itemIdx);
+            setDraggingFoundationIndex({ itemIdx: clickedRect.itemIdx, subIdx: clickedRect.subIdx });
             setDragFoundStart(worldPt);
         }
         return;
@@ -638,8 +654,8 @@ export default function SharedCanvas({
              }
              return worldPt.x >= r.minX && worldPt.x <= r.maxX && worldPt.y >= r.minY && worldPt.y <= r.maxY;
           });
-          const fIdx = fRect ? fRect.itemIdx : 0;
-          const fItem = foundationItems[fIdx] || {};
+          const fIdx = fRect ? fRect.globalFoundIdx : 0;
+          const fItem = foundationItems[fRect ? fRect.itemIdx : 0] || {};
           const defHeight = (fItem.depth_inches || 36) + 48; 
 
           const newPole = {

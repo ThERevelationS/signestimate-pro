@@ -205,12 +205,16 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
       const spacingX = footprintX * 1.5 + 1;
       const spacingZ = footprintZ * 1.5 + 1;
 
-      const userOffsetX = (item.offset_x_inches || 0) / 12;
-      const userOffsetZ = (item.offset_z_inches || 0) / 12;
-
       for (let i = 0; i < qty; i++) {
         const col = i % gridSize;
         const row = Math.floor(i / gridSize);
+        
+        const baseUserOffsetX = (item.offset_x_inches || 0) / 12;
+        const baseUserOffsetZ = (item.offset_z_inches || 0) / 12;
+        
+        const userOffsetX = (item.offsets && item.offsets[i] && item.offsets[i].x !== undefined) ? item.offsets[i].x / 12 : baseUserOffsetX;
+        const userOffsetZ = (item.offsets && item.offsets[i] && item.offsets[i].z !== undefined) ? item.offsets[i].z / 12 : baseUserOffsetZ;
+
         const ox = cumulativeOffsetX + col * spacingX + footprintX / 2 + userOffsetX;
         const oz = row * spacingZ + footprintZ / 2 + userOffsetZ;
 
