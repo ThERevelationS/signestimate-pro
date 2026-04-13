@@ -918,7 +918,7 @@ export default function NewFoundationEstimate() {
               <TabsContent value="foundation" className="space-y-4 pt-4">
                 
                 {/* AI Engineering Calculator */}
-                <div className="flex flex-col items-start gap-4 w-full">
+                <div id="btn-ai-assistant" className="flex flex-col items-start gap-4 w-full">
                   <div className="w-full bg-indigo-50 border-2 border-indigo-200 border-dashed rounded-xl p-5 flex flex-col md:flex-row items-center justify-between text-left gap-4 shadow-sm">
                     <div>
                       <h3 className="text-base font-bold text-indigo-900 flex items-center gap-2"><Bot className="w-5 h-5 text-indigo-600"/> AI Engineering Assistant</h3>
@@ -970,8 +970,9 @@ export default function NewFoundationEstimate() {
 
 
                 {items.map((item, idx) => (
+                  <div key={item._id} id={idx === 0 ? "foundation-item-0" : undefined}>
                   <FoundationItemRow
-                    key={item._id}
+                    item={item}
                     item={item}
                     index={idx}
                     onUpdate={(field, value) => updateItem(idx, field, value)}
@@ -983,8 +984,9 @@ export default function NewFoundationEstimate() {
                     excavationMethod={project.excavation_method}
                     excavationEquipment={inventory.find(i => i.id === project.selected_equipment_id)}
                   />
+                  </div>
                 ))}
-                <Button variant="outline" onClick={addItem}>
+                <Button id="btn-add-foundation" variant="outline" onClick={addItem}>
                   <Plus className="w-4 h-4 mr-1" /> Add Foundation Item
                 </Button>
               </TabsContent>
@@ -1004,7 +1006,7 @@ export default function NewFoundationEstimate() {
 
               {/* WALLS AND POLES */}
               <TabsContent value="walls_poles" className="space-y-6 pt-4">
-                <div className="space-y-4 pb-6 border-b border-slate-200 mb-6">
+                <div id="wall-configurations" className="space-y-4 pb-6 border-b border-slate-200 mb-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-base font-bold text-slate-900">Wall Configurations</h3>
@@ -1049,12 +1051,12 @@ export default function NewFoundationEstimate() {
 
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div id="layout-canvas" className="flex items-center justify-between">
                   <div>
                     <h3 className="text-base font-bold text-slate-900">Layout Canvas</h3>
                     <p className="text-sm text-slate-600">Draw walls and place poles on your foundations.</p>
                   </div>
-                  <div className={`flex items-center gap-3 bg-slate-100 p-3 rounded-xl border-2 transition-all duration-500 cursor-pointer ${walls.length > 0 && polesData.length === 0 && !showPoles ? 'border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)] animate-pulse' : 'border-slate-200'}`} onClick={() => setShowPoles(!showPoles)}>
+                  <div id="add-poles-toggle" className={`flex items-center gap-3 bg-slate-100 p-3 rounded-xl border-2 transition-all duration-500 cursor-pointer ${walls.length > 0 && polesData.length === 0 && !showPoles ? 'border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)] animate-pulse' : 'border-slate-200'}`} onClick={() => setShowPoles(!showPoles)}>
                     <Checkbox id="add-poles" checked={showPoles} onCheckedChange={setShowPoles} className="w-5 h-5 pointer-events-none" />
                     <Label htmlFor="add-poles" className="font-bold text-sm cursor-pointer pointer-events-none">Add Pole/s</Label>
                   </div>
@@ -1354,7 +1356,7 @@ export default function NewFoundationEstimate() {
 
               {/* BEAUTIFY */}
               <TabsContent value="beautify" className="space-y-4 pt-4">
-                <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200 shadow-sm">
+                <div id="signage-cabinets" className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200 shadow-sm">
                    <div>
                        <h3 className="font-bold text-slate-800">Signage Cabinets on Poles</h3>
                        <p className="text-xs text-slate-500">Add cabinets and signs to your placed poles. Place poles in the "Walls & Poles" tab.</p>
@@ -1400,7 +1402,7 @@ export default function NewFoundationEstimate() {
                    </div>
                 )}
 
-                <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200 shadow-sm">
+                <div id="landscape-designer" className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200 shadow-sm">
                    <div>
                        <h3 className="font-bold text-slate-800">Landscape Designer</h3>
                        <p className="text-xs text-slate-500">Draw landscaping features, paths, and site boundaries.</p>
@@ -1540,7 +1542,7 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
           </div>
 
           {/* Dimensions & Materials */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div id={`foundation-dimensions-${index}`} className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {item.foundation_type === 'spread_foot' ? (
               <>
                 <div>
@@ -1597,7 +1599,7 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
           </div>
 
           {/* Options */}
-          <div className="flex flex-wrap gap-4">
+          <div id={`foundation-toggles-${index}`} className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2">
               <Checkbox checked={item.include_rebar} onCheckedChange={v => {
                 onUpdate('include_rebar', v);
@@ -1619,7 +1621,7 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
 
           {/* Forming selection */}
           {item.include_forming && (
-            <div className="bg-amber-50 border border-amber-100 rounded-lg p-3">
+            <div id={`foundation-forming-${index}`} className="bg-amber-50 border border-amber-100 rounded-lg p-3">
               <Label className="text-xs">Forming Material</Label>
               <Select value={item.selected_forming_id || ''} onValueChange={v => onUpdate('selected_forming_id', v)}>
                 <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Select forming material..." /></SelectTrigger>
