@@ -16,7 +16,7 @@ const moduleDetails = {
   cnc: { label: "CNC Module", icon: Router },
   metal_fabrication: { label: "Metal Fabrication Module", icon: Wrench },
   channel_letter_installation: { label: "Channel Letter Installation Module", icon: Wrench },
-  foundation: { label: "Concrete Module", icon: Anchor },
+  foundation: { label: "Concrete | Masonry | Poles Module", icon: Anchor },
 };
 
 export default function UserManagement() {
