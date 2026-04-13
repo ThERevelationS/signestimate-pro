@@ -50,7 +50,7 @@ export default function Dashboard() {
     { name: "cnc", title: "CNC Router Estimator", description: "For routing & carving", icon: Router, color: "green", page: "NewCNCEstimate" },
     { name: "metal_fabrication", title: "Metal Fabrication Estimator", description: "For aluminum & steel signs", icon: Wrench, color: "orange", page: "NewMetalEstimate" },
     { name: "channel_letter_installation", title: "Channel Letter Install", description: "For raceway & mounted letters", icon: Wrench, color: "purple", page: "NewChannelLetterInstallation" },
-    { name: "foundation", title: "Foundation Estimator", description: "For sign foundations & concrete work", icon: Anchor, color: "amber", page: "NewFoundationEstimate" },
+    { name: "foundation", title: "Concrete | Masonry | Poles", description: "For sign foundations, concrete, masonry & poles", icon: Anchor, color: "amber", page: "NewFoundationEstimate" },
     { name: "brick_stone_2", title: "Brick & Stone Estimator", description: "For sign base materials", icon: Server, color: "rose", page: "NewBrickStoneEstimate2" }
   ];
 

@@ -126,8 +126,8 @@ export default function FoundationSettings() {
       <div className="p-6 max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Foundation Settings</h1>
-            <p className="text-slate-500 text-sm">Configure pricing and labor rates for foundation and wall estimates</p>
+            <h1 className="text-2xl font-bold text-slate-900">Concrete | Masonry | Poles Settings</h1>
+            <p className="text-slate-500 text-sm">Configure pricing and labor rates for concrete, masonry & pole estimates</p>
           </div>
           <Button onClick={handleSave} className="bg-amber-600 hover:bg-amber-700 text-white">
             <Save className="w-4 h-4 mr-2" />

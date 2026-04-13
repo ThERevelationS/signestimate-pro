@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { Camera, Maximize, Minimize, Ruler, Undo, Redo, Trash2 } from 'lucide-react';
+import { Camera, Maximize, Minimize, Ruler, Undo, Redo, Trash2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Crosshair } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /**
@@ -894,6 +894,43 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
     }
   }, [beautifyDataUrl]);
 
+  const snapView = (direction) => {
+    if (!cameraRef.current || !controlsRef.current) return;
+    const target = controlsRef.current.target.clone();
+    const dist = cameraRef.current.position.distanceTo(target);
+
+    let newPos;
+    if (direction === 'reset') {
+      // 0-plane: side profile view directly from the front (+z axis, looking towards -z)
+      newPos = new THREE.Vector3(target.x, target.y, target.z + dist);
+    } else {
+      // Current horizontal angle from target
+      const dx = cameraRef.current.position.x - target.x;
+      const dz = cameraRef.current.position.z - target.z;
+      const currentAzimuth = Math.atan2(dx, dz);
+      const currentElevation = Math.asin((cameraRef.current.position.y - target.y) / dist);
+      const step = Math.PI / 4; // 45 degrees
+
+      let azimuth = currentAzimuth;
+      let elevation = currentElevation;
+
+      if (direction === 'left') azimuth = Math.round(currentAzimuth / step) * step + step;
+      if (direction === 'right') azimuth = Math.round(currentAzimuth / step) * step - step;
+      if (direction === 'up') elevation = Math.min(Math.PI / 2 - 0.01, Math.round(currentElevation / step) * step + step);
+      if (direction === 'down') elevation = Math.max(-Math.PI / 2 + 0.01, Math.round(currentElevation / step) * step - step);
+
+      newPos = new THREE.Vector3(
+        target.x + dist * Math.sin(azimuth) * Math.cos(elevation),
+        target.y + dist * Math.sin(elevation),
+        target.z + dist * Math.cos(azimuth) * Math.cos(elevation)
+      );
+    }
+
+    cameraRef.current.position.copy(newPos);
+    cameraRef.current.lookAt(target);
+    controlsRef.current.update();
+  };
+
   const handleSaveImage = () => {
     if (rendererRef.current) {
       const link = document.createElement('a');
@@ -912,6 +949,13 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
         onPointerUp={handlePointerUp}
       />
       <div className="absolute top-2 right-2 flex gap-2 flex-wrap justify-end max-w-[70%]">
+        <div className="flex gap-1 mr-2 items-center bg-white/80 backdrop-blur-sm rounded-md shadow-sm border border-slate-200 p-0.5">
+          <Button onClick={() => snapView('left')} variant="ghost" size="icon" className="h-7 w-7 text-slate-600 hover:text-slate-900" title="Snap Left 45°"><ArrowLeft className="w-3 h-3" /></Button>
+          <Button onClick={() => snapView('right')} variant="ghost" size="icon" className="h-7 w-7 text-slate-600 hover:text-slate-900" title="Snap Right 45°"><ArrowRight className="w-3 h-3" /></Button>
+          <Button onClick={() => snapView('up')} variant="ghost" size="icon" className="h-7 w-7 text-slate-600 hover:text-slate-900" title="Snap Up 45°"><ArrowUp className="w-3 h-3" /></Button>
+          <Button onClick={() => snapView('down')} variant="ghost" size="icon" className="h-7 w-7 text-slate-600 hover:text-slate-900" title="Snap Down 45°"><ArrowDown className="w-3 h-3" /></Button>
+          <Button onClick={() => snapView('reset')} variant="ghost" size="icon" className="h-7 w-7 text-blue-600 hover:text-blue-800" title="0-Plane Side View"><Crosshair className="w-3.5 h-3.5" /></Button>
+        </div>
         {onUndo && (
           <div className="flex gap-1 mr-2">
             <Button onClick={onUndo} disabled={!canUndo} variant="secondary" size="sm" className="bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm text-xs h-8">
