@@ -241,7 +241,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
         }
 
         // Forming
-        if (item.include_forming && isSpread) {
+        if (item.include_forming && isSpread && item.selected_forming_id) {
           let formHeightFt = depFt;
           let formThickness = 1.5 / 12;
           if (item.selected_forming_id) {

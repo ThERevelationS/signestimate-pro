@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Save, ArrowLeft, Trash2, Crosshair, Move, Undo, Redo, Copy } from 'lucide-react';
+import { Plus, Save, ArrowLeft, Trash2, Crosshair, Move, Undo, Redo, Copy, HelpCircle } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import WallSection from '@/components/WallSection';
@@ -22,6 +22,7 @@ import EquipmentTab from '@/components/foundation/EquipmentTab';
 import BeautifyCanvas from '@/components/BeautifyCanvas';
 import SignDesignerModal from '@/components/SignDesignerModal';
 import AIEngineeringCalculatorModal from '@/components/foundation/AIEngineeringCalculatorModal';
+import HelpAssistant from '@/components/foundation/HelpAssistant';
 import { Bot, PenTool } from 'lucide-react';
 
 function SignPositioningTools({ pole, pIdx, sign, sIdx, polesData, onUpdate }) {
@@ -192,6 +193,7 @@ export default function NewFoundationEstimate() {
   const [designerSignIdx, setDesignerSignIdx] = useState(null);
   const [shakePoleDropdown, setShakePoleDropdown] = useState(false);
   const [wallShakeIndex, setWallShakeIndex] = useState(null);
+  const [helpTrigger, setHelpTrigger] = useState(false);
 
   // Auto-select pole if inventory loads and no pole selected
   useEffect(() => {
@@ -814,6 +816,9 @@ export default function NewFoundationEstimate() {
             {isDirty && !autoSaving && <span className="text-xs text-slate-400">Unsaved changes...</span>}
           </div>
           <Badge variant="secondary" className="px-3 py-1">Total: ${totals.grand.toFixed(2)}</Badge>
+          <Button onClick={() => setHelpTrigger(true)} variant="ghost" size="sm" className="h-8 text-xs text-indigo-700 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100">
+            <HelpCircle className="w-3.5 h-3.5 mr-1.5" /> Help
+          </Button>
           <div className="flex items-center gap-0.5 border-x border-slate-200 px-1">
             <Button onClick={handleUndo} disabled={historyIndex <= 0} variant="ghost" size="icon" className="h-8 w-8 text-slate-600" title="Undo">
               <Undo className="w-4 h-4" />
@@ -832,6 +837,12 @@ export default function NewFoundationEstimate() {
           </Button>
         </div>
       </div>
+
+      <HelpAssistant 
+        activeTab={activeTab} 
+        manualTrigger={helpTrigger} 
+        onManualTriggerClose={() => setHelpTrigger(false)} 
+      />
 
       {designerOpen && (
         <SignDesignerModal
