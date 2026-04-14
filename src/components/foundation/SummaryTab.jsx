@@ -151,9 +151,21 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
       const c = calcItemCost(item);
       const label = `Foundation #${idx + 1}${item.description ? ` — ${item.description}` : ''}`;
       lines.push(`${label}: $${c.total.toFixed(2)}`);
-      lines.push(`  Concrete: $${c.concreteCost.toFixed(2)}  |  Rebar: $${c.rebarCost.toFixed(2)}  |  Forming: $${c.formingCost.toFixed(2)}  |  Finishing: $${c.finishingCost.toFixed(2)}  |  Excavation: $${c.excavationCost.toFixed(2)}`);
+      lines.push(`  Rebar: $${c.rebarCost.toFixed(2)}  |  Forming: $${c.formingCost.toFixed(2)}  |  Pouring: $${c.pouringCost.toFixed(2)}  |  Finishing: $${c.finishingCost.toFixed(2)}  |  Excavation: $${c.excavationCost.toFixed(2)}`);
     });
-    lines.push(`Foundation & Excavation Total: $${totals.itemsTotal.toFixed(2)}`);
+    lines.push(`Foundation Labor/Excavation Total: $${(totals.itemsTotal - totals.concreteTotal).toFixed(2)}`);
+    lines.push('');
+    lines.push('── CONCRETE SERVICE (PROJECT TOTAL) ──');
+    lines.push(`Total Volume: ${totals.totalConcreteYards.toFixed(2)} YD (Rounded to ${totals.roundedYards.toFixed(2)} YD for pricing)`);
+    lines.push(`Material Rate: $${totals.ratePerYard.toFixed(2)} / YD`);
+    totals.trucksList.forEach((t, i) => {
+      lines.push(`  Truck ${i+1} (${t.yards.toFixed(2)} YD): $${t.cost.toFixed(2)} (Incl. $${t.smallOrderFee} Small Order Fee & $${t.fuelFee} Fuel)`);
+    });
+    if (totals.additionalStopsCost > 0) {
+      lines.push(`Additional Sign Locations (${totals.newSignLocationsCount} stops): $${totals.additionalStopsCost.toFixed(2)}`);
+    }
+    lines.push(`Concrete Total: $${totals.concreteTotal.toFixed(2)}`);
+    lines.push('');
     if (walls.length > 0) {
       lines.push('');
       lines.push('── WALLS ──');
@@ -219,13 +231,17 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
     rows.push(['Client', project.client_name]);
     if (project.estimate_number) rows.push(['Estimate #', project.estimate_number]);
     rows.push([]);
-    rows.push(['Item', 'Total', 'Concrete', 'Rebar', 'Forming', 'Finishing', 'Excavation']);
+    rows.push(['Item', 'Total', 'Rebar', 'Forming', 'Pouring', 'Finishing', 'Excavation']);
     items.forEach((item, idx) => {
       const c = calcItemCost(item);
       const label = `Foundation #${idx + 1}${item.description ? ` — ${item.description}` : ''}`;
-      rows.push([label, c.total.toFixed(2), c.concreteCost.toFixed(2), c.rebarCost.toFixed(2), c.formingCost.toFixed(2), c.finishingCost.toFixed(2), c.excavationCost.toFixed(2)]);
+      rows.push([label, c.total.toFixed(2), c.rebarCost.toFixed(2), c.formingCost.toFixed(2), c.pouringCost.toFixed(2), c.finishingCost.toFixed(2), c.excavationCost.toFixed(2)]);
     });
-    rows.push(['Foundation & Excavation Total', totals.itemsTotal.toFixed(2)]);
+    rows.push(['Foundation Labor/Excavation Total', (totals.itemsTotal - totals.concreteTotal).toFixed(2)]);
+    
+    rows.push([]);
+    rows.push(['Concrete Service', 'Cost']);
+    rows.push([`Total Volume: ${totals.totalConcreteYards.toFixed(2)} YD (Rounded to ${totals.roundedYards.toFixed(2)} YD)`, totals.concreteTotal.toFixed(2)]);
     if (walls.length > 0) {
       rows.push([]);
       rows.push(['Wall', 'Total Cost', 'Material', 'Mortar', 'Labor', 'Internal Material', 'Internal Mortar', 'Internal Labor']);
@@ -309,11 +325,36 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
         <p className="text-xs text-slate-400 mt-1">Click any cost value to copy it to clipboard.</p>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm mb-4">
+            <div className="flex justify-between items-center text-base font-bold text-blue-900 mb-3 border-b border-blue-200 pb-2">
+                <span>Concrete Service (Project Total)</span>
+                <CopyValue value={`$${totals.concreteTotal.toFixed(2)}`} className="text-base font-bold text-blue-900" />
+            </div>
+            <div className="flex flex-col gap-1">
+                <div className="flex justify-between text-sm text-blue-800 font-medium pb-1">
+                    <span>Total Volume: {totals.totalConcreteYards.toFixed(2)} YD (Rounded: {totals.roundedYards.toFixed(2)} YD)</span>
+                    <span>Rate: ${totals.ratePerYard.toFixed(2)} / YD</span>
+                </div>
+                {totals.trucksList.map((t, idx) => (
+                    <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-t border-blue-100/50">
+                        <div className="flex flex-col text-xs text-blue-700/80">
+                            <span className="font-semibold">Truck #{idx + 1} ({t.yards.toFixed(2)} YD)</span>
+                            <span>{t.smallOrderFee > 0 ? `Includes $${t.smallOrderFee} Small Order Fee + $${t.fuelFee} Fuel Fee` : `Includes $${t.fuelFee} Fuel Fee`}</span>
+                        </div>
+                        <span className="font-medium text-sm text-blue-800">${t.cost.toFixed(2)}</span>
+                    </div>
+                ))}
+                {totals.additionalStopsCost > 0 && (
+                    <div className="flex justify-between py-1 border-t border-blue-100 text-xs text-blue-700/80 mt-1">
+                        <span className="font-semibold">Additional Sign Locations ({totals.newSignLocationsCount} Stop{totals.newSignLocationsCount !== 1 ? 's' : ''})</span>
+                        <span className="font-medium text-sm text-blue-800">${totals.additionalStopsCost.toFixed(2)}</span>
+                    </div>
+                )}
+            </div>
+        </div>
+
         {items.map((item, idx) => {
           const c = calcItemCost(item);
-          const selectedConcrete = inventory.find(i => i.id === item.selected_concrete_id);
-          const defaultConcCost = selectedConcrete?.cost_per_unit || 0;
-          
           const selectedRebar = inventory.find(r => r.material_type === 'rebar' && r.rebar_size === (item.foundation_type === 'spread_foot' ? item.rebar_size : item.pillar_rebar_size));
           const defaultRebarCost = selectedRebar?.cost_per_unit || 0;
           
@@ -326,35 +367,6 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                 <CopyValue value={`$${c.total.toFixed(2)}`} className="text-base font-bold text-slate-800" />
               </div>
               <div className="flex flex-col gap-1">
-                {selectedConcrete?.material_type === 'bagged_concrete' ? (
-                  <CostRow 
-                    label="Concrete" 
-                    qtyLabel={c.selectedConcreteName}
-                    unit="bag" 
-                    defaultRate={defaultConcCost} 
-                    customRate={item.custom_concrete_cost_per_cy} 
-                    onRateChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_concrete_cost_per_cy: val })}
-                    defaultQty={c.baseBags}
-                    customQty={item.custom_concrete_bags}
-                    onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_concrete_bags: val, custom_concrete_qty: val ? val / 45 : null })}
-                    qtyUnit="bags"
-                    calculatedTotal={c.concreteCost} 
-                  />
-                ) : (
-                  <CostRow 
-                    label="Concrete" 
-                    qtyLabel={c.selectedConcreteName}
-                    unit="CY" 
-                    defaultRate={defaultConcCost} 
-                    customRate={item.custom_concrete_cost_per_cy} 
-                    onRateChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_concrete_cost_per_cy: val })}
-                    defaultQty={Number(c.baseVolumeCY.toFixed(2))}
-                    customQty={item.custom_concrete_qty}
-                    onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_concrete_qty: val })}
-                    qtyUnit="CY"
-                    calculatedTotal={c.concreteCost} 
-                  />
-                )}
                 <CostRow 
                   label="Rebar" 
                   qtyLabel={c.selectedRebarName}
@@ -380,6 +392,12 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                   onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_forming_qty: val })}
                   qtyUnit="pcs"
                   calculatedTotal={c.formingCost} 
+                />
+                <CostRow 
+                  label="Pouring" 
+                  unit="hr"
+                  defaultRate={60} // default labor rate fallback
+                  calculatedTotal={c.pouringCost} 
                 />
                 <CostRow 
                   label="Finishing" 

@@ -23,6 +23,15 @@
       ],
       "default": "draft"
     },
+    "project_concrete_type": {
+      "type": "string"
+    },
+    "project_concrete_admixtures": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "items": {
       "type": "array",
       "items": {
@@ -233,6 +242,10 @@
               "hand_dig",
               "equipment_excavation"
             ]
+          },
+          "is_new_sign_location": {
+            "type": "boolean",
+            "default": false
           }
         }
       }
@@ -449,7 +462,7 @@
     },
     "min_excavation_time_hours": {
       "type": "number",
-      "default": 1.0
+      "default": 1
     },
     "hand_dig_excavation_cost_per_cy": {
       "type": "number",
@@ -528,5 +541,44 @@
     "client_name",
     "estimate_number",
     "hyperlink"
-  ]
+  ],
+  "rls": {
+    "create": {},
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
 }

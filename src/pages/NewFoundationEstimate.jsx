@@ -97,6 +97,24 @@ const FoundationProjectEntity = base44.entities.FoundationProject;
 const FoundationInventoryEntity = base44.entities.FoundationInventory;
 const SettingsEntity = base44.entities.Settings;
 
+const CONCRETE_MIXES = [
+  { id: '3000_ae', name: '3000 AIR ENTRAINED (AE)', price: 191.20, desc: 'Used for general flatwork and residential applications where high strength is not required.' },
+  { id: '3500_ae', name: '3500 AIR ENTRAINED (AE)', price: 195.40, desc: 'Often used for driveways, slabs, and moderate-load footings.' },
+  { id: '4000_ae', name: '4000 AIR ENTRAINED (AE)', price: 201.00, desc: 'STANDARD. Used for sign foundations, commercial flatwork, and structural footings requiring good durability.' },
+  { id: '4500_ae', name: '4500 AIR ENTRAINED (AE)', price: 208.70, desc: 'Used for heavy-duty commercial slabs and heavy traffic areas.' },
+  { id: '5000_ae', name: '5000 AIR ENTRAINED (AE)', price: 214.60, desc: 'High-strength mix for heavy structural columns, pillars, and extreme load conditions.' },
+  { id: 'class_c_ae', name: 'CLASS C AIR ENTRAINED (AE) (CITY MIX)', price: 215.00, desc: 'Specialized mix meeting specific municipal/city requirements for public right-of-way installations.' },
+  { id: 'fast_set', name: 'FAST SET', price: 248.00, desc: 'Quick-curing concrete used when rapid strength gain is needed to minimize downtime.' },
+];
+
+const CONCRETE_ADMIXTURES = [
+  { id: 'calcium_chloride', name: 'Calcium Chloride', price: 8.50, desc: 'Accelerating admixture used in cold weather to speed up setting time (Not for use with steel reinforcement).' },
+  { id: 'set_retarding', name: 'Set-Retarding Admix (Type D)', price: 4.50, desc: 'Slows down setting time, useful in hot weather or when long transit times are expected.' },
+  { id: 'water_reducing', name: 'Water-Reducing Admix (Type A)', price: 4.25, desc: 'Improves workability without adding water, increasing final strength and reducing shrinkage.' },
+  { id: 'fibers', name: 'Fibers', price: 12.50, desc: 'Synthetic fibers added to reduce plastic shrinkage cracking and improve impact resistance.' },
+  { id: 'winter_service', name: 'Winter Service', price: 5.50, desc: 'Additional fee applied during winter months for heating water/aggregates to ensure proper curing.' },
+];
+
 function newItem() {
   return {
     _id: Date.now() + Math.random(),
@@ -129,6 +147,7 @@ function newItem() {
     custom_rebar_cost_per_ft: null,
     excavation_method: 'hand_dig',
     selected_concrete_id: '',
+    is_new_sign_location: false,
   };
 }
 
@@ -166,6 +185,8 @@ export default function NewFoundationEstimate() {
     excavation_method: 'hand_dig',
     selected_concrete_id: '',
     beautify_data_url: '',
+    project_concrete_type: '4000_ae',
+    project_concrete_admixtures: [],
   });
   const [polesData, setPolesData] = useState([]);
   const [items, setItems] = useState([newItem()]);
@@ -448,27 +469,9 @@ export default function NewFoundationEstimate() {
     
     const volumeCY = item.custom_concrete_qty !== null && item.custom_concrete_qty !== undefined ? item.custom_concrete_qty : baseVolumeCY;
 
-    let concreteCost = 0;
+    let concreteCost = 0; // Handled at project level now
     let baseBags = null;
     let concreteBags = null;
-    if (selectedConcrete?.material_type === 'bagged_concrete') {
-      baseBags = Math.ceil(baseVolumeCY * 45); // ~45 80lb bags per CY
-      // If volumeCY is custom, adjust bags accordingly, unless custom_concrete_bags is set
-      concreteBags = item.custom_concrete_bags !== null && item.custom_concrete_bags !== undefined ? item.custom_concrete_bags : Math.ceil(volumeCY * 45);
-      concreteCost = concreteBags * (Number(conc_cost) || 5);
-    } else {
-      let baseRate = Number(conc_cost) || 0;
-      if (selectedConcrete && Number(selectedConcrete.minimum_order_yards) > 0 && volumeCY < Number(selectedConcrete.minimum_order_yards)) {
-        if (Number(selectedConcrete.below_minimum_cost_per_cy) > 0) {
-          baseRate = Number(selectedConcrete.below_minimum_cost_per_cy);
-        }
-      }
-      concreteCost = volumeCY * baseRate;
-      
-      if (selectedConcrete && Number(selectedConcrete.minimum_cost) > 0 && concreteCost < Number(selectedConcrete.minimum_cost)) {
-        concreteCost = Number(selectedConcrete.minimum_cost);
-      }
-    }
 
     let rebarCost = 0;
     let baseRebarFt = 0;
@@ -600,7 +603,55 @@ export default function NewFoundationEstimate() {
   };
 
   const totals = (() => {
-    const itemsTotal = items.reduce((s, item) => s + calcItemCost(item).total, 0);
+    let itemsTotalWithoutConcrete = items.reduce((s, item) => s + calcItemCost(item).total, 0);
+    
+    // Concrete project-level calculation
+    const totalConcreteYards = items.reduce((sum, item) => sum + calcItemCost(item).volumeCY, 0);
+    const roundedYards = Math.ceil(totalConcreteYards * 4) / 4;
+    
+    const mix = CONCRETE_MIXES.find(m => m.id === project.project_concrete_type) || CONCRETE_MIXES.find(m => m.id === '4000_ae');
+    const mixPrice = mix ? mix.price : 201;
+    
+    const admixPrice = (project.project_concrete_admixtures || []).reduce((sum, admixId) => {
+        const a = CONCRETE_ADMIXTURES.find(x => x.id === admixId);
+        return sum + (a ? a.price : 0);
+    }, 0);
+    
+    const ratePerYard = mixPrice + admixPrice;
+    
+    let concreteTotal = 0;
+    let remainingYards = roundedYards;
+    const trucksList = [];
+    
+    while (remainingYards > 0) {
+        let truckYards = Math.min(remainingYards, 9);
+        remainingYards -= truckYards;
+        
+        let smallOrderFee = 0;
+        if (truckYards <= 1.75) smallOrderFee = 150;
+        else if (truckYards <= 2.75) smallOrderFee = 120;
+        else if (truckYards <= 3.75) smallOrderFee = 105;
+        else if (truckYards <= 4.25) smallOrderFee = 80;
+        else if (truckYards <= 4.75) smallOrderFee = 40;
+        
+        let fuelFee = 30; // Per load fuel fee
+        
+        let truckCost = (truckYards * ratePerYard) + smallOrderFee + fuelFee;
+        trucksList.push({ yards: truckYards, cost: truckCost, smallOrderFee, fuelFee });
+        concreteTotal += truckCost;
+    }
+    
+    // Additional stops calculation
+    // "When a new foundation is made I need a checkbox that says 'This is a new sign location'. 
+    // If this box is checked apply the cost... called 'Additional Sign Locations/Stops'"
+    const newSignLocationsCount = items.filter(i => i.is_new_sign_location).length;
+    // We assume the first location is free/included, and each checkbox checked means +1 stop
+    // Or does checking the box literally mean it's an additional stop? Yes: "If this box is checked apply the cost..."
+    const additionalStopsCost = newSignLocationsCount * 100;
+    concreteTotal += additionalStopsCost;
+
+    const itemsTotal = itemsTotalWithoutConcrete + concreteTotal;
+
     const wallTotal = walls.reduce((s, w) => s + (w.calculatedCosts?.totalCost || 0), 0);
     const polesTotal = polesData.reduce((sum, p) => {
         const inv = inventory.find(i => i.id === p.pole_id);
@@ -663,7 +714,18 @@ export default function NewFoundationEstimate() {
       return sum + entryTotal;
     }, 0);
 
-    return { itemsTotal, wallTotal, polesTotal, equipmentTotal, grand: itemsTotal + wallTotal + polesTotal + equipmentTotal };
+    return { 
+      itemsTotal, wallTotal, polesTotal, equipmentTotal, grand: itemsTotal + wallTotal + polesTotal + equipmentTotal,
+      concreteTotal,
+      trucksList,
+      totalConcreteYards,
+      roundedYards,
+      additionalStopsCost,
+      newSignLocationsCount,
+      mixPrice,
+      admixPrice,
+      ratePerYard
+    };
   })();
 
   const handleSave = async (isAutoSave = false) => {
@@ -956,6 +1018,61 @@ export default function NewFoundationEstimate() {
               {/* FOUNDATION ITEMS */}
               <TabsContent value="foundation" className="space-y-4 pt-4">
                 
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm space-y-4">
+                  <h3 className="text-base font-bold text-slate-800">Project-Wide Concrete Service Options</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <Label className="text-sm font-semibold mb-2 block">Concrete Type / Mix</Label>
+                      <Select 
+                        value={project.project_concrete_type || '4000_ae'} 
+                        onValueChange={v => updateProject('project_concrete_type', v)}
+                      >
+                        <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {CONCRETE_MIXES.map(m => (
+                            <SelectItem key={m.id} value={m.id}>
+                              <div className="flex flex-col text-left py-1 max-w-[400px] whitespace-normal">
+                                <span className="font-bold">{m.name} <span className="font-normal text-slate-500">- ${m.price.toFixed(2)}/yd</span></span>
+                                <span className="text-xs text-slate-500 mt-0.5">{m.desc}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-sm font-semibold mb-2 block">Admixtures & Additional Services</Label>
+                      <div className="grid grid-cols-1 gap-2 bg-white p-3 rounded border border-slate-200">
+                        {CONCRETE_ADMIXTURES.map(admix => {
+                          const isChecked = (project.project_concrete_admixtures || []).includes(admix.id);
+                          return (
+                            <div key={admix.id} className="flex items-start space-x-2">
+                              <Checkbox 
+                                id={`admix-${admix.id}`} 
+                                checked={isChecked}
+                                onCheckedChange={(checked) => {
+                                  let current = [...(project.project_concrete_admixtures || [])];
+                                  if (checked) current.push(admix.id);
+                                  else current = current.filter(x => x !== admix.id);
+                                  updateProject('project_concrete_admixtures', current);
+                                }}
+                                className="mt-1"
+                              />
+                              <div className="leading-none">
+                                <Label htmlFor={`admix-${admix.id}`} className="text-sm font-bold cursor-pointer">
+                                  {admix.name} <span className="font-normal text-slate-500">- ${admix.price.toFixed(2)}/yd</span>
+                                </Label>
+                                <p className="text-xs text-slate-500 mt-1">{admix.desc}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* AI Engineering Calculator */}
                 <div id="btn-ai-assistant" className="flex flex-col items-start gap-4 w-full">
                   <div className="w-full bg-indigo-50 border-2 border-indigo-200 border-dashed rounded-xl p-5 flex flex-col md:flex-row items-center justify-between text-left gap-4 shadow-sm">
@@ -1651,6 +1768,10 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
           {/* Options */}
           <div id={`foundation-toggles-${index}`} className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2">
+              <Checkbox checked={item.is_new_sign_location || false} onCheckedChange={v => onUpdate('is_new_sign_location', v)} id={`new-location-${index}`} />
+              <Label htmlFor={`new-location-${index}`} className="text-xs cursor-pointer text-amber-700 font-bold">This is a new sign location (+$100 stop fee)</Label>
+            </div>
+            <div className="flex items-center gap-2">
               <Checkbox checked={item.include_rebar} onCheckedChange={v => {
                 onUpdate('include_rebar', v);
                 if (v && item.depth_inches && item.rebar_layer_separation_inches) {
@@ -1769,12 +1890,12 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
             </div>
           )}
 
-          {/* Excavation & Concrete Type */}
-          <div id={`foundation-excavation-${index}`} className="bg-indigo-50/50 border border-indigo-100 rounded-lg p-3 grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          {/* Excavation */}
+          <div id={`foundation-excavation-${index}`} className="bg-indigo-50/50 border border-indigo-100 rounded-lg p-3 mt-4">
             <div>
               <Label className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">Excavation Method</Label>
               <Select value={item.excavation_method || 'hand_dig'} onValueChange={v => onUpdate('excavation_method', v)}>
-                <SelectTrigger className="h-8 mt-1 bg-white"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-8 mt-1 bg-white max-w-[300px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="hand_dig">Hand Dig</SelectItem>
                   <SelectItem value="equipment_excavation">Equipment Excavation</SelectItem>
@@ -1783,21 +1904,6 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
               {item.excavation_method === 'equipment_excavation' && (
                 <p className="text-sm text-red-600 mt-1 font-medium">See Equipment Tab to Select Equipment for the Project.</p>
               )}
-            </div>
-            <div id={`foundation-concrete-${index}`}>
-              <Label className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">Concrete Type</Label>
-              <Select value={item.selected_concrete_id || ''} onValueChange={v => onUpdate('selected_concrete_id', v)}>
-                <SelectTrigger className="h-8 mt-1 bg-white"><SelectValue placeholder="Select concrete..." /></SelectTrigger>
-                <SelectContent>
-                  {concreteServices.map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      <div className="flex flex-col text-left py-1 max-w-[300px]">
-                         <span className="font-medium">{c.material_name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           </div>
 
@@ -1821,16 +1927,15 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
 
           {/* Cost breakdown */}
           {costs && (
-            <div id={`foundation-costs-${index}`} className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 grid grid-cols-2 md:grid-cols-5 gap-2 text-xs mt-4">
-              <div>
-                <p className="text-emerald-700/70">Concrete {costs.concreteBags ? `(${costs.concreteBags} bags)` : ''}</p>
-                <p className="font-medium text-emerald-900">${costs.concreteCost.toFixed(2)}</p>
-              </div>
+            <div id={`foundation-costs-${index}`} className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mt-4">
               <div><p className="text-emerald-700/70">Rebar</p><p className="font-medium text-emerald-900">${costs.rebarCost.toFixed(2)}</p></div>
               <div><p className="text-emerald-700/70">Forming</p><p className="font-medium text-emerald-900">${costs.formingCost.toFixed(2)}</p></div>
               <div><p className="text-emerald-700/70">Pouring</p><p className="font-medium text-emerald-900">${costs.pouringCost.toFixed(2)}</p></div>
               <div><p className="text-emerald-700/70">Finishing</p><p className="font-medium text-emerald-900">${costs.finishingCost.toFixed(2)}</p></div>
               <div><p className="text-emerald-700/70">Excavation</p><p className="font-medium text-emerald-900">${costs.excavationCost.toFixed(2)}</p></div>
+              <div className="col-span-2 md:col-span-4 border-t border-emerald-100 pt-2 mt-1">
+                <p className="text-emerald-700/70 font-semibold italic text-center">Concrete material & truck costs are aggregated for the entire project.</p>
+              </div>
             </div>
           )}
         </CardContent>
