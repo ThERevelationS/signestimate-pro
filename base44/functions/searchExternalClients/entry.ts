@@ -16,35 +16,29 @@ Deno.serve(async (req) => {
       serviceToken: "570bd85bbd4248b396864e2c628a6028"
     });
 
-    // Make it safe for regex characters
-    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
     let records = [];
     try {
-        records = await externalClient.asServiceRole.entities.Order.filter(
-            { 
-              $or: [
-                { customer_name: { $regex: escapedSearch, $options: "i" } },
-                { description: { $regex: escapedSearch, $options: "i" } },
-                { work_order_id: { $regex: escapedSearch, $options: "i" } },
-                { vendor: { $regex: escapedSearch, $options: "i" } }
-              ] 
-            },
-            '-created_date', 
-            15
-        );
+        records = await externalClient.asServiceRole.entities.SalesPipeline.list('-created_date', 100);
     } catch (e) {
-        console.error("Error fetching from Order:", e);
+        console.error("Error fetching from SalesPipeline:", e);
+        return Response.json({ error: e.message });
     }
+
+    const searchLower = search.toLowerCase();
+    const filtered = records.filter(r => {
+        return Object.values(r).some(v => 
+            typeof v === 'string' && v.toLowerCase().includes(searchLower)
+        );
+    });
 
     // Deduplicate results
     const uniqueResults = [];
     const seen = new Set();
 
-    for (const r of records) {
-        const clientName = r.customer_name || r.requestor_name || r.vendor || '';
-        const projectName = r.description || '';
-        const estimateNumber = r.work_order_id || '';
+    for (const r of filtered) {
+        const clientName = r.client_name || r.customer_name || r.company_name || r.name || r.requestor_name || r.vendor || '';
+        const projectName = r.project_name || r.description || r.title || r.job_name || '';
+        const estimateNumber = r.estimate_number || r.work_order_id || r.id || '';
         
         const key = `${clientName}-${projectName}-${estimateNumber}`;
         if (!seen.has(key)) {
@@ -53,8 +47,9 @@ Deno.serve(async (req) => {
                 client_name: clientName,
                 project_name: projectName,
                 estimate_number: estimateNumber,
-                hyperlink: ''
+                hyperlink: r.hyperlink || ''
             });
+            if (uniqueResults.length >= 15) break;
         }
     }
 
