@@ -18,9 +18,9 @@ Deno.serve(async (req) => {
 
     let records = [];
     try {
-        records = await externalClient.asServiceRole.entities.SalesPipeline.list('-created_date', 100);
+        records = await externalClient.asServiceRole.entities.WorkOrder.list('-created_date', 100);
     } catch (e) {
-        console.error("Error fetching from SalesPipeline:", e);
+        console.error("Error fetching from WorkOrder:", e);
         return Response.json({ error: e.message });
     }
 
