@@ -108,11 +108,11 @@ export const getConcreteMixes = (invItem) => [
 ];
 
 export const getConcreteAdmixtures = (invItem) => [
-  { id: 'calcium_chloride', name: 'Calcium Chloride', price: invItem?.admix_calcium_chloride_price ?? 8.50, desc: 'Accelerating admixture used in cold weather to speed up setting time (Not for use with steel reinforcement).' },
-  { id: 'set_retarding', name: 'Set-Retarding Admix (Type D)', price: invItem?.admix_set_retarding_price ?? 4.50, desc: 'Slows down setting time, useful in hot weather or when long transit times are expected.' },
-  { id: 'water_reducing', name: 'Water-Reducing Admix (Type A)', price: invItem?.admix_water_reducing_price ?? 4.25, desc: 'Improves workability without adding water, increasing final strength and reducing shrinkage.' },
-  { id: 'fibers', name: 'Fibers', price: invItem?.admix_fibers_price ?? 12.50, desc: 'Synthetic fibers added to reduce plastic shrinkage cracking and improve impact resistance.' },
-  { id: 'winter_service', name: 'Winter Service', price: invItem?.admix_winter_service_price ?? 5.50, desc: 'Additional fee applied during winter months for heating water/aggregates to ensure proper curing.' },
+  { id: 'calcium_chloride', name: 'Calcium Chloride', price: invItem?.admix_calcium_chloride_price ?? 8.50, desc: 'Speeds up how fast the concrete dries. SELECT THIS when pouring in cold weather so it doesn\'t freeze before it sets. WARNING: Do NOT select this if using Rebar, as it causes rust!' },
+  { id: 'set_retarding', name: 'Set-Retarding Admix (Type D)', price: invItem?.admix_set_retarding_price ?? 4.50, desc: 'Slows down how fast the concrete dries. SELECT THIS when pouring in very hot weather, or if the concrete truck has a very long drive to the site.' },
+  { id: 'water_reducing', name: 'Water-Reducing Admix (Type A)', price: invItem?.admix_water_reducing_price ?? 4.25, desc: 'Makes the concrete easier to pour without weakening it. SELECT THIS if you need the concrete to flow better into tight forms or around lots of rebar.' },
+  { id: 'fibers', name: 'Fibers', price: invItem?.admix_fibers_price ?? 12.50, desc: 'Tiny fibers mixed into the concrete to prevent small cracks. SELECT THIS for large flat slabs (like monument sign pads) or if the foundation will take physical abuse.' },
+  { id: 'winter_service', name: 'Winter Service', price: invItem?.admix_winter_service_price ?? 5.50, desc: 'A fee the plant charges to use hot water so the mix doesn\'t freeze. SELECT THIS always during winter months when temperatures are freezing.' },
 ];
 
 function newItem() {
