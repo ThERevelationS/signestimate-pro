@@ -144,6 +144,29 @@ function GenericItemForm({ tabKey, item, onSave, onCancel }) {
           </div>
         ))}
       </div>
+      
+      {form.material_type === 'concrete_service' && (
+         <div className="col-span-2 space-y-4 border-t border-slate-200 mt-4 pt-4">
+            <h4 className="text-sm font-semibold text-slate-800">Mix Pricing ($/CY)</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+               <div><Label className="text-xs">3500 AE</Label><Input type="number" className="h-8" value={form.mix_3500_price ?? 195.40} onChange={e => set('mix_3500_price', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
+               <div><Label className="text-xs">4000 AE (Standard)</Label><Input type="number" className="h-8" value={form.mix_4000_price ?? 201.00} onChange={e => set('mix_4000_price', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
+               <div><Label className="text-xs">4500 AE</Label><Input type="number" className="h-8" value={form.mix_4500_price ?? 208.70} onChange={e => set('mix_4500_price', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
+               <div><Label className="text-xs">5000 AE</Label><Input type="number" className="h-8" value={form.mix_5000_price ?? 214.60} onChange={e => set('mix_5000_price', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
+               <div><Label className="text-xs">Fast Set</Label><Input type="number" className="h-8" value={form.mix_fast_set_price ?? 248.00} onChange={e => set('mix_fast_set_price', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
+            </div>
+            
+            <h4 className="text-sm font-semibold text-slate-800">Admixture Pricing ($/CY)</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+               <div><Label className="text-xs">Calcium Chloride</Label><Input type="number" className="h-8" value={form.admix_calcium_chloride_price ?? 8.50} onChange={e => set('admix_calcium_chloride_price', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
+               <div><Label className="text-xs">Set-Retarding</Label><Input type="number" className="h-8" value={form.admix_set_retarding_price ?? 4.50} onChange={e => set('admix_set_retarding_price', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
+               <div><Label className="text-xs">Water-Reducing</Label><Input type="number" className="h-8" value={form.admix_water_reducing_price ?? 4.25} onChange={e => set('admix_water_reducing_price', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
+               <div><Label className="text-xs">Fibers</Label><Input type="number" className="h-8" value={form.admix_fibers_price ?? 12.50} onChange={e => set('admix_fibers_price', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
+               <div><Label className="text-xs">Winter Service</Label><Input type="number" className="h-8" value={form.admix_winter_service_price ?? 5.50} onChange={e => set('admix_winter_service_price', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
+            </div>
+         </div>
+      )}
+
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
         <Button size="sm" onClick={() => onSave(form)} disabled={!isValid}>Save</Button>

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Copy, Check, Download, ClipboardCopy } from 'lucide-react';
+import { getConcreteMixes, getConcreteAdmixtures } from '@/pages/NewFoundationEstimate';
 
 // Individual clickable cost value with tooltip
 function CopyValue({ label, value, className = '' }) {
@@ -155,9 +156,22 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
     });
     lines.push(`Foundation Labor/Excavation Total: $${(totals.itemsTotal - totals.concreteTotal).toFixed(2)}`);
     lines.push('');
+    const firstConcreteItem = items.filter(item => {
+        const inv = inventory.find(i => i.id === item.selected_concrete_id);
+        return !inv || inv.material_type === 'concrete_service';
+    }).find(i => inventory.find(inv => inv.id === i.selected_concrete_id)?.material_type === 'concrete_service');
+    const firstConcreteInv = firstConcreteItem ? inventory.find(inv => inv.id === firstConcreteItem.selected_concrete_id) : null;
+    const availableMixes = getConcreteMixes(firstConcreteInv);
+    const availableAdmixes = getConcreteAdmixtures(firstConcreteInv);
+    const mix = availableMixes.find(m => m.id === project.project_concrete_type) || availableMixes.find(m => m.id === '4000_ae');
+    const selectedAdmixes = availableAdmixes.filter(a => (project.project_concrete_admixtures || []).includes(a.id));
+
     lines.push('── CONCRETE SERVICE (PROJECT TOTAL) ──');
     lines.push(`Total Volume: ${totals.totalConcreteYards.toFixed(2)} YD (Rounded to ${totals.roundedYards.toFixed(2)} YD for pricing)`);
     lines.push(`Material Rate: $${totals.ratePerYard.toFixed(2)} / YD`);
+    lines.push(`  Base Mix (${mix?.name}): $${(mix?.price || 0).toFixed(2)}/YD`);
+    selectedAdmixes.forEach(a => lines.push(`  + ${a.name}: $${a.price.toFixed(2)}/YD`));
+    
     totals.trucksList.forEach((t, i) => {
       lines.push(`  Truck ${i+1} (${t.yards.toFixed(2)} YD): $${t.cost.toFixed(2)} (Incl. $${t.smallOrderFee} Small Order Fee & $${t.fuelFee} Fuel)`);
     });
@@ -239,9 +253,22 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
     });
     rows.push(['Foundation Labor/Excavation Total', (totals.itemsTotal - totals.concreteTotal).toFixed(2)]);
     
+    const firstConcreteItem = items.filter(item => {
+        const inv = inventory.find(i => i.id === item.selected_concrete_id);
+        return !inv || inv.material_type === 'concrete_service';
+    }).find(i => inventory.find(inv => inv.id === i.selected_concrete_id)?.material_type === 'concrete_service');
+    const firstConcreteInv = firstConcreteItem ? inventory.find(inv => inv.id === firstConcreteItem.selected_concrete_id) : null;
+    const availableMixes = getConcreteMixes(firstConcreteInv);
+    const availableAdmixes = getConcreteAdmixtures(firstConcreteInv);
+    const mix = availableMixes.find(m => m.id === project.project_concrete_type) || availableMixes.find(m => m.id === '4000_ae');
+    const selectedAdmixes = availableAdmixes.filter(a => (project.project_concrete_admixtures || []).includes(a.id));
+
     rows.push([]);
     rows.push(['Concrete Service', 'Cost']);
     rows.push([`Total Volume: ${totals.totalConcreteYards.toFixed(2)} YD (Rounded to ${totals.roundedYards.toFixed(2)} YD)`, totals.concreteTotal.toFixed(2)]);
+    rows.push([`Base Mix: ${mix?.name}`, mix?.price.toFixed(2)]);
+    selectedAdmixes.forEach(a => rows.push([`+ Admix: ${a.name}`, a.price.toFixed(2)]));
+
     if (walls.length > 0) {
       rows.push([]);
       rows.push(['Wall', 'Total Cost', 'Material', 'Mortar', 'Labor', 'Internal Material', 'Internal Mortar', 'Internal Labor']);
@@ -335,6 +362,37 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                     <span>Total Volume: {totals.totalConcreteYards.toFixed(2)} YD (Rounded: {totals.roundedYards.toFixed(2)} YD)</span>
                     <span>Rate: ${totals.ratePerYard.toFixed(2)} / YD</span>
                 </div>
+                
+                {/* Mix and Admixtures Breakdown */}
+                {(() => {
+                  const firstConcreteItem = items.filter(item => {
+                      const inv = inventory.find(i => i.id === item.selected_concrete_id);
+                      return !inv || inv.material_type === 'concrete_service';
+                  }).find(i => inventory.find(inv => inv.id === i.selected_concrete_id)?.material_type === 'concrete_service');
+                  const firstConcreteInv = firstConcreteItem ? inventory.find(inv => inv.id === firstConcreteItem.selected_concrete_id) : null;
+                  const availableMixes = getConcreteMixes(firstConcreteInv);
+                  const availableAdmixes = getConcreteAdmixtures(firstConcreteInv);
+                  
+                  const mix = availableMixes.find(m => m.id === project.project_concrete_type) || availableMixes.find(m => m.id === '4000_ae');
+                  const selectedAdmixes = availableAdmixes.filter(a => (project.project_concrete_admixtures || []).includes(a.id));
+                  
+                  return (
+                    <div className="pl-4 py-2 my-1 border-l-2 border-blue-200 bg-blue-100/30 rounded-r-md">
+                      <p className="text-xs font-bold text-blue-800 uppercase mb-1 tracking-wider">Rate Breakdown</p>
+                      <div className="flex justify-between text-xs text-blue-700/90 py-0.5">
+                        <span>Base Mix ({mix?.name || 'Unknown'})</span>
+                        <span className="font-medium">${(mix?.price || 0).toFixed(2)} / YD</span>
+                      </div>
+                      {selectedAdmixes.map(admix => (
+                        <div key={admix.id} className="flex justify-between text-xs text-blue-700/90 py-0.5">
+                          <span>+ {admix.name}</span>
+                          <span className="font-medium">${admix.price.toFixed(2)} / YD</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+                
                 {totals.trucksList.map((t, idx) => (
                     <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-t border-blue-100/50">
                         <div className="flex flex-col text-xs text-blue-700/80">

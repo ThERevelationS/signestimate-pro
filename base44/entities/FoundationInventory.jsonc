@@ -227,6 +227,36 @@
     },
     "sort_order": {
       "type": "number"
+    },
+    "mix_3500_price": {
+      "type": "number"
+    },
+    "mix_4000_price": {
+      "type": "number"
+    },
+    "mix_4500_price": {
+      "type": "number"
+    },
+    "mix_5000_price": {
+      "type": "number"
+    },
+    "mix_fast_set_price": {
+      "type": "number"
+    },
+    "admix_calcium_chloride_price": {
+      "type": "number"
+    },
+    "admix_set_retarding_price": {
+      "type": "number"
+    },
+    "admix_water_reducing_price": {
+      "type": "number"
+    },
+    "admix_fibers_price": {
+      "type": "number"
+    },
+    "admix_winter_service_price": {
+      "type": "number"
     }
   },
   "required": [
