@@ -16,29 +16,37 @@ Deno.serve(async (req) => {
       serviceToken: "570bd85bbd4248b396864e2c628a6028"
     });
 
+    // Make it safe for regex characters
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
     let records = [];
     try {
-        records = await externalClient.asServiceRole.entities.WorkOrder.list('-created_date', 100);
+        records = await externalClient.asServiceRole.entities.WorkOrder.filter(
+            { client_name: { $regex: escapedSearch, $options: "i" } },
+            '-created_date', 
+            15
+        );
     } catch (e) {
         console.error("Error fetching from WorkOrder:", e);
         return Response.json({ error: e.message });
     }
 
-    const searchLower = search.toLowerCase();
-    const filtered = records.filter(r => {
-        return Object.values(r).some(v => 
-            typeof v === 'string' && v.toLowerCase().includes(searchLower)
-        );
-    });
-
     // Deduplicate results
     const uniqueResults = [];
     const seen = new Set();
 
-    for (const r of filtered) {
-        const clientName = r.client_name || r.customer_name || r.company_name || r.name || r.requestor_name || r.vendor || '';
-        const projectName = r.project_name || r.description || r.title || r.job_name || '';
-        const estimateNumber = r.estimate_number || r.work_order_id || r.id || '';
+    for (const r of records) {
+        let clientName = r.client_name || '';
+        let projectName = '';
+        
+        // Some records have the format "Client Name - Project Name"
+        if (clientName.includes(' - ')) {
+            const parts = clientName.split(' - ');
+            clientName = parts[0].trim();
+            projectName = parts.slice(1).join(' - ').trim();
+        }
+
+        const estimateNumber = r.corbridge_invoice_number || '';
         
         const key = `${clientName}-${projectName}-${estimateNumber}`;
         if (!seen.has(key)) {
@@ -47,7 +55,7 @@ Deno.serve(async (req) => {
                 client_name: clientName,
                 project_name: projectName,
                 estimate_number: estimateNumber,
-                hyperlink: r.hyperlink || ''
+                hyperlink: r.google_drive_folder_url || r.corbridge_link || r.hyperlink || ''
             });
             if (uniqueResults.length >= 15) break;
         }
