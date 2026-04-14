@@ -257,6 +257,30 @@
     },
     "admix_winter_service_price": {
       "type": "number"
+    },
+    "small_load_fee_1_1_75": {
+      "type": "number",
+      "description": "Small load fee for 1-1.75 YD"
+    },
+    "small_load_fee_2_2_75": {
+      "type": "number",
+      "description": "Small load fee for 2-2.75 YD"
+    },
+    "small_load_fee_3_3_75": {
+      "type": "number",
+      "description": "Small load fee for 3-3.75 YD"
+    },
+    "small_load_fee_4_4_25": {
+      "type": "number",
+      "description": "Small load fee for 4-4.25 YD"
+    },
+    "small_load_fee_4_5_4_75": {
+      "type": "number",
+      "description": "Small load fee for 4.5-4.75 YD"
+    },
+    "fuel_surcharge": {
+      "type": "number",
+      "description": "Fuel/delivery surcharge per load"
     }
   },
   "required": [

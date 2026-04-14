@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Copy, Check, Download, ClipboardCopy } from 'lucide-react';
-import { getConcreteMixes, getConcreteAdmixtures } from '@/pages/NewFoundationEstimate';
+import { getConcreteMixes, getConcreteAdmixtures, getSmallLoadFee, getFuelSurcharge } from '@/pages/NewFoundationEstimate';
 
 // Individual clickable cost value with tooltip
 function CopyValue({ label, value, className = '' }) {
@@ -173,7 +173,8 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
     selectedAdmixes.forEach(a => lines.push(`  + ${a.name}: $${a.price.toFixed(2)}/YD`));
     
     totals.trucksList.forEach((t, i) => {
-      lines.push(`  Truck ${i+1} (${t.yards.toFixed(2)} YD): $${t.cost.toFixed(2)} (Incl. $${t.smallOrderFee} Small Order Fee & $${t.fuelFee} Fuel)`);
+      const billed = t.roundedYards ? t.roundedYards.toFixed(2) : t.yards.toFixed(2);
+      lines.push(`  Truck ${i+1} (${t.yards.toFixed(2)} YD actual, billed ${billed} YD): $${t.cost.toFixed(2)} (Incl. $${t.smallOrderFee.toFixed(2)} Small Load Fee & $${t.fuelFee.toFixed(2)} Fuel/Delivery)`);
     });
     if (totals.additionalStopsCost > 0) {
       lines.push(`Additional Sign Locations (${totals.newSignLocationsCount} stops): $${totals.additionalStopsCost.toFixed(2)}`);
@@ -396,8 +397,12 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                 {totals.trucksList.map((t, idx) => (
                     <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-t border-blue-100/50">
                         <div className="flex flex-col text-xs text-blue-700/80">
-                            <span className="font-semibold">Truck #{idx + 1} ({t.yards.toFixed(2)} YD)</span>
-                            <span>{t.smallOrderFee > 0 ? `Includes $${t.smallOrderFee} Small Order Fee + $${t.fuelFee} Fuel Fee` : `Includes $${t.fuelFee} Fuel Fee`}</span>
+                            <span className="font-semibold">Truck #{idx + 1} — {t.yards.toFixed(2)} YD actual{t.roundedYards && t.roundedYards !== t.yards ? ` (billed as ${t.roundedYards.toFixed(2)} YD)` : ''}</span>
+                            <span>
+                              {t.roundedYards ? `${t.roundedYards.toFixed(2)}` : t.yards.toFixed(2)} YD × ${totals.ratePerYard.toFixed(2)}
+                              {t.smallOrderFee > 0 ? ` + $${t.smallOrderFee.toFixed(2)} Small Load Fee` : ''}
+                              {t.fuelFee > 0 ? ` + $${t.fuelFee.toFixed(2)} Fuel/Delivery` : ''}
+                            </span>
                         </div>
                         <span className="font-medium text-sm text-blue-800">${t.cost.toFixed(2)}</span>
                     </div>

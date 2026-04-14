@@ -164,6 +164,22 @@ function GenericItemForm({ tabKey, item, onSave, onCancel }) {
                <div><Label className="text-xs">Fibers</Label><Input type="number" className="h-8" value={form.admix_fibers_price ?? 12.50} onChange={e => set('admix_fibers_price', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
                <div><Label className="text-xs">Winter Service</Label><Input type="number" className="h-8" value={form.admix_winter_service_price ?? 5.50} onChange={e => set('admix_winter_service_price', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
             </div>
+
+            <h4 className="text-sm font-semibold text-slate-800">Small Load Fees ($)</h4>
+            <p className="text-xs text-slate-500 -mt-2">Fee charged by the supplier when ordering less than a full truck. Enter $0 for no fee.</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+               <div><Label className="text-xs">1 – 1.75 YD</Label><Input type="number" className="h-8" value={form.small_load_fee_1_1_75 ?? 150} onChange={e => set('small_load_fee_1_1_75', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
+               <div><Label className="text-xs">2 – 2.75 YD</Label><Input type="number" className="h-8" value={form.small_load_fee_2_2_75 ?? 120} onChange={e => set('small_load_fee_2_2_75', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
+               <div><Label className="text-xs">3 – 3.75 YD</Label><Input type="number" className="h-8" value={form.small_load_fee_3_3_75 ?? 105} onChange={e => set('small_load_fee_3_3_75', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
+               <div><Label className="text-xs">4 – 4.25 YD</Label><Input type="number" className="h-8" value={form.small_load_fee_4_4_25 ?? 80} onChange={e => set('small_load_fee_4_4_25', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
+               <div><Label className="text-xs">4.5 – 4.75 YD</Label><Input type="number" className="h-8" value={form.small_load_fee_4_5_4_75 ?? 40} onChange={e => set('small_load_fee_4_5_4_75', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
+            </div>
+
+            <h4 className="text-sm font-semibold text-slate-800">Fuel / Delivery Surcharge ($)</h4>
+            <p className="text-xs text-slate-500 -mt-2">Flat fee added per truck load for fuel and delivery.</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+               <div><Label className="text-xs">Per Load Surcharge</Label><Input type="number" className="h-8" value={form.fuel_surcharge ?? 30} onChange={e => set('fuel_surcharge', parseFloat(e.target.value) || 0)} step="0.01" min="0" /></div>
+            </div>
          </div>
       )}
 

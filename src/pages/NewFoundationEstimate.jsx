@@ -115,6 +115,21 @@ export const getConcreteAdmixtures = (invItem) => [
   { id: 'winter_service', name: 'Winter Service', price: invItem?.admix_winter_service_price ?? 5.50, desc: 'A fee the plant charges to use hot water so the mix doesn\'t freeze. SELECT THIS always during winter months when temperatures are freezing.' },
 ];
 
+// Get the small load fee for a given number of yards based on supplier bracket pricing
+export const getSmallLoadFee = (yards, invItem) => {
+  if (yards >= 5) return 0;
+  if (yards >= 4.5) return invItem?.small_load_fee_4_5_4_75 ?? 40;
+  if (yards >= 4) return invItem?.small_load_fee_4_4_25 ?? 80;
+  if (yards >= 3) return invItem?.small_load_fee_3_3_75 ?? 105;
+  if (yards >= 2) return invItem?.small_load_fee_2_2_75 ?? 120;
+  if (yards >= 1) return invItem?.small_load_fee_1_1_75 ?? 150;
+  return invItem?.small_load_fee_1_1_75 ?? 150; // under 1 yd still gets the smallest bracket fee
+};
+
+export const getFuelSurcharge = (invItem) => {
+  return invItem?.fuel_surcharge ?? 30;
+};
+
 function newItem() {
   return {
     _id: Date.now() + Math.random(),
@@ -639,21 +654,20 @@ export default function NewFoundationEstimate() {
     let remainingYards = roundedYards;
     const trucksList = [];
     
+    const fuelSurcharge = getFuelSurcharge(firstConcreteInv);
+    
     while (remainingYards > 0) {
         let truckYards = Math.min(remainingYards, 9);
         remainingYards -= truckYards;
         
-        let smallOrderFee = 0;
-        if (truckYards <= 1.75) smallOrderFee = 150;
-        else if (truckYards <= 2.75) smallOrderFee = 120;
-        else if (truckYards <= 3.75) smallOrderFee = 105;
-        else if (truckYards <= 4.25) smallOrderFee = 80;
-        else if (truckYards <= 4.75) smallOrderFee = 40;
+        // Round up to next quarter yard for cost calculation
+        const roundedTruckYards = Math.ceil(truckYards * 4) / 4;
         
-        let fuelFee = 30; // Per load fuel fee
+        let smallOrderFee = getSmallLoadFee(roundedTruckYards, firstConcreteInv);
+        let fuelFee = fuelSurcharge;
         
-        let truckCost = (truckYards * ratePerYard) + smallOrderFee + fuelFee;
-        trucksList.push({ yards: truckYards, cost: truckCost, smallOrderFee, fuelFee });
+        let truckCost = (roundedTruckYards * ratePerYard) + smallOrderFee + fuelFee;
+        trucksList.push({ yards: truckYards, roundedYards: roundedTruckYards, cost: truckCost, smallOrderFee, fuelFee });
         concreteTotal += truckCost;
     }
     
