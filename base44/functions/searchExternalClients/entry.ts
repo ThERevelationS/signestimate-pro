@@ -13,38 +13,52 @@ Deno.serve(async (req) => {
 
     const externalClient = createClient({
       appId: "68dfcc5e57bbbc35387da97c",
-      headers: {
-        "api_key": "570bd85bbd4248b396864e2c628a6028"
-      }
+      serviceToken: "570bd85bbd4248b396864e2c628a6028"
     });
 
-    // Searching "SalesPipeline" entity. If it fails, fallback to empty results.
+    // Make it safe for regex characters
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
     let records = [];
     try {
-        records = await externalClient.entities.SalesPipeline.list();
+        records = await externalClient.asServiceRole.entities.Order.filter(
+            { 
+              $or: [
+                { customer_name: { $regex: escapedSearch, $options: "i" } },
+                { description: { $regex: escapedSearch, $options: "i" } },
+                { work_order_id: { $regex: escapedSearch, $options: "i" } },
+                { vendor: { $regex: escapedSearch, $options: "i" } }
+              ] 
+            },
+            '-created_date', 
+            15
+        );
     } catch (e) {
-        console.error("Error fetching from SalesPipeline:", e);
-        try {
-            // Try another common name just in case
-            records = await externalClient.entities.Project.list();
-        } catch (e2) {
-            console.error("Error fetching from Project:", e2);
+        console.error("Error fetching from Order:", e);
+    }
+
+    // Deduplicate results
+    const uniqueResults = [];
+    const seen = new Set();
+
+    for (const r of records) {
+        const clientName = r.customer_name || r.requestor_name || r.vendor || '';
+        const projectName = r.description || '';
+        const estimateNumber = r.work_order_id || '';
+        
+        const key = `${clientName}-${projectName}-${estimateNumber}`;
+        if (!seen.has(key)) {
+            seen.add(key);
+            uniqueResults.push({
+                client_name: clientName,
+                project_name: projectName,
+                estimate_number: estimateNumber,
+                hyperlink: ''
+            });
         }
     }
 
-    const lowerSearch = search.toLowerCase();
-    const results = records.filter(r => {
-      const clientName = (r.client_name || r.client || r.name || '').toLowerCase();
-      const projectName = (r.project_name || r.description || '').toLowerCase();
-      return clientName.includes(lowerSearch) || projectName.includes(lowerSearch);
-    }).slice(0, 10).map(r => ({
-      client_name: r.client_name || r.client || r.name || '',
-      project_name: r.project_name || r.description || '',
-      estimate_number: r.estimate_number || r.id || '',
-      hyperlink: r.reference_link || r.hyperlink || r.link || ''
-    }));
-
-    return Response.json({ results });
+    return Response.json({ results: uniqueResults });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
