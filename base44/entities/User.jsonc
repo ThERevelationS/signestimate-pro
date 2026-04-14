@@ -1,0 +1,42 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "phone": {
+      "type": "string",
+      "description": "User's phone number"
+    },
+    "job_title": {
+      "type": "string",
+      "description": "User's job title or position"
+    },
+    "department": {
+      "type": "string",
+      "enum": [
+        "Management",
+        "Estimating",
+        "Production",
+        "Sales",
+        "Administration"
+      ],
+      "description": "User's department"
+    },
+    "bio": {
+      "type": "string",
+      "description": "Short bio or description"
+    },
+    "module_permissions": {
+      "type": "object",
+      "description": "User-specific overrides for module access.",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "enable_ccs_database_lookup": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enable CCS Database Lookup for this user"
+    }
+  },
+  "required": []
+}

@@ -16,6 +16,7 @@ import WallSection from '@/components/WallSection';
 import SharedCanvas from '@/components/SharedCanvas';
 import FoundationWalls3DViewer from '@/components/FoundationWalls3DViewer';
 import { UnsavedChangesContext } from '@/components/UnsavedChangesContext';
+import ClientSearchInput from "@/components/ClientSearchInput";
 import SummaryTab from '@/components/foundation/SummaryTab';
 import BOMTab from '@/components/foundation/BOMTab';
 import EquipmentTab from '@/components/foundation/EquipmentTab';
@@ -912,10 +913,20 @@ export default function NewFoundationEstimate() {
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div id="info-client-name">
                       <Label className={`text-xs transition-colors duration-300 ${missingFields.includes('client_name') ? 'text-red-600 font-bold' : ''}`}>Client Name *</Label>
-                      <Input 
+                      <ClientSearchInput
+                        value={project.client_name}
+                        onChange={val => updateProject('client_name', val)}
+                        onSelectProject={(data) => {
+                          setProject(prev => ({
+                            ...prev,
+                            client_name: data.client_name || prev.client_name,
+                            project_name: data.project_name || prev.project_name,
+                            estimate_number: data.estimate_number || prev.estimate_number,
+                            hyperlink: data.hyperlink || prev.hyperlink
+                          }));
+                          markDirty();
+                        }}
                         className={`h-9 transition-all duration-300 ${missingFields.includes('client_name') ? 'border-red-500 ring-2 ring-red-200 bg-red-50 animate-pulse' : ''}`}
-                        value={project.client_name} 
-                        onChange={e => updateProject('client_name', e.target.value)} 
                       />
                     </div>
                     <div id="info-project-name">

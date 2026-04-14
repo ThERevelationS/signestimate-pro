@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Plus, Trash2, Save, Wrench, Edit, Download, Printer } from "lucide-react";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
+import ClientSearchInput from "@/components/ClientSearchInput";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
@@ -1117,7 +1118,7 @@ export default function NewMetalEstimate() {
         </div>
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <Card className="bg-white border-0 shadow-sm"><CardHeader><CardTitle>Project Information</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid md:grid-cols-2 gap-4"><div><Label>Project Name *</Label><Input value={project.project_name} onChange={(e) => setProject(p => ({ ...p, project_name: e.target.value }))} /></div><div><Label>Client Name *</Label><Input value={project.client_name} onChange={(e) => setProject(p => ({ ...p, client_name: e.target.value }))} /></div></div><div><Label>Notes</Label><Textarea value={project.notes} onChange={(e) => setProject(p => ({ ...p, notes: e.target.value }))} /></div></CardContent></Card>
+            <Card className="bg-white border-0 shadow-sm"><CardHeader><CardTitle>Project Information</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid md:grid-cols-2 gap-4"><div><Label>Project Name *</Label><Input value={project.project_name} onChange={(e) => setProject(p => ({ ...p, project_name: e.target.value }))} /></div><div><Label>Client Name *</Label><ClientSearchInput value={project.client_name} onChange={(val) => setProject(p => ({ ...p, client_name: val }))} onSelectProject={(data) => { setProject(prev => ({...prev, client_name: data.client_name || prev.client_name, project_name: data.project_name || prev.project_name, estimate_number: data.estimate_number || prev.estimate_number, hyperlink: data.hyperlink || prev.hyperlink })); }} /></div></div><div><Label>Notes</Label><Textarea value={project.notes} onChange={(e) => setProject(p => ({ ...p, notes: e.target.value }))} /></div></CardContent></Card>
             
             <Card className="bg-white border-0 shadow-sm">
                 <CardHeader><div className="flex justify-between items-center"><CardTitle>Project Items</CardTitle><Button onClick={addItem} size="sm"><Plus className="w-4 h-4 mr-2" />Add Item</Button></div></CardHeader>

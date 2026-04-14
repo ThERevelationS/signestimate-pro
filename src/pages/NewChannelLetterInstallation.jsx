@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Save, Plus, ArrowLeft, Wrench } from "lucide-react";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
+import ClientSearchInput from "@/components/ClientSearchInput";
 
 export default function NewChannelLetterInstallation() {
   const navigate = useNavigate();
@@ -244,12 +245,20 @@ export default function NewChannelLetterInstallation() {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="client_name">Client Name *</Label>
-                    <Input 
-                      id="client_name" 
-                      value={project.client_name} 
-                      onChange={(e) => setProject(prev => ({ ...prev, client_name: e.target.value }))}
-                      placeholder="Enter client name" 
-                      className="mt-1" 
+                    <ClientSearchInput
+                      value={project.client_name}
+                      onChange={(val) => setProject((prev) => ({ ...prev, client_name: val }))}
+                      onSelectProject={(data) => {
+                        setProject((prev) => ({
+                          ...prev,
+                          client_name: data.client_name || prev.client_name,
+                          project_name: data.project_name || prev.project_name,
+                          estimate_number: data.estimate_number || prev.estimate_number,
+                          hyperlink: data.hyperlink || prev.hyperlink
+                        }));
+                      }}
+                      className="mt-1"
+                      placeholder="Enter client name"
                     />
                   </div>
                   <div>

@@ -113,7 +113,11 @@ export default function UserManagement() {
       setIsSaving(true);
       try {
           const userUpdatePromises = users.map(user => 
-              User.update(user.id, { role: user.role, module_permissions: user.module_permissions })
+              User.update(user.id, { 
+                  role: user.role, 
+                  module_permissions: user.module_permissions,
+                  enable_ccs_database_lookup: user.enable_ccs_database_lookup
+              })
           );
           
           const globalStatusPromises = globalStatuses.map(status => 
@@ -169,6 +173,22 @@ export default function UserManagement() {
                   </div>
                 </div>
                 <div className="border-t pt-4">
+                  <Label className="font-medium text-slate-700">Database Search Permissions</Label>
+                  <div className="flex items-center justify-between p-3 mt-2 mb-4 bg-slate-50 rounded-md border border-slate-100">
+                    <Label htmlFor={`ccs-${user.id}`} className="flex items-center gap-2 text-sm font-medium">
+                      <Server className="w-4 h-4 text-indigo-600" />
+                      Enable CCS Database Lookup
+                    </Label>
+                    <Switch 
+                        id={`ccs-${user.id}`} 
+                        checked={user.enable_ccs_database_lookup || false} 
+                        onCheckedChange={(checked) => {
+                            setUsers(currentUsers => currentUsers.map(u => u.id === user.id ? { ...u, enable_ccs_database_lookup: checked } : u));
+                        }} 
+                        disabled={isLocked}
+                    />
+                  </div>
+
                   <Label className="font-medium text-slate-700">Module Access Overrides</Label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
                     {Object.entries(moduleDetails).map(([key, details]) => {

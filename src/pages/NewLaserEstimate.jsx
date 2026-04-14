@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Save, Plus, Trash2, ArrowLeft, Zap } from "lucide-react";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
+import ClientSearchInput from "@/components/ClientSearchInput";
 
 const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/8", "1/2", "3/4"]; // Updated: Removed "1"
 const materials = ["Acrylic", "Wood", "Leather"];
@@ -1318,13 +1319,21 @@ Best regards`;
                 <div className="grid md:grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor="client_name">Client Name *</Label>
-                    <Input
-                      id="client_name"
+                    <ClientSearchInput
                       value={project.client_name}
-                      onChange={(e) => setProject((prev) => ({ ...prev, client_name: e.target.value }))}
+                      onChange={(val) => setProject((prev) => ({ ...prev, client_name: val }))}
+                      onSelectProject={(data) => {
+                        setProject((prev) => ({
+                          ...prev,
+                          client_name: data.client_name || prev.client_name,
+                          project_name: data.project_name || prev.project_name,
+                          estimate_number: data.estimate_number || prev.estimate_number,
+                          hyperlink: data.hyperlink || prev.hyperlink
+                        }));
+                      }}
+                      className="mt-1"
                       placeholder="Enter client name"
-                      className="mt-1" />
-
+                    />
                   </div>
                   <div>
                     <Label htmlFor="project_name">Project Name *</Label>
