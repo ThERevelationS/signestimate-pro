@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Save, ArrowLeft, Trash2, Crosshair, Move, Undo, Redo, Copy, HelpCircle } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
+import { Plus, Save, ArrowLeft, Trash2, Crosshair, Move, Undo, Redo, Copy, HelpCircle, ChevronDown } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import WallSection from '@/components/WallSection';
@@ -98,12 +99,10 @@ const FoundationInventoryEntity = base44.entities.FoundationInventory;
 const SettingsEntity = base44.entities.Settings;
 
 const CONCRETE_MIXES = [
-  { id: '3000_ae', name: '3000 AIR ENTRAINED (AE)', price: 191.20, desc: 'Used for general flatwork and residential applications where high strength is not required.' },
   { id: '3500_ae', name: '3500 AIR ENTRAINED (AE)', price: 195.40, desc: 'Often used for driveways, slabs, and moderate-load footings.' },
   { id: '4000_ae', name: '4000 AIR ENTRAINED (AE)', price: 201.00, desc: 'STANDARD. Used for sign foundations, commercial flatwork, and structural footings requiring good durability.' },
   { id: '4500_ae', name: '4500 AIR ENTRAINED (AE)', price: 208.70, desc: 'Used for heavy-duty commercial slabs and heavy traffic areas.' },
   { id: '5000_ae', name: '5000 AIR ENTRAINED (AE)', price: 214.60, desc: 'High-strength mix for heavy structural columns, pillars, and extreme load conditions.' },
-  { id: 'class_c_ae', name: 'CLASS C AIR ENTRAINED (AE) (CITY MIX)', price: 215.00, desc: 'Specialized mix meeting specific municipal/city requirements for public right-of-way installations.' },
   { id: 'fast_set', name: 'FAST SET', price: 248.00, desc: 'Quick-curing concrete used when rapid strength gain is needed to minimize downtime.' },
 ];
 
@@ -469,9 +468,15 @@ export default function NewFoundationEstimate() {
     
     const volumeCY = item.custom_concrete_qty !== null && item.custom_concrete_qty !== undefined ? item.custom_concrete_qty : baseVolumeCY;
 
-    let concreteCost = 0; // Handled at project level now
+    let concreteCost = 0; 
     let baseBags = null;
     let concreteBags = null;
+
+    if (selectedConcrete?.material_type === 'bagged_concrete') {
+      baseBags = Math.ceil(baseVolumeCY * 45); // ~45 80lb bags per CY
+      concreteBags = item.custom_concrete_qty !== null && item.custom_concrete_qty !== undefined ? item.custom_concrete_qty : baseBags;
+      concreteCost = concreteBags * conc_cost;
+    }
 
     let rebarCost = 0;
     let baseRebarFt = 0;
@@ -606,7 +611,11 @@ export default function NewFoundationEstimate() {
     let itemsTotalWithoutConcrete = items.reduce((s, item) => s + calcItemCost(item).total, 0);
     
     // Concrete project-level calculation
-    const totalConcreteYards = items.reduce((sum, item) => sum + calcItemCost(item).volumeCY, 0);
+    const concreteServiceItems = items.filter(item => {
+        const inv = inventory.find(i => i.id === item.selected_concrete_id);
+        return !inv || inv.material_type === 'concrete_service';
+    });
+    const totalConcreteYards = concreteServiceItems.reduce((sum, item) => sum + calcItemCost(item).volumeCY, 0);
     const roundedYards = Math.ceil(totalConcreteYards * 4) / 4;
     
     const mix = CONCRETE_MIXES.find(m => m.id === project.project_concrete_type) || CONCRETE_MIXES.find(m => m.id === '4000_ae');
@@ -863,6 +872,11 @@ export default function NewFoundationEstimate() {
   const concreteServices = inventory.filter(i => i.material_type === 'concrete_service' || i.material_type === 'bagged_concrete');
   const formingInventory = inventory.filter(i => i.material_type === 'forming_material');
 
+  const hasConcreteService = items.some(item => {
+    const invItem = inventory.find(i => i.id === item.selected_concrete_id);
+    return invItem && invItem.material_type === 'concrete_service';
+  });
+
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen"><div className="w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full animate-spin" /></div>;
   }
@@ -1018,61 +1032,6 @@ export default function NewFoundationEstimate() {
               {/* FOUNDATION ITEMS */}
               <TabsContent value="foundation" className="space-y-4 pt-4">
                 
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm space-y-4">
-                  <h3 className="text-base font-bold text-slate-800">Project-Wide Concrete Service Options</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <Label className="text-sm font-semibold mb-2 block">Concrete Type / Mix</Label>
-                      <Select 
-                        value={project.project_concrete_type || '4000_ae'} 
-                        onValueChange={v => updateProject('project_concrete_type', v)}
-                      >
-                        <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {CONCRETE_MIXES.map(m => (
-                            <SelectItem key={m.id} value={m.id}>
-                              <div className="flex flex-col text-left py-1 max-w-[400px] whitespace-normal">
-                                <span className="font-bold">{m.name} <span className="font-normal text-slate-500">- ${m.price.toFixed(2)}/yd</span></span>
-                                <span className="text-xs text-slate-500 mt-0.5">{m.desc}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div>
-                      <Label className="text-sm font-semibold mb-2 block">Admixtures & Additional Services</Label>
-                      <div className="grid grid-cols-1 gap-2 bg-white p-3 rounded border border-slate-200">
-                        {CONCRETE_ADMIXTURES.map(admix => {
-                          const isChecked = (project.project_concrete_admixtures || []).includes(admix.id);
-                          return (
-                            <div key={admix.id} className="flex items-start space-x-2">
-                              <Checkbox 
-                                id={`admix-${admix.id}`} 
-                                checked={isChecked}
-                                onCheckedChange={(checked) => {
-                                  let current = [...(project.project_concrete_admixtures || [])];
-                                  if (checked) current.push(admix.id);
-                                  else current = current.filter(x => x !== admix.id);
-                                  updateProject('project_concrete_admixtures', current);
-                                }}
-                                className="mt-1"
-                              />
-                              <div className="leading-none">
-                                <Label htmlFor={`admix-${admix.id}`} className="text-sm font-bold cursor-pointer">
-                                  {admix.name} <span className="font-normal text-slate-500">- ${admix.price.toFixed(2)}/yd</span>
-                                </Label>
-                                <p className="text-xs text-slate-500 mt-1">{admix.desc}</p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
                 {/* AI Engineering Calculator */}
                 <div id="btn-ai-assistant" className="flex flex-col items-start gap-4 w-full">
                   <div className="w-full bg-indigo-50 border-2 border-indigo-200 border-dashed rounded-xl p-5 flex flex-col md:flex-row items-center justify-between text-left gap-4 shadow-sm">
@@ -1123,7 +1082,71 @@ export default function NewFoundationEstimate() {
                   )}
                 </div>
 
-
+                {hasConcreteService && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm space-y-4">
+                    <h3 className="text-base font-bold text-slate-800">Project-Wide Concrete Service Options</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <Label className="text-sm font-semibold mb-2 block">Concrete Type / Mix</Label>
+                        <Select 
+                          value={project.project_concrete_type || '4000_ae'} 
+                          onValueChange={v => updateProject('project_concrete_type', v)}
+                        >
+                          <SelectTrigger className="bg-white h-auto py-2"><SelectValue /></SelectTrigger>
+                          <SelectContent className="w-[500px] max-w-[90vw]">
+                            {CONCRETE_MIXES.map(m => (
+                              <SelectItem key={m.id} value={m.id}>
+                                <div className="flex flex-col text-left py-1 whitespace-normal">
+                                  <span className="font-bold">{m.name} <span className="font-normal text-slate-500">- ${m.price.toFixed(2)}/yd</span></span>
+                                  <span className="text-xs text-slate-500 mt-0.5">{m.desc}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div>
+                        <Label className="text-sm font-semibold mb-2 block">Admixtures & Additional Services</Label>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-full justify-between bg-white text-left h-auto py-2">
+                              <span className="truncate">
+                                {(project.project_concrete_admixtures || []).length > 0
+                                  ? `${(project.project_concrete_admixtures || []).length} Admixture(s) Selected`
+                                  : "Select Admixtures..."}
+                              </span>
+                              <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-[400px] max-w-[90vw] p-2 space-y-1">
+                            {CONCRETE_ADMIXTURES.map(admix => {
+                              const isChecked = (project.project_concrete_admixtures || []).includes(admix.id);
+                              return (
+                                <DropdownMenuCheckboxItem
+                                  key={admix.id}
+                                  checked={isChecked}
+                                  onCheckedChange={(checked) => {
+                                    let current = [...(project.project_concrete_admixtures || [])];
+                                    if (checked) current.push(admix.id);
+                                    else current = current.filter(x => x !== admix.id);
+                                    updateProject('project_concrete_admixtures', current);
+                                  }}
+                                  className="flex flex-col items-start px-2 py-2 cursor-pointer whitespace-normal focus:bg-slate-50"
+                                >
+                                  <div className="font-bold text-sm text-slate-900 leading-tight">
+                                    {admix.name} <span className="font-normal text-slate-500">- ${admix.price.toFixed(2)}/yd</span>
+                                  </div>
+                                  <p className="text-xs text-slate-500 mt-1 leading-snug">{admix.desc}</p>
+                                </DropdownMenuCheckboxItem>
+                              );
+                            })}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {items.map((item, idx) => (
                   <div key={item._id} id={idx === 0 ? "foundation-item-0" : undefined}>
@@ -1890,8 +1913,8 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
             </div>
           )}
 
-          {/* Excavation */}
-          <div id={`foundation-excavation-${index}`} className="bg-indigo-50/50 border border-indigo-100 rounded-lg p-3 mt-4">
+          {/* Excavation & Concrete Type */}
+          <div id={`foundation-excavation-${index}`} className="bg-indigo-50/50 border border-indigo-100 rounded-lg p-3 grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
               <Label className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">Excavation Method</Label>
               <Select value={item.excavation_method || 'hand_dig'} onValueChange={v => onUpdate('excavation_method', v)}>
@@ -1904,6 +1927,21 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
               {item.excavation_method === 'equipment_excavation' && (
                 <p className="text-sm text-red-600 mt-1 font-medium">See Equipment Tab to Select Equipment for the Project.</p>
               )}
+            </div>
+            <div id={`foundation-concrete-${index}`}>
+              <Label className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">Concrete Type</Label>
+              <Select value={item.selected_concrete_id || ''} onValueChange={v => onUpdate('selected_concrete_id', v)}>
+                <SelectTrigger className="h-8 mt-1 bg-white"><SelectValue placeholder="Select concrete..." /></SelectTrigger>
+                <SelectContent>
+                  {concreteServices.map(c => (
+                    <SelectItem key={c.id} value={c.id}>
+                      <div className="flex flex-col text-left py-1 max-w-[300px]">
+                         <span className="font-medium">{c.material_name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -1928,14 +1966,17 @@ function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteSer
           {/* Cost breakdown */}
           {costs && (
             <div id={`foundation-costs-${index}`} className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mt-4">
+              {costs.concreteCost > 0 && <div><p className="text-emerald-700/70">Concrete {costs.concreteBags ? `(${costs.concreteBags} bags)` : ''}</p><p className="font-medium text-emerald-900">${costs.concreteCost.toFixed(2)}</p></div>}
               <div><p className="text-emerald-700/70">Rebar</p><p className="font-medium text-emerald-900">${costs.rebarCost.toFixed(2)}</p></div>
               <div><p className="text-emerald-700/70">Forming</p><p className="font-medium text-emerald-900">${costs.formingCost.toFixed(2)}</p></div>
               <div><p className="text-emerald-700/70">Pouring</p><p className="font-medium text-emerald-900">${costs.pouringCost.toFixed(2)}</p></div>
               <div><p className="text-emerald-700/70">Finishing</p><p className="font-medium text-emerald-900">${costs.finishingCost.toFixed(2)}</p></div>
               <div><p className="text-emerald-700/70">Excavation</p><p className="font-medium text-emerald-900">${costs.excavationCost.toFixed(2)}</p></div>
-              <div className="col-span-2 md:col-span-4 border-t border-emerald-100 pt-2 mt-1">
-                <p className="text-emerald-700/70 font-semibold italic text-center">Concrete material & truck costs are aggregated for the entire project.</p>
-              </div>
+              {costs.concreteCost === 0 && (
+                <div className="col-span-2 md:col-span-4 border-t border-emerald-100 pt-2 mt-1">
+                  <p className="text-emerald-700/70 font-semibold italic text-center">Concrete material & truck costs are aggregated for the entire project.</p>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

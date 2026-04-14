@@ -367,6 +367,20 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                 <CopyValue value={`$${c.total.toFixed(2)}`} className="text-base font-bold text-slate-800" />
               </div>
               <div className="flex flex-col gap-1">
+                {c.concreteCost > 0 && (
+                  <CostRow 
+                    label={`Concrete ${c.concreteBags ? `(${c.concreteBags} bags)` : ''}`} 
+                    unit="bag"
+                    defaultRate={c.concreteRate}
+                    customRate={item.custom_concrete_cost_per_cy}
+                    onRateChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_concrete_cost_per_cy: val })}
+                    defaultQty={c.baseBags || 0}
+                    customQty={item.custom_concrete_qty}
+                    onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_concrete_qty: val })}
+                    qtyUnit="bags"
+                    calculatedTotal={c.concreteCost}
+                  />
+                )}
                 <CostRow 
                   label="Rebar" 
                   qtyLabel={c.selectedRebarName}
