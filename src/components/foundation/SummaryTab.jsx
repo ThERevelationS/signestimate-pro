@@ -6,6 +6,31 @@ import { Copy, Check, Download, ClipboardCopy } from 'lucide-react';
 import { getConcreteMixes, getConcreteAdmixtures, getSmallLoadFee, getFuelSurcharge } from '@/pages/NewFoundationEstimate';
 import { base44 } from '@/api/base44Client';
 
+// Small button that copies a combined block of text — used to grab a group of line items
+function CopyGroupButton({ lines, label = 'Copy' }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    const text = (lines || []).filter(Boolean).join('\n');
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      title="Copy combined description for this group"
+      className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded px-1.5 py-0.5 transition"
+    >
+      {copied
+        ? <Check className="w-3 h-3 text-green-500" />
+        : <Copy className="w-3 h-3" />
+      }
+      <span>{copied ? 'Copied!' : label}</span>
+    </button>
+  );
+}
+
 // Individual clickable cost value with tooltip
 function CopyValue({ label, value, className = '' }) {
   const [copied, setCopied] = useState(false);
@@ -486,9 +511,17 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
               </div>
               <p className="text-[11px] text-slate-500 italic mb-3">{foundationDetail}</p>
 
-              {hasAnyMaterial && (
+              {hasAnyMaterial && (() => {
+                const matLines = [];
+                if (hasBaggedConcrete) matLines.push(`Concrete: ${c.concreteBags || 0} bags × $${(c.concreteRate || 0).toFixed(2)}/bag = $${c.concreteCost.toFixed(2)} (${c.volumeCY.toFixed(2)} CY total volume)`);
+                if (hasRebar) matLines.push(`Rebar — ${c.selectedRebarName || ''}: ${c.rebarFt.toFixed(2)} ft × $${(c.rebarRate || 0).toFixed(2)}/ft (incl. labor) = $${c.rebarCost.toFixed(2)}${item.foundation_type === 'spread_foot' ? ` | Spacing: ${item.rebar_spacing_length}"×${item.rebar_spacing_width}", ${item.rebar_layers || 1} layer(s)` : ` | ${item.pillar_vertical_rebar_count || 4} verticals, ${item.pillar_rebar_layers || 1} hoop(s)`}`);
+                if (hasForming) matLines.push(`Forming — ${c.selectedFormingName || ''}: ${c.formingQty || c.baseFormingQty} pcs × $${(selectedForming?.cost_per_unit || 0).toFixed(2)}/pc + labor = $${c.formingCost.toFixed(2)}`);
+                return (
                 <div className="flex flex-col gap-1 mb-3">
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Materials</div>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Materials</div>
+                    <CopyGroupButton lines={matLines} label="Copy Materials" />
+                  </div>
                   {hasBaggedConcrete && (
                     <CostRow 
                       label={`Concrete ${c.concreteBags ? `(${c.concreteBags} bags)` : ''}`} 
@@ -537,11 +570,20 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                     />
                   )}
                 </div>
-              )}
+                );
+              })()}
 
-              {hasAnyLabor && (
+              {hasAnyLabor && (() => {
+                const laborLines = [];
+                if (hasPouring) laborLines.push(`Pouring labor for ${c.volumeCY.toFixed(2)} CY = $${c.pouringCost.toFixed(2)}`);
+                if (hasFinishing) laborLines.push(`Finishing: ${(c.finishingHours || 0).toFixed(2)} hrs × $${(c.finishingRate || 0).toFixed(2)}/hr = $${c.finishingCost.toFixed(2)} (top surface finishing)`);
+                if (hasExcavation) laborLines.push(`${item.excavation_method === 'equipment_excavation' ? 'Equipment' : 'Hand-dig'} excavation: ${(c.excavationHours || 0).toFixed(2)} hrs × $${(c.excavationRate || 0).toFixed(2)}/hr = $${c.excavationCost.toFixed(2)} (${(c.volumeCY * 1.25).toFixed(2)} CY excavated)`);
+                return (
                 <div className="flex flex-col gap-1">
-                  <div className={`text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 ${hasAnyMaterial ? 'border-t border-slate-200 pt-2' : ''}`}>Labor</div>
+                  <div className={`flex items-center justify-between mb-1 ${hasAnyMaterial ? 'border-t border-slate-200 pt-2' : ''}`}>
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Labor</div>
+                    <CopyGroupButton lines={laborLines} label="Copy Labor" />
+                  </div>
                   {hasPouring && (
                     <CostRow 
                       label="Pouring" 
@@ -582,7 +624,8 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                     />
                   )}
                 </div>
-              )}
+                );
+              })()}
             </div>
           );
         })}
@@ -697,9 +740,23 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                 <CopyValue value={`$${(cc?.totalCost || 0).toFixed(2)}`} className="text-base font-bold text-slate-800" />
               </div>
               
-              {cc && (
+              {cc && (() => {
+                const outerLines = [
+                  `${mat?.material_name || 'Material'}: ${cc.totalBricks} units × $${(mat?.cost_per_unit || 0).toFixed(2)} = $${(cc.materialCost || 0).toFixed(2)}${cc.numCourses ? ` | ${cc.numCourses} courses, ${(cc.totalLinearInches / 12).toFixed(1)} LF` : ''}`,
+                  `${cc.mortarBags || 0} bags of mortar mix = $${(cc.mortarCost || 0).toFixed(2)} (${(w.mortarGapInches || 0.375)}" gap)`,
+                  `Masonry labor: ${(cc.laborHours || 0).toFixed(1)} hrs to lay ${cc.totalBricks} units = $${(cc.laborCost || 0).toFixed(2)}`,
+                ];
+                const internalLines = w.includeInternalWall ? [
+                  `${intMat?.material_name || 'Internal material'}: ${cc.internalTotalBricks} units × $${(intMat?.cost_per_unit || 0).toFixed(2)} = $${(cc.internalMaterialCost || 0).toFixed(2)}`,
+                  `${cc.internalMortarBags || 0} bags of mortar = $${(cc.internalMortarCost || 0).toFixed(2)}`,
+                  `Internal masonry: ${(cc.internalLaborHours || 0).toFixed(1)} hrs to lay ${cc.internalTotalBricks} units = $${(cc.internalLaborCost || 0).toFixed(2)}`,
+                ] : [];
+                return (
                 <div className="flex flex-col gap-1 mb-4">
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 mt-1">Outer Wall</div>
+                  <div className="flex items-center justify-between mb-1 mt-1">
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Outer Wall</div>
+                    <CopyGroupButton lines={outerLines} label="Copy Outer Wall" />
+                  </div>
                   <div className="mb-2">
                     <span className="text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px]">
                       Units: {cc.totalBricks}
@@ -745,7 +802,10 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                   
                   {w.includeInternalWall && (
                     <>
-                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 mt-4 border-t border-slate-200 pt-3">Internal Wall</div>
+                      <div className="flex items-center justify-between mb-1 mt-4 border-t border-slate-200 pt-3">
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Internal Wall</div>
+                        <CopyGroupButton lines={internalLines} label="Copy Internal Wall" />
+                      </div>
                       <div className="mb-2">
                         <span className="text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px]">
                           Units: {cc.internalTotalBricks}
@@ -791,7 +851,8 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                     </>
                   )}
                 </div>
-              )}
+                );
+              })()}
             </div>
           );
         })}
