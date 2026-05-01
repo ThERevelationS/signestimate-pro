@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Plus, Search, ExternalLink, Edit2, Trash2, Anchor } from "lucide-react";
+import { Plus, Search, ExternalLink, Edit2, Trash2, Anchor, Users } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 
 export default function FoundationProjects() {
@@ -14,16 +16,22 @@ export default function FoundationProjects() {
   const [filteredProjects, setFilteredProjects] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [showAllUsers, setShowAllUsers] = useState(false);
 
   useEffect(() => {
     loadProjects();
-  }, []);
+  }, [showAllUsers]);
 
   const loadProjects = async () => {
     setIsLoading(true);
     try {
       const user = await User.me();
-      const projectsData = await FoundationProject.filter({ created_by: user.email }, '-created_date');
+      let projectsData;
+      if (showAllUsers) {
+        projectsData = await FoundationProject.list('-created_date');
+      } else {
+        projectsData = await FoundationProject.filter({ created_by: user.email }, '-created_date');
+      }
       setProjects(projectsData);
     } catch (error) {
       console.error('Error loading projects:', error);
@@ -94,16 +102,22 @@ export default function FoundationProjects() {
 
         <Card className="bg-white border-0 shadow-sm">
           <CardHeader className="border-b border-slate-100">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                <Input
-                  placeholder="Search projects..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+            <div className="flex flex-col md:flex-row gap-4 items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <Input
+                placeholder="Search projects..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Switch id="show-all" checked={showAllUsers} onCheckedChange={setShowAllUsers} />
+              <Label htmlFor="show-all" className="text-sm text-slate-600 whitespace-nowrap flex items-center gap-1.5 cursor-pointer">
+                <Users className="w-3.5 h-3.5" /> All Users
+              </Label>
+            </div>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -123,6 +137,7 @@ export default function FoundationProjects() {
                             <p className="font-medium">Client: {project.client_name}</p>
                             {project.estimate_number && <p>Estimate #: {project.estimate_number}</p>}
                             <p>Created: {format(new Date(project.created_date), 'MMM d, yyyy')}</p>
+                            {showAllUsers && project.created_by && <p className="text-xs text-slate-400">By: {project.created_by}</p>}
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">

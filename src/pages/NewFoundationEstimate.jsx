@@ -683,18 +683,39 @@ export default function NewFoundationEstimate() {
     const itemsTotal = itemsTotalWithoutConcrete + concreteTotal;
 
     const wallTotal = walls.reduce((s, w) => s + (w.calculatedCosts?.totalCost || 0), 0);
+    const getPolePaintingSizeMultiplier = (inv) => {
+        const w = inv?.pole_width_inches || 6;
+        if (w >= 12) return getSetting('pole_paint_size_multiplier_12in', 2.0);
+        if (w >= 10) return getSetting('pole_paint_size_multiplier_10in', 1.75);
+        if (w >= 8) return getSetting('pole_paint_size_multiplier_8in', 1.5);
+        if (w >= 6) return getSetting('pole_paint_size_multiplier_6in', 1.25);
+        return getSetting('pole_paint_size_multiplier_4in', 1.0);
+    };
+
+    const calcPolePaintingCost = (p, inv) => {
+        if (!p.include_pole_painting || !inv) return 0;
+        const heightFt = (p.height_inches || 0) / 12;
+        const paintCostPerLf = getSetting('pole_paint_cost_per_lf', 3.50);
+        const paintLaborPerLf = getSetting('pole_paint_labor_per_lf', 2.50);
+        const sizeMult = getPolePaintingSizeMultiplier(inv);
+        return heightFt * (paintCostPerLf + paintLaborPerLf) * sizeMult;
+    };
+
     const polesTotal = polesData.reduce((sum, p) => {
         const inv = inventory.find(i => i.id === p.pole_id);
         if (!inv) return sum;
+        let poleCost = 0;
         if (inv.pole_pricing_mode === 'stock_price') {
             const stockLen = (inv.pole_stock_length_ft || 20) * 12;
             const pieces = Math.ceil(p.height_inches / stockLen);
             const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : (inv.pole_stock_price || 0);
-            return sum + (pieces * rate);
+            poleCost = pieces * rate;
         } else {
             const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : (inv.cost_per_unit || 0);
-            return sum + ((p.height_inches / 12) * rate);
+            poleCost = (p.height_inches / 12) * rate;
         }
+        poleCost += calcPolePaintingCost(p, inv);
+        return sum + poleCost;
     }, 0);
 
     const allAttachments = inventory.filter(i => i.material_type === 'attachment');
@@ -1454,7 +1475,17 @@ export default function NewFoundationEstimate() {
                                             }} />
                                         </div>
                                     </div>
-                                    
+
+                                    <div className="flex items-center gap-2 mt-2 bg-blue-50 border border-blue-200 rounded-md p-1.5">
+                                        <Checkbox id={`pole-paint-${idx}`} checked={pole.include_pole_painting || false} onCheckedChange={(checked) => {
+                                            const arr = [...polesData];
+                                            arr[idx].include_pole_painting = checked;
+                                            setPolesData(arr);
+                                            markDirty();
+                                        }} className="w-4 h-4" />
+                                        <Label htmlFor={`pole-paint-${idx}`} className="text-[10px] font-semibold text-blue-800 cursor-pointer">Include Pole Painting</Label>
+                                    </div>
+
                                     <div className="pt-1">
                                         <Label className="text-[10px] text-slate-500 font-semibold uppercase mb-1 block">Center on Found</Label>
                                         <div className="flex items-center bg-slate-100 p-0.5 rounded-md border border-slate-200">
@@ -1647,7 +1678,8 @@ export default function NewFoundationEstimate() {
                   project={project} 
                   polesData={polesData} 
                   selectedEquipmentList={selectedEquipmentList} 
-                  inventory={inventory} 
+                  inventory={inventory}
+                  settings={settings} 
                   onUpdateItem={(idx, updates) => {
                     const arr = [...items];
                     arr[idx] = { ...arr[idx], ...updates };

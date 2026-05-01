@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Copy, Check, Download, ClipboardCopy } from 'lucide-react';
 import { getConcreteMixes, getConcreteAdmixtures, getSmallLoadFee, getFuelSurcharge } from '@/pages/NewFoundationEstimate';
+import { base44 } from '@/api/base44Client';
 
 // Individual clickable cost value with tooltip
 function CopyValue({ label, value, className = '' }) {
@@ -90,7 +91,7 @@ function CostRow({
   );
 }
 
-export default function SummaryTab({ items, walls, totals, calcItemCost, project, polesData = [], selectedEquipmentList = [], inventory = [], onUpdateItem, onUpdateWall, onUpdatePole, onUpdateEquipment }) {
+export default function SummaryTab({ items, walls, totals, calcItemCost, project, polesData = [], selectedEquipmentList = [], inventory = [], onUpdateItem, onUpdateWall, onUpdatePole, onUpdateEquipment, settings = {} }) {
   const polesTotal = totals.polesTotal || 0;
   const [allCopied, setAllCopied] = useState(false);
 
@@ -747,8 +748,25 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                        cost = ft * rate;
                    }
                 }
+
+                // Painting cost
+                let paintingCost = 0;
+                if (p.include_pole_painting && inv) {
+                    const heightFt = (p.height_inches || 0) / 12;
+                    const paintCostPerLf = parseFloat(settings['pole_paint_cost_per_lf'] || 3.50);
+                    const paintLaborPerLf = parseFloat(settings['pole_paint_labor_per_lf'] || 2.50);
+                    const w = inv.pole_width_inches || 6;
+                    let sizeMult = 1.0;
+                    if (w >= 12) sizeMult = parseFloat(settings['pole_paint_size_multiplier_12in'] || 2.0);
+                    else if (w >= 10) sizeMult = parseFloat(settings['pole_paint_size_multiplier_10in'] || 1.75);
+                    else if (w >= 8) sizeMult = parseFloat(settings['pole_paint_size_multiplier_8in'] || 1.5);
+                    else if (w >= 6) sizeMult = parseFloat(settings['pole_paint_size_multiplier_6in'] || 1.25);
+                    else sizeMult = parseFloat(settings['pole_paint_size_multiplier_4in'] || 1.0);
+                    paintingCost = heightFt * (paintCostPerLf + paintLaborPerLf) * sizeMult;
+                }
+
                 return (
-                  <div key={i} className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 shadow-sm flex flex-col">
+                  <div key={i} className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 shadow-sm flex flex-col gap-1">
                     <CostRow 
                       label={`Pole #${i + 1} (${p.height_inches}" height)`} 
                       qtyLabel={inv?.material_name || ''}
@@ -762,6 +780,14 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                       qtyUnit={unitLabel === 'piece' ? 'pcs' : 'ft'}
                       calculatedTotal={cost}
                     />
+                    {p.include_pole_painting && (
+                      <CostRow 
+                        label="Pole Painting"
+                        qtyLabel={`${((p.height_inches || 0) / 12).toFixed(1)} LF × size multiplier`}
+                        readOnly
+                        calculatedTotal={paintingCost}
+                      />
+                    )}
                   </div>
                 );
               })}

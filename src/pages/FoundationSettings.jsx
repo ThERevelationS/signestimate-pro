@@ -26,6 +26,14 @@ const DEFAULT_SETTINGS = {
   foundation_forming_materials_pillar: { value: '0.75', label: 'Forming Material Cost Multiplier - Pillar', category: 'foundation_calc', type: 'number' },
   // Concrete delivery
   foundation_fuel_surcharge: { value: '30', label: 'Default Fuel / Delivery Surcharge Per Load ($)', category: 'foundation_pricing', type: 'number' },
+  // Pole painting
+  pole_paint_cost_per_lf: { value: '3.50', label: 'Paint Material Cost Per Linear Foot ($)', category: 'foundation_pricing', type: 'number' },
+  pole_paint_labor_per_lf: { value: '2.50', label: 'Paint Labor Cost Per Linear Foot ($)', category: 'foundation_pricing', type: 'number' },
+  pole_paint_size_multiplier_4in: { value: '1.0', label: '4" Pole Size Multiplier', category: 'foundation_calc', type: 'number' },
+  pole_paint_size_multiplier_6in: { value: '1.25', label: '6" Pole Size Multiplier', category: 'foundation_calc', type: 'number' },
+  pole_paint_size_multiplier_8in: { value: '1.5', label: '8" Pole Size Multiplier', category: 'foundation_calc', type: 'number' },
+  pole_paint_size_multiplier_10in: { value: '1.75', label: '10" Pole Size Multiplier', category: 'foundation_calc', type: 'number' },
+  pole_paint_size_multiplier_12in: { value: '2.0', label: '12"+ Pole Size Multiplier', category: 'foundation_calc', type: 'number' },
   // Wall / Masonry settings
   wall_mortar_cost_per_sqft: { value: '0.35', label: 'Mortar/Grout Cost Per Sq Ft of Wall Face ($)', category: 'foundation_pricing', type: 'number' },
   wall_labor_rate: { value: '45', label: 'Wall Masonry Labor Rate ($/sqft)', category: 'foundation_labor', type: 'number' },
@@ -130,6 +138,7 @@ export default function FoundationSettings() {
           <TabsList>
             <TabsTrigger value="labor">Labor Rates</TabsTrigger>
             <TabsTrigger value="delivery">Fuel & Delivery</TabsTrigger>
+            <TabsTrigger value="pole_painting">Pole Painting</TabsTrigger>
             <TabsTrigger value="calc">Calculation Factors</TabsTrigger>
             <TabsTrigger value="wall">Wall / Masonry</TabsTrigger>
           </TabsList>
@@ -210,6 +219,46 @@ export default function FoundationSettings() {
                 <p><strong>Rounding:</strong> Each truck's yardage is rounded up to the nearest ¼ yard for billing.</p>
                 <p><strong>Small Load Fees:</strong> Configured per supplier in Inventory. Triggered when a truck carries less than 5 YD.</p>
                 <p><strong>Supplier Override:</strong> If a concrete service in Inventory has its own fuel surcharge set, that value is used instead of this default.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="pole_painting" className="space-y-4 pt-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Pole Painting — Base Rates</CardTitle>
+                <p className="text-xs text-slate-500 mt-1">
+                  Cost per linear foot of pole height. The size multiplier adjusts the rate based on pole width.
+                </p>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SettingInput settingKey="pole_paint_cost_per_lf" />
+                <SettingInput settingKey="pole_paint_labor_per_lf" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Size Multipliers</CardTitle>
+                <p className="text-xs text-slate-500 mt-1">
+                  Larger poles require more paint and labor. These multipliers are applied to the base rates above.
+                </p>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <SettingInput settingKey="pole_paint_size_multiplier_4in" />
+                <SettingInput settingKey="pole_paint_size_multiplier_6in" />
+                <SettingInput settingKey="pole_paint_size_multiplier_8in" />
+                <SettingInput settingKey="pole_paint_size_multiplier_10in" />
+                <SettingInput settingKey="pole_paint_size_multiplier_12in" />
+              </CardContent>
+            </Card>
+            <Card className="bg-indigo-50 border-indigo-100">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-indigo-900">How Pole Painting is Calculated</CardTitle>
+              </CardHeader>
+              <CardContent className="text-xs text-indigo-800 space-y-2">
+                <p><strong>Paint Material Cost:</strong> Pole Height (ft) × Paint Cost Per LF × Size Multiplier.</p>
+                <p><strong>Paint Labor Cost:</strong> Pole Height (ft) × Paint Labor Per LF × Size Multiplier.</p>
+                <p><strong>Total Painting Cost:</strong> Paint Material + Paint Labor.</p>
               </CardContent>
             </Card>
           </TabsContent>
