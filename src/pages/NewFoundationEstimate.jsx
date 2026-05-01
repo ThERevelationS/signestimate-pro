@@ -1204,7 +1204,6 @@ export default function NewFoundationEstimate() {
                   <div key={item._id} id={idx === 0 ? "foundation-item-0" : undefined}>
                   <FoundationItemRow
                     item={item}
-                    item={item}
                     index={idx}
                     onUpdate={(field, value) => updateItem(idx, field, value)}
                     onRemove={() => removeItem(idx)}

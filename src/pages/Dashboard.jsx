@@ -35,10 +35,8 @@ export default function Dashboard() {
   }, []);
 
   const hasPermission = (moduleName) => {
-    if (!currentUser) {
-      return moduleStatuses[moduleName] !== undefined ? moduleStatuses[moduleName] : true;
-    }
-    if (currentUser.module_permissions && currentUser.module_permissions[moduleName] !== undefined) {
+    // User-specific override takes precedence over global status
+    if (currentUser?.module_permissions && currentUser.module_permissions[moduleName] !== undefined) {
       return currentUser.module_permissions[moduleName];
     }
     return moduleStatuses[moduleName] !== undefined ? moduleStatuses[moduleName] : true;

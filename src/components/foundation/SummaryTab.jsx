@@ -47,15 +47,26 @@ function CostRow({
   defaultQty,
   customQty,
   onQtyChange,
-  qtyUnit
+  qtyUnit,
+  detailText
 }) {
+  const [detailCopied, setDetailCopied] = useState(false);
+
+  const copyDetail = () => {
+    const text = detailText || `${label}: $${calculatedTotal.toFixed(2)}`;
+    navigator.clipboard.writeText(text);
+    setDetailCopied(true);
+    setTimeout(() => setDetailCopied(false), 1500);
+  };
+
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1.5 border-b border-slate-100 last:border-0 gap-2">
-      <div className="flex flex-col text-sm text-slate-700 min-w-[120px]">
-        <span>{label}</span>
-        {qtyLabel && <span className="text-[10px] text-slate-500">{qtyLabel}</span>}
-      </div>
-      <div className="flex items-center gap-3 ml-auto flex-wrap justify-end">
+    <div className="flex flex-col py-1.5 border-b border-slate-100 last:border-0 gap-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="flex flex-col text-sm text-slate-700 min-w-[120px]">
+          <span>{label}</span>
+          {qtyLabel && <span className="text-[10px] text-slate-500">{qtyLabel}</span>}
+        </div>
+        <div className="flex items-center gap-3 ml-auto flex-wrap justify-end">
         {onQtyChange && !readOnly && (
           <div className="flex items-center gap-1.5 bg-white px-2 py-0.5 rounded border border-slate-200">
             <Input 
@@ -83,10 +94,26 @@ function CostRow({
             {unit && <span className="text-xs text-slate-500 font-medium whitespace-nowrap">/ {unit}</span>}
           </div>
         )}
-        <div className="w-20 text-right">
-          <CopyValue value={`$${calculatedTotal.toFixed(2)}`} className="justify-end" />
+          <div className="w-20 text-right">
+            <CopyValue value={`$${calculatedTotal.toFixed(2)}`} className="justify-end" />
+          </div>
         </div>
       </div>
+      {detailText && (
+        <div className="flex items-start gap-1.5 pl-2 mt-0.5 group/detail">
+          <p className="text-[11px] text-slate-500 italic leading-snug flex-1">{detailText}</p>
+          <button
+            onClick={copyDetail}
+            title="Copy line details"
+            className="opacity-50 group-hover/detail:opacity-100 hover:bg-amber-50 rounded p-0.5 transition flex-shrink-0"
+          >
+            {detailCopied
+              ? <Check className="w-3 h-3 text-green-500" />
+              : <Copy className="w-3 h-3 text-slate-400 hover:text-amber-500" />
+            }
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -445,12 +472,19 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
 
           if (!hasBaggedConcrete && !hasRebar && !hasForming && !hasPouring && !hasFinishing && !hasExcavation) return null;
 
+          // Build descriptive text for foundation
+          const dimsText = item.foundation_type === 'spread_foot'
+            ? `${item.length_inches}" L × ${item.width_inches}" W × ${item.depth_inches}" D`
+            : `${item.diameter}" Ø × ${item.depth_inches}" D`;
+          const foundationDetail = `${item.quantity || 1}× ${item.foundation_type === 'spread_foot' ? 'Spread Foot' : 'Pillar'} (${dimsText}) | Volume: ${(c.baseVolumeCY || 0).toFixed(2)} CY`;
+
           return (
             <div key={item._id} className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
-              <div className="flex justify-between items-center text-base font-bold text-slate-800 mb-3 border-b border-slate-200 pb-2">
+              <div className="flex justify-between items-center text-base font-bold text-slate-800 mb-1 border-b border-slate-200 pb-2">
                 <span>Foundation #{idx + 1}{item.description ? ` — ${item.description}` : ''}</span>
                 <CopyValue value={`$${c.total.toFixed(2)}`} className="text-base font-bold text-slate-800" />
               </div>
+              <p className="text-[11px] text-slate-500 italic mb-3">{foundationDetail}</p>
 
               {hasAnyMaterial && (
                 <div className="flex flex-col gap-1 mb-3">
@@ -467,6 +501,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                       onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_concrete_qty: val })}
                       qtyUnit="bags"
                       calculatedTotal={c.concreteCost}
+                      detailText={`${c.concreteBags || 0} bags × $${(c.concreteRate || 0).toFixed(2)}/bag = $${c.concreteCost.toFixed(2)} (${c.volumeCY.toFixed(2)} CY total volume)`}
                     />
                   )}
                   {hasRebar && (
@@ -482,6 +517,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                       onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_rebar_qty: val })}
                       qtyUnit="ft"
                       calculatedTotal={c.rebarCost} 
+                      detailText={`${c.selectedRebarName || 'Rebar'} — ${c.rebarFt.toFixed(2)} ft × $${(c.rebarRate || 0).toFixed(2)}/ft (incl. labor) = $${c.rebarCost.toFixed(2)}${item.foundation_type === 'spread_foot' ? ` | Spacing: ${item.rebar_spacing_length}"×${item.rebar_spacing_width}", ${item.rebar_layers || 1} layer(s)` : ` | ${item.pillar_vertical_rebar_count || 4} verticals, ${item.pillar_rebar_layers || 1} hoop(s)`}`}
                     />
                   )}
                   {hasForming && (
@@ -497,6 +533,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                       onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_forming_qty: val })}
                       qtyUnit="pcs"
                       calculatedTotal={c.formingCost} 
+                      detailText={`${c.selectedFormingName || 'Forming'} — ${c.formingQty || c.baseFormingQty} pcs × $${(selectedForming?.cost_per_unit || 0).toFixed(2)}/pc + labor = $${c.formingCost.toFixed(2)}`}
                     />
                   )}
                 </div>
@@ -511,6 +548,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                       unit="hr"
                       defaultRate={60}
                       calculatedTotal={c.pouringCost} 
+                      detailText={`Pouring labor for ${c.volumeCY.toFixed(2)} CY = $${c.pouringCost.toFixed(2)}`}
                     />
                   )}
                   {hasFinishing && (
@@ -525,6 +563,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                       onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_finishing_hours: val })}
                       qtyUnit="h"
                       calculatedTotal={c.finishingCost} 
+                      detailText={`${(c.finishingHours || 0).toFixed(2)} hrs × $${(c.finishingRate || 0).toFixed(2)}/hr = $${c.finishingCost.toFixed(2)} (top surface finishing)`}
                     />
                   )}
                   {hasExcavation && (
@@ -539,6 +578,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                       onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_excavation_hours: val })}
                       qtyUnit="h"
                       calculatedTotal={c.excavationCost} 
+                      detailText={`${item.excavation_method === 'equipment_excavation' ? 'Equipment' : 'Hand-dig'} excavation: ${(c.excavationHours || 0).toFixed(2)} hrs × $${(c.excavationRate || 0).toFixed(2)}/hr = $${c.excavationCost.toFixed(2)} (${(c.volumeCY * 1.25).toFixed(2)} CY excavated)`}
                     />
                   )}
                 </div>
@@ -578,6 +618,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                       onQtyChange={(val) => onUpdateEquipment && onUpdateEquipment(i, { custom_qty: val })}
                       qtyUnit={`${period}s`}
                       calculatedTotal={rate * qty}
+                      detailText={`${eq.material_name}: ${qty} ${period}(s) × $${rate.toFixed(2)}/${period} = $${(rate * qty).toFixed(2)}${eq.rental_company ? ` | Vendor: ${eq.rental_company}` : ''}`}
                     />
                     {entry.include_delivery && (
                        <CostRow 
@@ -586,6 +627,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                          customRate={entry.custom_delivery_charge}
                          onRateChange={(val) => onUpdateEquipment && onUpdateEquipment(i, { custom_delivery_charge: val })}
                          calculatedTotal={deliveryCharge}
+                         detailText={`Pickup/delivery flat fee = $${deliveryCharge.toFixed(2)}`}
                        />
                     )}
                   </div>
@@ -637,11 +679,12 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                     onQtyChange={(val) => onUpdateWall && onUpdateWall(idx, { selectedMaterial: { ...mat, custom_outer_material_qty: val }})}
                     qtyUnit="units"
                     calculatedTotal={cc.materialCost || 0}
+                    detailText={`${mat?.material_name || 'Material'}: ${cc.totalBricks} units × $${(mat?.cost_per_unit || 0).toFixed(2)} = $${(cc.materialCost || 0).toFixed(2)}${cc.numCourses ? ` | ${cc.numCourses} courses, ${(cc.totalLinearInches / 12).toFixed(1)} LF` : ''}`}
                   />
                   <CostRow 
                     label="Outer Mortar" 
                     unit="bag"
-                    defaultRate={10} // default setting fallback
+                    defaultRate={10}
                     customRate={mat?.custom_outer_mortar_rate}
                     onRateChange={(val) => onUpdateWall && onUpdateWall(idx, { selectedMaterial: { ...mat, custom_outer_mortar_rate: val }})}
                     defaultQty={cc.mortarBags || 0}
@@ -649,15 +692,17 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                     onQtyChange={(val) => onUpdateWall && onUpdateWall(idx, { selectedMaterial: { ...mat, custom_outer_mortar_qty: val }})}
                     qtyUnit="bags"
                     calculatedTotal={cc.mortarCost || 0} 
+                    detailText={`${cc.mortarBags || 0} bags of mortar mix = $${(cc.mortarCost || 0).toFixed(2)} (${(w.mortarGapInches || 0.375)}" gap)`}
                   />
                   <CostRow 
                     label={`Outer Labor (${cc.laborHours?.toFixed(1)}h)`} 
                     qtyLabel="Outsourced Labor"
                     unit="sqft"
-                    defaultRate={45} // default
+                    defaultRate={45}
                     customRate={mat?.custom_outer_labor_rate}
                     onRateChange={(val) => onUpdateWall && onUpdateWall(idx, { selectedMaterial: { ...mat, custom_outer_labor_rate: val }})}
                     calculatedTotal={cc.laborCost || 0} 
+                    detailText={`Masonry labor: ${(cc.laborHours || 0).toFixed(1)} hrs to lay ${cc.totalBricks} units = $${(cc.laborCost || 0).toFixed(2)}`}
                   />
                   
                   {w.includeInternalWall && (
@@ -680,6 +725,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                         onQtyChange={(val) => onUpdateWall && onUpdateWall(idx, { custom_internal_material_qty: val })}
                         qtyUnit="units"
                         calculatedTotal={cc.internalMaterialCost || 0}
+                        detailText={`${intMat?.material_name || 'Internal material'}: ${cc.internalTotalBricks} units × $${(intMat?.cost_per_unit || 0).toFixed(2)} = $${(cc.internalMaterialCost || 0).toFixed(2)}`}
                       />
                       <CostRow 
                         label="Internal Mortar" 
@@ -692,6 +738,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                         onQtyChange={(val) => onUpdateWall && onUpdateWall(idx, { custom_internal_mortar_qty: val })}
                         qtyUnit="bags"
                         calculatedTotal={cc.internalMortarCost || 0} 
+                        detailText={`${cc.internalMortarBags || 0} bags of mortar = $${(cc.internalMortarCost || 0).toFixed(2)}`}
                       />
                       <CostRow 
                         label={`Internal Labor (${cc.internalLaborHours?.toFixed(1)}h)`} 
@@ -701,6 +748,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                         customRate={w.custom_internal_labor_rate}
                         onRateChange={(val) => onUpdateWall && onUpdateWall(idx, { custom_internal_labor_rate: val })}
                         calculatedTotal={cc.internalLaborCost || 0} 
+                        detailText={`Internal masonry: ${(cc.internalLaborHours || 0).toFixed(1)} hrs to lay ${cc.internalTotalBricks} units = $${(cc.internalLaborCost || 0).toFixed(2)}`}
                       />
                     </>
                   )}
@@ -765,6 +813,12 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                     paintingCost = heightFt * (paintCostPerLf + paintLaborPerLf) * sizeMult;
                 }
 
+                const poleQtyDisplay = typeof p.custom_qty === 'number' ? p.custom_qty : Number(baseQty.toFixed(2));
+                const poleRateDisplay = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : defaultRate;
+                const poleSizeDesc = inv?.pole_shape === 'round'
+                  ? `${inv?.pole_width_inches || '?'}" Ø round`
+                  : `${inv?.pole_width_inches || '?'}"×${inv?.pole_depth_inches || inv?.pole_width_inches || '?'}" square`;
+
                 return (
                   <div key={i} className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 shadow-sm flex flex-col gap-1">
                     <CostRow 
@@ -779,6 +833,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                       onQtyChange={(val) => onUpdatePole && onUpdatePole(i, { custom_qty: val })}
                       qtyUnit={unitLabel === 'piece' ? 'pcs' : 'ft'}
                       calculatedTotal={cost}
+                      detailText={`${inv?.material_name || 'Pole'} (${poleSizeDesc}) — ${poleQtyDisplay} ${unitLabel === 'piece' ? 'piece(s)' : 'ft'} × $${poleRateDisplay.toFixed(2)} = $${cost.toFixed(2)} | ${(p.height_inches / 12).toFixed(1)} ft tall, ${(p.y_offset_inches || 0)}" buried`}
                     />
                     {p.include_pole_painting && (
                       <CostRow 
@@ -786,6 +841,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                         qtyLabel={`${((p.height_inches || 0) / 12).toFixed(1)} LF × size multiplier`}
                         readOnly
                         calculatedTotal={paintingCost}
+                        detailText={`Painting (paint + labor) for ${((p.height_inches || 0) / 12).toFixed(1)} LF, ${inv?.pole_width_inches || 6}" pole = $${paintingCost.toFixed(2)}`}
                       />
                     )}
                   </div>

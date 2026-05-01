@@ -36,6 +36,13 @@
       "type": "boolean",
       "default": false,
       "description": "Enable CCS Database Lookup for this user"
+    },
+    "tutorials_seen": {
+      "type": "object",
+      "description": "Tracks which tutorials/help tours the user has already seen.",
+      "additionalProperties": {
+        "type": "boolean"
+      }
     }
   },
   "required": []

@@ -98,18 +98,13 @@ export default function Layout({ children, currentPageName }) {
 
   const hasPermission = (moduleName) => {
     const globalStatus = moduleStatuses[moduleName];
-    if (globalStatus === false) {
-      return false;
-    }
     
-    if (!currentUser) {
-      return globalStatus !== undefined ? globalStatus : true;
-    }
-    
-    if (currentUser.module_permissions && currentUser.module_permissions[moduleName] !== undefined) {
+    // User-specific override takes precedence over global status
+    if (currentUser?.module_permissions && currentUser.module_permissions[moduleName] !== undefined) {
       return currentUser.module_permissions[moduleName];
     }
     
+    // Otherwise fall back to global status
     return globalStatus !== undefined ? globalStatus : true;
   };
 

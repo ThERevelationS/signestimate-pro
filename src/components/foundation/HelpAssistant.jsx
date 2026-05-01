@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Bot, X, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { User } from '@/entities/all';
 
 const tourData = {
   info: [
@@ -57,8 +58,17 @@ export default function HelpAssistant({ activeTab, manualTrigger, onManualTrigge
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [bubbleStyle, setBubbleStyle] = useState({ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', opacity: 0 });
+  const [tutorialsSeen, setTutorialsSeen] = useState(null); // null = loading
 
   const steps = tourData[activeTab] || [];
+  const tutorialKey = `foundation_${activeTab}`;
+
+  // Load seen tutorials from user record
+  useEffect(() => {
+    User.me()
+      .then(user => setTutorialsSeen(user?.tutorials_seen || {}))
+      .catch(() => setTutorialsSeen({}));
+  }, []);
 
   useEffect(() => {
     if (open && steps.length > 0 && onStepChange) {
@@ -67,7 +77,9 @@ export default function HelpAssistant({ activeTab, manualTrigger, onManualTrigge
   }, [step, open, steps, onStepChange]);
 
   const handleClose = () => {
-    localStorage.setItem(`help_seen_foundation_${activeTab}`, 'true');
+    const updated = { ...(tutorialsSeen || {}), [tutorialKey]: true };
+    setTutorialsSeen(updated);
+    User.updateMyUserData({ tutorials_seen: updated }).catch(err => console.error('Failed to save tutorial state:', err));
     setOpen(false);
     if (onManualTriggerClose) onManualTriggerClose();
   };
@@ -79,8 +91,10 @@ export default function HelpAssistant({ activeTab, manualTrigger, onManualTrigge
       return;
     }
 
-    const seenKey = `help_seen_foundation_${activeTab}`;
-    if (!localStorage.getItem(seenKey) && steps.length > 0) {
+    // Wait for tutorialsSeen to load
+    if (tutorialsSeen === null) return;
+
+    if (!tutorialsSeen[tutorialKey] && steps.length > 0) {
       const t = setTimeout(() => {
         setOpen(true);
         setStep(0);
@@ -89,7 +103,7 @@ export default function HelpAssistant({ activeTab, manualTrigger, onManualTrigge
     } else {
       setOpen(false);
     }
-  }, [activeTab, manualTrigger, steps.length]);
+  }, [activeTab, manualTrigger, steps.length, tutorialsSeen, tutorialKey]);
 
   const updatePosition = useCallback(() => {
     if (!open || steps.length === 0) return;
