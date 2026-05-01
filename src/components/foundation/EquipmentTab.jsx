@@ -243,12 +243,13 @@ export default function EquipmentTab({ foundationItems = [], inventory, selected
 
   const addEquipment = (eqId) => {
     if (!eqId || eqId === '_none') return;
+    const eqItem = inventory.find(i => i.id === eqId);
     const newEntry = {
       _id: Date.now() + Math.random(),
       equipment_id: eqId,
       rental_period: 'day',
       rental_duration: 1,
-      include_delivery: false,
+      include_delivery: (eqItem?.pickup_delivery_cost || 0) > 0,
       attachment_counts: {},
       sub_attachment_counts: {}
     };
