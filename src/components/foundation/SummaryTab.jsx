@@ -101,7 +101,7 @@ function CostRow({
       </div>
       {detailText ? (
         <div className="flex items-start gap-1.5 pl-2 mt-0.5 group/detail">
-          <p className="text-[11px] text-slate-500 italic leading-snug flex-1">{detailText}</p>
+          <p className="text-[11px] text-slate-500 italic leading-snug flex-1 whitespace-pre-line">{detailText}</p>
           <button
             onClick={copyDetail}
             title="Copy line details"
@@ -613,7 +613,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                     const a = allAttachments.find(att => att.id === id);
                     if (a) {
                       const aRate = period === 'day' ? a.cost_per_day : period === 'week' ? a.cost_per_week : a.cost_per_month;
-                      attLines.push(`${qtyA}× ${a.material_name} ($${((aRate || 0) * qty).toFixed(2)})`);
+                      attLines.push(`    • ${qtyA}× ${a.material_name} ($${((aRate || 0) * qty).toFixed(2)})`);
                     }
                   });
                 }
@@ -624,14 +624,24 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                     const s = allSubAttachments.find(sub => sub.id === id);
                     if (s) {
                       const sRate = period === 'day' ? s.cost_per_day : period === 'week' ? s.cost_per_week : s.cost_per_month;
-                      subAttLines.push(`${qtyS}× ${s.material_name} ($${((sRate || 0) * qty).toFixed(2)})`);
+                      subAttLines.push(`    • ${qtyS}× ${s.material_name} ($${((sRate || 0) * qty).toFixed(2)})`);
                     }
                   });
                 }
-                const attachmentDetail = [
-                  attLines.length > 0 ? ` | Attachments: ${attLines.join(', ')}` : '',
-                  subAttLines.length > 0 ? ` | Sub-Attachments: ${subAttLines.join(', ')}` : ''
-                ].join('');
+                const detailParts = [
+                  `${eq.material_name}: ${qty} ${period}(s) × $${rate.toFixed(2)}/${period} = $${(rate * qty).toFixed(2)}${eq.rental_company ? `  |  Vendor: ${eq.rental_company}` : ''}`
+                ];
+                if (attLines.length > 0) {
+                  detailParts.push('');
+                  detailParts.push('Attachments:');
+                  detailParts.push(...attLines);
+                }
+                if (subAttLines.length > 0) {
+                  detailParts.push('');
+                  detailParts.push('Sub-Attachments:');
+                  detailParts.push(...subAttLines);
+                }
+                const detailText = detailParts.join('\n');
 
                 return (
                   <div key={i} className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 shadow-sm flex flex-col gap-1">
@@ -646,7 +656,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                       onQtyChange={(val) => onUpdateEquipment && onUpdateEquipment(i, { custom_qty: val })}
                       qtyUnit={`${period}s`}
                       calculatedTotal={rate * qty}
-                      detailText={`${eq.material_name}: ${qty} ${period}(s) × $${rate.toFixed(2)}/${period} = $${(rate * qty).toFixed(2)}${eq.rental_company ? ` | Vendor: ${eq.rental_company}` : ''}${attachmentDetail}`}
+                      detailText={detailText}
                     />
                     {entry.include_delivery && (
                        <CostRow 
