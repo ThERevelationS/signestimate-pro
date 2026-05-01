@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Save, User as UserIcon, Mail, Phone, Briefcase, Building, LogOut, Layout } from "lucide-react";
+import { Save, User as UserIcon, Mail, Phone, Briefcase, Building, LogOut, Layout, RotateCcw, Zap } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { FoundationProject } from "@/entities/all";
@@ -101,6 +102,27 @@ export default function MyProfile() {
 
   const updateField = (field, value) => {
     setUser(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleResetTutorials = async () => {
+    if (!confirm("Reset all tutorial popups? They will show again the next time you visit each tab.")) return;
+    try {
+      await User.updateMyUserData({ tutorials_seen: {} });
+      setUser(prev => ({ ...prev, tutorials_seen: {} }));
+      alert("Tutorials reset. They will replay as you navigate the app.");
+    } catch (e) {
+      console.error("Failed to reset tutorials", e);
+      alert("Could not reset tutorials.");
+    }
+  };
+
+  const handleToggleAutoSave = async (checked) => {
+    setUser(prev => ({ ...prev, auto_save_enabled: checked }));
+    try {
+      await User.updateMyUserData({ auto_save_enabled: checked });
+    } catch (e) {
+      console.error("Failed to update auto-save preference", e);
+    }
   };
 
   if (isLoading) {
@@ -268,6 +290,42 @@ export default function MyProfile() {
             </Card>
             
 
+
+            {/* Preferences Card */}
+            <Card className="bg-white border-0 shadow-sm">
+              <CardHeader className="border-b border-slate-100">
+                <CardTitle className="text-lg font-semibold text-slate-900">Preferences</CardTitle>
+                <p className="text-sm text-slate-600">Personalize how the app behaves for you</p>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-6">
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <Zap className="w-5 h-5 text-amber-500" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">Auto-save Projects</p>
+                      <p className="text-xs text-slate-500">Automatically save foundation projects every 30 seconds</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={user?.auto_save_enabled !== false}
+                    onCheckedChange={handleToggleAutoSave}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <RotateCcw className="w-5 h-5 text-indigo-500" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">Reset Tutorial Popups</p>
+                      <p className="text-xs text-slate-500">Replay help tours you've already dismissed</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleResetTutorials}>
+                    Reset Tutorials
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* User Projects Card */}
             <Card className="bg-white border-0 shadow-sm">

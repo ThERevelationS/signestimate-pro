@@ -26,7 +26,12 @@ import SignDesignerModal from '@/components/SignDesignerModal';
 import AIEngineeringCalculatorModal from '@/components/foundation/AIEngineeringCalculatorModal';
 import HelpAssistant from '@/components/foundation/HelpAssistant';
 import FoundationItemRow from '@/components/foundation/FoundationItemRow';
-import { Bot, PenTool } from 'lucide-react';
+import SaveAsTemplateDialog from '@/components/foundation/SaveAsTemplateDialog';
+import TemplatePickerDialog from '@/components/foundation/TemplatePickerDialog';
+import { Switch } from '@/components/ui/switch';
+import { User, SaveColor } from '@/entities/all';
+import { Bot, PenTool, Layout as LayoutIcon, BookOpen } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
 function SignPositioningTools({ pole, pIdx, sign, sIdx, polesData, onUpdate }) {
   const [tempY, setTempY] = useState(0);
@@ -217,6 +222,12 @@ export default function NewFoundationEstimate() {
   const [show3D, setShow3D] = useState(true);
   const [lastSaved, setLastSaved] = useState(null);
   const [autoSaving, setAutoSaving] = useState(false);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [saveColors, setSaveColors] = useState([]);
+  const [saveColor, setSaveColor] = useState('#475569');
+  const [showSaveAsTemplate, setShowSaveAsTemplate] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [, setTimeTick] = useState(0); // forces re-render so "x ago" stays fresh
 
   const [activeWallIndex, setActiveWallIndex] = useState(0);
   const [showPoles, setShowPoles] = useState(false);
@@ -329,6 +340,68 @@ export default function NewFoundationEstimate() {
   const autoSaveRef = useRef();
 
   useEffect(() => { loadData(); }, []);
+
+  // Load user's auto-save preference and the palette of save colors
+  useEffect(() => {
+    User.me()
+      .then((u) => {
+        if (u && u.auto_save_enabled === false) setAutoSaveEnabled(false);
+      })
+      .catch(() => {});
+    SaveColor.list()
+      .then((cols) => {
+        if (cols && cols.length > 0) setSaveColors(cols);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Re-render the "Last saved x ago" label every 15 seconds
+  useEffect(() => {
+    const t = setInterval(() => setTimeTick((n) => n + 1), 15000);
+    return () => clearInterval(t);
+  }, []);
+
+  const duplicateItem = (idx) => {
+    setItems((prev) => {
+      const arr = [...prev];
+      const orig = arr[idx];
+      const copy = {
+        ...JSON.parse(JSON.stringify(orig)),
+        _id: Date.now() + Math.random(),
+        description: orig.description ? `${orig.description} (Copy)` : '',
+      };
+      arr.splice(idx + 1, 0, copy);
+      return arr;
+    });
+    markDirty();
+  };
+
+  const applyTemplate = (template) => {
+    const data = template.project_data || {};
+    setProject((prev) => ({
+      ...prev,
+      project_concrete_type: data.project_concrete_type || prev.project_concrete_type,
+      project_concrete_admixtures: data.project_concrete_admixtures || prev.project_concrete_admixtures,
+      excavation_method: data.excavation_method || prev.excavation_method,
+      selected_concrete_id: data.selected_concrete_id || prev.selected_concrete_id,
+      ai_engineering_recommendation: data.ai_engineering_recommendation || prev.ai_engineering_recommendation,
+      ai_engineering_data: data.ai_engineering_data || prev.ai_engineering_data,
+    }));
+    if (Array.isArray(data.items) && data.items.length > 0) {
+      setItems(data.items.map((i) => ({ ...i, _id: Date.now() + Math.random() })));
+    }
+    if (Array.isArray(data.walls)) {
+      setWalls(data.walls.map((w) => ({ ...w, _id: Date.now() + Math.random() })));
+    }
+    if (Array.isArray(data.poles)) {
+      setPolesData(data.poles);
+    }
+    if (Array.isArray(data.selected_equipment)) {
+      setSelectedEquipmentList(data.selected_equipment.map((e) => ({ ...e, _id: Date.now() + Math.random() })));
+    }
+    setShowTemplatePicker(false);
+    markDirty();
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -829,6 +902,14 @@ export default function NewFoundationEstimate() {
       }
       setIsDirty(false);
       setLastSaved(new Date());
+      // Pick a new random save color from the palette
+      if (saveColors.length > 0) {
+        let next = saveColors[Math.floor(Math.random() * saveColors.length)].color_hex;
+        if (next === saveColor && saveColors.length > 1) {
+          next = saveColors[(saveColors.findIndex(c => c.color_hex === saveColor) + 1) % saveColors.length].color_hex;
+        }
+        setSaveColor(next);
+      }
     } catch (e) {
       console.error("Save failed", e);
     } finally {
@@ -885,11 +966,11 @@ export default function NewFoundationEstimate() {
 
   useEffect(() => {
     autoSaveRef.current = () => {
-      if (isDirty && !saving && !autoSaving) {
+      if (autoSaveEnabled && isDirty && !saving && !autoSaving) {
         handleSave(true);
       }
     };
-  }, [project, items, walls, polesData, selectedEquipmentList, totals, isDirty, editId, saving, autoSaving]);
+  }, [project, items, walls, polesData, selectedEquipmentList, totals, isDirty, editId, saving, autoSaving, autoSaveEnabled]);
 
   useEffect(() => {
     // Lock body scroll to strictly use our internal scroll container
@@ -937,11 +1018,6 @@ export default function NewFoundationEstimate() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex flex-col items-end mr-2">
-            {autoSaving && <span className="text-xs text-amber-600 font-medium">Auto-saving...</span>}
-            {lastSaved && !autoSaving && !isDirty && <span className="text-xs text-slate-400">All changes saved to cloud</span>}
-            {isDirty && !autoSaving && <span className="text-xs text-slate-400">Unsaved changes...</span>}
-          </div>
           <Badge variant="secondary" className="px-3 py-1">Total: ${totals.grand.toFixed(2)}</Badge>
           <Button onClick={() => setHelpTrigger(true)} variant="ghost" size="sm" className="h-8 text-xs text-indigo-700 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100">
             <HelpCircle className="w-3.5 h-3.5 mr-1.5" /> Help
@@ -954,6 +1030,12 @@ export default function NewFoundationEstimate() {
               <Redo className="w-3.5 h-3.5 mr-1" /> Redo
             </Button>
           </div>
+          <Button onClick={() => setShowTemplatePicker(true)} variant="outline" size="sm" className="h-8 text-xs bg-white" title="Start from a saved template">
+            <BookOpen className="w-3.5 h-3.5 mr-1" /> Templates
+          </Button>
+          <Button onClick={() => setShowSaveAsTemplate(true)} variant="outline" size="sm" className="h-8 text-xs bg-white" title="Save current project as a reusable template">
+            <LayoutIcon className="w-3.5 h-3.5 mr-1" /> Save as Template
+          </Button>
           {(editId || project.id) && (
              <Button onClick={handleSaveAs} disabled={saving} variant="outline" size="sm" className="h-8 text-xs bg-white">
                <Copy className="w-3.5 h-3.5 mr-1" /> Save As Copy
@@ -962,6 +1044,34 @@ export default function NewFoundationEstimate() {
           <Button onClick={() => handleSave(false)} disabled={saving} className="bg-amber-600 hover:bg-amber-700 text-white h-8 text-xs" size="sm">
             <Save className="w-3.5 h-3.5 mr-1" />{saving ? 'Saving...' : 'Save & Exit'}
           </Button>
+
+          {/* Auto-save toggle + last-saved indicator */}
+          <div className="flex items-center gap-2 pl-2 ml-1 border-l border-slate-200">
+            <div className="flex items-center gap-1.5" title="Auto-save every 30 seconds">
+              <Switch
+                id="auto-save-toggle"
+                checked={autoSaveEnabled}
+                onCheckedChange={async (v) => {
+                  setAutoSaveEnabled(v);
+                  try { await User.updateMyUserData({ auto_save_enabled: v }); } catch(e) { console.error(e); }
+                }}
+              />
+              <Label htmlFor="auto-save-toggle" className="text-[10px] font-semibold text-slate-600 uppercase cursor-pointer whitespace-nowrap">Auto-save</Label>
+            </div>
+            <div className="flex flex-col items-start min-w-[110px]">
+              {lastSaved ? (
+                <span
+                  className="text-[11px] font-semibold whitespace-nowrap transition-colors duration-500"
+                  style={{ color: saveColor }}
+                >
+                  Saved {formatDistanceToNow(lastSaved, { addSuffix: true })}
+                </span>
+              ) : (
+                <span className="text-[11px] text-slate-400 whitespace-nowrap">Not yet saved</span>
+              )}
+              {isDirty && !autoSaving && <span className="text-[10px] text-slate-400">Unsaved changes...</span>}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -989,6 +1099,27 @@ export default function NewFoundationEstimate() {
             });
           }
         }}
+      />
+
+      <SaveAsTemplateDialog
+        open={showSaveAsTemplate}
+        onClose={(saved) => {
+          setShowSaveAsTemplate(false);
+          if (saved) alert('Template saved.');
+        }}
+        projectData={{
+          ...project,
+          items: items.map(({ _id, ...rest }) => rest),
+          walls: walls.map(({ _id, ...rest }) => rest),
+          poles: polesData.map(({ id, ...rest }) => rest),
+          selected_equipment: selectedEquipmentList.map(({ _id, ...rest }) => rest),
+        }}
+      />
+
+      <TemplatePickerDialog
+        open={showTemplatePicker}
+        onClose={() => setShowTemplatePicker(false)}
+        onSelect={applyTemplate}
       />
 
       {designerOpen && (
@@ -1207,6 +1338,7 @@ export default function NewFoundationEstimate() {
                     index={idx}
                     onUpdate={(field, value) => updateItem(idx, field, value)}
                     onRemove={() => removeItem(idx)}
+                    onDuplicate={() => duplicateItem(idx)}
                     poles={poles}
                     concreteServices={concreteServices}
                     formingInventory={formingInventory}

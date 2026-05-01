@@ -43,6 +43,11 @@
       "additionalProperties": {
         "type": "boolean"
       }
+    },
+    "auto_save_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "User preference for auto-saving projects every 30 seconds"
     }
   },
   "required": []

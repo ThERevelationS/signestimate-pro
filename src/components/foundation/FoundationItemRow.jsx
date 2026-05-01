@@ -6,9 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Copy } from 'lucide-react';
 
-export default function FoundationItemRow({ item, index, onUpdate, onRemove, poles, concreteServices, formingInventory, costs, excavationMethod, excavationEquipment }) {
+export default function FoundationItemRow({ item, index, onUpdate, onRemove, onDuplicate, poles, concreteServices, formingInventory, costs, excavationMethod, excavationEquipment }) {
   const [expanded, setExpanded] = useState(true);
 
   const selectedConcrete = concreteServices.find(c => c.id === item.selected_concrete_id);
@@ -27,6 +27,11 @@ export default function FoundationItemRow({ item, index, onUpdate, onRemove, pol
           </div>
           <div className="flex gap-1">
             <Button size="sm" variant="ghost" onClick={() => setExpanded(s => !s)}>{expanded ? '▲' : '▼'}</Button>
+            {onDuplicate && (
+              <Button size="sm" variant="ghost" className="text-blue-600 hover:bg-blue-50" onClick={onDuplicate} title="Duplicate this foundation">
+                <Copy className="w-3 h-3" />
+              </Button>
+            )}
             <Button size="sm" variant="ghost" className="text-red-500" onClick={onRemove}><Trash2 className="w-3 h-3" /></Button>
           </div>
         </div>

@@ -1,0 +1,23 @@
+{
+  "name": "ProjectTemplate",
+  "type": "object",
+  "properties": {
+    "template_name": {
+      "type": "string",
+      "description": "Name of the template, e.g. 'Standard 8ft Pylon Sign'"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description of when to use this template"
+    },
+    "project_data": {
+      "type": "object",
+      "description": "Snapshot of the project to use as a template",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "template_name",
+    "project_data"
+  ]
+}
