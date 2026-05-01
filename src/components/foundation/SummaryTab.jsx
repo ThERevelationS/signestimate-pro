@@ -64,42 +64,42 @@ function CostRow({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex flex-col text-sm text-slate-700 min-w-[120px]">
           <span>{label}</span>
-          {qtyLabel && <span className="text-[10px] text-slate-500">{qtyLabel}</span>}
+          {qtyLabel ? <span className="text-[10px] text-slate-500">{qtyLabel}</span> : null}
         </div>
         <div className="flex items-center gap-3 ml-auto flex-wrap justify-end">
-        {onQtyChange && !readOnly && (
-          <div className="flex items-center gap-1.5 bg-white px-2 py-0.5 rounded border border-slate-200">
-            <Input 
-              type="number" 
-              className="w-16 h-6 px-1 py-0 text-xs text-right border-none shadow-none focus-visible:ring-0 bg-transparent" 
-              value={customQty !== null && customQty !== undefined ? customQty : (defaultQty || 0)} 
-              onChange={e => onQtyChange(e.target.value === '' ? null : parseFloat(e.target.value))}
-              step="any"
-              min="0"
-            />
-            {qtyUnit && <span className="text-xs text-slate-500 font-medium whitespace-nowrap">{qtyUnit}</span>}
-          </div>
-        )}
-        {!readOnly && onRateChange && (
-          <div className="flex items-center gap-1.5 bg-white px-2 py-0.5 rounded border border-slate-200">
-            <span className="text-xs text-slate-500 font-medium">$</span>
-            <Input 
-              type="number" 
-              className="w-16 h-6 px-1 py-0 text-xs text-right border-none shadow-none focus-visible:ring-0 bg-transparent" 
-              value={customRate !== null && customRate !== undefined ? customRate : (defaultRate || 0)} 
-              onChange={e => onRateChange(e.target.value === '' ? null : parseFloat(e.target.value))}
-              step="any"
-              min="0"
-            />
-            {unit && <span className="text-xs text-slate-500 font-medium whitespace-nowrap">/ {unit}</span>}
-          </div>
-        )}
+          {onQtyChange && !readOnly ? (
+            <div className="flex items-center gap-1.5 bg-white px-2 py-0.5 rounded border border-slate-200">
+              <Input
+                type="number"
+                className="w-16 h-6 px-1 py-0 text-xs text-right border-none shadow-none focus-visible:ring-0 bg-transparent"
+                value={customQty !== null && customQty !== undefined ? customQty : (defaultQty || 0)}
+                onChange={e => onQtyChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                step="any"
+                min="0"
+              />
+              {qtyUnit ? <span className="text-xs text-slate-500 font-medium whitespace-nowrap">{qtyUnit}</span> : null}
+            </div>
+          ) : null}
+          {!readOnly && onRateChange ? (
+            <div className="flex items-center gap-1.5 bg-white px-2 py-0.5 rounded border border-slate-200">
+              <span className="text-xs text-slate-500 font-medium">$</span>
+              <Input
+                type="number"
+                className="w-16 h-6 px-1 py-0 text-xs text-right border-none shadow-none focus-visible:ring-0 bg-transparent"
+                value={customRate !== null && customRate !== undefined ? customRate : (defaultRate || 0)}
+                onChange={e => onRateChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                step="any"
+                min="0"
+              />
+              {unit ? <span className="text-xs text-slate-500 font-medium whitespace-nowrap">/ {unit}</span> : null}
+            </div>
+          ) : null}
           <div className="w-20 text-right">
             <CopyValue value={`$${calculatedTotal.toFixed(2)}`} className="justify-end" />
           </div>
         </div>
       </div>
-      {detailText && (
+      {detailText ? (
         <div className="flex items-start gap-1.5 pl-2 mt-0.5 group/detail">
           <p className="text-[11px] text-slate-500 italic leading-snug flex-1">{detailText}</p>
           <button
@@ -113,7 +113,7 @@ function CostRow({
             }
           </button>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
