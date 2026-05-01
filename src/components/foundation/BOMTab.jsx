@@ -48,20 +48,24 @@ export default function BOMTab({ items, walls, project, inventory = [] }) {
     concreteUnit = 'Bags (approx 80lb)';
   }
 
-  const materials = [
-    { name: 'Concrete', qty: concreteQty, unit: concreteUnit },
-    { name: 'Excavation Volume', qty: totalExcavationCY.toFixed(2), unit: 'Cubic Yards (CY)' },
-    { name: 'Rebar', qty: totalRebarFt.toFixed(2), unit: 'Linear Feet' },
-    { name: 'Wall Units (Bricks/Blocks)', qty: totalBricks, unit: 'Units' },
+  const allMaterials = [
+    { name: 'Concrete', qty: concreteQty, unit: concreteUnit, rawQty: totalConcreteCY },
+    { name: 'Excavation Volume', qty: totalExcavationCY.toFixed(2), unit: 'Cubic Yards (CY)', rawQty: totalExcavationCY },
+    { name: 'Rebar', qty: totalRebarFt.toFixed(2), unit: 'Linear Feet', rawQty: totalRebarFt },
+    { name: 'Wall Units (Bricks/Blocks)', qty: totalBricks, unit: 'Units', rawQty: totalBricks },
   ];
 
   if (project.poles && project.poles.length > 0) {
-      materials.push({
+      allMaterials.push({
           name: 'Poles (Various)',
           qty: project.poles.length,
-          unit: 'Pieces'
+          unit: 'Pieces',
+          rawQty: project.poles.length
       });
   }
+
+  // Filter out materials with zero quantity
+  const materials = allMaterials.filter(m => m.rawQty > 0);
 
   const buildTextSummary = () => {
     const lines = [];

@@ -24,6 +24,8 @@ const DEFAULT_SETTINGS = {
   // Forming materials
   foundation_forming_materials_spread_foot: { value: '0.5', label: 'Forming Material Cost Multiplier - Spread Foot', category: 'foundation_calc', type: 'number' },
   foundation_forming_materials_pillar: { value: '0.75', label: 'Forming Material Cost Multiplier - Pillar', category: 'foundation_calc', type: 'number' },
+  // Concrete delivery
+  foundation_fuel_surcharge: { value: '30', label: 'Default Fuel / Delivery Surcharge Per Load ($)', category: 'foundation_pricing', type: 'number' },
   // Wall / Masonry settings
   wall_mortar_cost_per_sqft: { value: '0.35', label: 'Mortar/Grout Cost Per Sq Ft of Wall Face ($)', category: 'foundation_pricing', type: 'number' },
   wall_labor_rate: { value: '45', label: 'Wall Masonry Labor Rate ($/sqft)', category: 'foundation_labor', type: 'number' },
@@ -127,6 +129,7 @@ export default function FoundationSettings() {
         <Tabs defaultValue="labor">
           <TabsList>
             <TabsTrigger value="labor">Labor Rates</TabsTrigger>
+            <TabsTrigger value="delivery">Fuel & Delivery</TabsTrigger>
             <TabsTrigger value="calc">Calculation Factors</TabsTrigger>
             <TabsTrigger value="wall">Wall / Masonry</TabsTrigger>
           </TabsList>
@@ -182,6 +185,31 @@ export default function FoundationSettings() {
                 <p><strong>Forming Cost:</strong> (Perimeter in Feet × Depth in Feet) × Forming Rate per SQFT.</p>
                 <p><strong>Pouring Cost:</strong> Volume in Cubic Yards × Pouring Rate per CY.</p>
                 <p><strong>Finishing Cost:</strong> Top Surface Area in Sq. Feet × Finishing Rate per SQFT.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="delivery" className="space-y-4 pt-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Fuel & Delivery Surcharge</CardTitle>
+                <p className="text-xs text-slate-500 mt-1">
+                  This is the default surcharge applied per concrete truck load. Supplier-specific surcharges can be set per concrete service in Inventory and will override this default.
+                </p>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SettingInput settingKey="foundation_fuel_surcharge" />
+              </CardContent>
+            </Card>
+            <Card className="bg-indigo-50 border-indigo-100">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-indigo-900">How Delivery Costs Work</CardTitle>
+              </CardHeader>
+              <CardContent className="text-xs text-indigo-800 space-y-2">
+                <p><strong>Per Truck Cost:</strong> (Rounded Yards × Rate/YD) + Small Load Fee + Fuel/Delivery Surcharge.</p>
+                <p><strong>Rounding:</strong> Each truck's yardage is rounded up to the nearest ¼ yard for billing.</p>
+                <p><strong>Small Load Fees:</strong> Configured per supplier in Inventory. Triggered when a truck carries less than 5 YD.</p>
+                <p><strong>Supplier Override:</strong> If a concrete service in Inventory has its own fuel surcharge set, that value is used instead of this default.</p>
               </CardContent>
             </Card>
           </TabsContent>

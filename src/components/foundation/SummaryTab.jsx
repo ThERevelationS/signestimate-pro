@@ -150,9 +150,18 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
     lines.push('── FOUNDATION ITEMS ──');
     items.forEach((item, idx) => {
       const c = calcItemCost(item);
+      if (c.total === 0) return;
       const label = `Foundation #${idx + 1}${item.description ? ` — ${item.description}` : ''}`;
       lines.push(`${label}: $${c.total.toFixed(2)}`);
-      lines.push(`  Rebar: $${c.rebarCost.toFixed(2)}  |  Forming: $${c.formingCost.toFixed(2)}  |  Pouring: $${c.pouringCost.toFixed(2)}  |  Finishing: $${c.finishingCost.toFixed(2)}  |  Excavation: $${c.excavationCost.toFixed(2)}`);
+      const matParts = [];
+      if (item.include_rebar && c.rebarCost > 0) matParts.push(`Rebar: $${c.rebarCost.toFixed(2)}`);
+      if (item.include_forming && c.formingCost > 0) matParts.push(`Forming: $${c.formingCost.toFixed(2)}`);
+      if (matParts.length > 0) lines.push(`  Materials: ${matParts.join('  |  ')}`);
+      const laborParts = [];
+      if (c.pouringCost > 0) laborParts.push(`Pouring: $${c.pouringCost.toFixed(2)}`);
+      if (item.include_finishing && c.finishingCost > 0) laborParts.push(`Finishing: $${c.finishingCost.toFixed(2)}`);
+      if (c.excavationCost > 0) laborParts.push(`Excavation: $${c.excavationCost.toFixed(2)}`);
+      if (laborParts.length > 0) lines.push(`  Labor: ${laborParts.join('  |  ')}`);
     });
     lines.push(`Foundation Labor/Excavation Total: $${(totals.itemsTotal - totals.concreteTotal).toFixed(2)}`);
     lines.push('');
@@ -423,84 +432,116 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
           
           const selectedForming = inventory.find(i => i.id === item.selected_forming_id);
 
+          const hasBaggedConcrete = c.concreteCost > 0;
+          const hasRebar = item.include_rebar && c.rebarCost > 0;
+          const hasForming = item.include_forming && c.formingCost > 0;
+          const hasPouring = c.pouringCost > 0;
+          const hasFinishing = item.include_finishing && c.finishingCost > 0;
+          const hasExcavation = c.excavationCost > 0;
+
+          const hasAnyMaterial = hasBaggedConcrete || hasRebar || hasForming;
+          const hasAnyLabor = hasPouring || hasFinishing || hasExcavation;
+
+          if (!hasBaggedConcrete && !hasRebar && !hasForming && !hasPouring && !hasFinishing && !hasExcavation) return null;
+
           return (
             <div key={item._id} className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
               <div className="flex justify-between items-center text-base font-bold text-slate-800 mb-3 border-b border-slate-200 pb-2">
                 <span>Foundation #{idx + 1}{item.description ? ` — ${item.description}` : ''}</span>
                 <CopyValue value={`$${c.total.toFixed(2)}`} className="text-base font-bold text-slate-800" />
               </div>
-              <div className="flex flex-col gap-1">
-                {c.concreteCost > 0 && (
-                  <CostRow 
-                    label={`Concrete ${c.concreteBags ? `(${c.concreteBags} bags)` : ''}`} 
-                    unit="bag"
-                    defaultRate={c.concreteRate}
-                    customRate={item.custom_concrete_cost_per_cy}
-                    onRateChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_concrete_cost_per_cy: val })}
-                    defaultQty={c.baseBags || 0}
-                    customQty={item.custom_concrete_qty}
-                    onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_concrete_qty: val })}
-                    qtyUnit="bags"
-                    calculatedTotal={c.concreteCost}
-                  />
-                )}
-                <CostRow 
-                  label="Rebar" 
-                  qtyLabel={c.selectedRebarName}
-                  unit="ft" 
-                  defaultRate={defaultRebarCost} 
-                  customRate={item.custom_rebar_cost_per_ft} 
-                  onRateChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_rebar_cost_per_ft: val })}
-                  defaultQty={Number(c.baseRebarFt.toFixed(2))}
-                  customQty={item.custom_rebar_qty}
-                  onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_rebar_qty: val })}
-                  qtyUnit="ft"
-                  calculatedTotal={c.rebarCost} 
-                />
-                <CostRow 
-                  label="Forming" 
-                  qtyLabel={c.selectedFormingName}
-                  unit="pcs"
-                  defaultRate={selectedForming?.cost_per_unit || 0}
-                  customRate={item.custom_forming_rate}
-                  onRateChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_forming_rate: val })}
-                  defaultQty={c.baseFormingQty}
-                  customQty={item.custom_forming_qty}
-                  onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_forming_qty: val })}
-                  qtyUnit="pcs"
-                  calculatedTotal={c.formingCost} 
-                />
-                <CostRow 
-                  label="Pouring" 
-                  unit="hr"
-                  defaultRate={60} // default labor rate fallback
-                  calculatedTotal={c.pouringCost} 
-                />
-                <CostRow 
-                  label="Finishing" 
-                  unit="hr"
-                  defaultRate={60} // default labor rate fallback
-                  customRate={item.custom_finishing_rate}
-                  onRateChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_finishing_rate: val })}
-                  defaultQty={Number(c.baseFinishingHours.toFixed(2))}
-                  customQty={item.custom_finishing_hours}
-                  onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_finishing_hours: val })}
-                  qtyUnit="h"
-                  calculatedTotal={c.finishingCost} 
-                />
-                <CostRow 
-                  label="Excavation" 
-                  unit="hr"
-                  defaultRate={60} // default labor rate fallback
-                  customRate={item.custom_excavation_rate}
-                  onRateChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_excavation_rate: val })}
-                  defaultQty={Number(c.baseExcavationHours.toFixed(2))}
-                  customQty={item.custom_excavation_hours}
-                  onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_excavation_hours: val })}
-                  qtyUnit="h"
-                  calculatedTotal={c.excavationCost} 
-                />
-              </div>
+
+              {hasAnyMaterial && (
+                <div className="flex flex-col gap-1 mb-3">
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Materials</div>
+                  {hasBaggedConcrete && (
+                    <CostRow 
+                      label={`Concrete ${c.concreteBags ? `(${c.concreteBags} bags)` : ''}`} 
+                      unit="bag"
+                      defaultRate={c.concreteRate}
+                      customRate={item.custom_concrete_cost_per_cy}
+                      onRateChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_concrete_cost_per_cy: val })}
+                      defaultQty={c.baseBags || 0}
+                      customQty={item.custom_concrete_qty}
+                      onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_concrete_qty: val })}
+                      qtyUnit="bags"
+                      calculatedTotal={c.concreteCost}
+                    />
+                  )}
+                  {hasRebar && (
+                    <CostRow 
+                      label="Rebar" 
+                      qtyLabel={c.selectedRebarName}
+                      unit="ft" 
+                      defaultRate={defaultRebarCost} 
+                      customRate={item.custom_rebar_cost_per_ft} 
+                      onRateChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_rebar_cost_per_ft: val })}
+                      defaultQty={Number(c.baseRebarFt.toFixed(2))}
+                      customQty={item.custom_rebar_qty}
+                      onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_rebar_qty: val })}
+                      qtyUnit="ft"
+                      calculatedTotal={c.rebarCost} 
+                    />
+                  )}
+                  {hasForming && (
+                    <CostRow 
+                      label="Forming" 
+                      qtyLabel={c.selectedFormingName}
+                      unit="pcs"
+                      defaultRate={selectedForming?.cost_per_unit || 0}
+                      customRate={item.custom_forming_rate}
+                      onRateChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_forming_rate: val })}
+                      defaultQty={c.baseFormingQty}
+                      customQty={item.custom_forming_qty}
+                      onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_forming_qty: val })}
+                      qtyUnit="pcs"
+                      calculatedTotal={c.formingCost} 
+                    />
+                  )}
+                </div>
+              )}
+
+              {hasAnyLabor && (
+                <div className="flex flex-col gap-1">
+                  <div className={`text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 ${hasAnyMaterial ? 'border-t border-slate-200 pt-2' : ''}`}>Labor</div>
+                  {hasPouring && (
+                    <CostRow 
+                      label="Pouring" 
+                      unit="hr"
+                      defaultRate={60}
+                      calculatedTotal={c.pouringCost} 
+                    />
+                  )}
+                  {hasFinishing && (
+                    <CostRow 
+                      label="Finishing" 
+                      unit="hr"
+                      defaultRate={60}
+                      customRate={item.custom_finishing_rate}
+                      onRateChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_finishing_rate: val })}
+                      defaultQty={Number(c.baseFinishingHours.toFixed(2))}
+                      customQty={item.custom_finishing_hours}
+                      onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_finishing_hours: val })}
+                      qtyUnit="h"
+                      calculatedTotal={c.finishingCost} 
+                    />
+                  )}
+                  {hasExcavation && (
+                    <CostRow 
+                      label="Excavation" 
+                      unit="hr"
+                      defaultRate={60}
+                      customRate={item.custom_excavation_rate}
+                      onRateChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_excavation_rate: val })}
+                      defaultQty={Number(c.baseExcavationHours.toFixed(2))}
+                      customQty={item.custom_excavation_hours}
+                      onQtyChange={(val) => onUpdateItem && onUpdateItem(idx, { custom_excavation_hours: val })}
+                      qtyUnit="h"
+                      calculatedTotal={c.excavationCost} 
+                    />
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -562,7 +603,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
           <CopyValue value={`$${totals.itemsTotal.toFixed(2)}`} className="font-semibold" />
         </div>
 
-        {walls.length > 0 && <h4 className="text-base font-bold text-slate-800 mt-6 mb-2">Walls</h4>}
+        {walls.length > 0 && walls.some(w => w.calculatedCosts?.totalCost > 0) && <h4 className="text-base font-bold text-slate-800 mt-6 mb-2">Walls</h4>}
         {walls.map((w, idx) => {
           const cc = w.calculatedCosts;
           const mat = w.selectedMaterial;
@@ -668,7 +709,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
           );
         })}
 
-        {walls.length > 0 && (
+        {walls.length > 0 && totals.wallTotal > 0 && (
           <div className="flex justify-between py-2 border-b font-semibold text-slate-700">
             <span>Walls Total</span>
             <CopyValue value={`$${totals.wallTotal.toFixed(2)}`} className="font-semibold" />
