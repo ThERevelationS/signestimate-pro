@@ -38,6 +38,7 @@ const NumberField = ({ label, name, step = "0.01", help, value, onChange, disabl
       type="number"
       step={step}
       value={value ?? ""}
+      onFocus={(e) => e.target.select()}
       onChange={(e) => onChange(name, e.target.value)}
       disabled={disabled}
       className="mt-1"
