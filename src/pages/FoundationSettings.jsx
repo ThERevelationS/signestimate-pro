@@ -39,6 +39,23 @@ const DEFAULT_SETTINGS = {
   wall_labor_rate: { value: '45', label: 'Wall Masonry Labor Rate ($/sqft)', category: 'foundation_labor', type: 'number' },
   wall_labor_bricks_per_hour: { value: '50', label: 'Cinderblock/Filler Units Laid Per Labor Hour', category: 'foundation_calc', type: 'number' },
   wall_minimum_charge: { value: '150', label: 'Minimum Charge ($)', category: 'foundation_pricing', type: 'number' },
+  // Markup tiers (percent applied to subtotal)
+  foundation_markup_tier_1_name: { value: 'Tier 1', label: 'Tier 1 — Name', category: 'foundation_pricing', type: 'text' },
+  foundation_markup_tier_1_percent: { value: '10', label: 'Tier 1 — Markup %', category: 'foundation_pricing', type: 'number' },
+  foundation_markup_tier_2_name: { value: 'Tier 2', label: 'Tier 2 — Name', category: 'foundation_pricing', type: 'text' },
+  foundation_markup_tier_2_percent: { value: '15', label: 'Tier 2 — Markup %', category: 'foundation_pricing', type: 'number' },
+  foundation_markup_tier_3_name: { value: 'Tier 3', label: 'Tier 3 — Name', category: 'foundation_pricing', type: 'text' },
+  foundation_markup_tier_3_percent: { value: '20', label: 'Tier 3 — Markup %', category: 'foundation_pricing', type: 'number' },
+  foundation_markup_tier_4_name: { value: 'Tier 4', label: 'Tier 4 — Name', category: 'foundation_pricing', type: 'text' },
+  foundation_markup_tier_4_percent: { value: '25', label: 'Tier 4 — Markup %', category: 'foundation_pricing', type: 'number' },
+  foundation_markup_tier_5_name: { value: 'Tier 5', label: 'Tier 5 — Name', category: 'foundation_pricing', type: 'text' },
+  foundation_markup_tier_5_percent: { value: '30', label: 'Tier 5 — Markup %', category: 'foundation_pricing', type: 'number' },
+  foundation_markup_tier_6_name: { value: 'Tier 6', label: 'Tier 6 — Name', category: 'foundation_pricing', type: 'text' },
+  foundation_markup_tier_6_percent: { value: '35', label: 'Tier 6 — Markup %', category: 'foundation_pricing', type: 'number' },
+  foundation_markup_tier_7_name: { value: 'Tier 7', label: 'Tier 7 — Name', category: 'foundation_pricing', type: 'text' },
+  foundation_markup_tier_7_percent: { value: '40', label: 'Tier 7 — Markup %', category: 'foundation_pricing', type: 'number' },
+  foundation_markup_tier_8_name: { value: 'Tier 8', label: 'Tier 8 — Name', category: 'foundation_pricing', type: 'text' },
+  foundation_markup_tier_8_percent: { value: '50', label: 'Tier 8 — Markup %', category: 'foundation_pricing', type: 'number' },
 };
 
 export default function FoundationSettings() {
@@ -98,16 +115,17 @@ export default function FoundationSettings() {
   const SettingInput = ({ settingKey }) => {
     const def = DEFAULT_SETTINGS[settingKey];
     if (!def) return null;
+    const isText = def.type === 'text';
     return (
       <div>
         <Label className="text-xs text-slate-600">{def.label}</Label>
         <Input
-          type="number"
+          type={isText ? 'text' : 'number'}
           className="h-8 mt-1"
           value={getValue(settingKey)}
           onChange={e => handleChange(settingKey, e.target.value)}
-          step="0.01"
-          min="0"
+          step={isText ? undefined : '0.01'}
+          min={isText ? undefined : '0'}
           disabled={!isAdmin}
         />
       </div>
@@ -141,6 +159,7 @@ export default function FoundationSettings() {
             <TabsTrigger value="pole_painting">Pole Painting</TabsTrigger>
             <TabsTrigger value="calc">Calculation Factors</TabsTrigger>
             <TabsTrigger value="wall">Wall / Masonry</TabsTrigger>
+            <TabsTrigger value="markup">Markup Tiers</TabsTrigger>
           </TabsList>
 
           <TabsContent value="labor" className="space-y-4 pt-4">
@@ -307,6 +326,25 @@ export default function FoundationSettings() {
                 <p><strong>Material Cost:</strong> (Total Wall Surface Area ÷ Single Brick Area) × Waste Factor × Price Per Brick.</p>
                 <p><strong>Mortar Cost:</strong> Wall Surface Area × Mortar Cost Per Sq Ft.</p>
                 <p><strong>Labor Cost:</strong> (Total Number of Bricks ÷ Bricks Per Hour) × Wall Masonry Labor Rate.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="markup" className="space-y-4 pt-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Markup Tiers (1–8)</CardTitle>
+                <p className="text-xs text-slate-500 mt-1">
+                  Configure 8 tiers of markup percentages. In the Summary view, you can toggle markup on and pick a tier to apply to the project subtotal.
+                </p>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1,2,3,4,5,6,7,8].map(n => (
+                  <div key={n} className="grid grid-cols-2 gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50">
+                    <SettingInput settingKey={`foundation_markup_tier_${n}_name`} />
+                    <SettingInput settingKey={`foundation_markup_tier_${n}_percent`} />
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </TabsContent>

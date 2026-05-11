@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Copy, Check, Download, ClipboardCopy } from 'lucide-react';
+import { Copy, Check, Download, ClipboardCopy, Percent } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getConcreteMixes, getConcreteAdmixtures, getSmallLoadFee, getFuelSurcharge } from '@/pages/NewFoundationEstimate';
 import { base44 } from '@/api/base44Client';
 
@@ -146,6 +149,19 @@ function CostRow({
 export default function SummaryTab({ items, walls, totals, calcItemCost, project, polesData = [], selectedEquipmentList = [], inventory = [], onUpdateItem, onUpdateWall, onUpdatePole, onUpdateEquipment, settings = {} }) {
   const polesTotal = totals.polesTotal || 0;
   const [allCopied, setAllCopied] = useState(false);
+  const [showMarkup, setShowMarkup] = useState(false);
+  const [selectedTier, setSelectedTier] = useState(1);
+
+  // Build tier options from settings
+  const markupTiers = [1,2,3,4,5,6,7,8].map(n => ({
+    n,
+    name: settings[`foundation_markup_tier_${n}_name`] || `Tier ${n}`,
+    percent: parseFloat(settings[`foundation_markup_tier_${n}_percent`] || 0) || 0,
+  }));
+  const activeTier = markupTiers.find(t => t.n === selectedTier) || markupTiers[0];
+  const markupPercent = showMarkup ? activeTier.percent : 0;
+  const markupAmount = (totals.grand || 0) * (markupPercent / 100);
+  const grandWithMarkup = (totals.grand || 0) + markupAmount;
 
   const allAttachments = inventory.filter(i => i.material_type === 'attachment');
   const allSubAttachments = inventory.filter(i => i.material_type === 'sub_attachment');
@@ -413,6 +429,33 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
           </div>
         </div>
         <p className="text-xs text-slate-400 mt-1">Click any cost value to copy it to clipboard.</p>
+
+        {/* Markup toggle */}
+        <div className="flex items-center flex-wrap gap-3 mt-3 p-2 rounded-lg bg-slate-50 border border-slate-200">
+          <div className="flex items-center gap-2">
+            <Switch id="markup-toggle" checked={showMarkup} onCheckedChange={setShowMarkup} />
+            <Label htmlFor="markup-toggle" className="text-sm font-medium text-slate-700 cursor-pointer flex items-center gap-1">
+              <Percent className="w-3.5 h-3.5" /> Apply Markup
+            </Label>
+          </div>
+          {showMarkup && (
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-slate-500">Tier:</Label>
+              <Select value={String(selectedTier)} onValueChange={(v) => setSelectedTier(Number(v))}>
+                <SelectTrigger className="h-8 w-44 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {markupTiers.map(t => (
+                    <SelectItem key={t.n} value={String(t.n)}>
+                      {t.name} ({t.percent}%)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm mb-4">
@@ -956,9 +999,18 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
 
 
 
+        {showMarkup && (
+          <div className="flex justify-between items-center py-2 px-3 mt-2 rounded-lg bg-emerald-50 border border-emerald-200">
+            <span className="text-sm font-semibold text-emerald-900">
+              Markup — {activeTier.name} ({markupPercent}%)
+            </span>
+            <CopyValue value={`$${markupAmount.toFixed(2)}`} className="text-sm font-semibold text-emerald-800" />
+          </div>
+        )}
+
         <div className="flex justify-between items-center py-3 bg-amber-50 rounded-lg px-3 mt-2">
           <span className="text-lg font-bold text-slate-900">Grand Total</span>
-          <CopyValue value={`$${totals.grand.toFixed(2)}`} className="text-lg font-bold text-amber-700" />
+          <CopyValue value={`$${(showMarkup ? grandWithMarkup : totals.grand).toFixed(2)}`} className="text-lg font-bold text-amber-700" />
         </div>
       </CardContent>
     </Card>
