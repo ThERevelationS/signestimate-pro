@@ -10,13 +10,13 @@ import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
 const settingsDefinitions = [
   // Pricing & Labor
   { name: "install_labor_rate", type: "number", category: "install_pricing", description: "Hourly labor rate for installation work", default: "65" },
-  { name: "install_base_supplies", type: "number", category: "install_pricing", description: "Base supplies cost per project", default: "150" },
   
   // Base Rates per Letter Size
   { name: "install_base_rate_small", type: "number", category: "install_rates", description: "Base hours per letter - Small (12\"-18\")", default: "1.5" },
   { name: "install_base_rate_medium", type: "number", category: "install_rates", description: "Base hours per letter - Medium (18\"-30\")", default: "2.5" },
   { name: "install_base_rate_large", type: "number", category: "install_rates", description: "Base hours per letter - Large (30\"-48\")", default: "4.0" },
-  { name: "install_base_rate_extra_large", type: "number", category: "install_rates", description: "Base hours per letter - Extra Large (48\"+)", default: "6.0" },
+  { name: "install_base_rate_extra_large", type: "number", category: "install_rates", description: "Base hours per letter - XL (48\"-60\")", default: "6.0" },
+  { name: "install_base_rate_extra_extra_large", type: "number", category: "install_rates", description: "Base hours per letter - XXL (60\"+)", default: "8.5" },
   
   // Raceway Rates
   { name: "install_raceway_rate_per_foot", type: "number", category: "install_rates", description: "Hours per foot of raceway installation", default: "0.5" },

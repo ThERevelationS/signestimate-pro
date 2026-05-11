@@ -20,22 +20,26 @@ export default function InstallSummaryCard({
       </CardHeader>
 
       <CardContent className="space-y-4 pt-5">
-        {/* Supplies */}
+        {/* Supplies — derived from materials cost */}
         <div>
           <h4 className="text-xs font-semibold uppercase text-slate-500 mb-2">Project Supplies</h4>
+          <p className="text-[10px] text-slate-400 mb-2 leading-tight">
+            Calculated as % of materials cost. Add extra for one-offs.
+          </p>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label className="text-xs">Base</Label>
+              <Label className="text-xs">% of Materials</Label>
               <Input
                 type="number"
-                value={project.base_supplies_cost ?? 0}
+                step="0.5"
+                value={project.supplies_percent_of_materials ?? 10}
                 onFocus={(e) => e.target.select()}
-                onChange={(e) => onUpdate({ base_supplies_cost: parseFloat(e.target.value) || 0 })}
+                onChange={(e) => onUpdate({ supplies_percent_of_materials: parseFloat(e.target.value) || 0 })}
                 className="h-8 text-sm mt-0.5"
               />
             </div>
             <div>
-              <Label className="text-xs">Extra</Label>
+              <Label className="text-xs">Extra ($)</Label>
               <Input
                 type="number"
                 value={project.extra_supplies_cost ?? 0}

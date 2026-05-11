@@ -11,7 +11,8 @@ export const SIZE_LABELS = {
   small: 'Small (12"-18")',
   medium: 'Medium (18"-30")',
   large: 'Large (30"-48")',
-  extra_large: 'Extra Large (48"+)',
+  extra_large: 'XL (48"-60")',
+  extra_extra_large: 'XXL (60"+)',
 };
 
 export const emptyLineItem = () => ({
@@ -78,6 +79,7 @@ export const calcLineItem = (item, settings, inventory) => {
     medium: parseFloat(settings.install_base_rate_medium) || 2.5,
     large: parseFloat(settings.install_base_rate_large) || 4.0,
     extra_large: parseFloat(settings.install_base_rate_extra_large) || 6.0,
+    extra_extra_large: parseFloat(settings.install_base_rate_extra_extra_large) || 8.5,
   };
 
   let baseHours = 0;
@@ -140,9 +142,12 @@ export const calcProjectTotals = (project) => {
   const labor_cost = items.reduce((s, it) => s + (parseFloat(it.labor_cost) || 0), 0);
   const labor_hours = items.reduce((s, it) => s + (parseFloat(it.labor_hours) || 0), 0);
 
-  const base = parseFloat(project.base_supplies_cost) || 0;
+  // Supplies are derived from materials cost (percent) + an optional manual extra amount
+  const pct = parseFloat(project.supplies_percent_of_materials);
+  const suppliesPct = isNaN(pct) ? 10 : pct; // default 10% of materials
   const extra = parseFloat(project.extra_supplies_cost) || 0;
-  const total_supplies_cost = base + extra;
+  const supplies_from_materials = total_materials_cost * (suppliesPct / 100);
+  const total_supplies_cost = supplies_from_materials + extra;
 
   const subtotal = labor_cost + total_materials_cost + total_supplies_cost;
   const markupPct = parseFloat(project.markup_percent) || 0;

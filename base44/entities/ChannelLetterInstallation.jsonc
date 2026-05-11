@@ -1,0 +1,217 @@
+{
+  "name": "ChannelLetterInstallation",
+  "type": "object",
+  "properties": {
+    "project_name": {
+      "type": "string",
+      "description": "Name of the installation project"
+    },
+    "client_name": {
+      "type": "string",
+      "description": "Client company or person name"
+    },
+    "estimate_number": {
+      "type": "string",
+      "description": "Unique estimate number for tracking"
+    },
+    "hyperlink": {
+      "type": "string",
+      "description": "Optional hyperlink related to the project"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "calculated",
+        "archived"
+      ],
+      "default": "draft"
+    },
+    "items": {
+      "type": "array",
+      "description": "Line items in the installation estimate",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "installation_type": {
+            "type": "string",
+            "enum": [
+              "flush_mount",
+              "halo_lit",
+              "raceway"
+            ],
+            "default": "flush_mount"
+          },
+          "qty_letters": {
+            "type": "number",
+            "default": 0
+          },
+          "letter_size": {
+            "type": "string",
+            "enum": [
+              "small",
+              "medium",
+              "large",
+              "extra_large",
+              "extra_extra_large"
+            ],
+            "default": "medium"
+          },
+          "letter_height_inches": {
+            "type": "number",
+            "default": 24
+          },
+          "installation_height_feet": {
+            "type": "number",
+            "default": 12
+          },
+          "raceway_length_feet": {
+            "type": "number",
+            "default": 0
+          },
+          "thick_hollow_walls": {
+            "type": "boolean",
+            "default": false
+          },
+          "parapet": {
+            "type": "boolean",
+            "default": false
+          },
+          "poor_electrical_access": {
+            "type": "boolean",
+            "default": false
+          },
+          "materials": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "inventory_item_id": {
+                  "type": "string"
+                },
+                "item_name": {
+                  "type": "string"
+                },
+                "pricing_mode": {
+                  "type": "string"
+                },
+                "unit_cost": {
+                  "type": "number"
+                },
+                "quantity": {
+                  "type": "number"
+                },
+                "total_cost": {
+                  "type": "number"
+                },
+                "is_custom": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "labor_hours": {
+            "type": "number"
+          },
+          "labor_cost": {
+            "type": "number"
+          },
+          "materials_cost": {
+            "type": "number"
+          },
+          "item_total_cost": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "supplies_percent_of_materials": {
+      "type": "number",
+      "default": 10,
+      "description": "Project supplies as percent of total materials cost"
+    },
+    "extra_supplies_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Additional project-level supplies"
+    },
+    "base_supplies_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Legacy - no longer used"
+    },
+    "markup_percent": {
+      "type": "number",
+      "default": 0
+    },
+    "labor_hours": {
+      "type": "number"
+    },
+    "labor_cost": {
+      "type": "number"
+    },
+    "total_materials_cost": {
+      "type": "number"
+    },
+    "total_supplies_cost": {
+      "type": "number"
+    },
+    "subtotal": {
+      "type": "number"
+    },
+    "markup_amount": {
+      "type": "number"
+    },
+    "total_cost": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "installation_type": {
+      "type": "string",
+      "description": "Legacy"
+    },
+    "qty_letters": {
+      "type": "number",
+      "description": "Legacy"
+    },
+    "letter_size": {
+      "type": "string",
+      "description": "Legacy"
+    },
+    "letter_height_inches": {
+      "type": "number",
+      "description": "Legacy"
+    },
+    "installation_height_feet": {
+      "type": "number",
+      "description": "Legacy"
+    },
+    "raceway_length_feet": {
+      "type": "number",
+      "description": "Legacy"
+    },
+    "thick_hollow_walls": {
+      "type": "boolean",
+      "description": "Legacy"
+    },
+    "parapet": {
+      "type": "boolean",
+      "description": "Legacy"
+    },
+    "poor_electrical_access": {
+      "type": "boolean",
+      "description": "Legacy"
+    }
+  },
+  "required": [
+    "project_name",
+    "client_name",
+    "estimate_number",
+    "hyperlink"
+  ]
+}

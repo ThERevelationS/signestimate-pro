@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight, Copy, Trash2, Eye, Settings2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Trash2 } from "lucide-react";
 import MaterialsList from "./MaterialsList";
 import InstallTypePicker from "./InstallTypePicker";
 import LetterSizePicker from "./LetterSizePicker";
@@ -22,7 +22,6 @@ const TYPE_BADGE_COLOR = {
 
 export default function InstallLineItem({ item, index, inventory, onUpdate, onRemove, onDuplicate, compact = false }) {
   const [expanded, setExpanded] = useState(!compact);
-  const [detailed, setDetailed] = useState(false); // per-item detail toggle for advanced fields
   const isRaceway = item.installation_type === "raceway";
 
   // Sync expanded state when parent toggles compact mode globally
@@ -81,23 +80,12 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
 
       {expanded && (
         <CardContent className="p-4 space-y-4">
-          {/* Quick summary when collapsed-to-info-only */}
-          <div className="flex items-center justify-between">
-            <div className="text-xs text-slate-500">
-              {isRaceway
-                ? `${item.qty_letters} letters · ${item.raceway_length_feet} ft raceway · ${item.installation_height_feet} ft high`
-                : `${item.qty_letters} letters · ${item.installation_height_feet} ft high`
-              }
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setDetailed(d => !d)}
-              className="h-6 text-xs text-slate-500 hover:bg-slate-100"
-            >
-              {detailed ? <Eye className="w-3 h-3 mr-1" /> : <Settings2 className="w-3 h-3 mr-1" />}
-              {detailed ? "Simple" : "Detailed"}
-            </Button>
+          {/* Quick summary */}
+          <div className="text-xs text-slate-500">
+            {isRaceway
+              ? `${item.qty_letters} letters · ${item.raceway_length_feet} ft raceway · ${item.installation_height_feet} ft high`
+              : `${item.qty_letters} letters · ${item.installation_height_feet} ft high`
+            }
           </div>
 
           {/* Install Type Picker */}
@@ -152,18 +140,7 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
                 className="h-9 mt-1"
               />
             </div>
-            {!isRaceway && detailed && (
-              <div>
-                <Label className="text-xs">Letter Height (in)</Label>
-                <Input
-                  type="number"
-                  value={item.letter_height_inches}
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => update({ letter_height_inches: parseFloat(e.target.value) || 0 })}
-                  className="h-9 mt-1"
-                />
-              </div>
-            )}
+
           </div>
 
           {/* Conditions */}
