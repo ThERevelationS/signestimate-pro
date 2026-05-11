@@ -36,6 +36,10 @@ const settingsDefinitions = [
   { name: "install_thick_walls_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for thick or hollow walls", default: "1.2" },
   { name: "install_parapet_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for parapet installations", default: "1.4" },
   { name: "install_poor_electrical_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for poor electrical access", default: "1.3" },
+  { name: "install_escort_multiplier", type: "number", category: "install_multipliers", description: "Multiplier when an escort is required", default: "1.15" },
+  { name: "install_badging_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for badging / check-in procedures", default: "1.1" },
+  { name: "install_after_hours_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for after-hours / weekend installation", default: "1.5" },
+  { name: "install_poor_site_access_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for poor site access (no lift room, tight space, etc.)", default: "1.25" },
 ];
 
 export default function ChannelLetterInstallationSettings() {

@@ -27,6 +27,10 @@ export const emptyLineItem = () => ({
   thick_hollow_walls: false,
   parapet: false,
   poor_electrical_access: false,
+  escort_required: false,
+  badging_checkin: false,
+  after_hours_weekend: false,
+  poor_site_access: false,
   materials: [],
 });
 
@@ -112,6 +116,10 @@ export const calcLineItem = (item, settings, inventory) => {
   if (item.thick_hollow_walls) baseHours *= parseFloat(settings.install_thick_walls_multiplier) || 1.2;
   if (item.parapet) baseHours *= parseFloat(settings.install_parapet_multiplier) || 1.4;
   if (item.poor_electrical_access) baseHours *= parseFloat(settings.install_poor_electrical_multiplier) || 1.3;
+  if (item.escort_required) baseHours *= parseFloat(settings.install_escort_multiplier) || 1.15;
+  if (item.badging_checkin) baseHours *= parseFloat(settings.install_badging_multiplier) || 1.1;
+  if (item.after_hours_weekend) baseHours *= parseFloat(settings.install_after_hours_multiplier) || 1.5;
+  if (item.poor_site_access) baseHours *= parseFloat(settings.install_poor_site_access_multiplier) || 1.25;
 
   // Recompute material quantities based on current item state (qty/size/raceway changed)
   const materials = (item.materials || []).map(mat => {

@@ -35,6 +35,10 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
   if (item.thick_hollow_walls) conditionBadges.push({ label: "Thick Walls", color: "bg-orange-50 text-orange-700 border-orange-200" });
   if (item.parapet) conditionBadges.push({ label: "Parapet", color: "bg-red-50 text-red-700 border-red-200" });
   if (item.poor_electrical_access) conditionBadges.push({ label: "Poor Electrical", color: "bg-yellow-50 text-yellow-800 border-yellow-200" });
+  if (item.escort_required) conditionBadges.push({ label: "Escort Req'd", color: "bg-sky-50 text-sky-700 border-sky-200" });
+  if (item.badging_checkin) conditionBadges.push({ label: "Badging/Check-in", color: "bg-indigo-50 text-indigo-700 border-indigo-200" });
+  if (item.after_hours_weekend) conditionBadges.push({ label: "After-Hours", color: "bg-violet-50 text-violet-700 border-violet-200" });
+  if (item.poor_site_access) conditionBadges.push({ label: "Poor Site Access", color: "bg-rose-50 text-rose-700 border-rose-200" });
 
   return (
     <Card className="border border-slate-200 shadow-sm overflow-hidden">
@@ -152,6 +156,10 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
                   thick_hollow_walls: item.thick_hollow_walls,
                   parapet: item.parapet,
                   poor_electrical_access: item.poor_electrical_access,
+                  escort_required: item.escort_required,
+                  badging_checkin: item.badging_checkin,
+                  after_hours_weekend: item.after_hours_weekend,
+                  poor_site_access: item.poor_site_access,
                 }}
                 onChange={(v) => update(v)}
               />

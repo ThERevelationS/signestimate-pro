@@ -85,6 +85,22 @@
             "type": "boolean",
             "default": false
           },
+          "escort_required": {
+            "type": "boolean",
+            "default": false
+          },
+          "badging_checkin": {
+            "type": "boolean",
+            "default": false
+          },
+          "after_hours_weekend": {
+            "type": "boolean",
+            "default": false
+          },
+          "poor_site_access": {
+            "type": "boolean",
+            "default": false
+          },
           "materials": {
             "type": "array",
             "items": {
