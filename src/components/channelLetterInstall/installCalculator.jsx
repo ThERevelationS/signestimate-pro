@@ -1,6 +1,8 @@
 // Calculation logic for Channel Letter Installation estimates
 // Pure functions — no React, no entity calls.
 
+import { getWallMaterialMultiplier } from "./wallMaterials";
+
 export const TYPE_LABELS = {
   flush_mount: "Flush Mount",
   halo_lit: "Halo-Lit",
@@ -24,6 +26,7 @@ export const emptyLineItem = () => ({
   letter_height_inches: 24,
   installation_height_feet: 12,
   raceway_length_feet: 0,
+  wall_material: "eifs",
   thick_hollow_walls: false,
   parapet: false,
   poor_electrical_access: false,
@@ -113,6 +116,9 @@ export const calcLineItem = (item, settings, inventory) => {
   else if (h <= 30) heightMultiplier = parseFloat(settings.install_height_20_30ft) || 1.6;
   else heightMultiplier = parseFloat(settings.install_height_30plus_ft) || 2.0;
   baseHours *= heightMultiplier;
+
+  // Wall material multiplier
+  baseHours *= getWallMaterialMultiplier(item.wall_material, settings);
 
   if (item.thick_hollow_walls) baseHours *= parseFloat(settings.install_thick_walls_multiplier) || 1.2;
   if (item.parapet) baseHours *= parseFloat(settings.install_parapet_multiplier) || 1.4;

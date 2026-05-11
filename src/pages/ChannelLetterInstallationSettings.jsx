@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save, Wrench, DollarSign, Clock, Ruler, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Save, Wrench, DollarSign, Clock, Ruler, AlertTriangle, CheckCircle2, Layers } from "lucide-react";
 import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
+import { WALL_MATERIALS } from "@/components/channelLetterInstall/wallMaterials";
 
 const settingsDefinitions = [
   // Pricing & Labor
@@ -41,6 +42,17 @@ const settingsDefinitions = [
   { name: "install_after_hours_multiplier", type: "number", category: "install_site_conditions", label: "After-Hours / Weekend", suffix: "×", description: "Night, early morning, or weekend install", default: "1.5" },
   { name: "install_set_hours_multiplier", type: "number", category: "install_site_conditions", label: "Set-Hours Installation", suffix: "×", description: "Fixed time window / scheduled appointment", default: "1.15" },
   { name: "install_poor_site_access_multiplier", type: "number", category: "install_site_conditions", label: "Poor Site Access", suffix: "×", description: "No lift room, obstructions, tight space", default: "1.25" },
+
+  // Wall Material Multipliers — auto-generated from the shared catalog
+  ...WALL_MATERIALS.map(m => ({
+    name: m.settingKey,
+    type: "number",
+    category: "install_wall_materials",
+    label: m.label,
+    suffix: "×",
+    description: m.description,
+    default: String(m.default),
+  })),
 ];
 
 const CATEGORY_META = {
@@ -75,6 +87,14 @@ const CATEGORY_META = {
     accent: "from-rose-500/10 to-rose-500/0",
     iconColor: "text-rose-600",
     iconBg: "bg-rose-50",
+  },
+  install_wall_materials: {
+    title: "Wall Material Multipliers",
+    description: "Labor multiplier applied based on the exterior wall material the letters are installed into.",
+    icon: Layers,
+    accent: "from-purple-500/10 to-purple-500/0",
+    iconColor: "text-purple-600",
+    iconBg: "bg-purple-50",
   },
 };
 

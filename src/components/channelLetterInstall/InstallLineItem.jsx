@@ -9,8 +9,10 @@ import MaterialsList from "./MaterialsList";
 import InstallTypePicker from "./InstallTypePicker";
 import LetterSizePicker from "./LetterSizePicker";
 import ConditionPicker from "./ConditionPicker";
+import WallMaterialPicker from "./WallMaterialPicker";
 import CostBreakdownBar from "./CostBreakdownBar";
 import { TYPE_LABELS } from "./installCalculator";
+import { WALL_MATERIAL_MAP } from "./wallMaterials";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 
@@ -31,7 +33,10 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
 
   const update = (patch) => onUpdate({ ...item, ...patch });
 
+  const wallMat = WALL_MATERIAL_MAP[item.wall_material];
+
   const conditionBadges = [];
+  if (wallMat) conditionBadges.push({ label: wallMat.label, color: "bg-purple-50 text-purple-700 border-purple-200" });
   if (item.thick_hollow_walls) conditionBadges.push({ label: "Thick Walls", color: "bg-orange-50 text-orange-700 border-orange-200" });
   if (item.parapet) conditionBadges.push({ label: "Parapet", color: "bg-red-50 text-red-700 border-red-200" });
   if (item.poor_electrical_access) conditionBadges.push({ label: "Poor Electrical", color: "bg-yellow-50 text-yellow-800 border-yellow-200" });
@@ -146,6 +151,14 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
               />
             </div>
 
+          </div>
+
+          {/* Wall Material */}
+          <div>
+            <Label className="text-xs text-slate-600">Wall Material <span className="text-slate-400 font-normal">(what we're installing into)</span></Label>
+            <div className="mt-1.5">
+              <WallMaterialPicker value={item.wall_material || "eifs"} onChange={(v) => update({ wall_material: v })} />
+            </div>
           </div>
 
           {/* Conditions */}

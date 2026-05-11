@@ -73,6 +73,11 @@
             "type": "number",
             "default": 0
           },
+          "wall_material": {
+            "type": "string",
+            "default": "eifs",
+            "description": "Exterior wall material being installed into"
+          },
           "thick_hollow_walls": {
             "type": "boolean",
             "default": false
