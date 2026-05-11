@@ -51,6 +51,8 @@ import CNCProjects from './pages/CNCProjects';
 import CNCSettings from './pages/CNCSettings';
 import ChannelLetterInstallationProjects from './pages/ChannelLetterInstallationProjects';
 import ChannelLetterInstallationSettings from './pages/ChannelLetterInstallationSettings';
+import ChannelLetterInstallInventory from './pages/ChannelLetterInstallInventory';
+import ChannelLetterInstallEquipmentInventory from './pages/ChannelLetterInstallEquipmentInventory';
 import Dashboard from './pages/Dashboard';
 import FormulaViewer from './pages/FormulaViewer';
 import FoundationInventory from './pages/FoundationInventory';
@@ -80,6 +82,8 @@ export const PAGES = {
     "CNCSettings": CNCSettings,
     "ChannelLetterInstallationProjects": ChannelLetterInstallationProjects,
     "ChannelLetterInstallationSettings": ChannelLetterInstallationSettings,
+    "ChannelLetterInstallInventory": ChannelLetterInstallInventory,
+    "ChannelLetterInstallEquipmentInventory": ChannelLetterInstallEquipmentInventory,
     "Dashboard": Dashboard,
     "FormulaViewer": FormulaViewer,
     "FoundationInventory": FoundationInventory,
