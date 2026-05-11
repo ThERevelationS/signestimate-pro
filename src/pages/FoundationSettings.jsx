@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, RefreshCw, ShieldAlert } from 'lucide-react';
+import { Save, RefreshCw, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
 const SettingsEntity = base44.entities.Settings;
 
@@ -63,6 +64,7 @@ export default function FoundationSettings() {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadSettings();
@@ -109,6 +111,15 @@ export default function FoundationSettings() {
     }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+    toast({
+      duration: 2000,
+      description: (
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="w-5 h-5 text-green-600" />
+          <span className="font-medium text-slate-900">Settings saved successfully</span>
+        </div>
+      ),
+    });
     loadSettings();
   };
 

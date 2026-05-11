@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Save, DollarSign, Clock, Paintbrush, Calculator, TrendingDown, Plus, Trash2, Square, Shapes, Type, Scissors, Beaker } from "lucide-react";
+import { Save, DollarSign, Clock, Paintbrush, Calculator, TrendingDown, Plus, Trash2, Square, Shapes, Type, Scissors, Beaker, CheckCircle2 } from "lucide-react";
 import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
+import { useToast } from "@/components/ui/use-toast";
 
 const unitFactors = {
   oz: 1 / 128,
@@ -96,6 +97,19 @@ export default function PaintSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [liquidPaintRate, setLiquidPaintRate] = useState(0);
+  const { toast } = useToast();
+
+  const showSavedToast = (message = 'Settings saved successfully') => {
+    toast({
+      duration: 2000,
+      description: (
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="w-5 h-5 text-green-600" />
+          <span className="font-medium text-slate-900">{message}</span>
+        </div>
+      ),
+    });
+  };
   
   const [panelTiers, setPanelTiers] = useState([
     { min_quantity: 1, max_quantity: 5, labor_multiplier: 1.0 },
@@ -345,14 +359,18 @@ export default function PaintSettings() {
 
       if (updates.length > 0 || creates.length > 0) {
         await Promise.all([...updates, ...creates]);
-        alert('Settings saved successfully!');
+        showSavedToast('Settings saved successfully');
       } else {
-        alert('No settings were changed. Nothing to save.');
+        showSavedToast('No changes to save');
       }
       
     } catch (error) {
       console.error('Save process failed:', error);
-      alert('Save failed: ' + (error.message || 'An unknown error occurred.'));
+      toast({
+        duration: 3000,
+        variant: 'destructive',
+        description: 'Save failed: ' + (error.message || 'An unknown error occurred.'),
+      });
     } finally {
       setIsSaving(false);
     }
