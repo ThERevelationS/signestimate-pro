@@ -231,7 +231,7 @@ export default function NewPaintEstimate() {
     liquidPaintAndSuppliesCost = paintApplicationSuppliesCost + liquidPaintCost + (item.base_supplies_cost || 0);
 
     const laborRate = parseFloat(settings.default_labor_rate) || 60;
-    const baseHoursPerSqFt = parseFloat(settings.base_labor_hours_per_sqft) || 0.5;
+    const baseHoursPerSqFt = parseFloat(settings.base_labor_hours_per_sqft) || 0.05;
     const complexityMap = {
       extra_small: 'complex', small: 'complex', normal: 'moderate',
       medium: 'moderate', large: 'simple', extra_large: 'simple'
@@ -504,7 +504,7 @@ export default function NewPaintEstimate() {
       liquidPaintAndSuppliesCost = paintApplicationSuppliesCost + liquidPaintCost + (item.base_supplies_cost || 0);
 
       const laborRate = parseFloat(globalSettings.default_labor_rate) || 60;
-      const baseHoursPerSqFt = parseFloat(globalSettings.base_labor_hours_per_sqft) || 0.5;
+      const baseHoursPerSqFt = parseFloat(globalSettings.base_labor_hours_per_sqft) || 0.05;
       const complexityMap = {
         extra_small: 'complex',
         small: 'complex',
