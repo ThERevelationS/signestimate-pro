@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Settings as SettingsEntity, User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Save, DollarSign, Clock, Calculator, Zap, Percent, AlertCircle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Save, DollarSign, Clock, Calculator, Zap, Percent, AlertCircle, Scissors, Type, CheckCircle2, Settings as SettingsIcon } from "lucide-react";
 import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
+import { useToast } from "@/components/ui/use-toast";
 
 const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/8", "1/2", "3/4"];
 const materials = ["Acrylic", "Wood", "Leather"];
@@ -20,6 +22,19 @@ export default function LaserSettings() {
   const [currentUser, setCurrentUser] = useState(null);
   const [parameterLaserRate, setParameterLaserRate] = useState({ total: 0, parts: {} });
   const [engravingLaserRate, setEngravingLaserRate] = useState({ total: 0, parts: {} });
+  const { toast } = useToast();
+
+  const showSavedToast = (message = 'Settings saved successfully') => {
+    toast({
+      duration: 2000,
+      description: (
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="w-5 h-5 text-green-600" />
+          <span className="font-medium text-slate-900">{message}</span>
+        </div>
+      ),
+    });
+  };
 
   const calculateRate = useCallback((prefix) => {
     const purchasePrice = parseFloat(settings[`${prefix}_purchase_price`]) || 0;
@@ -143,6 +158,10 @@ export default function LaserSettings() {
     setEngravingLaserRate(calculateRate('engraving_laser'));
   }, [calculateRate]);
 
+  const updateSetting = (key, value) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
   const saveSingleSetting = async (key, value) => {
     setIsSaving(true);
     try {
@@ -160,10 +179,14 @@ export default function LaserSettings() {
         await SettingsEntity.create(data);
       }
       updateSetting(key, String(value));
-      alert(`Setting '${key}' saved successfully!`);
+      showSavedToast(`Saved: ${key.replace(/_/g, ' ')}`);
     } catch (error) {
       console.error(`Error saving setting ${key}:`, error);
-      alert('Failed to save setting.');
+      toast({
+        duration: 3000,
+        variant: 'destructive',
+        description: 'Failed to save setting.',
+      });
     } finally {
       setIsSaving(false);
     }
@@ -249,327 +272,313 @@ export default function LaserSettings() {
   };
   
   const saveSettings = async () => {
+    if (isSaving) return;
     setIsSaving(true);
     try {
       const definitions = getSettingDefinitions();
+      const existingDbSettings = await SettingsEntity.list();
+      const existingMap = new Map(existingDbSettings.map(s => [s.setting_name, s]));
+
+      const ops = [];
       for (const def of definitions) {
-        try {
-          const existing = await SettingsEntity.filter({ setting_name: def.name });
-          const data = {
-            setting_name: def.name,
-            setting_value: settings[def.name] || "",
-            setting_type: def.type,
-            category: def.category,
-            description: def.description || `${def.name} setting`
-          };
-          
-          if (existing.length > 0) {
-            await SettingsEntity.update(existing[0].id, data);
-          } else {
-            await SettingsEntity.create(data);
+        const value = settings[def.name];
+        if (value === undefined || value === null) continue;
+        const data = {
+          setting_name: def.name,
+          setting_value: String(value),
+          setting_type: def.type,
+          category: def.category,
+          description: def.description || `${def.name} setting`,
+        };
+        const existing = existingMap.get(def.name);
+        if (existing) {
+          if (existing.setting_value !== data.setting_value) {
+            ops.push(SettingsEntity.update(existing.id, data));
           }
-        } catch (settingError) {
-          console.error(`Error saving setting ${def.name}:`, settingError);
+        } else {
+          ops.push(SettingsEntity.create(data));
         }
       }
-      alert('All settings saved successfully!');
+
+      if (ops.length > 0) {
+        await Promise.all(ops);
+        showSavedToast('Settings saved successfully');
+      } else {
+        showSavedToast('No changes to save');
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('Error saving some settings. Please check the console and try again.');
+      toast({
+        duration: 3000,
+        variant: 'destructive',
+        description: 'Save failed: ' + (error.message || 'An unknown error occurred.'),
+      });
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
-  const updateSetting = (key, value) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
-  };
+  if (isLoading) return <div className="p-6 md:p-8 bg-slate-50 min-h-screen flex items-center justify-center"><p className="text-slate-600">Loading settings...</p></div>;
 
-  if (isLoading) return <div className="p-8">Loading settings...</div>;
+  /* ====== Reusable bits ====== */
+  const SectionCard = ({ title, description, icon: Icon, children }) => (
+    <Card className="bg-white border-0 shadow-sm">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-3 text-base font-semibold text-slate-900">
+          {Icon && <Icon className="w-5 h-5 text-slate-500" />}
+          {title}
+        </CardTitle>
+        {description && <CardDescription>{description}</CardDescription>}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {children}
+      </CardContent>
+    </Card>
+  );
+
+  const NumberField = ({ label, name, step = "0.01", help }) => (
+    <div>
+      <Label>{label}</Label>
+      <Input
+        type="number"
+        step={step}
+        value={settings[name] ?? ""}
+        onChange={(e) => updateSetting(name, e.target.value)}
+        disabled={isLocked}
+        className="mt-1"
+      />
+      {help && <p className="text-xs text-slate-500 mt-1">{help}</p>}
+    </div>
+  );
+
+  /* ====== Cost calculator block (re-used for both lasers) ====== */
+  const renderCostCalculator = (prefix, rateState, saveTargetKey, accentClass) => (
+    <Card className="bg-white border-0 shadow-sm">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-3 text-base font-semibold text-slate-900">
+          <Calculator className="w-5 h-5 text-slate-500" />
+          Machine Cost Calculator
+        </CardTitle>
+        <CardDescription>Compute the true hourly operational cost of this laser, then push it to its Machine Rate.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid md:grid-cols-2 gap-x-8 gap-y-6 pt-2">
+        <div className="space-y-6">
+          <div className="space-y-4">
+            <h4 className="font-medium text-slate-800">Equipment Information</h4>
+            <div className="grid md:grid-cols-2 gap-4">
+              <NumberField label="Laser Purchase Price ($)" name={`${prefix}_purchase_price`} step="1" />
+              <NumberField label="Expected Lifespan (years)" name={`${prefix}_lifespan_years`} step="1" />
+              <NumberField label="Usage Hours per Week" name={`${prefix}_usage_hours_per_week`} step="1" />
+              <NumberField label="CO2 Tube Purchase Price ($)" name={`${prefix}_tube_purchase_price`} step="1" />
+              <NumberField label="CO2 Tube Lifespan (hours)" name={`${prefix}_tube_lifespan_hours`} step="100" />
+            </div>
+          </div>
+          <Separator />
+          <div className="space-y-4">
+            <h4 className="font-medium text-slate-800">Maintenance & Power</h4>
+            <div className="grid md:grid-cols-2 gap-4">
+              <NumberField label="Laser Annual Maintenance ($)" name={`${prefix}_annual_maintenance_cost`} step="1" />
+              <NumberField label="Chiller Annual Maintenance ($)" name={`${prefix}_chiller_annual_maintenance_cost`} step="1" />
+              <NumberField label="Laser Power (kW)" name={`${prefix}_power_consumption_kw`} step="0.1" />
+              <NumberField label="Chiller Power (kW)" name={`${prefix}_chiller_power_consumption_kw`} step="0.1" />
+              <NumberField label="Blower Power (kW)" name={`${prefix}_blower_power_consumption_kw`} step="0.1" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-slate-50 p-6 rounded-lg space-y-3 self-start">
+          <h3 className="font-semibold text-lg text-slate-900">Calculated Rate Breakdown</h3>
+          <div className="text-sm space-y-2">
+            <div className="flex justify-between"><span>Depreciation:</span><span className="font-mono">${(rateState.parts.depreciation || 0).toFixed(2)}/hr</span></div>
+            <div className="flex justify-between"><span>Maintenance:</span><span className="font-mono">${(rateState.parts.maintenanceCost || 0).toFixed(2)}/hr</span></div>
+            <div className="flex justify-between"><span>Power:</span><span className="font-mono">${(rateState.parts.powerCost || 0).toFixed(2)}/hr</span></div>
+            <div className="flex justify-between border-l-2 border-red-400 pl-2"><span>CO2 Tube:</span><span className="font-mono">${(rateState.parts.tubeCostPerHour || 0).toFixed(2)}/hr</span></div>
+            <div className="flex justify-between"><span>Overhead:</span><span className="font-mono">${(rateState.parts.overhead || 0).toFixed(2)}/hr</span></div>
+          </div>
+          <div className="border-t pt-3 mt-3">
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-slate-900 text-xl">Total Rate:</span>
+              <span className={`font-mono font-bold text-2xl ${accentClass}`}>${rateState.total}</span>
+            </div>
+            <p className="text-xs text-slate-500">per hour</p>
+          </div>
+          <Button className="w-full mt-4" onClick={() => saveSingleSetting(saveTargetKey, rateState.total)} disabled={isLocked || isSaving}>
+            <Save className="w-4 h-4 mr-2" />
+            Push to Machine Rate
+          </Button>
+          <div className="flex items-start gap-2 p-3 bg-blue-50 text-blue-800 rounded-md mt-2">
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0"/>
+            <p className="text-xs">Saving overwrites the Machine Rate used in new estimates. You can still manually override it in Rates & Labor below.</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  /* ====== Rates & Labor block (per laser type) ====== */
+  const renderRatesAndLabor = (prefix) => (
+    <SectionCard title="Rates & Labor" description="Hourly rates, handling time, and project-level minimums." icon={DollarSign}>
+      <div className="grid md:grid-cols-2 gap-6">
+        <NumberField label="Machine Rate ($/hour)" name={`${prefix}_machine_rate`} step="1" />
+        <NumberField label="Labor Rate ($/hour)" name={`${prefix}_labor_rate`} step="1" />
+      </div>
+      <Separator />
+      <div>
+        <Label>Handling Time (% of Machine Time)</Label>
+        <div className="relative mt-1 max-w-xs">
+          <Input
+            type="number"
+            value={settings[`${prefix === 'parameter_laser' ? 'parameter' : 'engraving'}_handling_time_percentage`] ?? ""}
+            onChange={(e) => updateSetting(`${prefix === 'parameter_laser' ? 'parameter' : 'engraving'}_handling_time_percentage`, e.target.value)}
+            disabled={isLocked}
+            className="pl-8"
+          />
+          <Percent className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        </div>
+        <p className="text-xs text-slate-500 mt-1">Labor for handling, setup, and cleanup, as a % of total machine run time.</p>
+      </div>
+      <div className="grid md:grid-cols-3 gap-6">
+        <NumberField label="Fixed Setup Time (hours)" name={`min_${prefix}_setup_hours`} step="0.1" help="Fixed setup time added per project." />
+        <NumberField label="Fixed Material Setup Cost ($)" name={`${prefix}_fixed_material_setup_cost`} step="1" help="Fixed material/setup fee per project." />
+        <NumberField label="Minimum Labor (hours)" name={`min_${prefix}_labor_hours`} step="0.1" help="Floor on billable labor." />
+      </div>
+    </SectionCard>
+  );
+
+  /* ====== Material multipliers block ====== */
+  const renderMaterialMultipliers = (kind /* 'cut' | 'engrave' */) => (
+    <SectionCard
+      title={kind === 'cut' ? 'Material Cut Time Multipliers' : 'Material Engrave Time Multipliers'}
+      description="Multiplier applied to time per material type."
+      icon={Zap}
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+        <h4 className="font-semibold text-slate-500">Material</h4>
+        <h4 className="font-semibold text-slate-500">{kind === 'cut' ? 'Cut' : 'Engrave'} Multiplier</h4>
+      </div>
+      {materials.map(mat => (
+        <div key={mat} className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 items-center">
+          <Label className="font-medium">{mat}</Label>
+          <Input
+            type="number"
+            step="0.1"
+            value={settings[`${mat.toLowerCase()}_${kind}_multiplier`] ?? ""}
+            onChange={(e) => updateSetting(`${mat.toLowerCase()}_${kind}_multiplier`, e.target.value)}
+            disabled={isLocked}
+          />
+        </div>
+      ))}
+    </SectionCard>
+  );
 
   const settingsContent = (
-    <div className="space-y-8">
-      {/* Parameter Laser Calculator */}
-      <Card className="bg-white border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Calculator />Parameter Laser Cost Calculator</CardTitle>
-          <p className="text-sm text-slate-500">Calculate your parameter cutting laser machine's hourly operational cost.</p>
-        </CardHeader>
-        <CardContent className="grid md:grid-cols-2 gap-x-8 gap-y-4 pt-6">
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <h4 className="font-medium text-slate-800">Equipment Information</h4>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div><Label>Laser Purchase Price ($)</Label><Input type="number" value={settings.parameter_laser_purchase_price} onChange={(e) => updateSetting('parameter_laser_purchase_price', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Expected Lifespan (years)</Label><Input type="number" value={settings.parameter_laser_lifespan_years} onChange={(e) => updateSetting('parameter_laser_lifespan_years', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Usage Hours per Week</Label><Input type="number" value={settings.parameter_laser_usage_hours_per_week} onChange={(e) => updateSetting('parameter_laser_usage_hours_per_week', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>CO2 Tube Purchase Price ($)</Label><Input type="number" value={settings.parameter_laser_tube_purchase_price} onChange={(e) => updateSetting('parameter_laser_tube_purchase_price', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>CO2 Tube Lifespan (hours)</Label><Input type="number" value={settings.parameter_laser_tube_lifespan_hours} onChange={(e) => updateSetting('parameter_laser_tube_lifespan_hours', e.target.value)} disabled={isLocked}/></div>
-              </div>
-            </div>
-            <Separator />
-            <div className="space-y-4">
-              <h4 className="font-medium text-slate-800">Maintenance & Power</h4>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div><Label>Laser Annual Maintenance ($)</Label><Input type="number" value={settings.parameter_laser_annual_maintenance_cost} onChange={(e) => updateSetting('parameter_laser_annual_maintenance_cost', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Chiller Annual Maintenance ($)</Label><Input type="number" value={settings.parameter_laser_chiller_annual_maintenance_cost} onChange={(e) => updateSetting('parameter_laser_chiller_annual_maintenance_cost', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Laser Power Consumption (kW)</Label><Input type="number" value={settings.parameter_laser_power_consumption_kw} onChange={(e) => updateSetting('parameter_laser_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Chiller Power Consumption (kW)</Label><Input type="number" value={settings.parameter_laser_chiller_power_consumption_kw} onChange={(e) => updateSetting('parameter_laser_chiller_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Blower Power Consumption (kW)</Label><Input type="number" value={settings.parameter_laser_blower_power_consumption_kw} onChange={(e) => updateSetting('parameter_laser_blower_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
-              </div>
-            </div>
-            <Separator />
-            <div className="space-y-4">
-              <h4 className="font-medium text-slate-800">Operating Costs (Shared Across Modules)</h4>
-              <div className="grid md:grid-cols-3 gap-4">
-                <div><Label>Electricity Cost ($/kWh)</Label><Input type="number" step="0.01" value={settings.electricity_cost_per_kwh} onChange={(e) => updateSetting('electricity_cost_per_kwh', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Operator Cost ($/hour)</Label><Input type="number" value={settings.operator_cost_per_hour} onChange={(e) => updateSetting('operator_cost_per_hour', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Facility Overhead ($/hour)</Label><Input type="number" value={settings.facility_overhead_per_hour} onChange={(e) => updateSetting('facility_overhead_per_hour', e.target.value)} disabled={isLocked}/></div>
-              </div>
-            </div>
-          </div>
-          <div className="bg-slate-50 p-6 rounded-lg space-y-3 self-start">
-            <h3 className="font-semibold text-lg text-slate-900">Calculated Rate Breakdown</h3>
-            <div className="text-sm space-y-2">
-              <div className="flex justify-between"><span>Depreciation:</span><span className="font-mono">${(parameterLaserRate.parts.depreciation || 0).toFixed(2)}/hr</span></div>
-              <div className="flex justify-between"><span>Maintenance:</span><span className="font-mono">${(parameterLaserRate.parts.maintenanceCost || 0).toFixed(2)}/hr</span></div>
-              <div className="flex justify-between"><span>Power:</span><span className="font-mono">${(parameterLaserRate.parts.powerCost || 0).toFixed(2)}/hr</span></div>
-              <div className="flex justify-between border-l-2 border-red-400 pl-2"><span>CO2 Tube:</span><span className="font-mono">${(parameterLaserRate.parts.tubeCostPerHour || 0).toFixed(2)}/hr</span></div>
-              <div className="flex justify-between"><span>Overhead:</span><span className="font-mono">${(parameterLaserRate.parts.overhead || 0).toFixed(2)}/hr</span></div>
-            </div>
-            <div className="border-t pt-3 mt-3">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-slate-900 text-xl">Total Rate:</span>
-                <span className="font-mono font-bold text-2xl text-blue-600">${parameterLaserRate.total}</span>
-              </div>
-              <p className="text-xs text-slate-500">per hour</p>
-            </div>
-            <Button className="w-full mt-4" onClick={() => saveSingleSetting('parameter_laser_machine_rate', parameterLaserRate.total)} disabled={isLocked || isSaving}>
-              <Save className="w-4 h-4 mr-2" />
-              Save to Parameter Laser Rate
-            </Button>
-            <div className="flex items-start gap-2 p-3 bg-blue-50 text-blue-800 rounded-md mt-2">
-                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0"/>
-                <p className="text-xs">Saving this will update the "Machine Rate" value used in new estimates. You can manually override it below if needed.</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+    <Tabs defaultValue="parameter" className="w-full">
+      <TabsList className="grid w-full grid-cols-4 mb-6">
+        <TabsTrigger value="parameter" className="flex items-center gap-2"><Scissors className="w-4 h-4" />Parameter Laser</TabsTrigger>
+        <TabsTrigger value="engraving" className="flex items-center gap-2"><Type className="w-4 h-4" />Engraving Laser</TabsTrigger>
+        <TabsTrigger value="shared" className="flex items-center gap-2"><Zap className="w-4 h-4" />Cut Speeds & Shared</TabsTrigger>
+        <TabsTrigger value="general" className="flex items-center gap-2"><SettingsIcon className="w-4 h-4" />General</TabsTrigger>
+      </TabsList>
 
-      {/* Parameter Laser Rates & Labor */}
-      <Card className="bg-white border-0 shadow-sm">
-        <CardHeader><CardTitle className="flex items-center gap-2"><DollarSign />Parameter Laser Rates & Labor</CardTitle></CardHeader>
-        <CardContent className="space-y-6 pt-6">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div><Label>Machine Rate ($/hour)</Label><Input type="number" value={settings.parameter_laser_machine_rate} onChange={(e) => updateSetting('parameter_laser_machine_rate', e.target.value)} disabled={isLocked}/></div>
-            <div><Label>Labor Rate ($/hour)</Label><Input type="number" value={settings.parameter_laser_labor_rate} onChange={(e) => updateSetting('parameter_laser_labor_rate', e.target.value)} disabled={isLocked}/></div>
-          </div>
-          <Separator />
-          <div>
-            <Label>Handling Time (% of Machine Time)</Label>
-            <div className="relative mt-1 max-w-xs">
-                <Input type="number" value={settings.parameter_handling_time_percentage} onChange={(e) => updateSetting('parameter_handling_time_percentage', e.target.value)} disabled={isLocked} className="pl-8"/>
-                <Percent className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            </div>
-            <p className="text-xs text-slate-500 mt-1">Labor for handling, setup, and cleanup calculated as a percentage of the total machine run time.</p>
-          </div>
-          <div>
-            <Label>Fixed Setup Time (hours)</Label>
-            <Input type="number" min="0" step="0.1" value={settings.min_parameter_laser_setup_hours} onChange={(e) => updateSetting('min_parameter_laser_setup_hours', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
-            <p className="text-xs text-slate-500 mt-1">A fixed setup time added to each project's labor cost.</p>
-          </div>
-          <div>
-            <Label>Fixed Material Setup Cost ($)</Label>
-            <Input type="number" min="0" step="1" value={settings.parameter_laser_fixed_material_setup_cost} onChange={(e) => updateSetting('parameter_laser_fixed_material_setup_cost', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
-            <p className="text-xs text-slate-500 mt-1">A fixed material/setup cost added to each project.</p>
-          </div>
-          <div>
-            <Label>Minimum Labor (hours)</Label>
-            <Input type="number" min="0" step="0.1" value={settings.min_parameter_laser_labor_hours} onChange={(e) => updateSetting('min_parameter_laser_labor_hours', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
-          </div>
-        </CardContent>
-      </Card>
+      {/* ===== Parameter Laser ===== */}
+      <TabsContent value="parameter" className="space-y-6">
+        {renderCostCalculator('parameter_laser', parameterLaserRate, 'parameter_laser_machine_rate', 'text-blue-600')}
+        {renderRatesAndLabor('parameter_laser')}
+        {renderMaterialMultipliers('cut')}
+      </TabsContent>
 
-      {/* Parameter Laser Material Cut Time Multipliers */}
-      <Card className="bg-white border-0 shadow-sm">
-        <CardHeader><CardTitle className="flex items-center gap-2"><Zap />Parameter Laser Material Cut Time Multipliers</CardTitle></CardHeader>
-        <CardContent className="pt-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-            <h4 className="font-semibold text-slate-500 md:col-span-1">Material</h4>
-            <h4 className="font-semibold text-slate-500 md:col-span-1">Cut Time Multiplier</h4>
+      {/* ===== Engraving Laser ===== */}
+      <TabsContent value="engraving" className="space-y-6">
+        {renderCostCalculator('engraving_laser', engravingLaserRate, 'engraving_laser_machine_rate', 'text-green-600')}
+        {renderRatesAndLabor('engraving_laser')}
+        {renderMaterialMultipliers('engrave')}
+        <SectionCard title="Engraving Speed" description="How fast the engraving laser removes material." icon={Clock}>
+          <div className="max-w-xs">
+            <NumberField
+              label="Engraving Speed (sq in/min)"
+              name="laser_engrave_speed_sqipm"
+              step="0.1"
+              help="Typical range: 3–10 sq in/min depending on detail level."
+            />
           </div>
-          {materials.map(mat => (
-            <div key={mat} className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 items-center">
-              <Label className="font-medium">{mat}</Label>
-              <Input type="number" step="0.1" value={settings[`${mat.toLowerCase()}_cut_multiplier`]} onChange={(e) => updateSetting(`${mat.toLowerCase()}_cut_multiplier`, e.target.value)} disabled={isLocked}/>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-      
-      {/* Parameter Laser Cut Speed by Thickness */}
-      <Card className="bg-white border-0 shadow-sm">
-        <CardHeader><CardTitle className="flex items-center gap-2"><Clock />Parameter Laser Cut Speed by Thickness</CardTitle></CardHeader>
-        <CardContent className="pt-6 space-y-4">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+        </SectionCard>
+      </TabsContent>
+
+      {/* ===== Cut Speeds & Shared Operating Costs ===== */}
+      <TabsContent value="shared" className="space-y-6">
+        <SectionCard
+          title="Parameter Laser — Cut Speed by Thickness"
+          description="Cut speed (inches/min) for each material thickness. Used to estimate machine time."
+          icon={Clock}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
             {imperialSizes.map(size => (
-              <div key={size}>
-                <Label>Cut Speed for {size}" (in/min)</Label>
-                <Input type="number" value={settings[`cut_speed_${size.replace('/', '_')}`]} onChange={(e) => updateSetting(`cut_speed_${size.replace('/', '_')}`, e.target.value)} disabled={isLocked} className="mt-1" />
-              </div>
+              <NumberField
+                key={size}
+                label={`Cut Speed for ${size}" (in/min)`}
+                name={`cut_speed_${size.replace('/', '_')}`}
+                step="1"
+              />
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </SectionCard>
 
-      {/* Engraving Laser Calculator */}
-      <Card className="bg-white border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Calculator />Engraving Laser Cost Calculator</CardTitle>
-          <p className="text-sm text-slate-500">Calculate your engraving laser machine's hourly operational cost.</p>
-        </CardHeader>
-        <CardContent className="grid md:grid-cols-2 gap-x-8 gap-y-4 pt-6">
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <h4 className="font-medium text-slate-800">Equipment Information</h4>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div><Label>Laser Purchase Price ($)</Label><Input type="number" value={settings.engraving_laser_purchase_price} onChange={(e) => updateSetting('engraving_laser_purchase_price', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Expected Lifespan (years)</Label><Input type="number" value={settings.engraving_laser_lifespan_years} onChange={(e) => updateSetting('engraving_laser_lifespan_years', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Usage Hours per Week</Label><Input type="number" value={settings.engraving_laser_usage_hours_per_week} onChange={(e) => updateSetting('engraving_laser_usage_hours_per_week', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>CO2 Tube Purchase Price ($)</Label><Input type="number" value={settings.engraving_laser_tube_purchase_price} onChange={(e) => updateSetting('engraving_laser_tube_purchase_price', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>CO2 Tube Lifespan (hours)</Label><Input type="number" value={settings.engraving_laser_tube_lifespan_hours} onChange={(e) => updateSetting('engraving_laser_tube_lifespan_hours', e.target.value)} disabled={isLocked}/></div>
-              </div>
-            </div>
-            <Separator />
-            <div className="space-y-4">
-              <h4 className="font-medium text-slate-800">Maintenance & Power</h4>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div><Label>Laser Annual Maintenance ($)</Label><Input type="number" value={settings.engraving_laser_annual_maintenance_cost} onChange={(e) => updateSetting('engraving_laser_annual_maintenance_cost', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Chiller Annual Maintenance ($)</Label><Input type="number" value={settings.engraving_laser_chiller_annual_maintenance_cost} onChange={(e) => updateSetting('engraving_laser_chiller_annual_maintenance_cost', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Laser Power Consumption (kW)</Label><Input type="number" value={settings.engraving_laser_power_consumption_kw} onChange={(e) => updateSetting('engraving_laser_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Chiller Power Consumption (kW)</Label><Input type="number" value={settings.engraving_laser_chiller_power_consumption_kw} onChange={(e) => updateSetting('engraving_laser_chiller_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
-                <div><Label>Blower Power Consumption (kW)</Label><Input type="number" value={settings.engraving_laser_blower_power_consumption_kw} onChange={(e) => updateSetting('engraving_laser_blower_power_consumption_kw', e.target.value)} disabled={isLocked}/></div>
-              </div>
-            </div>
+        <SectionCard
+          title="Shared Operating Costs"
+          description="Used by BOTH lasers' cost calculators."
+          icon={DollarSign}
+        >
+          <div className="grid md:grid-cols-3 gap-6">
+            <NumberField label="Electricity Cost ($/kWh)" name="electricity_cost_per_kwh" step="0.01" />
+            <NumberField label="Operator Cost ($/hour)" name="operator_cost_per_hour" step="1" />
+            <NumberField label="Facility Overhead ($/hour)" name="facility_overhead_per_hour" step="1" />
           </div>
-          <div className="bg-slate-50 p-6 rounded-lg space-y-3 self-start">
-            <h3 className="font-semibold text-lg text-slate-900">Calculated Rate Breakdown</h3>
-            <div className="text-sm space-y-2">
-              <div className="flex justify-between"><span>Depreciation:</span><span className="font-mono">${(engravingLaserRate.parts.depreciation || 0).toFixed(2)}/hr</span></div>
-              <div className="flex justify-between"><span>Maintenance:</span><span className="font-mono">${(engravingLaserRate.parts.maintenanceCost || 0).toFixed(2)}/hr</span></div>
-              <div className="flex justify-between"><span>Power:</span><span className="font-mono">${(engravingLaserRate.parts.powerCost || 0).toFixed(2)}/hr</span></div>
-              <div className="flex justify-between border-l-2 border-red-400 pl-2"><span>CO2 Tube:</span><span className="font-mono">${(engravingLaserRate.parts.tubeCostPerHour || 0).toFixed(2)}/hr</span></div>
-              <div className="flex justify-between"><span>Overhead:</span><span className="font-mono">${(engravingLaserRate.parts.overhead || 0).toFixed(2)}/hr</span></div>
-            </div>
-            <div className="border-t pt-3 mt-3">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-slate-900 text-xl">Total Rate:</span>
-                <span className="font-mono font-bold text-2xl text-green-600">${engravingLaserRate.total}</span>
-              </div>
-              <p className="text-xs text-slate-500">per hour</p>
-            </div>
-            <Button className="w-full mt-4" onClick={() => saveSingleSetting('engraving_laser_machine_rate', engravingLaserRate.total)} disabled={isLocked || isSaving}>
-              <Save className="w-4 h-4 mr-2" />
-              Save to Engraving Laser Rate
-            </Button>
-            <div className="flex items-start gap-2 p-3 bg-blue-50 text-blue-800 rounded-md mt-2">
-                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0"/>
-                <p className="text-xs">Saving this will update the "Machine Rate" value used in new estimates. You can manually override it below if needed.</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        </SectionCard>
+      </TabsContent>
 
-      {/* Engraving Laser Rates & Labor */}
-      <Card className="bg-white border-0 shadow-sm">
-        <CardHeader><CardTitle className="flex items-center gap-2"><DollarSign />Engraving Laser Rates & Labor</CardTitle></CardHeader>
-        <CardContent className="space-y-6 pt-6">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div><Label>Machine Rate ($/hour)</Label><Input type="number" value={settings.engraving_laser_machine_rate} onChange={(e) => updateSetting('engraving_laser_machine_rate', e.target.value)} disabled={isLocked}/></div>
-            <div><Label>Labor Rate ($/hour)</Label><Input type="number" value={settings.engraving_laser_labor_rate} onChange={(e) => updateSetting('engraving_laser_labor_rate', e.target.value)} disabled={isLocked}/></div>
-          </div>
-          <Separator />
+      {/* ===== General ===== */}
+      <TabsContent value="general" className="space-y-6">
+        <SectionCard title="General Shop Settings" description="Defaults applied across the laser module." icon={SettingsIcon}>
+          <NumberField
+            label="Letter Perimeter Factor"
+            name="laser_letter_perimeter_factor"
+            step="0.1"
+            help="Multiplier for calculating letter perimeter from letter height."
+          />
           <div>
-            <Label>Handling Time (% of Machine Time)</Label>
-            <div className="relative mt-1 max-w-xs">
-                <Input type="number" value={settings.engraving_handling_time_percentage} onChange={(e) => updateSetting('engraving_handling_time_percentage', e.target.value)} disabled={isLocked} className="pl-8"/>
-                <Percent className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            </div>
-            <p className="text-xs text-slate-500 mt-1">Labor for handling, setup, and cleanup calculated as a percentage of the total machine run time.</p>
-          </div>
-          <div>
-            <Label>Fixed Setup Time (hours)</Label>
-            <Input type="number" min="0" step="0.1" value={settings.min_engraving_laser_setup_hours} onChange={(e) => updateSetting('min_engraving_laser_setup_hours', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
-            <p className="text-xs text-slate-500 mt-1">A fixed setup time added to each project's labor cost.</p>
-          </div>
-          <div>
-            <Label>Fixed Material Setup Cost ($)</Label>
-            <Input type="number" min="0" step="1" value={settings.engraving_laser_fixed_material_setup_cost} onChange={(e) => updateSetting('engraving_laser_fixed_material_setup_cost', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
-            <p className="text-xs text-slate-500 mt-1">A fixed material/setup cost added to each project.</p>
-          </div>
-          <div>
-            <Label>Minimum Labor (hours)</Label>
-            <Input type="number" min="0" step="0.1" value={settings.min_engraving_laser_labor_hours} onChange={(e) => updateSetting('min_engraving_laser_labor_hours', e.target.value)} disabled={isLocked} className="mt-1 max-w-xs"/>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Engraving Laser Material Multipliers */}
-      <Card className="bg-white border-0 shadow-sm">
-        <CardHeader><CardTitle className="flex items-center gap-2"><Zap />Engraving Laser Material Time Multipliers</CardTitle></CardHeader>
-        <CardContent className="pt-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-            <h4 className="font-semibold text-slate-500 md:col-span-1">Material</h4>
-            <h4 className="font-semibold text-slate-500 md:col-span-1">Engrave Time Multiplier</h4>
-          </div>
-          {materials.map(mat => (
-            <div key={mat} className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 items-center">
-              <Label className="font-medium">{mat}</Label>
-              <Input type="number" step="0.1" value={settings[`${mat.toLowerCase()}_engrave_multiplier`]} onChange={(e) => updateSetting(`${mat.toLowerCase()}_engrave_multiplier`, e.target.value)} disabled={isLocked}/>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* Engraving Speed */}
-      <Card className="bg-white border-0 shadow-sm">
-        <CardHeader><CardTitle className="flex items-center gap-2"><Zap />Laser Engraving Speed</CardTitle></CardHeader>
-        <CardContent className="pt-6">
-          <div className="max-w-xs">
-            <Label>Engraving Speed (sq in/min)</Label>
-            <Input 
-              type="number" 
-              step="0.1"
-              value={settings.laser_engrave_speed_sqipm} 
-              onChange={(e) => updateSetting('laser_engrave_speed_sqipm', e.target.value)} 
-              disabled={isLocked} 
-              className="mt-1" 
+            <Label>Company Name</Label>
+            <Input
+              value={settings.company_name ?? ""}
+              onChange={(e) => updateSetting('company_name', e.target.value)}
+              disabled={isLocked}
+              className="mt-1"
             />
-            <p className="text-xs text-slate-500 mt-1">Square inches engraved per minute. Typical range: 3-10 sq in/min depending on detail level.</p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* General Shop Settings */}
-      <Card className="bg-white border-0 shadow-sm">
-        <CardHeader><CardTitle className="flex items-center gap-2"><Zap />General Shop Settings</CardTitle></CardHeader>
-        <CardContent className="space-y-6 pt-6">
-          <div><Label>Letter Perimeter Factor</Label><Input type="number" step="0.1" value={settings.laser_letter_perimeter_factor} onChange={(e) => updateSetting('laser_letter_perimeter_factor', e.target.value)} disabled={isLocked} className="max-w-xs"/><p className="text-xs text-slate-500 mt-1">Multiplier for calculating letter perimeter from height.</p></div>
-          <div><Label>Company Name</Label><Input value={settings.company_name} onChange={(e) => updateSetting('company_name', e.target.value)} disabled={isLocked}/></div>
-          <div><Label>Default Notes Template</Label><Textarea value={settings.default_notes_template} onChange={(e) => updateSetting('default_notes_template', e.target.value)} disabled={isLocked}/></div>
-        </CardContent>
-      </Card>
-    </div>
+          <div>
+            <Label>Default Notes Template</Label>
+            <Textarea
+              value={settings.default_notes_template ?? ""}
+              onChange={(e) => updateSetting('default_notes_template', e.target.value)}
+              disabled={isLocked}
+              className="mt-1"
+            />
+          </div>
+        </SectionCard>
+      </TabsContent>
+    </Tabs>
   );
 
   return (
     <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
       <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3"><Zap className="w-8 h-8" />Laser Settings</h1>
             <p className="text-slate-600">Configure parameters for the Laser Estimator module</p>
           </div>
-          <Button onClick={saveSettings} disabled={isSaving || isLocked} className="bg-green-600 hover:bg-green-700">{isSaving ? "Saving..." : <><Save className="w-4 h-4 mr-2" />Save All Settings</>}</Button>
+          <Button onClick={saveSettings} disabled={isSaving || isLocked} className="bg-green-600 hover:bg-green-700 text-white px-6 py-3">
+            {isSaving ? "Saving..." : <><Save className="w-4 h-4 mr-2" />Save Settings</>}
+          </Button>
         </div>
         
         <SettingsAuthWrapper 
@@ -580,6 +589,11 @@ export default function LaserSettings() {
           {settingsContent}
         </SettingsAuthWrapper>
 
+        <div className="mt-8 flex justify-end">
+          <Button onClick={saveSettings} disabled={isSaving || isLocked} className="bg-green-600 hover:bg-green-700 text-white px-8 py-3">
+            {isSaving ? "Saving..." : <><Save className="w-4 h-4 mr-2" />Save All Settings</>}
+          </Button>
+        </div>
       </div>
     </div>
   );
