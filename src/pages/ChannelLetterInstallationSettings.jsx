@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save, Wrench, DollarSign, Clock, Ruler } from "lucide-react";
+import { Save, Wrench, DollarSign, Clock, Ruler, AlertTriangle } from "lucide-react";
 import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
 
 const settingsDefinitions = [
@@ -32,15 +32,15 @@ const settingsDefinitions = [
   { name: "install_height_20_30ft", type: "number", category: "install_multipliers", description: "Height multiplier: 20-30 feet (lift required)", default: "1.6" },
   { name: "install_height_30plus_ft", type: "number", category: "install_multipliers", description: "Height multiplier: 30+ feet (crane/special equipment)", default: "2.0" },
   
-  // Condition Multipliers
-  { name: "install_thick_walls_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for thick or hollow walls", default: "1.2" },
-  { name: "install_parapet_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for parapet installations", default: "1.4" },
-  { name: "install_poor_electrical_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for poor electrical access", default: "1.3" },
-  { name: "install_escort_multiplier", type: "number", category: "install_multipliers", description: "Multiplier when an escort is required", default: "1.15" },
-  { name: "install_badging_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for badging / check-in procedures", default: "1.1" },
-  { name: "install_after_hours_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for after-hours / weekend installation", default: "1.5" },
-  { name: "install_set_hours_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for set-hours installation (fixed time window / scheduled appointment)", default: "1.15" },
-  { name: "install_poor_site_access_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for poor site access (no lift room, tight space, etc.)", default: "1.25" },
+  // Site Condition Multipliers — one per toggleable condition
+  { name: "install_thick_walls_multiplier", type: "number", category: "install_site_conditions", description: "Thick / Hollow Walls (brick veneer, masonry, hollow cavity)", default: "1.2" },
+  { name: "install_parapet_multiplier", type: "number", category: "install_site_conditions", description: "Parapet (working over rooftop edge wall)", default: "1.4" },
+  { name: "install_poor_electrical_multiplier", type: "number", category: "install_site_conditions", description: "Poor Electrical Access (difficult conduit / power routing)", default: "1.3" },
+  { name: "install_escort_multiplier", type: "number", category: "install_site_conditions", description: "Escort Required (must be escorted on-site at all times)", default: "1.15" },
+  { name: "install_badging_multiplier", type: "number", category: "install_site_conditions", description: "Badging / Check-in (security badge or sign-in required)", default: "1.1" },
+  { name: "install_after_hours_multiplier", type: "number", category: "install_site_conditions", description: "After-Hours / Weekend (night, early morning, or weekend install)", default: "1.5" },
+  { name: "install_set_hours_multiplier", type: "number", category: "install_site_conditions", description: "Set-Hours Installation (fixed time window / scheduled appointment)", default: "1.15" },
+  { name: "install_poor_site_access_multiplier", type: "number", category: "install_site_conditions", description: "Poor Site Access (no lift room, obstructions, tight space)", default: "1.25" },
 ];
 
 export default function ChannelLetterInstallationSettings() {
@@ -180,7 +180,8 @@ export default function ChannelLetterInstallationSettings() {
   const categoryDescriptions = {
     "install_pricing": "Define the core labor rates and base costs for installation projects.",
     "install_rates": "Set base hour rates for different letter sizes and installation types.",
-    "install_multipliers": "Adjust rates based on installation height, conditions, and complexity."
+    "install_multipliers": "Adjust rates based on installation height and type complexity.",
+    "install_site_conditions": "Labor multipliers for each toggleable site condition on a line item. 1.0 = no impact, 1.5 = 50% more time."
   };
 
   const renderCategory = (title, category, icon) => {
@@ -208,7 +209,8 @@ export default function ChannelLetterInstallationSettings() {
     <div className="space-y-8">
       {renderCategory("Pricing & Labor", "install_pricing", DollarSign)}
       {renderCategory("Base Installation Rates", "install_rates", Ruler)}
-      {renderCategory("Condition Multipliers", "install_multipliers", Clock)}
+      {renderCategory("Type & Height Multipliers", "install_multipliers", Clock)}
+      {renderCategory("Site Condition Multipliers", "install_site_conditions", AlertTriangle)}
     </div>
   );
 

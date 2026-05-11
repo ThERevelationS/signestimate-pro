@@ -10,8 +10,8 @@ const TYPES = [
     description: "Letters mounted flat to wall",
     example: "e.g. retail storefront, office lobby",
     images: [
-      "46f5905ee", "fd278dec8", "faf76c3b9", "542d1f9e2", "f0fded6fa",
-      "fda8d07c6", "21c9bc4fb", "b052daeed", "79c16ffc7", "80af1236c",
+      "c1dec958a", "7c8c1d09f", "2907d461a", "355d62b6a", "795df3288",
+      "216b21ecc", "abe8b7df1", "79b30b6d9", "70ddcec95", "ba6fb0479",
     ],
     accent: "border-blue-500 bg-blue-50 text-blue-900",
     accentDot: "bg-blue-500",
