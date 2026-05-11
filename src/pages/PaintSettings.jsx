@@ -66,8 +66,10 @@ const settingsDefinitions = [
     { name: "paint_mask_application_labor_rate_per_sqft", type: "number", category: "painting_labor", group: "mask", description: "Mask application labor ($/sqft)", default: "0.25" },
 
     // ===== Labor (times, multipliers, letter prep) =====
-    // Base
-    { name: "base_labor_hours_per_sqft", type: "number", category: "painting_labor", group: "labor", description: "Base labor hours per sq ft of paintable area", default: "0.05" },
+    // Base — split into prep + painting; the legacy combined field is kept in sync (prep + paint)
+    { name: "base_labor_hours_prep_per_sqft", type: "number", category: "painting_labor", group: "labor", description: "Material prep labor hours per sq ft of paintable area", default: "0.02" },
+    { name: "base_labor_hours_paint_per_sqft", type: "number", category: "painting_labor", group: "labor", description: "Painting labor hours per sq ft of paintable area", default: "0.03" },
+    { name: "base_labor_hours_per_sqft", type: "number", category: "painting_labor", group: "labor", description: "Base labor hours per sq ft (auto = prep + painting)", default: "0.05" },
     // Fixed times
     { name: "setup_time_labor_hours", type: "number", category: "painting_labor", group: "labor", description: "Fixed setup & cleanup hours per job", default: "0.5" },
     { name: "paint_mixing_labor_hours", type: "number", category: "painting_labor", group: "labor", description: "Mixing time per gallon (hours)", default: "0.25" },
@@ -265,6 +267,16 @@ export default function PaintSettings() {
   useEffect(() => {
     initializeAndLoad();
   }, [initializeAndLoad]);
+
+  // Keep the legacy combined field in sync so the estimator math (which uses base_labor_hours_per_sqft) stays correct.
+  useEffect(() => {
+    const prep = parseFloat(settings.base_labor_hours_prep_per_sqft) || 0;
+    const paint = parseFloat(settings.base_labor_hours_paint_per_sqft) || 0;
+    const sum = (prep + paint).toFixed(4);
+    if (settings.base_labor_hours_per_sqft !== sum) {
+      setSettings(prev => ({ ...prev, base_labor_hours_per_sqft: sum }));
+    }
+  }, [settings.base_labor_hours_prep_per_sqft, settings.base_labor_hours_paint_per_sqft]);
 
   useEffect(() => {
     const paintCostPerGallon = getCostPerGallon(
@@ -622,7 +634,7 @@ export default function PaintSettings() {
   const sidesAndColor = inputsByName(['one_side_paint_multiplier','both_sides_paint_multiplier','additional_color_multiplier']);
   const complexityMults = inputsByName(['simple_complexity_multiplier','moderate_complexity_multiplier','complex_complexity_multiplier']);
   const letterPrep = inputsByName(['letter_perimeter_factor','lettering_extra_small_prep_multiplier','lettering_small_prep_multiplier','lettering_normal_prep_multiplier','lettering_medium_prep_multiplier','lettering_large_prep_multiplier','lettering_extra_large_prep_multiplier']);
-  const baseLabor = inputsByName(['base_labor_hours_per_sqft']);
+  const baseLabor = inputsByName(['base_labor_hours_prep_per_sqft','base_labor_hours_paint_per_sqft']);
 
   const liquidRateCard = (
     <Card className="bg-blue-50 border-blue-200">
@@ -722,7 +734,7 @@ export default function PaintSettings() {
       <TabsContent value="labor" className="space-y-6">
         <SectionCard
           title="Base Painting Labor"
-          description="Hours of painting labor per square foot of paintable area. Typical: 0.03–0.08 hr/sqft. (0.05 = 3 min/sqft)"
+          description={`Two components, summed per sq ft of paintable area. Total = ${(parseFloat(settings.base_labor_hours_per_sqft)||0).toFixed(4)} hr/sqft.`}
           icon={Clock}
           defs={baseLabor}
         />
