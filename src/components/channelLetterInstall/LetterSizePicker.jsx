@@ -1,4 +1,7 @@
 import React from "react";
+import CyclingImage from "./CyclingImage";
+
+const BASE = "https://media.base44.com/images/public/68a5a85045cf8570330146ef/";
 
 const SIZES = [
   {
@@ -6,44 +9,62 @@ const SIZES = [
     label: "XS",
     range: '2"-8"',
     example: "Door / suite plaque",
-    image: "https://media.base44.com/images/public/68a5a85045cf8570330146ef/555cbbeca_generated_image.png",
+    images: [
+      "555cbbeca", "47cc68c3c", "0ae8a25a5", "86981777e", "595485382",
+      "fca2b7964", "81c712070", "850521dd1", "fe029cb70", "612e64f5f",
+    ],
   },
   {
     id: "small",
     label: "Small",
     range: '8"-12"',
     example: "Window / shop sign",
-    image: "https://media.base44.com/images/public/68a5a85045cf8570330146ef/e2e2d9788_generated_image.png",
+    images: [
+      "e2e2d9788", "c8c64cc17", "d1f219407", "319d90fc6", "4b34667b7",
+      "ba5486827", "e4ce924fb", "7a979f1a5", "f96f64467",
+    ],
   },
   {
     id: "medium",
     label: "Medium",
     range: '12"-24"',
     example: "Standard storefront",
-    image: "https://media.base44.com/images/public/68a5a85045cf8570330146ef/f75172321_generated_image.png",
+    images: [
+      "f75172321", "5deeae55b", "32e8d9f84", "3ff95f7ac", "23d74bd82",
+      "0d047f81d", "dbd1cb24e", "56f698c81", "e34477987", "5cb8deeb8",
+    ],
   },
   {
     id: "large",
     label: "Large",
     range: '24"-48"',
     example: "Building façade",
-    image: "https://media.base44.com/images/public/68a5a85045cf8570330146ef/61ed95929_generated_image.png",
+    images: [
+      "61ed95929", "1015872f4", "ee23edf18", "c6d1d57da", "e458fd3e2",
+      "b1bad6ab4", "8b04ed34e", "5cbe67a69", "1133885b1", "f36e8b4cc",
+    ],
   },
   {
     id: "extra_large",
     label: "XL",
     range: '48"-60"',
     example: "Highway-visible sign",
-    image: "https://media.base44.com/images/public/68a5a85045cf8570330146ef/0a7924cfe_generated_image.png",
+    images: [
+      "0a7924cfe", "edaf2fcd6", "78a3b5323", "6d0ba4af5", "fa9670076",
+      "a5e6bb7d1", "10e103fd9", "68799ccfd", "e5b918e05", "3911df154",
+    ],
   },
   {
     id: "extra_extra_large",
     label: "XXL",
     range: '60"+',
     example: "Monument / tower sign",
-    image: "https://media.base44.com/images/public/68a5a85045cf8570330146ef/918d12caf_generated_image.png",
+    images: [
+      "918d12caf", "0fd09f6ba", "430500a5c", "72eb52e51", "985bb14fd",
+      "dceb534d3", "8ddf701e5", "ec2aad86d", "684f4bda2", "e8fa5c330",
+    ],
   },
-];
+].map(s => ({ ...s, images: s.images.map(id => `${BASE}${id}_generated_image.png`) }));
 
 export default function LetterSizePicker({ value, onChange }) {
   return (
@@ -62,14 +83,12 @@ export default function LetterSizePicker({ value, onChange }) {
             }`}
             title={`${s.range} — ${s.example}`}
           >
-            <div className="w-full aspect-[4/3] bg-slate-100 flex items-center justify-center overflow-hidden">
-              <img
-                src={s.image}
-                alt={`${s.label} channel letters`}
-                className="w-full h-full object-contain"
-                loading="lazy"
-              />
-            </div>
+            <CyclingImage
+              images={s.images}
+              alt={`${s.label} channel letters`}
+              className="w-full aspect-[4/3]"
+              intervalMs={3000}
+            />
             <div className="p-1.5 text-center">
               <div className="text-[11px] font-semibold">{s.label}</div>
               <div className="text-[9px] opacity-70">{s.range}</div>
