@@ -111,7 +111,7 @@ export default function ConditionPicker({ values, onChange }) {
               images={c.images}
               alt={c.label}
               className="w-full aspect-video"
-              intervalMs={3000}
+              intervalMs={5000}
             />
             <div className="p-2.5">
               <div className="text-sm font-semibold">{c.label}</div>
