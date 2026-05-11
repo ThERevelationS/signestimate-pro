@@ -61,6 +61,11 @@
       "default": 0,
       "description": "One-time delivery/pickup fee"
     },
+    "mpg": {
+      "type": "number",
+      "default": 0,
+      "description": "Miles per gallon \u2014 only applies to owned vehicles (trucks). Used for travel fuel cost calculations."
+    },
     "rental_company": {
       "type": "string"
     },

@@ -4,9 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save, Wrench, DollarSign, Clock, Ruler, AlertTriangle, CheckCircle2, Layers } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Save, Wrench, DollarSign, Clock, Ruler, AlertTriangle, CheckCircle2, Layers, Building2, Fuel, RefreshCw } from "lucide-react";
 import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
+import { useToast } from "@/components/ui/use-toast";
 import { WALL_MATERIALS } from "@/components/channelLetterInstall/wallMaterials";
+import { refreshFuelPrice } from "@/functions/refreshFuelPrice";
 
 const settingsDefinitions = [
   // Pricing & Labor
@@ -33,7 +36,7 @@ const settingsDefinitions = [
   { name: "install_height_20_30ft", type: "number", category: "install_multipliers", label: "Height 20–30 ft", suffix: "×", description: "Lift required", default: "1.6" },
   { name: "install_height_30plus_ft", type: "number", category: "install_multipliers", label: "Height 30+ ft", suffix: "×", description: "Crane / special equipment", default: "2.0" },
 
-  // Site Condition Multipliers — one per toggleable condition
+  // Site Condition Multipliers
   { name: "install_thick_walls_multiplier", type: "number", category: "install_site_conditions", label: "Thick / Hollow Walls", suffix: "×", description: "Brick veneer, masonry, hollow cavity", default: "1.2" },
   { name: "install_parapet_multiplier", type: "number", category: "install_site_conditions", label: "Parapet", suffix: "×", description: "Working over rooftop edge wall", default: "1.4" },
   { name: "install_poor_electrical_multiplier", type: "number", category: "install_site_conditions", label: "Poor Electrical Access", suffix: "×", description: "Difficult conduit / power routing", default: "1.3" },
@@ -53,48 +56,53 @@ const settingsDefinitions = [
     description: m.description,
     default: String(m.default),
   })),
+
+  // Shop & Travel
+  { name: "install_shop_address", type: "text", category: "install_shop_travel", label: "Shop Address", description: "Starting point for all installation travel calculations", default: "417 Northland Blvd, Cincinnati, OH 45246" },
+  { name: "install_fuel_price_per_gallon", type: "number", category: "install_shop_travel", label: "Current Fuel Price", suffix: "$/gal", description: "Auto-refreshed daily from regional AAA data. Manual edits will be overwritten by tomorrow's refresh.", default: "3.50" },
+  { name: "install_travel_labor_rate", type: "number", category: "install_shop_travel", label: "Travel Labor Rate", suffix: "$/hr", description: "Hourly rate billed for crew travel time (separate from on-site labor)", default: "45" },
+  { name: "install_travel_avg_speed_mph", type: "number", category: "install_shop_travel", label: "Average Travel Speed", suffix: "mph", description: "Used to estimate travel time from miles (round-trip)", default: "45" },
+  { name: "install_default_truck_mpg", type: "number", category: "install_shop_travel", label: "Default Truck MPG", suffix: "mpg", description: "Fallback MPG if no owned truck is selected on the line item", default: "14" },
+  { name: "install_travel_overhead_per_mile", type: "number", category: "install_shop_travel", label: "Vehicle Overhead", suffix: "$/mile", description: "Maintenance / wear allowance per mile (above fuel)", default: "0.25" },
+  { name: "install_min_travel_charge", type: "number", category: "install_shop_travel", label: "Minimum Travel Charge", suffix: "$", description: "Floor amount applied if any travel is required", default: "0" },
 ];
 
-const CATEGORY_META = {
-  install_pricing: {
+const TAB_META = {
+  pricing_labor: {
     title: "Pricing & Labor",
-    description: "Core hourly rate applied to all installation labor.",
     icon: DollarSign,
-    accent: "from-emerald-500/10 to-emerald-500/0",
-    iconColor: "text-emerald-600",
-    iconBg: "bg-emerald-50",
+    description: "Core hourly rate applied to all installation labor.",
+    categories: ["install_pricing"],
   },
-  install_rates: {
-    title: "Base Installation Rates",
-    description: "Time required per letter by size and per foot of raceway.",
+  base_rates: {
+    title: "Base Rates",
     icon: Ruler,
-    accent: "from-blue-500/10 to-blue-500/0",
-    iconColor: "text-blue-600",
-    iconBg: "bg-blue-50",
+    description: "Time required per letter by size and per foot of raceway.",
+    categories: ["install_rates"],
   },
-  install_multipliers: {
-    title: "Type & Height Multipliers",
-    description: "Adjustments based on installation type and working height.",
+  multipliers: {
+    title: "Type & Height",
     icon: Clock,
-    accent: "from-amber-500/10 to-amber-500/0",
-    iconColor: "text-amber-600",
-    iconBg: "bg-amber-50",
+    description: "Adjustments based on installation type and working height.",
+    categories: ["install_multipliers"],
   },
-  install_site_conditions: {
-    title: "Site Condition Multipliers",
-    description: "Per-condition labor multipliers. 1.0 = no impact, 1.5 = 50% more time.",
+  site_conditions: {
+    title: "Site Conditions",
     icon: AlertTriangle,
-    accent: "from-rose-500/10 to-rose-500/0",
-    iconColor: "text-rose-600",
-    iconBg: "bg-rose-50",
+    description: "Per-condition labor multipliers. 1.0 = no impact, 1.5 = 50% more time.",
+    categories: ["install_site_conditions"],
   },
-  install_wall_materials: {
-    title: "Wall Material Multipliers",
-    description: "Labor multiplier applied based on the exterior wall material the letters are installed into.",
+  wall_materials: {
+    title: "Wall Materials",
     icon: Layers,
-    accent: "from-purple-500/10 to-purple-500/0",
-    iconColor: "text-purple-600",
-    iconBg: "bg-purple-50",
+    description: "Labor multiplier applied based on the exterior wall material the letters are installed into.",
+    categories: ["install_wall_materials"],
+  },
+  shop_travel: {
+    title: "Shop & Travel",
+    icon: Building2,
+    description: "Shop starting location and travel cost parameters. Fuel price auto-updates daily.",
+    categories: ["install_shop_travel"],
   },
 };
 
@@ -104,7 +112,20 @@ export default function ChannelLetterInstallationSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [savedFlash, setSavedFlash] = useState(false);
+  const [refreshingFuel, setRefreshingFuel] = useState(false);
+  const { toast } = useToast();
+
+  const showSavedToast = (message = "Settings saved") => {
+    toast({
+      duration: 2000,
+      description: (
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="w-5 h-5 text-green-600" />
+          <span className="font-medium text-slate-900">{message}</span>
+        </div>
+      ),
+    });
+  };
 
   const initializeAndLoad = useCallback(async () => {
     setIsLoading(true);
@@ -125,7 +146,7 @@ export default function ChannelLetterInstallationSettings() {
 
       setSettings(finalSettings);
     } catch (error) {
-      console.error('Error loading settings:', error);
+      console.error("Error loading settings:", error);
       const defaultSettings = {};
       settingsDefinitions.forEach(def => { defaultSettings[def.name] = def.default; });
       setSettings(defaultSettings);
@@ -170,12 +191,13 @@ export default function ChannelLetterInstallationSettings() {
 
       if (updates.length > 0 || creates.length > 0) {
         await Promise.all([...updates, ...creates]);
+        showSavedToast();
+      } else {
+        showSavedToast("No changes to save");
       }
-      setSavedFlash(true);
-      setTimeout(() => setSavedFlash(false), 2200);
     } catch (error) {
-      console.error('Save failed:', error);
-      alert('Save failed: ' + (error.message || 'An unknown error occurred.'));
+      console.error("Save failed:", error);
+      toast({ duration: 3000, variant: "destructive", description: "Save failed: " + (error.message || "Unknown error") });
     } finally {
       setIsSaving(false);
     }
@@ -183,6 +205,24 @@ export default function ChannelLetterInstallationSettings() {
 
   const updateSetting = (key, value) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleRefreshFuel = async () => {
+    setRefreshingFuel(true);
+    try {
+      const res = await refreshFuelPrice({});
+      const price = res?.data?.price_per_gallon;
+      if (price) {
+        setSettings(prev => ({ ...prev, install_fuel_price_per_gallon: price.toFixed(3) }));
+        showSavedToast(`Fuel price updated: $${price.toFixed(3)}/gal`);
+      } else {
+        toast({ variant: "destructive", description: "Could not refresh fuel price" });
+      }
+    } catch (e) {
+      toast({ variant: "destructive", description: "Refresh failed: " + e.message });
+    } finally {
+      setRefreshingFuel(false);
+    }
   };
 
   if (isLoading) {
@@ -202,74 +242,113 @@ export default function ChannelLetterInstallationSettings() {
     if (def.name.includes("multiplier")) step = "0.05";
     else if (def.name.includes("rate") && !def.name.includes("labor_rate")) step = "0.25";
 
+    if (def.type === "text") {
+      return (
+        <div key={def.name} className="md:col-span-3">
+          <div className="flex items-baseline justify-between mb-1.5">
+            <Label htmlFor={def.name} className="text-sm font-medium text-slate-800">{def.label}</Label>
+          </div>
+          <Input
+            type="text"
+            id={def.name}
+            value={value || ""}
+            onChange={(e) => updateSetting(def.name, e.target.value)}
+            disabled={isLocked}
+            className="h-10 bg-white border-slate-200 focus:border-slate-400 focus:ring-0 text-sm transition-colors"
+          />
+          {def.description && <p className="mt-1.5 text-xs text-slate-500 leading-tight">{def.description}</p>}
+        </div>
+      );
+    }
+
+    const isFuel = def.name === "install_fuel_price_per_gallon";
+
     return (
-      <div key={def.name} className="group">
+      <div key={def.name}>
         <div className="flex items-baseline justify-between mb-1.5">
-          <Label htmlFor={def.name} className="text-sm font-medium text-slate-800">
+          <Label htmlFor={def.name} className="text-sm font-medium text-slate-800 flex items-center gap-1.5">
+            {isFuel && <Fuel className="w-3.5 h-3.5 text-emerald-600" />}
             {def.label}
           </Label>
-          {def.suffix && (
-            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">
-              {def.suffix}
-            </span>
+          {def.suffix && <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">{def.suffix}</span>}
+        </div>
+        <div className="flex gap-2">
+          <Input
+            type="number"
+            step={step}
+            id={def.name}
+            value={value || ""}
+            onChange={(e) => updateSetting(def.name, e.target.value)}
+            disabled={isLocked}
+            className="h-10 bg-white border-slate-200 focus:border-slate-400 focus:ring-0 text-sm tabular-nums font-medium transition-colors"
+            min="0"
+          />
+          {isFuel && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshFuel}
+              disabled={isLocked || refreshingFuel}
+              className="h-10 px-3 whitespace-nowrap"
+              title="Refresh fuel price now"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshingFuel ? "animate-spin" : ""}`} />
+            </Button>
           )}
         </div>
-        <Input
-          type="number"
-          step={step}
-          id={def.name}
-          value={value || ''}
-          onChange={(e) => updateSetting(def.name, e.target.value)}
-          disabled={isLocked}
-          className="h-10 bg-white border-slate-200 focus:border-slate-400 focus:ring-0 text-sm tabular-nums font-medium transition-colors"
-          min="0"
-        />
-        {def.description && (
-          <p className="mt-1.5 text-xs text-slate-500 leading-tight">{def.description}</p>
-        )}
+        {def.description && <p className="mt-1.5 text-xs text-slate-500 leading-tight">{def.description}</p>}
       </div>
     );
   };
 
-  const renderCategory = (categoryKey) => {
-    const meta = CATEGORY_META[categoryKey];
-    if (!meta) return null;
+  const renderTabContent = (tabKey) => {
+    const meta = TAB_META[tabKey];
+    const defs = settingsDefinitions.filter(d => meta.categories.includes(d.category));
     const Icon = meta.icon;
-    const filteredSettings = settingsDefinitions.filter(def => def.category === categoryKey);
-    if (filteredSettings.length === 0) return null;
 
     return (
-      <Card key={categoryKey} className="bg-white border border-slate-200/80 shadow-sm overflow-hidden rounded-2xl">
-        <div className={`h-1 bg-gradient-to-r ${meta.accent} from-current to-transparent ${meta.iconColor}`} />
-        <CardHeader className="pb-4">
+      <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl overflow-hidden">
+        <CardHeader className="pb-4 border-b border-slate-100">
           <div className="flex items-start gap-3">
-            <div className={`w-10 h-10 rounded-xl ${meta.iconBg} flex items-center justify-center flex-shrink-0`}>
-              <Icon className={`w-5 h-5 ${meta.iconColor}`} />
+            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+              <Icon className="w-5 h-5 text-slate-700" />
             </div>
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-base font-semibold text-slate-900 tracking-tight">
-                {meta.title}
-              </CardTitle>
-              <CardDescription className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                {meta.description}
-              </CardDescription>
+              <CardTitle className="text-base font-semibold text-slate-900 tracking-tight">{meta.title}</CardTitle>
+              <CardDescription className="text-xs text-slate-500 mt-0.5 leading-relaxed">{meta.description}</CardDescription>
             </div>
             <div className="text-[10px] uppercase tracking-wider text-slate-400 font-medium px-2 py-1 bg-slate-50 rounded-md">
-              {filteredSettings.length} {filteredSettings.length === 1 ? 'setting' : 'settings'}
+              {defs.length} {defs.length === 1 ? "setting" : "settings"}
             </div>
           </div>
         </CardHeader>
-        <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 pt-0 pb-6">
-          {filteredSettings.map(def => renderSettingInput(def))}
+        <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 pt-6 pb-6">
+          {defs.map(def => renderSettingInput(def))}
         </CardContent>
       </Card>
     );
   };
 
   const managementContent = (
-    <div className="space-y-6">
-      {Object.keys(CATEGORY_META).map(key => renderCategory(key))}
-    </div>
+    <Tabs defaultValue="pricing_labor" className="w-full">
+      <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 mb-6 h-auto p-1">
+        {Object.entries(TAB_META).map(([key, meta]) => {
+          const Icon = meta.icon;
+          return (
+            <TabsTrigger key={key} value={key} className="flex items-center gap-2 py-2.5 text-xs">
+              <Icon className="w-4 h-4" />
+              <span className="hidden sm:inline">{meta.title}</span>
+            </TabsTrigger>
+          );
+        })}
+      </TabsList>
+      {Object.keys(TAB_META).map(key => (
+        <TabsContent key={key} value={key} className="space-y-4">
+          {renderTabContent(key)}
+        </TabsContent>
+      ))}
+    </Tabs>
   );
 
   return (
@@ -288,11 +367,9 @@ export default function ChannelLetterInstallationSettings() {
                 <Wrench className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-                  Installation Settings
-                </h1>
+                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Installation Settings</h1>
                 <p className="text-sm text-slate-500 mt-1">
-                  Fine-tune labor rates, base hours, and condition multipliers used by the estimator.
+                  Fine-tune labor rates, multipliers, and travel costs used by the estimator.
                 </p>
               </div>
             </div>
@@ -306,11 +383,6 @@ export default function ChannelLetterInstallationSettings() {
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
                   Saving…
                 </>
-              ) : savedFlash ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Saved
-                </>
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" /> Save Settings
@@ -320,33 +392,18 @@ export default function ChannelLetterInstallationSettings() {
           </div>
         </div>
 
-        <SettingsAuthWrapper
-          correctPassword="Cinci2467"
-          onUnlock={() => setIsLocked(false)}
-          user={currentUser}
-        >
+        <SettingsAuthWrapper correctPassword="Cinci2467" onUnlock={() => setIsLocked(false)} user={currentUser}>
           {managementContent}
         </SettingsAuthWrapper>
       </div>
 
-      {/* Sticky save bar */}
       {!isLocked && (
         <div className="fixed bottom-0 left-0 right-0 lg:left-[var(--sidebar-width,16rem)] bg-white/80 backdrop-blur-md border-t border-slate-200 px-6 py-3 z-40">
           <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
             <div className="text-xs text-slate-500">
-              {savedFlash ? (
-                <span className="flex items-center gap-2 text-emerald-600 font-medium">
-                  <CheckCircle2 className="w-4 h-4" /> All changes saved
-                </span>
-              ) : (
-                <span>Changes are saved manually — remember to click save.</span>
-              )}
+              Changes are saved manually — click save when you're done.
             </div>
-            <Button
-              onClick={saveSettings}
-              disabled={isSaving}
-              className="bg-slate-900 hover:bg-slate-800 text-white h-10 px-5 rounded-xl"
-            >
+            <Button onClick={saveSettings} disabled={isSaving} className="bg-slate-900 hover:bg-slate-800 text-white h-10 px-5 rounded-xl">
               {isSaving ? "Saving…" : <><Save className="w-4 h-4 mr-2" /> Save Settings</>}
             </Button>
           </div>
