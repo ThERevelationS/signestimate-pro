@@ -213,12 +213,20 @@ export default function NewLaserEstimate() {
     let totalLaborCost = 0;
     let totalSuppliesCost = 0;
 
-    const updatedItems = project.items.map((item) => {
-      const cutTimeMinutes = item.total_cut_length_inches / (item.cut_speed_ipm || 20);
-      const engraveTimeMinutes = (item.engrave_area_sqin * item.quantity) / (item.engrave_speed_sqipm || 5);
+    // Cut/engrave speeds are stored as mm/sec and mm²/sec.
+    // Convert lengths/areas from inches to mm (1 in = 25.4 mm) before dividing.
+    const MM_PER_IN = 25.4;
+    const SQMM_PER_SQIN = 25.4 * 25.4;
 
-      const cutTimeHours = cutTimeMinutes / 60;
-      const engraveTimeHours = engraveTimeMinutes / 60;
+    const updatedItems = project.items.map((item) => {
+      const cutLengthMm = item.total_cut_length_inches * MM_PER_IN;
+      const engraveAreaSqMm = item.engrave_area_sqin * item.quantity * SQMM_PER_SQIN;
+
+      const cutTimeSeconds = cutLengthMm / (item.cut_speed_ipm || 20);
+      const engraveTimeSeconds = engraveAreaSqMm / (item.engrave_speed_sqipm || 5);
+
+      const cutTimeHours = cutTimeSeconds / 3600;
+      const engraveTimeHours = engraveTimeSeconds / 3600;
       const machineTimeHours = cutTimeHours + engraveTimeHours;
 
       // Rates
@@ -1527,7 +1535,7 @@ Best regards`;
                             <p className="text-sm text-blue-800">
                               <strong>Total Cut Length:</strong> {item.total_cut_length_inches.toFixed(2)}" 
                               <span className="mx-2">•</span>
-                              <strong>Cut Speed:</strong> {item.cut_speed_ipm.toFixed(1)} in/min
+                              <strong>Cut Speed:</strong> {item.cut_speed_ipm.toFixed(1)} mm/sec
                             </p>
                           </div>
                     }
@@ -1547,7 +1555,7 @@ Best regards`;
 
                             {item.engrave_area_sqin > 0 &&
                       <p className="text-xs text-slate-500 mt-1">
-                                Engrave Speed: {item.engrave_speed_sqipm.toFixed(1)} sq in/min
+                                Engrave Speed: {item.engrave_speed_sqipm.toFixed(1)} mm²/sec
                               </p>
                       }
                           </div>

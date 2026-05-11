@@ -500,10 +500,10 @@ export default function LaserSettings() {
         <SectionCard title="Engraving Speed" description="How fast the engraving laser removes material." icon={Clock}>
           <div className="max-w-xs">
             <NumberField
-              label="Engraving Speed (sq in/min)"
+              label="Engraving Speed (mm²/sec)"
               name="laser_engrave_speed_sqipm"
               step="0.1"
-              help="Typical range: 3–10 sq in/min depending on detail level."
+              help="Area engraved per second."
               {...fp('laser_engrave_speed_sqipm')}
             />
           </div>
@@ -514,7 +514,7 @@ export default function LaserSettings() {
       <TabsContent value="shared" className="space-y-6">
         <SectionCard
           title="Parameter Laser — Cut Speed by Thickness"
-          description="Cut speed (inches/min) for each material thickness. Used to estimate machine time."
+          description="Cut speed (mm/sec) for each material thickness. Used to estimate machine time."
           icon={Clock}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
@@ -523,9 +523,9 @@ export default function LaserSettings() {
               return (
                 <NumberField
                   key={size}
-                  label={`Cut Speed for ${size}" (in/min)`}
+                  label={`Cut Speed for ${size}" (mm/sec)`}
                   name={key}
-                  step="1"
+                  step="0.1"
                   {...fp(key)}
                 />
               );
