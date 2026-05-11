@@ -14,6 +14,38 @@ import { useToast } from "@/components/ui/use-toast";
 const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/8", "1/2", "3/4"];
 const materials = ["Acrylic", "Wood", "Leather"];
 
+// Defined OUTSIDE the component so they keep stable identity across renders.
+// (Inline-defined components would unmount/remount every render and steal focus.)
+const SectionCard = ({ title, description, icon: Icon, children }) => (
+  <Card className="bg-white border-0 shadow-sm">
+    <CardHeader>
+      <CardTitle className="flex items-center gap-3 text-base font-semibold text-slate-900">
+        {Icon && <Icon className="w-5 h-5 text-slate-500" />}
+        {title}
+      </CardTitle>
+      {description && <CardDescription>{description}</CardDescription>}
+    </CardHeader>
+    <CardContent className="space-y-4">
+      {children}
+    </CardContent>
+  </Card>
+);
+
+const NumberField = ({ label, name, step = "0.01", help, value, onChange, disabled }) => (
+  <div>
+    <Label>{label}</Label>
+    <Input
+      type="number"
+      step={step}
+      value={value ?? ""}
+      onChange={(e) => onChange(name, e.target.value)}
+      disabled={disabled}
+      className="mt-1"
+    />
+    {help && <p className="text-xs text-slate-500 mt-1">{help}</p>}
+  </div>
+);
+
 export default function LaserSettings() {
   const [isLocked, setIsLocked] = useState(true);
   const [settings, setSettings] = useState({});
@@ -320,36 +352,8 @@ export default function LaserSettings() {
 
   if (isLoading) return <div className="p-6 md:p-8 bg-slate-50 min-h-screen flex items-center justify-center"><p className="text-slate-600">Loading settings...</p></div>;
 
-  /* ====== Reusable bits ====== */
-  const SectionCard = ({ title, description, icon: Icon, children }) => (
-    <Card className="bg-white border-0 shadow-sm">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-3 text-base font-semibold text-slate-900">
-          {Icon && <Icon className="w-5 h-5 text-slate-500" />}
-          {title}
-        </CardTitle>
-        {description && <CardDescription>{description}</CardDescription>}
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {children}
-      </CardContent>
-    </Card>
-  );
-
-  const NumberField = ({ label, name, step = "0.01", help }) => (
-    <div>
-      <Label>{label}</Label>
-      <Input
-        type="number"
-        step={step}
-        value={settings[name] ?? ""}
-        onChange={(e) => updateSetting(name, e.target.value)}
-        disabled={isLocked}
-        className="mt-1"
-      />
-      {help && <p className="text-xs text-slate-500 mt-1">{help}</p>}
-    </div>
-  );
+  // Common props injected into every NumberField so call sites stay short.
+  const fp = (name) => ({ value: settings[name], onChange: updateSetting, disabled: isLocked });
 
   /* ====== Cost calculator block (re-used for both lasers) ====== */
   const renderCostCalculator = (prefix, rateState, saveTargetKey, accentClass) => (
@@ -366,22 +370,22 @@ export default function LaserSettings() {
           <div className="space-y-4">
             <h4 className="font-medium text-slate-800">Equipment Information</h4>
             <div className="grid md:grid-cols-2 gap-4">
-              <NumberField label="Laser Purchase Price ($)" name={`${prefix}_purchase_price`} step="1" />
-              <NumberField label="Expected Lifespan (years)" name={`${prefix}_lifespan_years`} step="1" />
-              <NumberField label="Usage Hours per Week" name={`${prefix}_usage_hours_per_week`} step="1" />
-              <NumberField label="CO2 Tube Purchase Price ($)" name={`${prefix}_tube_purchase_price`} step="1" />
-              <NumberField label="CO2 Tube Lifespan (hours)" name={`${prefix}_tube_lifespan_hours`} step="100" />
+              <NumberField label="Laser Purchase Price ($)" name={`${prefix}_purchase_price`} step="1" {...fp(`${prefix}_purchase_price`)} />
+              <NumberField label="Expected Lifespan (years)" name={`${prefix}_lifespan_years`} step="1" {...fp(`${prefix}_lifespan_years`)} />
+              <NumberField label="Usage Hours per Week" name={`${prefix}_usage_hours_per_week`} step="1" {...fp(`${prefix}_usage_hours_per_week`)} />
+              <NumberField label="CO2 Tube Purchase Price ($)" name={`${prefix}_tube_purchase_price`} step="1" {...fp(`${prefix}_tube_purchase_price`)} />
+              <NumberField label="CO2 Tube Lifespan (hours)" name={`${prefix}_tube_lifespan_hours`} step="100" {...fp(`${prefix}_tube_lifespan_hours`)} />
             </div>
           </div>
           <Separator />
           <div className="space-y-4">
             <h4 className="font-medium text-slate-800">Maintenance & Power</h4>
             <div className="grid md:grid-cols-2 gap-4">
-              <NumberField label="Laser Annual Maintenance ($)" name={`${prefix}_annual_maintenance_cost`} step="1" />
-              <NumberField label="Chiller Annual Maintenance ($)" name={`${prefix}_chiller_annual_maintenance_cost`} step="1" />
-              <NumberField label="Laser Power (kW)" name={`${prefix}_power_consumption_kw`} step="0.1" />
-              <NumberField label="Chiller Power (kW)" name={`${prefix}_chiller_power_consumption_kw`} step="0.1" />
-              <NumberField label="Blower Power (kW)" name={`${prefix}_blower_power_consumption_kw`} step="0.1" />
+              <NumberField label="Laser Annual Maintenance ($)" name={`${prefix}_annual_maintenance_cost`} step="1" {...fp(`${prefix}_annual_maintenance_cost`)} />
+              <NumberField label="Chiller Annual Maintenance ($)" name={`${prefix}_chiller_annual_maintenance_cost`} step="1" {...fp(`${prefix}_chiller_annual_maintenance_cost`)} />
+              <NumberField label="Laser Power (kW)" name={`${prefix}_power_consumption_kw`} step="0.1" {...fp(`${prefix}_power_consumption_kw`)} />
+              <NumberField label="Chiller Power (kW)" name={`${prefix}_chiller_power_consumption_kw`} step="0.1" {...fp(`${prefix}_chiller_power_consumption_kw`)} />
+              <NumberField label="Blower Power (kW)" name={`${prefix}_blower_power_consumption_kw`} step="0.1" {...fp(`${prefix}_blower_power_consumption_kw`)} />
             </div>
           </div>
         </div>
@@ -419,8 +423,8 @@ export default function LaserSettings() {
   const renderRatesAndLabor = (prefix) => (
     <SectionCard title="Rates & Labor" description="Hourly rates, handling time, and project-level minimums." icon={DollarSign}>
       <div className="grid md:grid-cols-2 gap-6">
-        <NumberField label="Machine Rate ($/hour)" name={`${prefix}_machine_rate`} step="1" />
-        <NumberField label="Labor Rate ($/hour)" name={`${prefix}_labor_rate`} step="1" />
+        <NumberField label="Machine Rate ($/hour)" name={`${prefix}_machine_rate`} step="1" {...fp(`${prefix}_machine_rate`)} />
+        <NumberField label="Labor Rate ($/hour)" name={`${prefix}_labor_rate`} step="1" {...fp(`${prefix}_labor_rate`)} />
       </div>
       <Separator />
       <div>
@@ -438,9 +442,9 @@ export default function LaserSettings() {
         <p className="text-xs text-slate-500 mt-1">Labor for handling, setup, and cleanup, as a % of total machine run time.</p>
       </div>
       <div className="grid md:grid-cols-3 gap-6">
-        <NumberField label="Fixed Setup Time (hours)" name={`min_${prefix}_setup_hours`} step="0.1" help="Fixed setup time added per project." />
-        <NumberField label="Fixed Material Setup Cost ($)" name={`${prefix}_fixed_material_setup_cost`} step="1" help="Fixed material/setup fee per project." />
-        <NumberField label="Minimum Labor (hours)" name={`min_${prefix}_labor_hours`} step="0.1" help="Floor on billable labor." />
+        <NumberField label="Fixed Setup Time (hours)" name={`min_${prefix}_setup_hours`} step="0.1" help="Fixed setup time added per project." {...fp(`min_${prefix}_setup_hours`)} />
+        <NumberField label="Fixed Material Setup Cost ($)" name={`${prefix}_fixed_material_setup_cost`} step="1" help="Fixed material/setup fee per project." {...fp(`${prefix}_fixed_material_setup_cost`)} />
+        <NumberField label="Minimum Labor (hours)" name={`min_${prefix}_labor_hours`} step="0.1" help="Floor on billable labor." {...fp(`min_${prefix}_labor_hours`)} />
       </div>
     </SectionCard>
   );
@@ -499,6 +503,7 @@ export default function LaserSettings() {
               name="laser_engrave_speed_sqipm"
               step="0.1"
               help="Typical range: 3–10 sq in/min depending on detail level."
+              {...fp('laser_engrave_speed_sqipm')}
             />
           </div>
         </SectionCard>
@@ -512,14 +517,18 @@ export default function LaserSettings() {
           icon={Clock}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-            {imperialSizes.map(size => (
-              <NumberField
-                key={size}
-                label={`Cut Speed for ${size}" (in/min)`}
-                name={`cut_speed_${size.replace('/', '_')}`}
-                step="1"
-              />
-            ))}
+            {imperialSizes.map(size => {
+              const key = `cut_speed_${size.replace('/', '_')}`;
+              return (
+                <NumberField
+                  key={size}
+                  label={`Cut Speed for ${size}" (in/min)`}
+                  name={key}
+                  step="1"
+                  {...fp(key)}
+                />
+              );
+            })}
           </div>
         </SectionCard>
 
@@ -529,9 +538,9 @@ export default function LaserSettings() {
           icon={DollarSign}
         >
           <div className="grid md:grid-cols-3 gap-6">
-            <NumberField label="Electricity Cost ($/kWh)" name="electricity_cost_per_kwh" step="0.01" />
-            <NumberField label="Operator Cost ($/hour)" name="operator_cost_per_hour" step="1" />
-            <NumberField label="Facility Overhead ($/hour)" name="facility_overhead_per_hour" step="1" />
+            <NumberField label="Electricity Cost ($/kWh)" name="electricity_cost_per_kwh" step="0.01" {...fp('electricity_cost_per_kwh')} />
+            <NumberField label="Operator Cost ($/hour)" name="operator_cost_per_hour" step="1" {...fp('operator_cost_per_hour')} />
+            <NumberField label="Facility Overhead ($/hour)" name="facility_overhead_per_hour" step="1" {...fp('facility_overhead_per_hour')} />
           </div>
         </SectionCard>
       </TabsContent>
@@ -544,6 +553,7 @@ export default function LaserSettings() {
             name="laser_letter_perimeter_factor"
             step="0.1"
             help="Multiplier for calculating letter perimeter from letter height."
+            {...fp('laser_letter_perimeter_factor')}
           />
           <div>
             <Label>Company Name</Label>
