@@ -135,12 +135,21 @@ export default function PaintSettings() {
 
   const [consumablesItems, setConsumablesItems] = useState([]);
 
-  // When the consumables total changes, auto-sync to base_supplies_per_job
-  const handleConsumablesTotalChange = useCallback((total) => {
+  // Auto-sync the flat (per-job) total → base_supplies_per_job
+  const handleConsumablesFlatTotalChange = useCallback((total) => {
     setSettings(prev => {
       const newValue = total.toFixed(2);
       if (prev.base_supplies_per_job === newValue) return prev;
       return { ...prev, base_supplies_per_job: newValue };
+    });
+  }, []);
+
+  // Auto-sync the per-sqft total → default_paint_supplies_per_sqft
+  const handleConsumablesPerSqftTotalChange = useCallback((total) => {
+    setSettings(prev => {
+      const newValue = total.toFixed(2);
+      if (prev.default_paint_supplies_per_sqft === newValue) return prev;
+      return { ...prev, default_paint_supplies_per_sqft: newValue };
     });
   }, []);
 
@@ -652,7 +661,7 @@ export default function PaintSettings() {
         />
         <SectionCard
           title="Default Supplies"
-          description="Base consumables cost per job, and default per-sqft application supplies. The 'Base supplies per job' value is auto-calculated from the Consumables Inventory below."
+          description="Both values below are auto-calculated from the Consumables Inventory: flat items → 'Base supplies per job', per-sqft items → 'Default paint supplies per sqft'."
           icon={Paintbrush}
           defs={inputsByName(['base_supplies_per_job','default_paint_supplies_per_sqft'])}
         />
@@ -660,7 +669,8 @@ export default function PaintSettings() {
           items={consumablesItems}
           setItems={setConsumablesItems}
           isLocked={isLocked}
-          onTotalChange={handleConsumablesTotalChange}
+          onFlatTotalChange={handleConsumablesFlatTotalChange}
+          onPerSqftTotalChange={handleConsumablesPerSqftTotalChange}
         />
       </TabsContent>
 
