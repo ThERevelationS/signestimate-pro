@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator, Rows3, Rows2 } from "lucide-react";
+import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator } from "lucide-react";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import InstallLineItem from "@/components/channelLetterInstall/InstallLineItem";
@@ -52,7 +52,6 @@ export default function NewChannelLetterInstallation() {
   const [isSaving, setIsSaving] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState("project");
-  const [compactItems, setCompactItems] = useState(false);
 
   useEffect(() => { if (!isLoading) setHasLoaded(true); }, [isLoading]);
   useEffect(() => { if (hasLoaded) setIsDirty(true); }, [project, hasLoaded, setIsDirty]);
@@ -362,26 +361,7 @@ export default function NewChannelLetterInstallation() {
 
               {/* ITEMS TAB */}
               <TabsContent value="items" className="mt-4 space-y-3">
-                <div className="flex items-center justify-between bg-white rounded-lg border border-slate-200 px-3 py-2 shadow-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-700">View:</span>
-                    <Button
-                      variant={compactItems ? "outline" : "default"}
-                      size="sm"
-                      onClick={() => setCompactItems(false)}
-                      className="h-7 text-xs"
-                    >
-                      <Rows3 className="w-3 h-3 mr-1" /> Detailed
-                    </Button>
-                    <Button
-                      variant={compactItems ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCompactItems(true)}
-                      className="h-7 text-xs"
-                    >
-                      <Rows2 className="w-3 h-3 mr-1" /> Compact
-                    </Button>
-                  </div>
+                <div className="flex items-center justify-end bg-white rounded-lg border border-slate-200 px-3 py-2 shadow-sm">
                   <Button onClick={addItem} size="sm" className="bg-purple-600 hover:bg-purple-700 text-white">
                     <Plus className="w-4 h-4 mr-1" /> Add Item
                   </Button>
@@ -402,7 +382,7 @@ export default function NewChannelLetterInstallation() {
                   <ItemsList
                     items={recalculated.items}
                     inventory={inventory}
-                    compact={compactItems}
+                    compact={false}
                     onUpdate={updateItem}
                     onRemove={removeItem}
                     onDuplicate={duplicateItem}
