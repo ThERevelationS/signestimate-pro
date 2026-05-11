@@ -25,6 +25,7 @@ const emptyItem = () => ({
   applies_to: "all",
   pricing_mode: "per_letter_flat",
   cost_per_letter: 0,
+  cost_extra_small: 0,
   cost_small: 0,
   cost_medium: 0,
   cost_large: 0,
@@ -143,7 +144,7 @@ export default function MaterialsInventoryTab() {
               <div className="md:col-span-2">
                 <Label className="text-xs">
                   {it.pricing_mode === "per_letter_flat" && "Cost / Letter"}
-                  {it.pricing_mode === "per_letter_by_size" && "Costs by Size (S/M/L/XL)"}
+                  {it.pricing_mode === "per_letter_by_size" && "Costs by Size (XS/S/M/L/XL/XXL)"}
                   {it.pricing_mode === "per_raceway_foot" && "Cost / Foot"}
                   {it.pricing_mode === "per_project_flat" && "Cost / Sign"}
                 </Label>
@@ -151,7 +152,8 @@ export default function MaterialsInventoryTab() {
                   <Input type="number" step="0.01" value={it.cost_per_letter} onFocus={e => e.target.select()} onChange={(e) => update(i, { cost_per_letter: parseFloat(e.target.value) || 0 })} className="h-8 mt-0.5" />
                 )}
                 {it.pricing_mode === "per_letter_by_size" && (
-                  <div className="grid grid-cols-5 gap-1 mt-0.5">
+                  <div className="grid grid-cols-6 gap-1 mt-0.5">
+                    <Input type="number" step="0.01" placeholder="XS" value={it.cost_extra_small} onFocus={e => e.target.select()} onChange={(e) => update(i, { cost_extra_small: parseFloat(e.target.value) || 0 })} className="h-8 text-xs" />
                     <Input type="number" step="0.01" placeholder="S" value={it.cost_small} onFocus={e => e.target.select()} onChange={(e) => update(i, { cost_small: parseFloat(e.target.value) || 0 })} className="h-8 text-xs" />
                     <Input type="number" step="0.01" placeholder="M" value={it.cost_medium} onFocus={e => e.target.select()} onChange={(e) => update(i, { cost_medium: parseFloat(e.target.value) || 0 })} className="h-8 text-xs" />
                     <Input type="number" step="0.01" placeholder="L" value={it.cost_large} onFocus={e => e.target.select()} onChange={(e) => update(i, { cost_large: parseFloat(e.target.value) || 0 })} className="h-8 text-xs" />

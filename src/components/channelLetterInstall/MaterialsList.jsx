@@ -1,14 +1,16 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Package } from "lucide-react";
+import { Plus, Trash2, Package, Loader2, ImageIcon } from "lucide-react";
 import { materialFromInventory } from "./installCalculator";
+import { GenerateImage } from "@/api/integrations";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 
 export default function MaterialsList({ item, inventory, onChange }) {
   const materials = item.materials || [];
+  const [generatingIdx, setGeneratingIdx] = useState(null);
 
   // Build options of inventory items applicable to this line
   const eligibleInventory = (inventory || []).filter(inv => {
@@ -21,6 +23,8 @@ export default function MaterialsList({ item, inventory, onChange }) {
     if (!inv) return;
     if (materials.some(m => m.inventory_item_id === invId)) return;
     const newMat = materialFromInventory(inv, item);
+    // pull image from inventory if it exists
+    if (inv.image_url) newMat.image_url = inv.image_url;
     onChange([...materials, newMat]);
   };
 
@@ -35,6 +39,7 @@ export default function MaterialsList({ item, inventory, onChange }) {
         quantity: 1,
         total_cost: 0,
         is_custom: true,
+        image_url: "",
       },
     ]);
   };
@@ -50,6 +55,28 @@ export default function MaterialsList({ item, inventory, onChange }) {
     next[idx] = { ...next[idx], ...patch };
     next[idx].total_cost = (parseFloat(next[idx].unit_cost) || 0) * (parseFloat(next[idx].quantity) || 0);
     onChange(next);
+  };
+
+  const generateImageForMaterial = async (idx) => {
+    const mat = materials[idx];
+    const name = (mat.item_name || "").trim();
+    if (!name || name === "Custom item") {
+      alert("Please name the material first.");
+      return;
+    }
+    setGeneratingIdx(idx);
+    try {
+      const res = await GenerateImage({
+        prompt: `Photograph of "${name}" — a signage installation material or hardware item used by professional sign installers. Product is centered in the frame, full item clearly visible, neutral light background, professional product photography, sharp focus, no people, no text overlay.`,
+      });
+      if (res?.url) {
+        updateMaterial(idx, { image_url: res.url });
+      }
+    } catch (e) {
+      console.error("Image generation failed:", e);
+      alert("Image generation failed: " + (e.message || "unknown error"));
+    }
+    setGeneratingIdx(null);
   };
 
   const totalMaterials = materials.reduce((s, m) => s + (parseFloat(m.total_cost) || 0), 0);
@@ -102,6 +129,7 @@ export default function MaterialsList({ item, inventory, onChange }) {
           <table className="w-full text-xs">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
+                <th className="text-left px-2 py-1.5 font-medium w-12">Img</th>
                 <th className="text-left px-2 py-1.5 font-medium">Item</th>
                 <th className="text-right px-2 py-1.5 font-medium w-20">Unit $</th>
                 <th className="text-right px-2 py-1.5 font-medium w-16">Qty</th>
@@ -113,10 +141,40 @@ export default function MaterialsList({ item, inventory, onChange }) {
               {materials.map((m, idx) => (
                 <tr key={idx} className="border-t border-slate-100">
                   <td className="px-2 py-1">
+                    {m.image_url ? (
+                      <img
+                        src={m.image_url}
+                        alt={m.item_name}
+                        className="w-10 h-10 object-contain rounded border border-slate-200 bg-white"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => generateImageForMaterial(idx)}
+                        disabled={generatingIdx === idx}
+                        title="Generate image with AI"
+                        className="w-10 h-10 rounded border border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-purple-600 disabled:opacity-50"
+                      >
+                        {generatingIdx === idx ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <ImageIcon className="w-4 h-4" />
+                        )}
+                      </button>
+                    )}
+                  </td>
+                  <td className="px-2 py-1">
                     {m.is_custom ? (
                       <Input
                         value={m.item_name || ""}
                         onChange={(e) => updateMaterial(idx, { item_name: e.target.value })}
+                        onBlur={() => {
+                          // auto-generate image when user finishes naming, if no image yet
+                          const name = (m.item_name || "").trim();
+                          if (!m.image_url && name && name !== "Custom item" && generatingIdx === null) {
+                            generateImageForMaterial(idx);
+                          }
+                        }}
                         className="h-7 text-xs"
                         placeholder="Custom item name"
                       />
@@ -160,7 +218,7 @@ export default function MaterialsList({ item, inventory, onChange }) {
             </tbody>
             <tfoot className="bg-slate-50 border-t border-slate-200">
               <tr>
-                <td colSpan="3" className="px-2 py-1.5 text-right font-medium">Materials Total</td>
+                <td colSpan="4" className="px-2 py-1.5 text-right font-medium">Materials Total</td>
                 <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{fmt(totalMaterials)}</td>
                 <td></td>
               </tr>

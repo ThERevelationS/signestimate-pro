@@ -2,13 +2,13 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronRight, Copy, Trash2 } from "lucide-react";
 import MaterialsList from "./MaterialsList";
 import InstallTypePicker from "./InstallTypePicker";
 import LetterSizePicker from "./LetterSizePicker";
+import ConditionPicker from "./ConditionPicker";
 import CostBreakdownBar from "./CostBreakdownBar";
 import { TYPE_LABELS } from "./installCalculator";
 
@@ -144,19 +144,18 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
           </div>
 
           {/* Conditions */}
-          <div className="flex flex-wrap gap-4 pt-1">
-            <label className="flex items-center gap-2 cursor-pointer text-sm">
-              <Checkbox checked={item.thick_hollow_walls} onCheckedChange={(c) => update({ thick_hollow_walls: !!c })} />
-              <span>Thick/Hollow Walls</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer text-sm">
-              <Checkbox checked={item.parapet} onCheckedChange={(c) => update({ parapet: !!c })} />
-              <span>Parapet</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer text-sm">
-              <Checkbox checked={item.poor_electrical_access} onCheckedChange={(c) => update({ poor_electrical_access: !!c })} />
-              <span>Poor Electrical Access</span>
-            </label>
+          <div>
+            <Label className="text-xs text-slate-600">Site Conditions <span className="text-slate-400 font-normal">(toggle if applicable)</span></Label>
+            <div className="mt-1.5">
+              <ConditionPicker
+                values={{
+                  thick_hollow_walls: item.thick_hollow_walls,
+                  parapet: item.parapet,
+                  poor_electrical_access: item.poor_electrical_access,
+                }}
+                onChange={(v) => update(v)}
+              />
+            </div>
           </div>
 
           {/* Materials */}

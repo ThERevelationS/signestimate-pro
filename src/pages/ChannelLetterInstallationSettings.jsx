@@ -12,9 +12,10 @@ const settingsDefinitions = [
   { name: "install_labor_rate", type: "number", category: "install_pricing", description: "Hourly labor rate for installation work", default: "65" },
   
   // Base Rates per Letter Size
-  { name: "install_base_rate_small", type: "number", category: "install_rates", description: "Base hours per letter - Small (12\"-18\")", default: "1.5" },
-  { name: "install_base_rate_medium", type: "number", category: "install_rates", description: "Base hours per letter - Medium (18\"-30\")", default: "2.5" },
-  { name: "install_base_rate_large", type: "number", category: "install_rates", description: "Base hours per letter - Large (30\"-48\")", default: "4.0" },
+  { name: "install_base_rate_extra_small", type: "number", category: "install_rates", description: "Base hours per letter - XS (2\"-8\")", default: "0.75" },
+  { name: "install_base_rate_small", type: "number", category: "install_rates", description: "Base hours per letter - Small (8\"-12\")", default: "1.5" },
+  { name: "install_base_rate_medium", type: "number", category: "install_rates", description: "Base hours per letter - Medium (12\"-24\")", default: "2.5" },
+  { name: "install_base_rate_large", type: "number", category: "install_rates", description: "Base hours per letter - Large (24\"-48\")", default: "4.0" },
   { name: "install_base_rate_extra_large", type: "number", category: "install_rates", description: "Base hours per letter - XL (48\"-60\")", default: "6.0" },
   { name: "install_base_rate_extra_extra_large", type: "number", category: "install_rates", description: "Base hours per letter - XXL (60\"+)", default: "8.5" },
   

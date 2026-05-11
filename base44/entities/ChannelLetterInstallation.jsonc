@@ -52,6 +52,7 @@
           "letter_size": {
             "type": "string",
             "enum": [
+              "extra_small",
               "small",
               "medium",
               "large",
@@ -109,6 +110,9 @@
                 },
                 "is_custom": {
                   "type": "boolean"
+                },
+                "image_url": {
+                  "type": "string"
                 }
               }
             }

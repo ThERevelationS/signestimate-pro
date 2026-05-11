@@ -41,20 +41,25 @@
       "type": "number",
       "default": 0
     },
+    "cost_extra_small": {
+      "type": "number",
+      "default": 0,
+      "description": "Cost per XS letter (2-8 inch)"
+    },
     "cost_small": {
       "type": "number",
       "default": 0,
-      "description": "Cost per small letter (12-18 inch)"
+      "description": "Cost per small letter (8-12 inch)"
     },
     "cost_medium": {
       "type": "number",
       "default": 0,
-      "description": "Cost per medium letter (18-30 inch)"
+      "description": "Cost per medium letter (12-24 inch)"
     },
     "cost_large": {
       "type": "number",
       "default": 0,
-      "description": "Cost per large letter (30-48 inch)"
+      "description": "Cost per large letter (24-48 inch)"
     },
     "cost_extra_large": {
       "type": "number",
@@ -82,6 +87,10 @@
     },
     "notes": {
       "type": "string"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "AI-generated image of this material"
     },
     "is_default": {
       "type": "boolean",

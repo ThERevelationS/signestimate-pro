@@ -8,9 +8,10 @@ export const TYPE_LABELS = {
 };
 
 export const SIZE_LABELS = {
-  small: 'Small (12"-18")',
-  medium: 'Medium (18"-30")',
-  large: 'Large (30"-48")',
+  extra_small: 'XS (2"-8")',
+  small: 'Small (8"-12")',
+  medium: 'Medium (12"-24")',
+  large: 'Large (24"-48")',
   extra_large: 'XL (48"-60")',
   extra_extra_large: 'XXL (60"+)',
 };
@@ -75,6 +76,7 @@ export const calcLineItem = (item, settings, inventory) => {
   const laborRate = parseFloat(settings.install_labor_rate) || 65;
 
   const letterSizeRates = {
+    extra_small: parseFloat(settings.install_base_rate_extra_small) || 0.75,
     small: parseFloat(settings.install_base_rate_small) || 1.5,
     medium: parseFloat(settings.install_base_rate_medium) || 2.5,
     large: parseFloat(settings.install_base_rate_large) || 4.0,

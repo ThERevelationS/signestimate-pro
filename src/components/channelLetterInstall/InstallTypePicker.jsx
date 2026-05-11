@@ -49,11 +49,11 @@ export default function InstallTypePicker({ value, onChange }) {
             {selected && (
               <div className={`absolute top-2 right-2 w-2 h-2 rounded-full ${t.accentDot} z-10`} />
             )}
-            <div className="w-full h-20 bg-slate-100 overflow-hidden">
+            <div className="w-full aspect-video bg-slate-100 flex items-center justify-center overflow-hidden">
               <img
                 src={t.image}
                 alt={t.label}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
                 loading="lazy"
               />
             </div>
