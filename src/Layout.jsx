@@ -162,7 +162,6 @@ export default function Layout({ children, currentPageName }) {
       newEstimatePage: 'NewChannelLetterInstallation',
       settingsPage: 'ChannelLetterInstallationSettings',
       inventoryPage: 'ChannelLetterInstallInventory',
-      equipmentPage: 'ChannelLetterInstallEquipmentInventory',
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
       hoverColor: 'hover:bg-purple-100'
@@ -272,22 +271,7 @@ export default function Layout({ children, currentPageName }) {
                             }`}
                           >
                             <Server className="w-3 h-3 mr-1" />
-                            {module.equipmentPage ? 'Materials' : 'Inventory'}
-                          </Link>
-                        )}
-
-                        {module.equipmentPage && (
-                          <Link
-                            to={createPageUrl(module.equipmentPage)}
-                            onClick={(e) => handleNavClick(e, createPageUrl(module.equipmentPage))}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
-                              location.pathname === createPageUrl(module.equipmentPage)
-                                ? 'bg-white text-slate-900 font-medium shadow-sm'
-                                : 'text-slate-700 hover:bg-white/60'
-                            }`}
-                          >
-                            <Server className="w-3 h-3 mr-1" />
-                            Equipment
+                            Inventory
                           </Link>
                         )}
                         

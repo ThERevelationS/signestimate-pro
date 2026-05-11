@@ -250,12 +250,7 @@ export default function NewChannelLetterInstallation() {
           <div className="flex gap-2 flex-wrap">
             <Link to={createPageUrl("ChannelLetterInstallInventory")}>
               <Button variant="outline" className="bg-white">
-                <Package className="w-4 h-4 mr-2" /> Materials
-              </Button>
-            </Link>
-            <Link to={createPageUrl("ChannelLetterInstallEquipmentInventory")}>
-              <Button variant="outline" className="bg-white">
-                <Package className="w-4 h-4 mr-2" /> Equipment
+                <Package className="w-4 h-4 mr-2" /> Inventory
               </Button>
             </Link>
             <Button variant="outline" onClick={() => navigate(createPageUrl("ChannelLetterInstallationProjects"))}>
