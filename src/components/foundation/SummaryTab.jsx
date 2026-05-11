@@ -10,7 +10,7 @@ import { base44 } from '@/api/base44Client';
 function CopyGroupButton({ lines, label = 'Copy' }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = () => {
-    const text = (lines || []).filter(Boolean).join('\n');
+    const text = (lines || []).filter(Boolean).join(' | ');
     if (!text) return;
     navigator.clipboard.writeText(text);
     setCopied(true);
