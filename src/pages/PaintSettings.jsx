@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Save, DollarSign, Clock, Paintbrush, Calculator, TrendingDown, Plus, Trash2, Square, Shapes, Type, Scissors, Beaker, CheckCircle2 } from "lucide-react";
 import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
 import { useToast } from "@/components/ui/use-toast";
+import ConsumablesCalculator from "@/components/paintSettings/ConsumablesCalculator";
 
 const unitFactors = {
   oz: 1 / 128,
@@ -132,6 +133,17 @@ export default function PaintSettings() {
     { min_quantity: 21, max_quantity: 999, labor_multiplier: 0.85 }
   ]);
 
+  const [consumablesItems, setConsumablesItems] = useState([]);
+
+  // When the consumables total changes, auto-sync to base_supplies_per_job
+  const handleConsumablesTotalChange = useCallback((total) => {
+    setSettings(prev => {
+      const newValue = total.toFixed(2);
+      if (prev.base_supplies_per_job === newValue) return prev;
+      return { ...prev, base_supplies_per_job: newValue };
+    });
+  }, []);
+
   const calculateMixingExample = useCallback(() => {
     const examplePaintableArea = 100;
     const exampleColors = 3;
@@ -219,6 +231,15 @@ export default function PaintSettings() {
           }
         } catch (e) {
           console.error('Error parsing lettering tiers from database:', e);
+        }
+      }
+
+      if (settingsMap.paint_consumables_inventory) {
+        try {
+          const parsed = JSON.parse(settingsMap.paint_consumables_inventory);
+          if (Array.isArray(parsed)) setConsumablesItems(parsed);
+        } catch (e) {
+          console.error('Error parsing consumables inventory:', e);
         }
       }
     } catch (error) {
@@ -355,6 +376,22 @@ export default function PaintSettings() {
         }
       } else {
         creates.push(SettingsEntity.create(letteringTiersData));
+      }
+
+      const consumablesData = {
+        setting_name: 'paint_consumables_inventory',
+        setting_value: JSON.stringify(consumablesItems),
+        setting_type: 'text',
+        category: 'painting_supplies',
+        description: 'Per-job consumables inventory (drives base_supplies_per_job)'
+      };
+      const existingConsumables = existingSettingsMap.get('paint_consumables_inventory');
+      if (existingConsumables) {
+        if (existingConsumables.setting_value !== consumablesData.setting_value) {
+          updates.push(SettingsEntity.update(existingConsumables.id, consumablesData));
+        }
+      } else {
+        creates.push(SettingsEntity.create(consumablesData));
       }
 
       if (updates.length > 0 || creates.length > 0) {
@@ -615,9 +652,15 @@ export default function PaintSettings() {
         />
         <SectionCard
           title="Default Supplies"
-          description="Base consumables cost per job, and default per-sqft application supplies (rollers, trays, etc.)."
+          description="Base consumables cost per job, and default per-sqft application supplies. The 'Base supplies per job' value is auto-calculated from the Consumables Inventory below."
           icon={Paintbrush}
           defs={inputsByName(['base_supplies_per_job','default_paint_supplies_per_sqft'])}
+        />
+        <ConsumablesCalculator
+          items={consumablesItems}
+          setItems={setConsumablesItems}
+          isLocked={isLocked}
+          onTotalChange={handleConsumablesTotalChange}
         />
       </TabsContent>
 
