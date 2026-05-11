@@ -38,6 +38,7 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
   if (item.escort_required) conditionBadges.push({ label: "Escort Req'd", color: "bg-sky-50 text-sky-700 border-sky-200" });
   if (item.badging_checkin) conditionBadges.push({ label: "Badging/Check-in", color: "bg-indigo-50 text-indigo-700 border-indigo-200" });
   if (item.after_hours_weekend) conditionBadges.push({ label: "After-Hours", color: "bg-violet-50 text-violet-700 border-violet-200" });
+  if (item.set_hours_installation) conditionBadges.push({ label: "Set-Hours", color: "bg-teal-50 text-teal-700 border-teal-200" });
   if (item.poor_site_access) conditionBadges.push({ label: "Poor Site Access", color: "bg-rose-50 text-rose-700 border-rose-200" });
 
   return (
@@ -159,6 +160,7 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
                   escort_required: item.escort_required,
                   badging_checkin: item.badging_checkin,
                   after_hours_weekend: item.after_hours_weekend,
+                  set_hours_installation: item.set_hours_installation,
                   poor_site_access: item.poor_site_access,
                 }}
                 onChange={(v) => update(v)}

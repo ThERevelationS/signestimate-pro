@@ -97,6 +97,10 @@
             "type": "boolean",
             "default": false
           },
+          "set_hours_installation": {
+            "type": "boolean",
+            "default": false
+          },
           "poor_site_access": {
             "type": "boolean",
             "default": false

@@ -72,6 +72,17 @@ const CONDITIONS = [
     accentDot: "bg-violet-500",
   },
   {
+    id: "set_hours_installation",
+    label: "Set-Hours Installation",
+    description: "Fixed time window / scheduled appointment",
+    images: [
+      "1670f70d1", "1c5add52a", "e3768da95", "d36581597", "5b6acff88",
+      "a3f771ff2", "ab486c2bb", "516c15423", "c9c9de17b",
+    ],
+    accent: "border-teal-500 bg-teal-50 text-teal-900",
+    accentDot: "bg-teal-500",
+  },
+  {
     id: "poor_site_access",
     label: "Poor Site Access",
     description: "No lift room, obstructions, tight space",

@@ -39,6 +39,7 @@ const settingsDefinitions = [
   { name: "install_escort_multiplier", type: "number", category: "install_multipliers", description: "Multiplier when an escort is required", default: "1.15" },
   { name: "install_badging_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for badging / check-in procedures", default: "1.1" },
   { name: "install_after_hours_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for after-hours / weekend installation", default: "1.5" },
+  { name: "install_set_hours_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for set-hours installation (fixed time window / scheduled appointment)", default: "1.15" },
   { name: "install_poor_site_access_multiplier", type: "number", category: "install_multipliers", description: "Multiplier for poor site access (no lift room, tight space, etc.)", default: "1.25" },
 ];
 

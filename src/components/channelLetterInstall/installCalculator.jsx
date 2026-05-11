@@ -30,6 +30,7 @@ export const emptyLineItem = () => ({
   escort_required: false,
   badging_checkin: false,
   after_hours_weekend: false,
+  set_hours_installation: false,
   poor_site_access: false,
   materials: [],
 });
@@ -119,6 +120,7 @@ export const calcLineItem = (item, settings, inventory) => {
   if (item.escort_required) baseHours *= parseFloat(settings.install_escort_multiplier) || 1.15;
   if (item.badging_checkin) baseHours *= parseFloat(settings.install_badging_multiplier) || 1.1;
   if (item.after_hours_weekend) baseHours *= parseFloat(settings.install_after_hours_multiplier) || 1.5;
+  if (item.set_hours_installation) baseHours *= parseFloat(settings.install_set_hours_multiplier) || 1.15;
   if (item.poor_site_access) baseHours *= parseFloat(settings.install_poor_site_access_multiplier) || 1.25;
 
   // Recompute material quantities based on current item state (qty/size/raceway changed)
