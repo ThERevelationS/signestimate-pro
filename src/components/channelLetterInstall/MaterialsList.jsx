@@ -24,6 +24,21 @@ export default function MaterialsList({ item, inventory, onChange }) {
     onChange([...materials, newMat]);
   };
 
+  const addCustomMaterial = () => {
+    onChange([
+      ...materials,
+      {
+        inventory_item_id: null,
+        item_name: "Custom item",
+        pricing_mode: "custom",
+        unit_cost: 0,
+        quantity: 1,
+        total_cost: 0,
+        is_custom: true,
+      },
+    ]);
+  };
+
   const removeMaterial = (idx) => {
     const next = [...materials];
     next.splice(idx, 1);
@@ -47,24 +62,35 @@ export default function MaterialsList({ item, inventory, onChange }) {
           <span className="text-sm font-medium text-slate-700">Materials</span>
           <span className="text-xs text-slate-400">({materials.length})</span>
         </div>
-        <Select value="" onValueChange={addMaterial}>
-          <SelectTrigger className="h-8 text-xs w-auto min-w-[160px]">
-            <SelectValue placeholder="+ Add material..." />
-          </SelectTrigger>
-          <SelectContent>
-            {eligibleInventory.length === 0 ? (
-              <div className="px-2 py-1.5 text-xs text-slate-500">No inventory items match this install type</div>
-            ) : eligibleInventory.map(inv => (
-              <SelectItem
-                key={inv.id}
-                value={inv.id}
-                disabled={materials.some(m => m.inventory_item_id === inv.id)}
-              >
-                {inv.item_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value="" onValueChange={addMaterial}>
+            <SelectTrigger className="h-8 text-xs w-auto min-w-[160px]">
+              <SelectValue placeholder="+ Add material..." />
+            </SelectTrigger>
+            <SelectContent>
+              {eligibleInventory.length === 0 ? (
+                <div className="px-2 py-1.5 text-xs text-slate-500">No inventory items match this install type</div>
+              ) : eligibleInventory.map(inv => (
+                <SelectItem
+                  key={inv.id}
+                  value={inv.id}
+                  disabled={materials.some(m => m.inventory_item_id === inv.id)}
+                >
+                  {inv.item_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addCustomMaterial}
+            className="h-8 text-xs"
+          >
+            <Plus className="w-3 h-3 mr-1" /> Custom
+          </Button>
+        </div>
       </div>
 
       {materials.length === 0 ? (
@@ -86,7 +112,18 @@ export default function MaterialsList({ item, inventory, onChange }) {
             <tbody>
               {materials.map((m, idx) => (
                 <tr key={idx} className="border-t border-slate-100">
-                  <td className="px-2 py-1">{m.item_name}</td>
+                  <td className="px-2 py-1">
+                    {m.is_custom ? (
+                      <Input
+                        value={m.item_name || ""}
+                        onChange={(e) => updateMaterial(idx, { item_name: e.target.value })}
+                        className="h-7 text-xs"
+                        placeholder="Custom item name"
+                      />
+                    ) : (
+                      m.item_name
+                    )}
+                  </td>
                   <td className="px-2 py-1">
                     <Input
                       type="number"
