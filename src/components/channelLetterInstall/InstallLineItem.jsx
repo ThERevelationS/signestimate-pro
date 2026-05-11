@@ -1,27 +1,46 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight, Copy, Trash2, GripVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Trash2, Eye, Settings2 } from "lucide-react";
 import MaterialsList from "./MaterialsList";
-import { TYPE_LABELS, SIZE_LABELS } from "./installCalculator";
+import InstallTypePicker from "./InstallTypePicker";
+import LetterSizePicker from "./LetterSizePicker";
+import CostBreakdownBar from "./CostBreakdownBar";
+import { TYPE_LABELS } from "./installCalculator";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 
-export default function InstallLineItem({ item, index, inventory, onUpdate, onRemove, onDuplicate }) {
-  const [expanded, setExpanded] = useState(true);
+const TYPE_BADGE_COLOR = {
+  flush_mount: "bg-blue-50 text-blue-700 border-blue-200",
+  halo_lit: "bg-amber-50 text-amber-700 border-amber-200",
+  raceway: "bg-purple-50 text-purple-700 border-purple-200",
+};
+
+export default function InstallLineItem({ item, index, inventory, onUpdate, onRemove, onDuplicate, compact = false }) {
+  const [expanded, setExpanded] = useState(!compact);
+  const [detailed, setDetailed] = useState(false); // per-item detail toggle for advanced fields
   const isRaceway = item.installation_type === "raceway";
 
+  // Sync expanded state when parent toggles compact mode globally
+  useEffect(() => {
+    setExpanded(!compact);
+  }, [compact]);
+
   const update = (patch) => onUpdate({ ...item, ...patch });
+
+  const conditionBadges = [];
+  if (item.thick_hollow_walls) conditionBadges.push({ label: "Thick Walls", color: "bg-orange-50 text-orange-700 border-orange-200" });
+  if (item.parapet) conditionBadges.push({ label: "Parapet", color: "bg-red-50 text-red-700 border-red-200" });
+  if (item.poor_electrical_access) conditionBadges.push({ label: "Poor Electrical", color: "bg-yellow-50 text-yellow-800 border-yellow-200" });
 
   return (
     <Card className="border border-slate-200 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-100">
+      <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-100 flex-wrap">
         <button onClick={() => setExpanded(e => !e)} className="text-slate-500 hover:text-slate-900">
           {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </button>
@@ -30,12 +49,17 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
           value={item.description || ""}
           onChange={(e) => update({ description: e.target.value })}
           placeholder={`${TYPE_LABELS[item.installation_type]} — describe this line...`}
-          className="h-8 text-sm flex-1 bg-white"
+          className="h-8 text-sm flex-1 bg-white min-w-[160px]"
           onClick={(e) => e.stopPropagation()}
         />
-        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 capitalize">
+        <Badge variant="outline" className={`capitalize ${TYPE_BADGE_COLOR[item.installation_type]}`}>
           {TYPE_LABELS[item.installation_type]}
         </Badge>
+        {conditionBadges.map((b, i) => (
+          <Badge key={i} variant="outline" className={`text-[10px] ${b.color}`}>
+            {b.label}
+          </Badge>
+        ))}
         <Badge variant="outline" className="bg-slate-100 text-slate-700 font-semibold tabular-nums">
           {fmt(item.item_total_cost)}
         </Badge>
@@ -47,22 +71,55 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
         </Button>
       </div>
 
+      {/* Cost breakdown bar — always visible */}
+      <div className="px-4 py-2 border-b border-slate-100 bg-white">
+        <CostBreakdownBar
+          labor={item.labor_cost || 0}
+          materials={item.materials_cost || 0}
+        />
+      </div>
+
       {expanded && (
         <CardContent className="p-4 space-y-4">
-          {/* Type + core inputs */}
-          <div className="grid md:grid-cols-3 gap-3">
-            <div>
-              <Label className="text-xs">Installation Type</Label>
-              <Select value={item.installation_type} onValueChange={(v) => update({ installation_type: v })}>
-                <SelectTrigger className="h-9 mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="flush_mount">Flush Mount</SelectItem>
-                  <SelectItem value="halo_lit">Halo-Lit</SelectItem>
-                  <SelectItem value="raceway">Raceway</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Quick summary when collapsed-to-info-only */}
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-slate-500">
+              {isRaceway
+                ? `${item.qty_letters} letters · ${item.raceway_length_feet} ft raceway · ${item.installation_height_feet} ft high`
+                : `${item.qty_letters} letters · ${item.installation_height_feet} ft high`
+              }
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDetailed(d => !d)}
+              className="h-6 text-xs text-slate-500 hover:bg-slate-100"
+            >
+              {detailed ? <Eye className="w-3 h-3 mr-1" /> : <Settings2 className="w-3 h-3 mr-1" />}
+              {detailed ? "Simple" : "Detailed"}
+            </Button>
+          </div>
 
+          {/* Install Type Picker */}
+          <div>
+            <Label className="text-xs text-slate-600">Installation Type</Label>
+            <div className="mt-1.5">
+              <InstallTypePicker value={item.installation_type} onChange={(v) => update({ installation_type: v })} />
+            </div>
+          </div>
+
+          {/* Letter Size Picker (not for raceway) */}
+          {!isRaceway && (
+            <div>
+              <Label className="text-xs text-slate-600">Letter Size</Label>
+              <div className="mt-1.5">
+                <LetterSizePicker value={item.letter_size} onChange={(v) => update({ letter_size: v })} />
+              </div>
+            </div>
+          )}
+
+          {/* Quantities */}
+          <div className="grid md:grid-cols-3 gap-3">
             <div>
               <Label className="text-xs">Qty Letters</Label>
               <Input
@@ -73,19 +130,6 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
                 className="h-9 mt-1"
               />
             </div>
-
-            {!isRaceway && (
-              <div>
-                <Label className="text-xs">Letter Size</Label>
-                <Select value={item.letter_size} onValueChange={(v) => update({ letter_size: v })}>
-                  <SelectTrigger className="h-9 mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(SIZE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
             {isRaceway && (
               <div>
                 <Label className="text-xs">Raceway Length (ft)</Label>
@@ -98,21 +142,8 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
                 />
               </div>
             )}
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs">Letter Height (inches)</Label>
-              <Input
-                type="number"
-                value={item.letter_height_inches}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => update({ letter_height_inches: parseFloat(e.target.value) || 0 })}
-                className="h-9 mt-1"
-              />
-            </div>
-            <div>
-              <Label className="text-xs">Install Height (feet)</Label>
+              <Label className="text-xs">Install Height (ft)</Label>
               <Input
                 type="number"
                 value={item.installation_height_feet}
@@ -121,6 +152,18 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
                 className="h-9 mt-1"
               />
             </div>
+            {!isRaceway && detailed && (
+              <div>
+                <Label className="text-xs">Letter Height (in)</Label>
+                <Input
+                  type="number"
+                  value={item.letter_height_inches}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => update({ letter_height_inches: parseFloat(e.target.value) || 0 })}
+                  className="h-9 mt-1"
+                />
+              </div>
+            )}
           </div>
 
           {/* Conditions */}
