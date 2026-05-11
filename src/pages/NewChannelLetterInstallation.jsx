@@ -13,6 +13,9 @@ import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import InstallLineItem from "@/components/channelLetterInstall/InstallLineItem";
 import InstallSummaryCard from "@/components/channelLetterInstall/InstallSummaryCard";
+import ItemsList from "@/components/channelLetterInstall/ItemsList";
+import CrewEquipmentHint from "@/components/channelLetterInstall/CrewEquipmentHint";
+import ValidationWarnings from "@/components/channelLetterInstall/ValidationWarnings";
 import {
   calcLineItem,
   calcProjectTotals,
@@ -163,6 +166,31 @@ export default function NewChannelLetterInstallation() {
     next.splice(idx + 1, 0, copy);
     setProject(prev => ({ ...prev, items: next }));
   };
+
+  const reorderItems = (from, to) => {
+    const next = [...project.items];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setProject(prev => ({ ...prev, items: next }));
+  };
+
+  // Keyboard shortcuts: Ctrl/Cmd+S = save, Ctrl/Cmd+N = new item
+  useEffect(() => {
+    const handler = (e) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      if (e.key === "s") {
+        e.preventDefault();
+        saveProject();
+      } else if (e.key === "i") {
+        e.preventDefault();
+        addItem();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project, recalculated]);
 
   // Save / Export
   const saveProject = async () => {
@@ -371,18 +399,15 @@ export default function NewChannelLetterInstallation() {
                     </CardContent>
                   </Card>
                 ) : (
-                  recalculated.items.map((item, idx) => (
-                    <InstallLineItem
-                      key={idx}
-                      item={item}
-                      index={idx}
-                      inventory={inventory}
-                      compact={compactItems}
-                      onUpdate={(updated) => updateItem(idx, updated)}
-                      onRemove={() => removeItem(idx)}
-                      onDuplicate={() => duplicateItem(idx)}
-                    />
-                  ))
+                  <ItemsList
+                    items={recalculated.items}
+                    inventory={inventory}
+                    compact={compactItems}
+                    onUpdate={updateItem}
+                    onRemove={removeItem}
+                    onDuplicate={duplicateItem}
+                    onReorder={reorderItems}
+                  />
                 )}
               </TabsContent>
 
@@ -485,7 +510,7 @@ export default function NewChannelLetterInstallation() {
           </div>
 
           {/* Sticky summary card on right */}
-          <div>
+          <div className="space-y-3">
             <InstallSummaryCard
               project={recalculated}
               onUpdate={updateProject}
@@ -495,6 +520,11 @@ export default function NewChannelLetterInstallation() {
               onCopySummary={copySummary}
               onExportCSV={exportCSV}
             />
+            <CrewEquipmentHint items={recalculated.items} />
+            <ValidationWarnings project={recalculated} />
+            <div className="text-[10px] text-slate-400 text-center px-2">
+              Shortcuts: <kbd className="px-1 bg-slate-100 rounded">⌘S</kbd> Save · <kbd className="px-1 bg-slate-100 rounded">⌘I</kbd> Add Item
+            </div>
           </div>
         </div>
       </div>
