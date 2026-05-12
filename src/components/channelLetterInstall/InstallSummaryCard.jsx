@@ -30,6 +30,22 @@ export default function InstallSummaryCard({
             <span className="text-slate-600">Materials</span>
             <span className="font-medium tabular-nums">{fmt(project.total_materials_cost)}</span>
           </div>
+          {(project.total_equipment_cost || 0) > 0 && (
+            <div className="flex justify-between">
+              <span className="text-slate-600">
+                Equipment ({(project.selected_equipment || []).length})
+              </span>
+              <span className="font-medium tabular-nums">{fmt(project.total_equipment_cost)}</span>
+            </div>
+          )}
+          {(project.total_personnel_cost || 0) > 0 && (
+            <div className="flex justify-between">
+              <span className="text-slate-600">
+                Personnel ({(project.personnel || []).length})
+              </span>
+              <span className="font-medium tabular-nums">{fmt(project.total_personnel_cost)}</span>
+            </div>
+          )}
           <div className="flex justify-between border-t pt-1.5 mt-1.5">
             <span className="text-slate-600">Subtotal</span>
             <span className="font-semibold tabular-nums">{fmt(project.subtotal)}</span>

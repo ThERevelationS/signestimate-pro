@@ -3,24 +3,19 @@
   "type": "object",
   "properties": {
     "project_name": {
-      "type": "string",
-      "description": "Name of the installation project"
+      "type": "string"
     },
     "client_name": {
-      "type": "string",
-      "description": "Client company or person name"
+      "type": "string"
     },
     "estimate_number": {
-      "type": "string",
-      "description": "Unique estimate number for tracking"
+      "type": "string"
     },
     "hyperlink": {
-      "type": "string",
-      "description": "Optional hyperlink related to the project"
+      "type": "string"
     },
     "site_address": {
-      "type": "string",
-      "description": "Installation site address \u2014 used to calculate travel mileage from the shop"
+      "type": "string"
     },
     "status": {
       "type": "string",
@@ -33,7 +28,6 @@
     },
     "items": {
       "type": "array",
-      "description": "Line items in the installation estimate",
       "items": {
         "type": "object",
         "properties": {
@@ -80,8 +74,7 @@
           },
           "wall_material": {
             "type": "string",
-            "default": "eifs",
-            "description": "Exterior wall material being installed into"
+            "default": "eifs"
           },
           "thick_hollow_walls": {
             "type": "boolean",
@@ -162,20 +155,90 @@
         }
       }
     },
+    "selected_equipment": {
+      "type": "array",
+      "description": "Equipment chosen for this installation project.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "equipment_id": {
+            "type": "string"
+          },
+          "equipment_name": {
+            "type": "string"
+          },
+          "equipment_type": {
+            "type": "string"
+          },
+          "pricing_mode": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "number",
+            "default": 1,
+            "description": "Number of hours/days/weeks/months used (matches pricing_mode unit)"
+          },
+          "include_delivery": {
+            "type": "boolean",
+            "default": false
+          },
+          "delivery_pickup_cost": {
+            "type": "number",
+            "default": 0
+          },
+          "unit_cost": {
+            "type": "number",
+            "default": 0
+          },
+          "total_cost": {
+            "type": "number",
+            "default": 0
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "personnel": {
+      "type": "array",
+      "description": "Crew members assigned to this job.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "description": "e.g. Crew Lead, Installer, Helper"
+          },
+          "hourly_rate": {
+            "type": "number",
+            "default": 0
+          },
+          "hours": {
+            "type": "number",
+            "default": 0
+          },
+          "total_cost": {
+            "type": "number",
+            "default": 0
+          }
+        }
+      }
+    },
     "supplies_percent_of_materials": {
       "type": "number",
-      "default": 10,
-      "description": "Project supplies as percent of total materials cost"
+      "default": 10
     },
     "extra_supplies_cost": {
       "type": "number",
-      "default": 0,
-      "description": "Additional project-level supplies"
+      "default": 0
     },
     "base_supplies_cost": {
       "type": "number",
-      "default": 0,
-      "description": "Legacy - no longer used"
+      "default": 0
     },
     "markup_percent": {
       "type": "number",
@@ -191,6 +254,12 @@
       "type": "number"
     },
     "total_supplies_cost": {
+      "type": "number"
+    },
+    "total_equipment_cost": {
+      "type": "number"
+    },
+    "total_personnel_cost": {
       "type": "number"
     },
     "subtotal": {

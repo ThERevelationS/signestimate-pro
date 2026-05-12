@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { ChannelLetterInstallation, Settings, ChannelLetterInstallInventory } from "@/entities/all";
+import { ChannelLetterInstallation, Settings, ChannelLetterInstallInventory, ChannelLetterInstallEquipment } from "@/entities/all";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator, MapPin, Copy, DollarSign, Check } from "lucide-react";
+import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator, MapPin, Copy, DollarSign, Check, HardHat } from "lucide-react";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import InstallLineItem from "@/components/channelLetterInstall/InstallLineItem";
@@ -16,6 +16,8 @@ import InstallSummaryCard from "@/components/channelLetterInstall/InstallSummary
 import ItemsList from "@/components/channelLetterInstall/ItemsList";
 import CrewEquipmentHint from "@/components/channelLetterInstall/CrewEquipmentHint";
 import ValidationWarnings from "@/components/channelLetterInstall/ValidationWarnings";
+import EquipmentSelector from "@/components/channelLetterInstall/EquipmentSelector";
+import PersonnelSelector from "@/components/channelLetterInstall/PersonnelSelector";
 import {
   calcLineItem,
   calcProjectTotals,
@@ -33,6 +35,8 @@ const blankProject = () => ({
   hyperlink: "",
   site_address: "",
   items: [],
+  selected_equipment: [],
+  personnel: [],
   base_supplies_cost: 0,
   extra_supplies_cost: 0,
   markup_percent: 0,
@@ -49,6 +53,7 @@ export default function NewChannelLetterInstallation() {
   const [project, setProject] = useState(blankProject());
   const [settings, setSettings] = useState({});
   const [inventory, setInventory] = useState([]);
+  const [equipmentInventory, setEquipmentInventory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -60,14 +65,16 @@ export default function NewChannelLetterInstallation() {
   // Load settings + inventory + (maybe) existing project
   const loadEverything = useCallback(async () => {
     try {
-      const [settingsList, inv] = await Promise.all([
+      const [settingsList, inv, equipInv] = await Promise.all([
         Settings.list(),
         ChannelLetterInstallInventory.list("sort_order"),
+        ChannelLetterInstallEquipment.list("sort_order"),
       ]);
       const settingsObj = {};
       settingsList.forEach(s => { settingsObj[s.setting_name] = s.setting_value; });
       setSettings(settingsObj);
       setInventory(inv);
+      setEquipmentInventory(equipInv);
 
       if (editId) {
         const existing = await ChannelLetterInstallation.get(editId);
@@ -199,6 +206,11 @@ export default function NewChannelLetterInstallation() {
       setActiveTab("project");
       return;
     }
+    if (!project.selected_equipment || project.selected_equipment.length === 0) {
+      alert("Please select at least one piece of equipment before saving.");
+      setActiveTab("crew");
+      return;
+    }
     setIsSaving(true);
     setIsDirty(false);
     try {
@@ -323,7 +335,7 @@ export default function NewChannelLetterInstallation() {
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid grid-cols-3 w-full bg-white shadow-sm border border-slate-200 h-12">
+              <TabsList className="grid grid-cols-4 w-full bg-white shadow-sm border border-slate-200 h-12">
                 <TabsTrigger value="project" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
                   <FileText className="w-4 h-4 mr-2" /> Project
                 </TabsTrigger>
@@ -332,6 +344,12 @@ export default function NewChannelLetterInstallation() {
                   <span className="ml-1.5 text-xs bg-slate-200 data-[state=active]:bg-white/20 rounded-full px-1.5 py-0.5">
                     {recalculated.items.length}
                   </span>
+                </TabsTrigger>
+                <TabsTrigger value="crew" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white relative">
+                  <HardHat className="w-4 h-4 mr-2" /> Crew & Equipment
+                  {(recalculated.selected_equipment?.length || 0) === 0 && (
+                    <span className="ml-1.5 w-2 h-2 rounded-full bg-red-500" title="Equipment required" />
+                  )}
                 </TabsTrigger>
                 <TabsTrigger value="summary" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
                   <Calculator className="w-4 h-4 mr-2" /> Summary
@@ -468,6 +486,35 @@ export default function NewChannelLetterInstallation() {
                     onDuplicate={duplicateItem}
                     onReorder={reorderItems}
                   />
+                )}
+              </TabsContent>
+
+              {/* CREW & EQUIPMENT TAB */}
+              <TabsContent value="crew" className="mt-4 space-y-3">
+                <EquipmentSelector
+                  selectedEquipment={recalculated.selected_equipment || []}
+                  onChange={(next) => updateProject({ selected_equipment: next })}
+                  equipmentInventory={equipmentInventory}
+                  items={recalculated.items}
+                  projectLaborHours={recalculated.labor_hours || 0}
+                />
+                <PersonnelSelector
+                  personnel={recalculated.personnel || []}
+                  onChange={(next) => updateProject({ personnel: next })}
+                  projectLaborHours={recalculated.labor_hours || 0}
+                  defaultLaborRate={parseFloat(settings.install_labor_rate) || 65}
+                  items={recalculated.items}
+                />
+                {equipmentInventory.length === 0 && (
+                  <Card className="bg-amber-50 border-amber-200">
+                    <CardContent className="p-3 text-xs text-amber-900">
+                      Your equipment inventory is empty.{" "}
+                      <Link to={createPageUrl("ChannelLetterInstallInventory")} className="underline font-medium">
+                        Add equipment in Inventory
+                      </Link>{" "}
+                      to enable selection.
+                    </CardContent>
+                  </Card>
                 )}
               </TabsContent>
 

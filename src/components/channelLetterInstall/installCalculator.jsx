@@ -172,6 +172,16 @@ export const calcProjectTotals = (project) => {
   const labor_cost = items.reduce((s, it) => s + (parseFloat(it.labor_cost) || 0), 0);
   const labor_hours = items.reduce((s, it) => s + (parseFloat(it.labor_hours) || 0), 0);
 
+  // Equipment rollup
+  const total_equipment_cost = (project.selected_equipment || []).reduce(
+    (s, e) => s + (parseFloat(e.total_cost) || 0), 0
+  );
+
+  // Personnel rollup
+  const total_personnel_cost = (project.personnel || []).reduce(
+    (s, p) => s + (parseFloat(p.total_cost) || 0), 0
+  );
+
   // Supplies are derived from materials cost (percent) + an optional manual extra amount
   const pct = parseFloat(project.supplies_percent_of_materials);
   const suppliesPct = isNaN(pct) ? 10 : pct; // default 10% of materials
@@ -179,7 +189,12 @@ export const calcProjectTotals = (project) => {
   const supplies_from_materials = total_materials_cost * (suppliesPct / 100);
   const total_supplies_cost = supplies_from_materials + extra;
 
-  const subtotal = labor_cost + total_materials_cost + total_supplies_cost;
+  const subtotal =
+    labor_cost +
+    total_materials_cost +
+    total_supplies_cost +
+    total_equipment_cost +
+    total_personnel_cost;
   const markupPct = parseFloat(project.markup_percent) || 0;
   const markup_amount = subtotal * (markupPct / 100);
   const total_cost = subtotal + markup_amount;
@@ -189,6 +204,8 @@ export const calcProjectTotals = (project) => {
     labor_cost,
     total_materials_cost,
     total_supplies_cost,
+    total_equipment_cost,
+    total_personnel_cost,
     subtotal,
     markup_amount,
     total_cost,
