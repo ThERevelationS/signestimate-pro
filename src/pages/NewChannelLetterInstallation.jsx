@@ -19,6 +19,7 @@ import ValidationWarnings from "@/components/channelLetterInstall/ValidationWarn
 import EquipmentSelector from "@/components/channelLetterInstall/EquipmentSelector";
 import PersonnelSelector from "@/components/channelLetterInstall/PersonnelSelector";
 import LettersPurchaseTab from "@/components/channelLetterInstall/LettersPurchaseTab";
+import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
 import {
   calcLineItem,
   calcProjectTotals,
@@ -357,29 +358,27 @@ export default function NewChannelLetterInstallation() {
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid grid-cols-5 w-full bg-white shadow-sm border border-slate-200 h-12">
-                <TabsTrigger value="project" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
-                  <FileText className="w-4 h-4 mr-2" /> Project
-                </TabsTrigger>
-                <TabsTrigger value="letters" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
-                  <Type className="w-4 h-4 mr-2" /> Letters
-                </TabsTrigger>
-                <TabsTrigger value="items" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
-                  <ListChecks className="w-4 h-4 mr-2" /> Installation
-                  <span className="ml-1.5 text-xs bg-slate-200 data-[state=active]:bg-white/20 rounded-full px-1.5 py-0.5">
-                    {recalculated.items.length}
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger value="crew" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white relative">
-                  <HardHat className="w-4 h-4 mr-2" /> Crew & Equipment
-                  {(recalculated.selected_equipment?.length || 0) === 0 && (
-                    <span className="ml-1.5 w-2 h-2 rounded-full bg-red-500" title="Equipment required" />
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="summary" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
-                  <Calculator className="w-4 h-4 mr-2" /> Summary
-                </TabsTrigger>
-              </TabsList>
+              <div className="sticky top-[64px] z-30 -mx-2 px-2 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60">
+                <TabsList className="grid grid-cols-5 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
+                  <TabBadgeTrigger value="project" icon={FileText} label="Project" />
+                  <TabBadgeTrigger value="letters" icon={Type} label="Letters" amount={recalculated.total_letters_cost} />
+                  <TabBadgeTrigger
+                    value="items"
+                    icon={ListChecks}
+                    label="Install"
+                    amount={(recalculated.labor_cost || 0) + (recalculated.total_materials_cost || 0)}
+                    count={recalculated.items.length}
+                  />
+                  <TabBadgeTrigger
+                    value="crew"
+                    icon={HardHat}
+                    label="Crew"
+                    amount={(recalculated.total_equipment_cost || 0) + (recalculated.total_personnel_cost || 0)}
+                    warn={(recalculated.selected_equipment?.length || 0) === 0}
+                  />
+                  <TabBadgeTrigger value="summary" icon={Calculator} label="Summary" amount={recalculated.total_cost} accent />
+                </TabsList>
+              </div>
 
               {/* PROJECT TAB */}
               <TabsContent value="project" className="mt-4 space-y-4">

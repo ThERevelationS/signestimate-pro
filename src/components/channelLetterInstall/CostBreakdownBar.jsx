@@ -1,46 +1,60 @@
 import React from "react";
 
-const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
+// Compact horizontal stacked bar showing where money is going.
+// Supports two APIs:
+//   1. <CostBreakdownBar labor={...} materials={...} />  (legacy, used by InstallLineItem)
+//   2. <CostBreakdownBar segments={[{label, value, color}]} />  (new)
+export default function CostBreakdownBar({ segments, labor, materials }) {
+  let segs = segments;
+  let dark = true;
 
-export default function CostBreakdownBar({ labor = 0, materials = 0, supplies = 0 }) {
-  const total = labor + materials + supplies;
-  if (total <= 0) return null;
+  // Legacy mode: build segments from labor/materials and render light-mode
+  if (!segs && (labor != null || materials != null)) {
+    segs = [
+      { label: "Labor",     value: labor || 0,     color: "bg-purple-400" },
+      { label: "Materials", value: materials || 0, color: "bg-emerald-400" },
+    ];
+    dark = false;
+  }
 
-  const laborPct = (labor / total) * 100;
-  const materialsPct = (materials / total) * 100;
-  const suppliesPct = (supplies / total) * 100;
+  segs = segs || [];
+  const total = segs.reduce((s, x) => s + (parseFloat(x.value) || 0), 0);
+  const trackClass = dark ? "bg-white/10" : "bg-slate-100";
+  const legendClass = dark ? "text-slate-300" : "text-slate-500";
+
+  if (total <= 0) {
+    return <div className={`h-2 w-full rounded-full ${trackClass}`} />;
+  }
 
   return (
     <div className="space-y-1.5">
-      <div className="flex h-2 rounded-full overflow-hidden bg-slate-100">
-        {laborPct > 0 && (
-          <div
-            className="bg-blue-500 transition-all"
-            style={{ width: `${laborPct}%` }}
-            title={`Labor: ${fmt(labor)} (${laborPct.toFixed(0)}%)`}
-          />
-        )}
-        {materialsPct > 0 && (
-          <div
-            className="bg-purple-500 transition-all"
-            style={{ width: `${materialsPct}%` }}
-            title={`Materials: ${fmt(materials)} (${materialsPct.toFixed(0)}%)`}
-          />
-        )}
-        {suppliesPct > 0 && (
-          <div
-            className="bg-amber-500 transition-all"
-            style={{ width: `${suppliesPct}%` }}
-            title={`Supplies: ${fmt(supplies)} (${suppliesPct.toFixed(0)}%)`}
-          />
-        )}
+      <div className={`h-2 w-full rounded-full ${trackClass} overflow-hidden flex`}>
+        {segs.map((s, i) => {
+          const v = parseFloat(s.value) || 0;
+          if (v <= 0) return null;
+          const pct = (v / total) * 100;
+          return (
+            <div
+              key={i}
+              className={`${s.color} transition-all`}
+              style={{ width: `${pct}%` }}
+              title={`${s.label}: ${pct.toFixed(0)}%`}
+            />
+          );
+        })}
       </div>
-      <div className="flex items-center gap-3 text-[10px] text-slate-500">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-blue-500" /> Labor {laborPct.toFixed(0)}%</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-purple-500" /> Materials {materialsPct.toFixed(0)}%</span>
-        {suppliesPct > 0 && (
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-500" /> Supplies {suppliesPct.toFixed(0)}%</span>
-        )}
+      <div className={`flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] ${legendClass}`}>
+        {segs
+          .filter((s) => (parseFloat(s.value) || 0) > 0)
+          .map((s, i) => {
+            const pct = ((parseFloat(s.value) || 0) / total) * 100;
+            return (
+              <span key={i} className="inline-flex items-center gap-1">
+                <span className={`w-1.5 h-1.5 rounded-full ${s.color}`} />
+                {s.label} {pct.toFixed(0)}%
+              </span>
+            );
+          })}
       </div>
     </div>
   );
