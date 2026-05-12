@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Plus, Type, Truck, FileSignature, Wrench, Receipt, Info, Settings, Sparkles } from "lucide-react";
+import { Plus, Type, Truck, Receipt, Info, Settings, Sparkles, ChevronDown } from "lucide-react";
 import LetterPurchaseRow from "./LetterPurchaseRow";
 import AIScopeWriterModal from "./AIScopeWriterModal";
 import { emptyLetterPurchase, LETTER_TYPE_LABELS } from "./lettersCalculator";
@@ -23,6 +23,7 @@ const QUICK_ADD = [
 export default function LettersPurchaseTab({ project, settings, onUpdateProject }) {
   const purchases = project.letter_purchases || [];
   const [aiOpen, setAiOpen] = React.useState(false);
+  const [feesOpen, setFeesOpen] = React.useState(false);
 
   const addPurchase = (type) => {
     const p = emptyLetterPurchase(type);
@@ -141,62 +142,45 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject 
         </div>
       )}
 
-      {/* Project-level fees */}
-      <Card className="bg-white border-0 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Receipt className="w-4 h-4 text-purple-600" />
-            Project Fees
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <FeeInput
-              icon={Truck}
-              label="Delivery / Shipping"
-              value={project.letters_delivery_fee}
-              onChange={(v) => onUpdateProject({ letters_delivery_fee: v })}
-            />
-            <FeeInput
-              icon={FileSignature}
-              label="Graphic Design"
-              value={project.letters_design_fee}
-              onChange={(v) => onUpdateProject({ letters_design_fee: v })}
-            />
-            <FeeInput
-              icon={Wrench}
-              label="Install Supplies"
-              value={project.letters_install_supplies_fee}
-              onChange={(v) => onUpdateProject({ letters_install_supplies_fee: v })}
-            />
-            <FeeInput
-              icon={FileSignature}
-              label="Permitting"
-              value={project.letters_permitting_fee}
-              onChange={(v) => onUpdateProject({ letters_permitting_fee: v })}
-            />
-            <FeeInput
-              icon={Receipt}
-              label="Other"
-              value={project.letters_other_fee}
-              onChange={(v) => onUpdateProject({ letters_other_fee: v })}
-            />
-            <div>
-              <Label className="text-xs">Letters Markup %</Label>
-              <div className="relative mt-1">
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={project.letters_markup_percent ?? 0}
-                  onChange={(e) => onUpdateProject({ letters_markup_percent: parseFloat(e.target.value) || 0 })}
-                  className="h-9 pr-8"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">%</span>
-              </div>
-            </div>
+      {/* Project-level fees — Advanced Settings */}
+      <Card className="bg-white border-0 shadow-sm overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setFeesOpen(o => !o)}
+          className="w-full flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Settings className="w-4 h-4 text-slate-500" />
+            <span className="text-base font-semibold text-slate-900">Advanced Settings — Project Fees</span>
           </div>
-        </CardContent>
+          <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${feesOpen ? "rotate-180" : ""}`} />
+        </button>
+        {feesOpen && (
+          <CardContent className="border-t border-slate-100 pt-4">
+            <div className="mb-4 flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-900">
+                These fees are prefilled based on the defaults configured by your admin in the
+                {" "}<Link to={createPageUrl("ChannelLetterInstallationSettings")} className="font-semibold underline">Settings page</Link>.
+                Override them here for this estimate only.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <FeeInput
+                icon={Truck}
+                label="Delivery / Shipping"
+                value={project.letters_delivery_fee}
+                onChange={(v) => onUpdateProject({ letters_delivery_fee: v })}
+              />
+              <FeeInput
+                icon={Receipt}
+                label="Other"
+                value={project.letters_other_fee}
+                onChange={(v) => onUpdateProject({ letters_other_fee: v })}
+              />
+            </div>
+          </CardContent>
+        )}
       </Card>
 
       {/* Rollup */}
@@ -208,15 +192,6 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject 
           </div>
           {(parseFloat(project.letters_delivery_fee) || 0) > 0 && (
             <RollupRow label="Delivery / Shipping" value={project.letters_delivery_fee} />
-          )}
-          {(parseFloat(project.letters_design_fee) || 0) > 0 && (
-            <RollupRow label="Graphic Design" value={project.letters_design_fee} />
-          )}
-          {(parseFloat(project.letters_install_supplies_fee) || 0) > 0 && (
-            <RollupRow label="Install Supplies" value={project.letters_install_supplies_fee} />
-          )}
-          {(parseFloat(project.letters_permitting_fee) || 0) > 0 && (
-            <RollupRow label="Permitting" value={project.letters_permitting_fee} />
           )}
           {(parseFloat(project.letters_other_fee) || 0) > 0 && (
             <RollupRow label="Other" value={project.letters_other_fee} />

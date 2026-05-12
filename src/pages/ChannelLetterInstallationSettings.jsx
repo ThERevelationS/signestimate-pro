@@ -84,12 +84,9 @@ const settingsDefinitions = [
   { name: "letters_capsule_logo_per_sqft", type: "number", category: "letters_area_pricing", label: "Capsule / Logo / Pillbox", suffix: "$/sqft", description: "Cost per square foot for capsule, pillbox, or logo elements", default: "45.37" },
   { name: "letters_dimensional_per_sqft", type: "number", category: "letters_area_pricing", label: "Dimensional Letters (in-house)", suffix: "$/sqft", description: "Cost per square foot for in-house fabricated dimensional letters", default: "65.00" },
 
-  // Letter Pricing — Default fees & markup
+  // Project Fees — Defaults prefilled on new estimates
   { name: "letters_default_delivery_fee", type: "number", category: "letters_fees", label: "Default Delivery / Shipping", suffix: "$", description: "Default delivery fee pre-filled on new projects", default: "90" },
-  { name: "letters_default_design_fee", type: "number", category: "letters_fees", label: "Default Graphic Design Fee", suffix: "$", description: "Default design fee pre-filled on new projects", default: "150" },
-  { name: "letters_default_install_supplies_fee", type: "number", category: "letters_fees", label: "Default Install Supplies", suffix: "$", description: "Default install supplies fee pre-filled on new projects", default: "100" },
-  { name: "letters_default_permitting_fee", type: "number", category: "letters_fees", label: "Default Permitting Fee", suffix: "$", description: "Default permitting fee pre-filled on new projects", default: "750" },
-  { name: "letters_default_markup_percent", type: "number", category: "letters_fees", label: "Default Letters Markup", suffix: "%", description: "Default markup percent applied to the letters subtotal (tier 1)", default: "86.2" },
+  { name: "letters_default_other_fee", type: "number", category: "letters_fees", label: "Default Other Fee", suffix: "$", description: "Default 'Other' fee pre-filled on new projects", default: "0" },
 ];
 
 const TAB_META = {
@@ -142,9 +139,9 @@ const TAB_META = {
     categories: ["letters_raceway_pricing", "letters_channel_pricing", "letters_area_pricing"],
   },
   letter_fees: {
-    title: "Letter Fees",
+    title: "Project Fees",
     icon: Receipt,
-    description: "Default delivery, design, install-supplies, permitting fees, and markup pre-filled on new estimates.",
+    description: "Default Delivery / Shipping and Other fees pre-filled on new estimates.",
     categories: ["letters_fees"],
   },
 };
