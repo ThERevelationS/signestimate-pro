@@ -15,13 +15,24 @@ const settingsDefinitions = [
   // Pricing & Labor
   { name: "install_labor_rate", type: "number", category: "install_pricing", label: "Hourly Labor Rate", suffix: "$/hr", description: "Crew rate per hour for installation work", default: "65" },
 
-  // Base Rates per Letter Size (minutes per letter)
-  { name: "install_base_rate_extra_small", type: "number", category: "install_rates", label: "Extra Small (2\"–8\")", suffix: "min/letter", description: "Base minutes per XS letter", default: "45" },
-  { name: "install_base_rate_small", type: "number", category: "install_rates", label: "Small (8\"–12\")", suffix: "min/letter", description: "Base minutes per small letter", default: "90" },
-  { name: "install_base_rate_medium", type: "number", category: "install_rates", label: "Medium (12\"–24\")", suffix: "min/letter", description: "Base minutes per medium letter", default: "150" },
-  { name: "install_base_rate_large", type: "number", category: "install_rates", label: "Large (24\"–48\")", suffix: "min/letter", description: "Base minutes per large letter", default: "240" },
-  { name: "install_base_rate_extra_large", type: "number", category: "install_rates", label: "Extra Large (48\"–60\")", suffix: "min/letter", description: "Base minutes per XL letter", default: "360" },
-  { name: "install_base_rate_extra_extra_large", type: "number", category: "install_rates", label: "XXL (60\"+)", suffix: "min/letter", description: "Base minutes per XXL letter", default: "510" },
+  // Base Rates per Letter Size (minutes per letter) — split into Drill Pattern/Drill Time + Installation/Prep Time
+  { name: "install_drill_rate_extra_small", type: "number", category: "install_rates", label: "XS — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per XS letter for layout, drill pattern, and drilling", default: "15" },
+  { name: "install_prep_rate_extra_small", type: "number", category: "install_rates", label: "XS — Installation / Prep Time", suffix: "min/letter", description: "Minutes per XS letter for prep, mounting, and finish install", default: "30" },
+
+  { name: "install_drill_rate_small", type: "number", category: "install_rates", label: "Small — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per small letter for layout, drill pattern, and drilling", default: "30" },
+  { name: "install_prep_rate_small", type: "number", category: "install_rates", label: "Small — Installation / Prep Time", suffix: "min/letter", description: "Minutes per small letter for prep, mounting, and finish install", default: "60" },
+
+  { name: "install_drill_rate_medium", type: "number", category: "install_rates", label: "Medium — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per medium letter for layout, drill pattern, and drilling", default: "50" },
+  { name: "install_prep_rate_medium", type: "number", category: "install_rates", label: "Medium — Installation / Prep Time", suffix: "min/letter", description: "Minutes per medium letter for prep, mounting, and finish install", default: "100" },
+
+  { name: "install_drill_rate_large", type: "number", category: "install_rates", label: "Large — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per large letter for layout, drill pattern, and drilling", default: "80" },
+  { name: "install_prep_rate_large", type: "number", category: "install_rates", label: "Large — Installation / Prep Time", suffix: "min/letter", description: "Minutes per large letter for prep, mounting, and finish install", default: "160" },
+
+  { name: "install_drill_rate_extra_large", type: "number", category: "install_rates", label: "XL — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per XL letter for layout, drill pattern, and drilling", default: "120" },
+  { name: "install_prep_rate_extra_large", type: "number", category: "install_rates", label: "XL — Installation / Prep Time", suffix: "min/letter", description: "Minutes per XL letter for prep, mounting, and finish install", default: "240" },
+
+  { name: "install_drill_rate_extra_extra_large", type: "number", category: "install_rates", label: "XXL — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per XXL letter for layout, drill pattern, and drilling", default: "170" },
+  { name: "install_prep_rate_extra_extra_large", type: "number", category: "install_rates", label: "XXL — Installation / Prep Time", suffix: "min/letter", description: "Minutes per XXL letter for prep, mounting, and finish install", default: "340" },
 
   // Raceway Rates — separated into its own tab
   { name: "install_raceway_base_minutes_per_foot", type: "number", category: "install_raceway", label: "Base Cost per Foot", suffix: "min/ft", description: "Base minutes of labor per foot of raceway installed", default: "30" },
@@ -99,7 +110,7 @@ const TAB_META = {
   base_rates: {
     title: "Base Rates",
     icon: Ruler,
-    description: "Minutes of labor per letter by size (Flush Mount, Halo-Lit, Dimensional Lettering).",
+    description: "Minutes of labor per letter by size, split into Drill Pattern / Drill Time + Installation / Prep Time. The two values are summed per letter.",
     categories: ["install_rates"],
   },
   raceway: {

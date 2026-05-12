@@ -88,14 +88,22 @@ export const calcLineItem = (item, settings, inventory) => {
   const laborRate = parseFloat(settings.install_labor_rate) || 65;
 
   // Base rates are stored in MINUTES — convert to hours when reading.
+  // Each letter size has two components: Drill Pattern/Drill Time + Installation/Prep Time.
   const MIN_TO_HR = 1 / 60;
+  const sizeMinutes = (size, drillDefault, prepDefault) => {
+    const drill = parseFloat(settings[`install_drill_rate_${size}`]);
+    const prep = parseFloat(settings[`install_prep_rate_${size}`]);
+    const d = isNaN(drill) ? drillDefault : drill;
+    const p = isNaN(prep) ? prepDefault : prep;
+    return d + p;
+  };
   const letterSizeRates = {
-    extra_small: (parseFloat(settings.install_base_rate_extra_small) || 45) * MIN_TO_HR,
-    small: (parseFloat(settings.install_base_rate_small) || 90) * MIN_TO_HR,
-    medium: (parseFloat(settings.install_base_rate_medium) || 150) * MIN_TO_HR,
-    large: (parseFloat(settings.install_base_rate_large) || 240) * MIN_TO_HR,
-    extra_large: (parseFloat(settings.install_base_rate_extra_large) || 360) * MIN_TO_HR,
-    extra_extra_large: (parseFloat(settings.install_base_rate_extra_extra_large) || 510) * MIN_TO_HR,
+    extra_small: sizeMinutes("extra_small", 15, 30) * MIN_TO_HR,
+    small: sizeMinutes("small", 30, 60) * MIN_TO_HR,
+    medium: sizeMinutes("medium", 50, 100) * MIN_TO_HR,
+    large: sizeMinutes("large", 80, 160) * MIN_TO_HR,
+    extra_large: sizeMinutes("extra_large", 120, 240) * MIN_TO_HR,
+    extra_extra_large: sizeMinutes("extra_extra_large", 170, 340) * MIN_TO_HR,
   };
 
   let baseHours = 0;
