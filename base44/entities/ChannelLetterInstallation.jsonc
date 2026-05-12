@@ -224,6 +224,11 @@
           "wall_material": {
             "type": "string",
             "default": "eifs"
+          },
+          "fab_config": {
+            "type": "object",
+            "description": "Dimensional letter fabrication breakdown (material + CNC + paint). Populated by the DimensionalFabModal.",
+            "additionalProperties": true
           }
         }
       }
