@@ -59,7 +59,8 @@ const settingsDefinitions = [
 
   // Shop & Travel
   { name: "install_shop_address", type: "text", category: "install_shop_travel", label: "Shop Address", description: "Starting point for all installation travel calculations", default: "417 Northland Blvd, Cincinnati, OH 45246" },
-  { name: "install_fuel_price_per_gallon", type: "number", category: "install_shop_travel", label: "Current Fuel Price", suffix: "$/gal", description: "Auto-refreshed daily from regional AAA data. Manual edits will be overwritten by tomorrow's refresh.", default: "3.50" },
+  { name: "install_gasoline_price_per_gallon", type: "number", category: "install_shop_travel", label: "Gasoline Price", suffix: "$/gal", description: "Auto-refreshed daily from regional AAA data. Applied to owned vehicles with fuel_type = Gasoline.", default: "3.50" },
+  { name: "install_diesel_price_per_gallon", type: "number", category: "install_shop_travel", label: "Diesel Price", suffix: "$/gal", description: "Auto-refreshed daily from regional AAA data. Applied to owned vehicles with fuel_type = Diesel.", default: "4.00" },
   { name: "install_travel_labor_rate", type: "number", category: "install_shop_travel", label: "Travel Labor Rate", suffix: "$/hr", description: "Hourly rate billed for crew travel time (separate from on-site labor)", default: "45" },
   { name: "install_travel_avg_speed_mph", type: "number", category: "install_shop_travel", label: "Average Travel Speed", suffix: "mph", description: "Used to estimate travel time from miles (round-trip)", default: "45" },
   { name: "install_default_truck_mpg", type: "number", category: "install_shop_travel", label: "Default Truck MPG", suffix: "mpg", description: "Fallback MPG if no owned truck is selected on the line item", default: "14" },
@@ -211,12 +212,17 @@ export default function ChannelLetterInstallationSettings() {
     setRefreshingFuel(true);
     try {
       const res = await refreshFuelPrice({});
-      const price = res?.data?.price_per_gallon;
-      if (price) {
-        setSettings(prev => ({ ...prev, install_fuel_price_per_gallon: price.toFixed(3) }));
-        showSavedToast(`Fuel price updated: $${price.toFixed(3)}/gal`);
+      const gas = res?.data?.gasoline_price_per_gallon;
+      const diesel = res?.data?.diesel_price_per_gallon;
+      if (gas && diesel) {
+        setSettings(prev => ({
+          ...prev,
+          install_gasoline_price_per_gallon: gas.toFixed(3),
+          install_diesel_price_per_gallon: diesel.toFixed(3),
+        }));
+        showSavedToast(`Fuel updated — Gas $${gas.toFixed(3)} · Diesel $${diesel.toFixed(3)}`);
       } else {
-        toast({ variant: "destructive", description: "Could not refresh fuel price" });
+        toast({ variant: "destructive", description: "Could not refresh fuel prices" });
       }
     } catch (e) {
       toast({ variant: "destructive", description: "Refresh failed: " + e.message });
@@ -261,7 +267,7 @@ export default function ChannelLetterInstallationSettings() {
       );
     }
 
-    const isFuel = def.name === "install_fuel_price_per_gallon";
+    const isFuel = def.name === "install_gasoline_price_per_gallon" || def.name === "install_diesel_price_per_gallon";
 
     return (
       <div key={def.name}>

@@ -15,36 +15,56 @@ const EQUIPMENT_TYPES = [
   { value: "boom_lift", label: "Boom Lift" },
   { value: "scaffold", label: "Scaffold" },
   { value: "truck", label: "Truck" },
+  { value: "car", label: "Car" },
+  { value: "van", label: "Van" },
+  { value: "flatbed", label: "Flatbed" },
   { value: "hand_tool", label: "Hand Tool" },
   { value: "power_tool", label: "Power Tool" },
   { value: "safety", label: "Safety" },
   { value: "other", label: "Other" },
 ];
 
+const VEHICLE_TYPES = ["truck", "car", "van", "flatbed"];
+
+const FUEL_TYPES = [
+  { value: "na", label: "N/A" },
+  { value: "gasoline", label: "Gasoline" },
+  { value: "diesel", label: "Diesel" },
+];
+
 const OWNED_PRICING_MODES = [
-  { value: "owned_flat", label: "Owned — Flat Day Rate" },
-  { value: "per_project_flat", label: "Owned — Per Project Flat" },
+  { value: "owned_flat", label: "Flat Day Rate" },
+  { value: "per_hour", label: "Per Hour" },
+  { value: "per_project_flat", label: "Per Project Flat" },
 ];
 
 const RENTED_PRICING_MODES = [
-  { value: "per_day", label: "Rented — Per Day" },
-  { value: "per_week", label: "Rented — Per Week" },
-  { value: "per_month", label: "Rented — Per Month" },
+  { value: "per_hour", label: "Per Hour" },
+  { value: "per_day", label: "Per Day" },
+  { value: "per_week", label: "Per Week" },
+  { value: "per_month", label: "Per Month" },
 ];
 
-const isOwned = (item) => item.pricing_mode === "owned_flat" || item.pricing_mode === "per_project_flat";
+// Migrate: older records without `ownership` are inferred from pricing_mode.
+const isOwned = (item) => {
+  if (item.ownership) return item.ownership === "owned";
+  return item.pricing_mode === "owned_flat" || item.pricing_mode === "per_project_flat";
+};
 
 const emptyItem = (mode = "owned") => ({
   equipment_name: "",
   equipment_type: mode === "owned" ? "truck" : "scissor_lift",
+  ownership: mode,
   max_height_feet: 0,
   pricing_mode: mode === "owned" ? "owned_flat" : "per_day",
+  cost_per_hour: 0,
   cost_per_day: 0,
   cost_per_week: 0,
   cost_per_month: 0,
   cost_flat: 0,
   delivery_pickup_cost: 0,
   mpg: 0,
+  fuel_type: mode === "owned" ? "gasoline" : "na",
   rental_company: "",
   notes: "",
   is_active: true,
@@ -77,6 +97,7 @@ export default function EquipmentInventoryTab() {
 
   const addItem = (mode) => {
     setItems([...items, { ...emptyItem(mode), _new: true }]);
+    setActiveTab(mode);
   };
 
   const removeItem = async (origIndex) => {
@@ -94,6 +115,10 @@ export default function EquipmentInventoryTab() {
     setSaving(true);
     for (const it of items) {
       const { _new, id, ...payload } = it;
+      // Ensure ownership is always persisted (back-fills legacy records)
+      if (!payload.ownership) {
+        payload.ownership = isOwned(it) ? "owned" : "rented";
+      }
       if (id) await ChannelLetterInstallEquipment.update(id, payload);
       else await ChannelLetterInstallEquipment.create(payload);
     }
@@ -103,6 +128,8 @@ export default function EquipmentInventoryTab() {
 
   const costField = (it, i) => {
     switch (it.pricing_mode) {
+      case "per_hour":
+        return <Input type="number" step="0.01" value={it.cost_per_hour || 0} onFocus={e => e.target.select()} onChange={(e) => update(i, { cost_per_hour: parseFloat(e.target.value) || 0 })} className="h-8 mt-0.5" />;
       case "per_day":
         return <Input type="number" step="0.01" value={it.cost_per_day} onFocus={e => e.target.select()} onChange={(e) => update(i, { cost_per_day: parseFloat(e.target.value) || 0 })} className="h-8 mt-0.5" />;
       case "per_week":
@@ -118,7 +145,8 @@ export default function EquipmentInventoryTab() {
   };
 
   const renderRow = (it, origIndex, mode) => {
-    const showMpg = mode === "owned" && it.equipment_type === "truck";
+    const isVehicle = VEHICLE_TYPES.includes(it.equipment_type);
+    const showFuel = mode === "owned" && isVehicle;
     const pricingOptions = mode === "owned" ? OWNED_PRICING_MODES : RENTED_PRICING_MODES;
     const accent = mode === "owned" ? "bg-emerald-50/40 border-emerald-100" : "bg-blue-50/40 border-blue-100";
 
@@ -155,17 +183,10 @@ export default function EquipmentInventoryTab() {
             <Label className="text-xs">Cost</Label>
             {costField(it, origIndex)}
           </div>
-          {showMpg ? (
-            <div className="md:col-span-1">
-              <Label className="text-xs flex items-center gap-1"><Fuel className="w-3 h-3" /> MPG</Label>
-              <Input type="number" step="0.1" value={it.mpg || 0} onFocus={e => e.target.select()} onChange={(e) => update(origIndex, { mpg: parseFloat(e.target.value) || 0 })} className="h-8 mt-0.5" />
-            </div>
-          ) : (
-            <div className="md:col-span-1">
-              <Label className="text-xs">Delivery</Label>
-              <Input type="number" step="0.01" value={it.delivery_pickup_cost} onFocus={e => e.target.select()} onChange={(e) => update(origIndex, { delivery_pickup_cost: parseFloat(e.target.value) || 0 })} className="h-8 mt-0.5" />
-            </div>
-          )}
+          <div className="md:col-span-1">
+            <Label className="text-xs">Delivery</Label>
+            <Input type="number" step="0.01" value={it.delivery_pickup_cost} onFocus={e => e.target.select()} onChange={(e) => update(origIndex, { delivery_pickup_cost: parseFloat(e.target.value) || 0 })} className="h-8 mt-0.5" />
+          </div>
           <div className="md:col-span-1 flex items-end">
             <label className="flex items-center gap-1 cursor-pointer text-xs mb-2">
               <Checkbox checked={it.is_active} onCheckedChange={(c) => update(origIndex, { is_active: !!c })} />
@@ -173,6 +194,26 @@ export default function EquipmentInventoryTab() {
             </label>
           </div>
         </div>
+        {showFuel && (
+          <div className="grid md:grid-cols-12 gap-2 mt-2 p-2 rounded-md bg-emerald-100/40 border border-emerald-200/60">
+            <div className="md:col-span-3">
+              <Label className="text-xs flex items-center gap-1"><Fuel className="w-3 h-3 text-emerald-700" /> Fuel Type</Label>
+              <Select value={it.fuel_type || "gasoline"} onValueChange={(v) => update(origIndex, { fuel_type: v })}>
+                <SelectTrigger className="h-8 mt-0.5"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {FUEL_TYPES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2">
+              <Label className="text-xs">MPG</Label>
+              <Input type="number" step="0.1" value={it.mpg || 0} onFocus={e => e.target.select()} onChange={(e) => update(origIndex, { mpg: parseFloat(e.target.value) || 0 })} className="h-8 mt-0.5" />
+            </div>
+            <div className="md:col-span-7 flex items-end">
+              <p className="text-[11px] text-emerald-800/70 mb-1.5">Used to calculate travel fuel cost from the shop to the job site.</p>
+            </div>
+          </div>
+        )}
         <div className="grid md:grid-cols-12 gap-2 mt-2">
           {mode === "rented" ? (
             <div className="md:col-span-3">
