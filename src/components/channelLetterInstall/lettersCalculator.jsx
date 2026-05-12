@@ -4,8 +4,8 @@
 
 export const LETTER_TYPE_LABELS = {
   raceway: "Raceway",
-  channel_raceway_mounted: "Channel Letters — Raceway Mounted",
-  channel_flush_mounted: "Channel Letters — Flush Mounted",
+  channel_raceway_mounted: "Raceway Mounted Letters",
+  channel_flush_mounted: "Flush Mounted Letters",
   channel_halo_lit: "Channel Letters — Halo-Lit",
   capsule_logo_pillbox: "Capsule / Logo / Pillbox",
   dimensional_letters: "Dimensional Letters (fabricated in-house)",

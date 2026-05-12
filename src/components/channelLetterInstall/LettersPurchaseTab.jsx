@@ -13,9 +13,8 @@ import { emptyLetterPurchase, LETTER_TYPE_LABELS } from "./lettersCalculator";
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 
 const QUICK_ADD = [
-  { type: "raceway", label: "+ Raceway", color: "bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200" },
-  { type: "channel_raceway_mounted", label: "+ Raceway-Mount Letters", color: "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200" },
-  { type: "channel_flush_mounted", label: "+ Flush Mount Letters", color: "bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200" },
+  { type: "channel_raceway_mounted", label: "+ Raceway Mounted Letters", color: "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200" },
+  { type: "channel_flush_mounted", label: "+ Flush Mounted Letters", color: "bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200" },
   { type: "channel_halo_lit", label: "+ Halo-Lit Letters", color: "bg-pink-50 hover:bg-pink-100 text-pink-700 border-pink-200" },
   { type: "capsule_logo_pillbox", label: "+ Capsule / Logo", color: "bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200" },
   { type: "dimensional_letters", label: "+ Dimensional Letters", color: "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200" },
@@ -122,7 +121,7 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject 
             <p className="mb-3 font-medium">No letter purchases yet</p>
             <p className="text-xs mb-4">Use the quick-add buttons above to start.</p>
             <Button onClick={() => addPurchase("channel_flush_mounted")} className="bg-purple-600 hover:bg-purple-700 text-white">
-              <Plus className="w-4 h-4 mr-2" /> Add Flush Mount Letters
+              <Plus className="w-4 h-4 mr-2" /> Add Flush Mounted Letters
             </Button>
           </CardContent>
         </Card>
