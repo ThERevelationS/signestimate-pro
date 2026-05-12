@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator, MapPin, Copy, DollarSign, Check, HardHat, Type } from "lucide-react";
+import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator, MapPin, Copy, DollarSign, Check, HardHat, Type, Camera } from "lucide-react";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import InstallLineItem from "@/components/channelLetterInstall/InstallLineItem";
@@ -20,6 +20,8 @@ import EquipmentSelector from "@/components/channelLetterInstall/EquipmentSelect
 import PersonnelSelector from "@/components/channelLetterInstall/PersonnelSelector";
 import LettersPurchaseTab from "@/components/channelLetterInstall/LettersPurchaseTab";
 import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
+import PhotoEstimateModal from "@/components/channelLetterInstall/PhotoEstimateModal";
+import { suggestEquipmentForProject, selectedEquipmentFromInventory } from "@/components/channelLetterInstall/equipmentSuggester";
 import {
   calcLineItem,
   calcProjectTotals,
@@ -68,6 +70,7 @@ export default function NewChannelLetterInstallation() {
   const [isSaving, setIsSaving] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState("project");
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
 
   useEffect(() => { if (!isLoading) setHasLoaded(true); }, [isLoading]);
   useEffect(() => { if (hasLoaded) setIsDirty(true); }, [project, hasLoaded, setIsDirty]);
@@ -202,6 +205,38 @@ export default function NewChannelLetterInstallation() {
     const [moved] = next.splice(from, 1);
     next.splice(to, 0, moved);
     setProject(prev => ({ ...prev, items: next }));
+  };
+
+  // Auto-suggest equipment when max install height changes (only if user hasn't picked any yet)
+  const maxInstallHeight = useMemo(
+    () => (project.items || []).reduce((m, it) => Math.max(m, parseFloat(it.installation_height_feet) || 0), 0),
+    [project.items]
+  );
+  useEffect(() => {
+    if (!hasLoaded) return;
+    if ((project.selected_equipment || []).length > 0) return; // never auto-overwrite user choice
+    if (maxInstallHeight <= 0 || equipmentInventory.length === 0) return;
+    const projectLaborHours = recalculated.labor_hours || 0;
+    const suggested = suggestEquipmentForProject(project.items, equipmentInventory);
+    if (suggested.length === 0) return;
+    const rows = suggested.map((inv) => selectedEquipmentFromInventory(inv, projectLaborHours));
+    setProject((prev) => ({ ...prev, selected_equipment: rows }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maxInstallHeight, equipmentInventory, hasLoaded]);
+
+  // Apply Photo→Estimate result as a new line item
+  const applyPhotoEstimate = (result) => {
+    const newItem = emptyLineItem();
+    newItem.installation_height_feet = parseFloat(result.estimated_height_feet) || newItem.installation_height_feet;
+    newItem.wall_material = result.wall_material || newItem.wall_material;
+    newItem.installation_type = result.recommended_install_type || newItem.installation_type;
+    newItem.parapet = !!result.site_conditions?.parapet;
+    newItem.poor_electrical_access = !!result.site_conditions?.poor_electrical_access;
+    newItem.thick_hollow_walls = !!result.site_conditions?.thick_hollow_walls;
+    newItem.description = `From site photo — ${result.confidence || ""} confidence`.trim();
+    newItem.materials = defaultMaterialsForItem(newItem, inventory);
+    setProject((prev) => ({ ...prev, items: [...prev.items, newItem] }));
+    setActiveTab("items");
   };
 
   // Keyboard shortcuts: Ctrl/Cmd+S = save, Ctrl/Cmd+N = new item
@@ -344,6 +379,13 @@ export default function NewChannelLetterInstallation() {
             <p className="text-slate-600">Multi-item estimate — letters, install, crew</p>
           </div>
           <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              onClick={() => setPhotoModalOpen(true)}
+              className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200 text-purple-800 hover:from-purple-100 hover:to-pink-100"
+            >
+              <Camera className="w-4 h-4 mr-2" /> Photo → Estimate
+            </Button>
             <Link to={createPageUrl("ChannelLetterInstallInventory")}>
               <Button variant="outline" className="bg-white">
                 <Package className="w-4 h-4 mr-2" /> Inventory
@@ -687,6 +729,12 @@ export default function NewChannelLetterInstallation() {
           </div>
         </div>
       </div>
+
+      <PhotoEstimateModal
+        open={photoModalOpen}
+        onClose={() => setPhotoModalOpen(false)}
+        onApply={applyPhotoEstimate}
+      />
     </div>
   );
 }

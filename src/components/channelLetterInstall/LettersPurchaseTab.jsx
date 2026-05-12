@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Plus, Type, Truck, FileSignature, Wrench, Receipt, Info, Settings } from "lucide-react";
+import { Plus, Type, Truck, FileSignature, Wrench, Receipt, Info, Settings, Sparkles } from "lucide-react";
 import LetterPurchaseRow from "./LetterPurchaseRow";
+import AIScopeWriterModal from "./AIScopeWriterModal";
 import { emptyLetterPurchase, LETTER_TYPE_LABELS } from "./lettersCalculator";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
@@ -22,10 +23,26 @@ const QUICK_ADD = [
 
 export default function LettersPurchaseTab({ project, settings, onUpdateProject }) {
   const purchases = project.letter_purchases || [];
+  const [aiOpen, setAiOpen] = React.useState(false);
 
   const addPurchase = (type) => {
     const p = emptyLetterPurchase(type);
     onUpdateProject({ letter_purchases: [...purchases, p] });
+  };
+
+  const applyAIPurchases = (aiPurchases) => {
+    const newOnes = aiPurchases.map((ai) => {
+      const base = emptyLetterPurchase(ai.letter_type || "channel_flush_mounted");
+      return {
+        ...base,
+        description: ai.description || base.description,
+        qty: parseFloat(ai.qty) || 0,
+        size_value: parseFloat(ai.size_value) || 0,
+        install_height_feet: parseFloat(ai.install_height_feet) || base.install_height_feet || 12,
+        wall_material: ai.wall_material || base.wall_material || "eifs",
+      };
+    });
+    onUpdateProject({ letter_purchases: [...purchases, ...newOnes] });
   };
 
   const updatePurchase = (idx, next) => {
@@ -66,11 +83,20 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject 
                 Each line auto-creates a matching item on the Installation tab.
               </p>
             </div>
-            <Link to={createPageUrl("ChannelLetterInstallationSettings")}>
-              <Button variant="outline" size="sm" className="bg-white">
-                <Settings className="w-3.5 h-3.5 mr-1.5" /> Letter Pricing
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setAiOpen(true)}
+                size="sm"
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-sm"
+              >
+                <Sparkles className="w-3.5 h-3.5 mr-1.5" /> AI Scope Writer
               </Button>
-            </Link>
+              <Link to={createPageUrl("ChannelLetterInstallationSettings")}>
+                <Button variant="outline" size="sm" className="bg-white">
+                  <Settings className="w-3.5 h-3.5 mr-1.5" /> Letter Pricing
+                </Button>
+              </Link>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2 pt-1">
             {QUICK_ADD.map(qa => (
@@ -220,6 +246,8 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject 
           The total above is added to the project Grand Total on the Summary tab.
         </span>
       </div>
+
+      <AIScopeWriterModal open={aiOpen} onClose={() => setAiOpen(false)} onApply={applyAIPurchases} />
     </div>
   );
 }
