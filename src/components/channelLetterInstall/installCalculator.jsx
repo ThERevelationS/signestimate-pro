@@ -182,6 +182,10 @@ export const calcProjectTotals = (project) => {
     (s, p) => s + (parseFloat(p.total_cost) || 0), 0
   );
 
+  // Letters purchase rollup (calculated by lettersCalculator separately;
+  // we just read the already-stored project.total_letters_cost here)
+  const total_letters_cost = parseFloat(project.total_letters_cost) || 0;
+
   // Supplies are derived from materials cost (percent) + an optional manual extra amount
   const pct = parseFloat(project.supplies_percent_of_materials);
   const suppliesPct = isNaN(pct) ? 10 : pct; // default 10% of materials
@@ -194,7 +198,8 @@ export const calcProjectTotals = (project) => {
     total_materials_cost +
     total_supplies_cost +
     total_equipment_cost +
-    total_personnel_cost;
+    total_personnel_cost +
+    total_letters_cost;
   const markupPct = parseFloat(project.markup_percent) || 0;
   const markup_amount = subtotal * (markupPct / 100);
   const total_cost = subtotal + markup_amount;

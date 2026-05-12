@@ -1,0 +1,252 @@
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { Plus, Type, Truck, FileSignature, Wrench, Receipt, Info, Settings } from "lucide-react";
+import LetterPurchaseRow from "./LetterPurchaseRow";
+import { emptyLetterPurchase, LETTER_TYPE_LABELS } from "./lettersCalculator";
+
+const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
+
+const QUICK_ADD = [
+  { type: "raceway", label: "+ Raceway", color: "bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200" },
+  { type: "channel_raceway_mounted", label: "+ Raceway-Mount Letters", color: "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200" },
+  { type: "channel_flush_mounted", label: "+ Flush Mount Letters", color: "bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200" },
+  { type: "channel_halo_lit", label: "+ Halo-Lit Letters", color: "bg-pink-50 hover:bg-pink-100 text-pink-700 border-pink-200" },
+  { type: "capsule_logo_pillbox", label: "+ Capsule / Logo", color: "bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200" },
+  { type: "dimensional_letters", label: "+ Dimensional Letters", color: "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200" },
+];
+
+export default function LettersPurchaseTab({ project, settings, onUpdateProject }) {
+  const purchases = project.letter_purchases || [];
+
+  const addPurchase = (type) => {
+    const p = emptyLetterPurchase(type);
+    onUpdateProject({ letter_purchases: [...purchases, p] });
+  };
+
+  const updatePurchase = (idx, next) => {
+    const arr = [...purchases];
+    arr[idx] = next;
+    onUpdateProject({ letter_purchases: arr });
+  };
+
+  const removePurchase = (idx) => {
+    const arr = [...purchases];
+    arr.splice(idx, 1);
+    onUpdateProject({ letter_purchases: arr });
+  };
+
+  const duplicatePurchase = (idx) => {
+    const arr = [...purchases];
+    const copy = JSON.parse(JSON.stringify(arr[idx]));
+    copy.id = `lp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    arr.splice(idx + 1, 0, copy);
+    onUpdateProject({ letter_purchases: arr });
+  };
+
+  const purchasesTotal = purchases.reduce((s, p) => s + (parseFloat(p.total_cost) || 0), 0);
+
+  return (
+    <div className="space-y-3">
+      {/* Intro / quick-add */}
+      <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center flex-shrink-0">
+              <Type className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-slate-900">Letter Purchase</h3>
+              <p className="text-xs text-slate-600">
+                Build up the cost of the letters themselves (separate from installation labor).
+                Each line auto-creates a matching item on the Installation tab.
+              </p>
+            </div>
+            <Link to={createPageUrl("ChannelLetterInstallationSettings")}>
+              <Button variant="outline" size="sm" className="bg-white">
+                <Settings className="w-3.5 h-3.5 mr-1.5" /> Letter Pricing
+              </Button>
+            </Link>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {QUICK_ADD.map(qa => (
+              <button
+                key={qa.type}
+                onClick={() => addPurchase(qa.type)}
+                className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${qa.color}`}
+              >
+                {qa.label}
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Purchase rows */}
+      {purchases.length === 0 ? (
+        <Card className="border-2 border-dashed border-slate-300 bg-white/50">
+          <CardContent className="p-12 text-center text-slate-500">
+            <Type className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+            <p className="mb-3 font-medium">No letter purchases yet</p>
+            <p className="text-xs mb-4">Use the quick-add buttons above to start.</p>
+            <Button onClick={() => addPurchase("channel_flush_mounted")} className="bg-purple-600 hover:bg-purple-700 text-white">
+              <Plus className="w-4 h-4 mr-2" /> Add Flush Mount Letters
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {purchases.map((p, idx) => (
+            <LetterPurchaseRow
+              key={p.id || idx}
+              index={idx}
+              purchase={p}
+              settings={settings}
+              onUpdate={(next) => updatePurchase(idx, next)}
+              onRemove={() => removePurchase(idx)}
+              onDuplicate={() => duplicatePurchase(idx)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Project-level fees */}
+      <Card className="bg-white border-0 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Receipt className="w-4 h-4 text-purple-600" />
+            Project Fees
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <FeeInput
+              icon={Truck}
+              label="Delivery / Shipping"
+              value={project.letters_delivery_fee}
+              onChange={(v) => onUpdateProject({ letters_delivery_fee: v })}
+            />
+            <FeeInput
+              icon={FileSignature}
+              label="Graphic Design"
+              value={project.letters_design_fee}
+              onChange={(v) => onUpdateProject({ letters_design_fee: v })}
+            />
+            <FeeInput
+              icon={Wrench}
+              label="Install Supplies"
+              value={project.letters_install_supplies_fee}
+              onChange={(v) => onUpdateProject({ letters_install_supplies_fee: v })}
+            />
+            <FeeInput
+              icon={FileSignature}
+              label="Permitting"
+              value={project.letters_permitting_fee}
+              onChange={(v) => onUpdateProject({ letters_permitting_fee: v })}
+            />
+            <FeeInput
+              icon={Receipt}
+              label="Other"
+              value={project.letters_other_fee}
+              onChange={(v) => onUpdateProject({ letters_other_fee: v })}
+            />
+            <div>
+              <Label className="text-xs">Letters Markup %</Label>
+              <div className="relative mt-1">
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={project.letters_markup_percent ?? 0}
+                  onChange={(e) => onUpdateProject({ letters_markup_percent: parseFloat(e.target.value) || 0 })}
+                  className="h-9 pr-8"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">%</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Rollup */}
+      <Card className="bg-gradient-to-r from-slate-900 to-slate-800 text-white border-0">
+        <CardContent className="p-4 space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-300">Letters Subtotal</span>
+            <span className="tabular-nums font-medium">{fmt(purchasesTotal)}</span>
+          </div>
+          {(parseFloat(project.letters_delivery_fee) || 0) > 0 && (
+            <RollupRow label="Delivery / Shipping" value={project.letters_delivery_fee} />
+          )}
+          {(parseFloat(project.letters_design_fee) || 0) > 0 && (
+            <RollupRow label="Graphic Design" value={project.letters_design_fee} />
+          )}
+          {(parseFloat(project.letters_install_supplies_fee) || 0) > 0 && (
+            <RollupRow label="Install Supplies" value={project.letters_install_supplies_fee} />
+          )}
+          {(parseFloat(project.letters_permitting_fee) || 0) > 0 && (
+            <RollupRow label="Permitting" value={project.letters_permitting_fee} />
+          )}
+          {(parseFloat(project.letters_other_fee) || 0) > 0 && (
+            <RollupRow label="Other" value={project.letters_other_fee} />
+          )}
+          <div className="border-t border-white/20 pt-2 flex justify-between">
+            <span className="text-slate-300 text-sm">Subtotal w/ Fees</span>
+            <span className="tabular-nums font-medium">{fmt(project.letters_subtotal)}</span>
+          </div>
+          {(parseFloat(project.letters_markup_percent) || 0) > 0 && (
+            <div className="flex justify-between text-xs text-slate-400">
+              <span>Markup ({parseFloat(project.letters_markup_percent).toFixed(1)}%)</span>
+              <span className="tabular-nums">
+                {fmt((project.total_letters_cost || 0) - (project.letters_subtotal || 0))}
+              </span>
+            </div>
+          )}
+          <div className="border-t-2 border-white/30 pt-2 flex justify-between items-center">
+            <span className="text-lg font-bold">Total Letters Cost</span>
+            <span className="text-2xl font-bold tabular-nums">{fmt(project.total_letters_cost)}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="text-[11px] text-slate-500 flex items-start gap-1.5 px-1">
+        <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+        <span>
+          Letter pricing pulls from your Channel Letter Settings page. Click "Letter Pricing" above to adjust.
+          The total above is added to the project Grand Total on the Summary tab.
+        </span>
+      </div>
+    </div>
+  );
+}
+
+const FeeInput = ({ icon: Icon, label, value, onChange }) => (
+  <div>
+    <Label className="text-xs flex items-center gap-1">
+      <Icon className="w-3 h-3 text-slate-500" />
+      {label}
+    </Label>
+    <div className="relative mt-1">
+      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+      <Input
+        type="number"
+        min="0"
+        step="0.01"
+        value={value ?? 0}
+        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        className="h-9 pl-6"
+      />
+    </div>
+  </div>
+);
+
+const RollupRow = ({ label, value }) => (
+  <div className="flex justify-between text-xs text-slate-400">
+    <span>{label}</span>
+    <span className="tabular-nums">{`$${(parseFloat(value) || 0).toFixed(2)}`}</span>
+  </div>
+);

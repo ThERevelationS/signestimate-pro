@@ -18,12 +18,14 @@ import CrewEquipmentHint from "@/components/channelLetterInstall/CrewEquipmentHi
 import ValidationWarnings from "@/components/channelLetterInstall/ValidationWarnings";
 import EquipmentSelector from "@/components/channelLetterInstall/EquipmentSelector";
 import PersonnelSelector from "@/components/channelLetterInstall/PersonnelSelector";
+import LettersPurchaseTab from "@/components/channelLetterInstall/LettersPurchaseTab";
 import {
   calcLineItem,
   calcProjectTotals,
   defaultMaterialsForItem,
   emptyLineItem,
 } from "@/components/channelLetterInstall/installCalculator";
+import { calcLettersTotals, syncInstallItemsFromPurchases } from "@/components/channelLetterInstall/lettersCalculator";
 import { buildSummaryText, downloadCSV } from "@/components/channelLetterInstall/installExport";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
@@ -35,6 +37,13 @@ const blankProject = () => ({
   hyperlink: "",
   site_address: "",
   items: [],
+  letter_purchases: [],
+  letters_delivery_fee: 0,
+  letters_design_fee: 0,
+  letters_install_supplies_fee: 0,
+  letters_permitting_fee: 0,
+  letters_other_fee: 0,
+  letters_markup_percent: 0,
   selected_equipment: [],
   personnel: [],
   base_supplies_cost: 0,
@@ -117,9 +126,13 @@ export default function NewChannelLetterInstallation() {
   // Recalc on every change
   const recalculated = useMemo(() => {
     if (!settings || Object.keys(settings).length === 0) return project;
+    // 1) Letters tab math — totals each purchase row + project subtotal + markup
+    const lettersTotals = calcLettersTotals(project, settings);
+    // 2) Installation items recompute
     const recalcItems = (project.items || []).map(it => calcLineItem(it, settings, inventory));
-    const totals = calcProjectTotals({ ...project, items: recalcItems });
-    return { ...project, items: recalcItems, ...totals };
+    // 3) Project rollup (uses total_letters_cost from step 1)
+    const totals = calcProjectTotals({ ...project, ...lettersTotals, items: recalcItems });
+    return { ...project, ...lettersTotals, items: recalcItems, ...totals };
   }, [project, settings, inventory]);
 
   // Aggregate materials across items for the Materials tab
@@ -146,7 +159,16 @@ export default function NewChannelLetterInstallation() {
   }, [recalculated]);
 
   // Mutators
-  const updateProject = (patch) => setProject(prev => ({ ...prev, ...patch }));
+  const updateProject = (patch) => {
+    setProject(prev => {
+      const next = { ...prev, ...patch };
+      // When letter_purchases changes, keep matching install items in sync
+      if ("letter_purchases" in patch) {
+        next.items = syncInstallItemsFromPurchases(next.items, next.letter_purchases, emptyLineItem);
+      }
+      return next;
+    });
+  };
 
   const updateItem = (idx, updated) => {
     const next = [...project.items];
@@ -460,21 +482,13 @@ export default function NewChannelLetterInstallation() {
                 </div>
               </TabsContent>
 
-              {/* LETTERS TAB (Phase 2 — coming soon) */}
+              {/* LETTERS TAB */}
               <TabsContent value="letters" className="mt-4 space-y-3">
-                <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-dashed border-purple-200">
-                  <CardContent className="p-12 text-center">
-                    <Type className="w-16 h-16 mx-auto mb-4 text-purple-400" />
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">Letters Purchase — Coming in Phase 2</h3>
-                    <p className="text-slate-600 max-w-md mx-auto mb-4">
-                      This tab will let you build up the cost of purchasing the channel letters themselves —
-                      raceway, flush mount, halo-lit, capsule/logo/pillbox, and dimensional letters.
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      Filling this tab will auto-create matching installation line items on the next tab.
-                    </p>
-                  </CardContent>
-                </Card>
+                <LettersPurchaseTab
+                  project={recalculated}
+                  settings={settings}
+                  onUpdateProject={updateProject}
+                />
               </TabsContent>
 
               {/* INSTALLATION TAB (formerly Items) */}

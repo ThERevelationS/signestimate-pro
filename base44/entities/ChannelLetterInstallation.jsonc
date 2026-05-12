@@ -108,6 +108,10 @@
             "type": "boolean",
             "default": false
           },
+          "source_letter_purchase_id": {
+            "type": "string",
+            "description": "Auto-generated items reference the letter_purchases row that spawned them"
+          },
           "materials": {
             "type": "array",
             "items": {
@@ -155,9 +159,108 @@
         }
       }
     },
+    "letter_purchases": {
+      "type": "array",
+      "description": "Channel letter purchase line items (separate from installation labor).",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable client-side id used to link to auto-generated install items."
+          },
+          "letter_type": {
+            "type": "string",
+            "enum": [
+              "raceway",
+              "channel_raceway_mounted",
+              "channel_flush_mounted",
+              "channel_halo_lit",
+              "capsule_logo_pillbox",
+              "dimensional_letters"
+            ],
+            "default": "channel_flush_mounted"
+          },
+          "description": {
+            "type": "string"
+          },
+          "raceway_index": {
+            "type": "number",
+            "description": "1, 2, 3, or 4 \u2014 which raceway escalation tier to use (per the price sheet).",
+            "default": 1
+          },
+          "qty": {
+            "type": "number",
+            "default": 0,
+            "description": "Number of letters, logos, or raceways"
+          },
+          "size_value": {
+            "type": "number",
+            "default": 0,
+            "description": "Vertical inches (channel letters), linear feet (raceway), or square feet (capsule/logo/dimensional)"
+          },
+          "unit_cost": {
+            "type": "number",
+            "default": 0,
+            "description": "Auto-derived from settings unless overridden"
+          },
+          "unit_cost_override": {
+            "type": "boolean",
+            "default": false
+          },
+          "total_cost": {
+            "type": "number",
+            "default": 0
+          },
+          "create_install_item": {
+            "type": "boolean",
+            "default": true,
+            "description": "Auto-create a matching line item on the Installation tab"
+          },
+          "install_height_feet": {
+            "type": "number",
+            "default": 12
+          },
+          "wall_material": {
+            "type": "string",
+            "default": "eifs"
+          }
+        }
+      }
+    },
+    "letters_delivery_fee": {
+      "type": "number",
+      "default": 0
+    },
+    "letters_design_fee": {
+      "type": "number",
+      "default": 0
+    },
+    "letters_install_supplies_fee": {
+      "type": "number",
+      "default": 0
+    },
+    "letters_permitting_fee": {
+      "type": "number",
+      "default": 0
+    },
+    "letters_other_fee": {
+      "type": "number",
+      "default": 0
+    },
+    "letters_markup_percent": {
+      "type": "number",
+      "default": 0,
+      "description": "Markup applied to the letter purchase subtotal (does not affect install)."
+    },
+    "letters_subtotal": {
+      "type": "number"
+    },
+    "total_letters_cost": {
+      "type": "number"
+    },
     "selected_equipment": {
       "type": "array",
-      "description": "Equipment chosen for this installation project.",
       "items": {
         "type": "object",
         "properties": {
@@ -175,8 +278,7 @@
           },
           "duration": {
             "type": "number",
-            "default": 1,
-            "description": "Number of hours/days/weeks/months used (matches pricing_mode unit)"
+            "default": 1
           },
           "include_delivery": {
             "type": "boolean",
@@ -202,7 +304,6 @@
     },
     "personnel": {
       "type": "array",
-      "description": "Crew members assigned to this job.",
       "items": {
         "type": "object",
         "properties": {
@@ -210,8 +311,7 @@
             "type": "string"
           },
           "role": {
-            "type": "string",
-            "description": "e.g. Crew Lead, Installer, Helper"
+            "type": "string"
           },
           "hourly_rate": {
             "type": "number",
