@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator, MapPin, Copy, DollarSign, Check, HardHat } from "lucide-react";
+import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator, MapPin, Copy, DollarSign, Check, HardHat, Type } from "lucide-react";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import InstallLineItem from "@/components/channelLetterInstall/InstallLineItem";
@@ -316,9 +316,9 @@ export default function NewChannelLetterInstallation() {
           <div>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
               <Wrench className="w-8 h-8 text-purple-600" />
-              {isEditing ? "Edit" : "New"} Channel Letter Installation
+              {isEditing ? "Edit" : "New"} Channel & Dimensional Letter Estimate
             </h1>
-            <p className="text-slate-600">Multi-item installation estimate</p>
+            <p className="text-slate-600">Multi-item estimate — letters, install, crew</p>
           </div>
           <div className="flex gap-2 flex-wrap">
             <Link to={createPageUrl("ChannelLetterInstallInventory")}>
@@ -335,12 +335,15 @@ export default function NewChannelLetterInstallation() {
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid grid-cols-4 w-full bg-white shadow-sm border border-slate-200 h-12">
+              <TabsList className="grid grid-cols-5 w-full bg-white shadow-sm border border-slate-200 h-12">
                 <TabsTrigger value="project" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
                   <FileText className="w-4 h-4 mr-2" /> Project
                 </TabsTrigger>
+                <TabsTrigger value="letters" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+                  <Type className="w-4 h-4 mr-2" /> Letters
+                </TabsTrigger>
                 <TabsTrigger value="items" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
-                  <ListChecks className="w-4 h-4 mr-2" /> Items
+                  <ListChecks className="w-4 h-4 mr-2" /> Installation
                   <span className="ml-1.5 text-xs bg-slate-200 data-[state=active]:bg-white/20 rounded-full px-1.5 py-0.5">
                     {recalculated.items.length}
                   </span>
@@ -451,13 +454,30 @@ export default function NewChannelLetterInstallation() {
                 </Card>
 
                 <div className="flex justify-end">
-                  <Button onClick={() => setActiveTab("items")} className="bg-purple-600 hover:bg-purple-700 text-white">
-                    Continue to Line Items →
+                  <Button onClick={() => setActiveTab("letters")} className="bg-purple-600 hover:bg-purple-700 text-white">
+                    Continue to Letters →
                   </Button>
                 </div>
               </TabsContent>
 
-              {/* ITEMS TAB */}
+              {/* LETTERS TAB (Phase 2 — coming soon) */}
+              <TabsContent value="letters" className="mt-4 space-y-3">
+                <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-dashed border-purple-200">
+                  <CardContent className="p-12 text-center">
+                    <Type className="w-16 h-16 mx-auto mb-4 text-purple-400" />
+                    <h3 className="text-xl font-bold text-slate-900 mb-2">Letters Purchase — Coming in Phase 2</h3>
+                    <p className="text-slate-600 max-w-md mx-auto mb-4">
+                      This tab will let you build up the cost of purchasing the channel letters themselves —
+                      raceway, flush mount, halo-lit, capsule/logo/pillbox, and dimensional letters.
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Filling this tab will auto-create matching installation line items on the next tab.
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* INSTALLATION TAB (formerly Items) */}
               <TabsContent value="items" className="mt-4 space-y-3">
                 <div className="flex items-center justify-end bg-white rounded-lg border border-slate-200 px-3 py-2 shadow-sm">
                   <Button onClick={addItem} size="sm" className="bg-purple-600 hover:bg-purple-700 text-white">

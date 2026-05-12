@@ -156,7 +156,7 @@ export default function Layout({ children, currentPageName }) {
     },
     {
       id: 'channel_letter_installation',
-      name: 'Channel / Dimensional Letter Install',
+      name: 'Channel & Dimensional Letters',
       icon: Wrench,
       projectsPage: 'ChannelLetterInstallationProjects',
       newEstimatePage: 'NewChannelLetterInstallation',
