@@ -87,7 +87,7 @@ export default function LetterSizePicker({ value, onChange }) {
               images={s.images}
               alt={`${s.label} channel letters`}
               className="w-full aspect-[4/3]"
-              intervalMs={5000}
+              intervalMs={10000}
             />
             <div className="p-1.5 text-center">
               <div className="text-[11px] font-semibold">{s.label}</div>

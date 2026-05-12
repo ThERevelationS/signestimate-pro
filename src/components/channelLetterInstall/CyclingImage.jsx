@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 
 // Cycles through a list of image URLs, switching every `intervalMs` ms.
 // Each instance picks a random starting index so multiple cards don't sync up.
-export default function CyclingImage({ images, alt, intervalMs = 5000, className = "" }) {
+export default function CyclingImage({ images, alt, intervalMs = 10000, className = "" }) {
   const list = Array.isArray(images) && images.length > 0 ? images : [];
   const [idx, setIdx] = useState(() =>
     list.length > 1 ? Math.floor(Math.random() * list.length) : 0

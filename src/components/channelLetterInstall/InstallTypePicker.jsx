@@ -46,7 +46,7 @@ const TYPES = [
     description: "Non-illuminated solid / fabricated letters",
     example: "e.g. acrylic, foam, metal flat-cut",
     images: [
-      "c1dec958a", "7c8c1d09f", "2907d461a", "355d62b6a", "795df3288",
+      "98e05518a", "abb0a0232", "2daa53740", "1e95036bc", "603b1288d",
     ],
     accent: "border-teal-500 bg-teal-50 text-teal-900",
     accentDot: "bg-teal-500",
@@ -76,7 +76,7 @@ export default function InstallTypePicker({ value, onChange }) {
               images={t.images}
               alt={t.label}
               className="w-full aspect-video"
-              intervalMs={5000}
+              intervalMs={10000}
             />
             <div className="p-2.5">
               <div className="text-sm font-semibold">{t.label}</div>
