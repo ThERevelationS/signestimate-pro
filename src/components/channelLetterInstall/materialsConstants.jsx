@@ -6,8 +6,10 @@ export const APPLIES_TO_GROUPS = [
   { value: "halo_lit", label: "Halo-Lit", color: "bg-amber-100 text-amber-800 border-amber-200" },
   { value: "raceway", label: "Raceway", color: "bg-purple-100 text-purple-800 border-purple-200" },
   { value: "dimensional_lettering", label: "Dimensional Lettering", color: "bg-teal-100 text-teal-800 border-teal-200" },
-  { value: "all", label: "Applies to All Types", color: "bg-slate-100 text-slate-800 border-slate-200" },
 ];
+
+// All concrete installation type values used for grouping.
+export const ALL_INSTALL_TYPES = APPLIES_TO_GROUPS.map(g => g.value);
 
 export const APPLIES_TO_MAP = APPLIES_TO_GROUPS.reduce((acc, g) => {
   acc[g.value] = g;

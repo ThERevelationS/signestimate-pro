@@ -11,7 +11,7 @@ import MaterialItemCard from "./MaterialItemCard";
 import BulkActionsBar from "./BulkActionsBar";
 import BulkPriceAdjustDialog from "./BulkPriceAdjustDialog";
 import PriceHistoryDialog from "./PriceHistoryDialog";
-import { APPLIES_TO_GROUPS, emptyMaterialItem } from "./materialsConstants";
+import { APPLIES_TO_GROUPS, ALL_INSTALL_TYPES, emptyMaterialItem } from "./materialsConstants";
 import {
   extractPriceSnapshot, buildPriceHistoryUpdate,
   countInventoryUsage, adjustItemPricing,
@@ -23,12 +23,12 @@ const APPLIES_TO_FILTER = [
 ];
 
 // Resolve which "applies to" groups an item belongs to.
-// Empty list = legacy "all" / multi-type fallback.
+// Items with no specific applies_to_list (or legacy "all") show in EVERY type section.
 const groupsForItem = (it) => {
   const list = Array.isArray(it.applies_to_list) && it.applies_to_list.length > 0
     ? it.applies_to_list
     : (it.applies_to && it.applies_to !== "all" ? [it.applies_to] : []);
-  return list.length > 0 ? list : ["all"];
+  return list.length > 0 ? list : ALL_INSTALL_TYPES;
 };
 
 export default function MaterialsInventoryTab() {
