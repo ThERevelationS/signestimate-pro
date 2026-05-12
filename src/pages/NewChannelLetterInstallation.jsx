@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator, MapPin, Copy, DollarSign, Check, HardHat, Type, Camera } from "lucide-react";
+import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator, MapPin, Copy, DollarSign, Check, HardHat, Type, Camera, Sparkles } from "lucide-react";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import InstallLineItem from "@/components/channelLetterInstall/InstallLineItem";
@@ -21,6 +21,7 @@ import PersonnelSelector from "@/components/channelLetterInstall/PersonnelSelect
 import LettersPurchaseTab from "@/components/channelLetterInstall/LettersPurchaseTab";
 import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
 import PhotoEstimateModal from "@/components/channelLetterInstall/PhotoEstimateModal";
+import AIInstallScopeModal from "@/components/channelLetterInstall/AIInstallScopeModal";
 import { suggestEquipmentForProject, selectedEquipmentFromInventory } from "@/components/channelLetterInstall/equipmentSuggester";
 import {
   calcLineItem,
@@ -71,6 +72,7 @@ export default function NewChannelLetterInstallation() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState("project");
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const [aiInstallOpen, setAiInstallOpen] = useState(false);
 
   useEffect(() => { if (!isLoading) setHasLoaded(true); }, [isLoading]);
   useEffect(() => { if (hasLoaded) setIsDirty(true); }, [project, hasLoaded, setIsDirty]);
@@ -223,6 +225,25 @@ export default function NewChannelLetterInstallation() {
     setProject((prev) => ({ ...prev, selected_equipment: rows }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maxInstallHeight, equipmentInventory, hasLoaded]);
+
+  // Apply AI-generated installation items
+  const applyAIInstallItems = (aiItems) => {
+    const newItems = aiItems.map((ai) => {
+      const base = emptyLineItem();
+      const merged = {
+        ...base,
+        ...ai,
+        // ensure numeric fields are numbers
+        qty_letters: parseFloat(ai.qty_letters) || 0,
+        letter_height_inches: parseFloat(ai.letter_height_inches) || base.letter_height_inches,
+        installation_height_feet: parseFloat(ai.installation_height_feet) || base.installation_height_feet,
+        raceway_length_feet: parseFloat(ai.raceway_length_feet) || 0,
+      };
+      merged.materials = defaultMaterialsForItem(merged, inventory);
+      return merged;
+    });
+    setProject((prev) => ({ ...prev, items: [...prev.items, ...newItems] }));
+  };
 
   // Apply Photo→Estimate result as a new line item
   const applyPhotoEstimate = (result) => {
@@ -534,7 +555,14 @@ export default function NewChannelLetterInstallation() {
 
               {/* INSTALLATION TAB (formerly Items) */}
               <TabsContent value="items" className="mt-4 space-y-3">
-                <div className="flex items-center justify-end bg-white rounded-lg border border-slate-200 px-3 py-2 shadow-sm">
+                <div className="flex items-center justify-end gap-2 bg-white rounded-lg border border-slate-200 px-3 py-2 shadow-sm">
+                  <Button
+                    onClick={() => setAiInstallOpen(true)}
+                    size="sm"
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-sm"
+                  >
+                    <Sparkles className="w-4 h-4 mr-1" /> AI Scope
+                  </Button>
                   <Button onClick={addItem} size="sm" className="bg-purple-600 hover:bg-purple-700 text-white">
                     <Plus className="w-4 h-4 mr-1" /> Add Item
                   </Button>
@@ -734,6 +762,12 @@ export default function NewChannelLetterInstallation() {
         open={photoModalOpen}
         onClose={() => setPhotoModalOpen(false)}
         onApply={applyPhotoEstimate}
+      />
+
+      <AIInstallScopeModal
+        open={aiInstallOpen}
+        onClose={() => setAiInstallOpen(false)}
+        onApply={applyAIInstallItems}
       />
     </div>
   );
