@@ -11,19 +11,25 @@ import MaterialItemCard from "./MaterialItemCard";
 import BulkActionsBar from "./BulkActionsBar";
 import BulkPriceAdjustDialog from "./BulkPriceAdjustDialog";
 import PriceHistoryDialog from "./PriceHistoryDialog";
-import { CATEGORIES, emptyMaterialItem } from "./materialsConstants";
+import { APPLIES_TO_GROUPS, emptyMaterialItem } from "./materialsConstants";
 import {
   extractPriceSnapshot, buildPriceHistoryUpdate,
   countInventoryUsage, adjustItemPricing,
 } from "./materialsHelpers";
 
 const APPLIES_TO_FILTER = [
-  { value: "all", label: "All Types" },
-  { value: "flush_mount", label: "Flush Mount" },
-  { value: "halo_lit", label: "Halo-Lit" },
-  { value: "raceway", label: "Raceway" },
-  { value: "dimensional_lettering", label: "Dimensional Lettering" },
+  { value: "any", label: "All Groups" },
+  ...APPLIES_TO_GROUPS,
 ];
+
+// Resolve which "applies to" groups an item belongs to.
+// Empty list = legacy "all" / multi-type fallback.
+const groupsForItem = (it) => {
+  const list = Array.isArray(it.applies_to_list) && it.applies_to_list.length > 0
+    ? it.applies_to_list
+    : (it.applies_to && it.applies_to !== "all" ? [it.applies_to] : []);
+  return list.length > 0 ? list : ["all"];
+};
 
 export default function MaterialsInventoryTab() {
   const [items, setItems] = useState([]);
@@ -35,8 +41,7 @@ export default function MaterialsInventoryTab() {
 
   // Filters
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [appliesFilter, setAppliesFilter] = useState("all");
+  const [appliesFilter, setAppliesFilter] = useState("any");
 
   // State tracking
   const [dirtyIds, setDirtyIds] = useState(new Set());
@@ -269,12 +274,9 @@ export default function MaterialsInventoryTab() {
     return items
       .map((it, idx) => ({ it, idx }))
       .filter(({ it }) => {
-        if (categoryFilter !== "all" && it.category !== categoryFilter) return false;
-        if (appliesFilter !== "all") {
-          const list = Array.isArray(it.applies_to_list) && it.applies_to_list.length > 0
-            ? it.applies_to_list
-            : (it.applies_to && it.applies_to !== "all" ? [it.applies_to] : []);
-          if (list.length > 0 && !list.includes(appliesFilter)) return false;
+        if (appliesFilter !== "any") {
+          const groups = groupsForItem(it);
+          if (!groups.includes(appliesFilter)) return false;
         }
         if (q) {
           const haystack = `${it.item_name || ""} ${it.supplier || ""} ${it.notes || ""}`.toLowerCase();
@@ -282,27 +284,43 @@ export default function MaterialsInventoryTab() {
         }
         return true;
       });
-  }, [items, search, categoryFilter, appliesFilter]);
+  }, [items, search, appliesFilter]);
 
+  // Group items by APPLIES_TO_GROUPS — items can appear in multiple groups.
   const grouped = useMemo(() => {
     const map = new Map();
     for (const { it, idx } of filtered) {
-      const key = it.category || "other";
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push({ it, idx });
+      const groups = groupsForItem(it);
+      for (const g of groups) {
+        if (!map.has(g)) map.set(g, []);
+        map.get(g).push({ it, idx });
+      }
     }
-    return CATEGORIES
-      .map(c => ({ category: c, rows: map.get(c.value) || [] }))
+    return APPLIES_TO_GROUPS
+      .map(g => ({ group: g, rows: map.get(g.value) || [] }))
       .filter(g => g.rows.length > 0);
   }, [filtered]);
 
-  const hasFilters = search || categoryFilter !== "all" || appliesFilter !== "all";
-  const clearFilters = () => { setSearch(""); setCategoryFilter("all"); setAppliesFilter("all"); };
+  const hasFilters = search || appliesFilter !== "any";
+  const clearFilters = () => { setSearch(""); setAppliesFilter("any"); };
 
-  const allFilteredSelected = filtered.length > 0 && filtered.every(({ it }) => selectedKeys.has(keyFor(it)));
+  // Count unique filtered items (filtered may contain duplicates if regrouped)
+  const uniqueFiltered = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    for (const row of filtered) {
+      const k = keyFor(row.it);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(row);
+    }
+    return out;
+  }, [filtered]);
+
+  const allFilteredSelected = uniqueFiltered.length > 0 && uniqueFiltered.every(({ it }) => selectedKeys.has(keyFor(it)));
   const toggleSelectAll = (on) => {
     const next = new Set(selectedKeys);
-    for (const { it } of filtered) {
+    for (const { it } of uniqueFiltered) {
       if (on) next.add(keyFor(it));
       else next.delete(keyFor(it));
     }
@@ -343,21 +361,9 @@ export default function MaterialsInventoryTab() {
               />
             </div>
 
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="h-10 w-[200px]">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {CATEGORIES.map(c => (
-                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             <Select value={appliesFilter} onValueChange={setAppliesFilter}>
-              <SelectTrigger className="h-10 w-[180px]">
-                <SelectValue placeholder="All Types" />
+              <SelectTrigger className="h-10 w-[220px]">
+                <SelectValue placeholder="All Groups" />
               </SelectTrigger>
               <SelectContent>
                 {APPLIES_TO_FILTER.map(o => (
@@ -390,7 +396,7 @@ export default function MaterialsInventoryTab() {
           </div>
 
           <div className="flex items-center gap-3 mt-3 text-xs text-slate-500">
-            {filtered.length > 0 && !readOnly && (
+            {uniqueFiltered.length > 0 && !readOnly && (
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <Checkbox
                   checked={allFilteredSelected}
@@ -401,7 +407,7 @@ export default function MaterialsInventoryTab() {
             )}
             <span><strong className="text-slate-700">{items.length}</strong> total materials</span>
             {hasFilters && (
-              <span>· Showing <strong className="text-slate-700">{filtered.length}</strong> filtered</span>
+              <span>· Showing <strong className="text-slate-700">{uniqueFiltered.length}</strong> filtered</span>
             )}
             {dirtyIds.size > 0 && (
               <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px]">
@@ -438,7 +444,7 @@ export default function MaterialsInventoryTab() {
             </Button>
           )}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : uniqueFiltered.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-xl py-12 text-center">
           <p className="text-slate-500 mb-3">No materials match your filters.</p>
           <Button variant="outline" onClick={clearFilters}>
@@ -447,11 +453,11 @@ export default function MaterialsInventoryTab() {
         </div>
       ) : (
         <div className="space-y-6">
-          {grouped.map(({ category, rows }) => (
-            <div key={category.value}>
+          {grouped.map(({ group, rows }) => (
+            <div key={group.value}>
               <div className="flex items-center gap-2 mb-2 px-1">
-                <Badge variant="outline" className={`${category.color} text-xs`}>
-                  {category.label}
+                <Badge variant="outline" className={`${group.color} text-xs`}>
+                  {group.label}
                 </Badge>
                 <span className="text-xs text-slate-400">
                   {rows.length} item{rows.length !== 1 ? "s" : ""}
@@ -460,7 +466,7 @@ export default function MaterialsInventoryTab() {
               <div className="space-y-2">
                 {rows.map(({ it, idx }) => (
                   <MaterialItemCard
-                    key={keyFor(it)}
+                    key={`${group.value}-${keyFor(it)}`}
                     item={it}
                     isDirty={dirtyIds.has(idx)}
                     isNew={!!it._new}

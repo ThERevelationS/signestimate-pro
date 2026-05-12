@@ -12,7 +12,7 @@ import {
 import AppliesToMultiSelect from "./AppliesToMultiSelect";
 import QuantityTiersEditor from "./QuantityTiersEditor";
 import {
-  CATEGORIES, CATEGORY_MAP, CRITERIA_OPTIONS, CRITERIA_MAP,
+  CRITERIA_OPTIONS, CRITERIA_MAP,
   APPLIES_TO_LABEL, summarizeCost,
 } from "./materialsConstants";
 import { formatRelative, isStale } from "./materialsHelpers";
@@ -47,7 +47,6 @@ export default function MaterialItemCard({
   }, [expanded, isDirty, readOnly, onCollapse]);
 
   const update = (patch) => { if (!readOnly) onChange(patch); };
-  const cat = CATEGORY_MAP[item.category];
   const crit = CRITERIA_MAP[item.pricing_mode];
   const CritIcon = ICON_MAP[crit?.icon] || Type;
   const appliesList = Array.isArray(item.applies_to_list) && item.applies_to_list.length > 0
@@ -86,11 +85,6 @@ export default function MaterialItemCard({
             <span className="font-semibold text-slate-900 truncate">
               {item.item_name || <span className="text-slate-400 italic">Unnamed item</span>}
             </span>
-            {cat && (
-              <Badge variant="outline" className={`text-[10px] ${cat.color}`}>
-                {cat.label}
-              </Badge>
-            )}
             {crit && (
               <Badge variant="outline" className={`text-[10px] gap-1 ${crit.color}`}>
                 <CritIcon className="w-2.5 h-2.5" />
@@ -182,7 +176,7 @@ export default function MaterialItemCard({
           <section>
             <h5 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">Identity</h5>
             <div className="grid md:grid-cols-12 gap-3">
-              <div className="md:col-span-6">
+              <div className="md:col-span-9">
                 <Label className="text-xs">Item Name</Label>
                 <Input
                   value={item.item_name}
@@ -192,18 +186,7 @@ export default function MaterialItemCard({
                   className="h-9 mt-1"
                 />
               </div>
-              <div className="md:col-span-4">
-                <Label className="text-xs">Category</Label>
-                <Select value={item.category} onValueChange={(v) => update({ category: v })} disabled={readOnly}>
-                  <SelectTrigger className="h-9 mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map(c => (
-                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="md:col-span-2">
+              <div className="md:col-span-3">
                 <Label className="text-xs">Unit</Label>
                 <Input
                   value={item.unit || ""}

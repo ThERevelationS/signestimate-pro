@@ -1,17 +1,16 @@
 // Shared constants & labels for the Channel Letter Install Materials inventory.
+// Materials are grouped by "Applies To" (installation type), not by a separate category.
 
-export const CATEGORIES = [
-  { value: "flush_mount_hardware", label: "Flush Mount Hardware", color: "bg-blue-100 text-blue-800 border-blue-200" },
-  { value: "halo_lit_hardware", label: "Halo-Lit Hardware", color: "bg-amber-100 text-amber-800 border-amber-200" },
-  { value: "raceway_material", label: "Raceway Material", color: "bg-purple-100 text-purple-800 border-purple-200" },
-  { value: "dimensional_lettering_hardware", label: "Dimensional Lettering Hardware", color: "bg-teal-100 text-teal-800 border-teal-200" },
-  { value: "electrical", label: "Electrical", color: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-  { value: "consumable", label: "Consumable", color: "bg-slate-100 text-slate-800 border-slate-200" },
-  { value: "other", label: "Other", color: "bg-gray-100 text-gray-800 border-gray-200" },
+export const APPLIES_TO_GROUPS = [
+  { value: "flush_mount", label: "Flush Mount", color: "bg-blue-100 text-blue-800 border-blue-200" },
+  { value: "halo_lit", label: "Halo-Lit", color: "bg-amber-100 text-amber-800 border-amber-200" },
+  { value: "raceway", label: "Raceway", color: "bg-purple-100 text-purple-800 border-purple-200" },
+  { value: "dimensional_lettering", label: "Dimensional Lettering", color: "bg-teal-100 text-teal-800 border-teal-200" },
+  { value: "all", label: "Applies to All Types", color: "bg-slate-100 text-slate-800 border-slate-200" },
 ];
 
-export const CATEGORY_MAP = CATEGORIES.reduce((acc, c) => {
-  acc[c.value] = c;
+export const APPLIES_TO_MAP = APPLIES_TO_GROUPS.reduce((acc, g) => {
+  acc[g.value] = g;
   return acc;
 }, {});
 
@@ -37,7 +36,6 @@ export const APPLIES_TO_LABEL = {
 
 export const emptyMaterialItem = () => ({
   item_name: "",
-  category: "flush_mount_hardware",
   applies_to: "all",
   applies_to_list: [],
   pricing_mode: "per_letter_flat",
