@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator } from "lucide-react";
+import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator, MapPin } from "lucide-react";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import InstallLineItem from "@/components/channelLetterInstall/InstallLineItem";
@@ -31,6 +31,7 @@ const blankProject = () => ({
   client_name: "",
   estimate_number: "",
   hyperlink: "",
+  site_address: "",
   items: [],
   base_supplies_cost: 0,
   extra_supplies_cost: 0,
@@ -334,6 +335,27 @@ export default function NewChannelLetterInstallation() {
                           className="mt-1"
                         />
                       </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="site_address" className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-purple-600" />
+                        Site Address
+                        <span className="text-xs font-normal text-slate-500">(used for travel mileage)</span>
+                      </Label>
+                      <Input
+                        id="site_address"
+                        value={project.site_address || ""}
+                        onChange={(e) => updateProject({ site_address: e.target.value })}
+                        placeholder="e.g., 123 Main St, Cincinnati, OH 45202"
+                        className="mt-1"
+                      />
+                      <p className="mt-1 text-xs text-slate-500">
+                        Travel cost will be calculated from your shop (
+                        <Link to={createPageUrl("ChannelLetterInstallationSettings")} className="underline hover:text-purple-700">
+                          Shop & Travel settings
+                        </Link>
+                        ) to this address.
+                      </p>
                     </div>
                   </CardContent>
                 </Card>

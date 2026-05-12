@@ -18,6 +18,10 @@
       "type": "string",
       "description": "Optional hyperlink related to the project"
     },
+    "site_address": {
+      "type": "string",
+      "description": "Installation site address \u2014 used to calculate travel mileage from the shop"
+    },
     "status": {
       "type": "string",
       "enum": [
