@@ -20,39 +20,8 @@ export default function InstallSummaryCard({
       </CardHeader>
 
       <CardContent className="space-y-4 pt-5">
-        {/* Supplies — derived from materials cost */}
-        <div>
-          <h4 className="text-xs font-semibold uppercase text-slate-500 mb-2">Project Supplies</h4>
-          <p className="text-[10px] text-slate-400 mb-2 leading-tight">
-            Calculated as % of materials cost. Add extra for one-offs.
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label className="text-xs">% of Materials</Label>
-              <Input
-                type="number"
-                step="0.5"
-                value={project.supplies_percent_of_materials ?? 10}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => onUpdate({ supplies_percent_of_materials: parseFloat(e.target.value) || 0 })}
-                className="h-8 text-sm mt-0.5"
-              />
-            </div>
-            <div>
-              <Label className="text-xs">Extra ($)</Label>
-              <Input
-                type="number"
-                value={project.extra_supplies_cost ?? 0}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => onUpdate({ extra_supplies_cost: parseFloat(e.target.value) || 0 })}
-                className="h-8 text-sm mt-0.5"
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Cost rollup */}
-        <div className="border-t pt-3 space-y-1.5 text-sm">
+        <div className="space-y-1.5 text-sm">
           <div className="flex justify-between">
             <span className="text-slate-600">Labor ({(project.labor_hours || 0).toFixed(2)} hrs)</span>
             <span className="font-medium tabular-nums">{fmt(project.labor_cost)}</span>
@@ -60,10 +29,6 @@ export default function InstallSummaryCard({
           <div className="flex justify-between">
             <span className="text-slate-600">Materials</span>
             <span className="font-medium tabular-nums">{fmt(project.total_materials_cost)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">Supplies</span>
-            <span className="font-medium tabular-nums">{fmt(project.total_supplies_cost)}</span>
           </div>
           <div className="flex justify-between border-t pt-1.5 mt-1.5">
             <span className="text-slate-600">Subtotal</span>
