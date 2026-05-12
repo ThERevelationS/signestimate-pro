@@ -1,6 +1,20 @@
 import React from "react";
-import { Check } from "lucide-react";
+import { Check, Zap } from "lucide-react";
 import CyclingImage from "./CyclingImage";
+import { Slider } from "@/components/ui/slider";
+
+const ELECTRICAL_SEVERITY_LABELS = {
+  1: "A Bit Harder",
+  2: "Mildly Annoying",
+  3: "Inconvenient",
+  4: "Real Pain",
+  5: "Frustrating",
+  6: "Seriously?",
+  7: "Nightmare Fuel",
+  8: "Who Designed This?",
+  9: "Total Disaster",
+  10: "What the Heck is Wrong With These People!?",
+};
 
 const BASE = "https://media.base44.com/images/public/68a5a85045cf8570330146ef/";
 
@@ -97,38 +111,70 @@ const CONDITIONS = [
 
 export default function ConditionPicker({ values, onChange }) {
   const toggle = (id) => onChange({ ...values, [id]: !values[id] });
+  const severity = Math.max(1, Math.min(10, parseInt(values.poor_electrical_severity) || 1));
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
       {CONDITIONS.map(c => {
         const selected = !!values[c.id];
+        const isElectrical = c.id === "poor_electrical_access";
         return (
-          <button
+          <div
             key={c.id}
-            type="button"
-            onClick={() => toggle(c.id)}
             className={`relative rounded-lg border-2 transition-all text-left overflow-hidden ${
               selected
                 ? c.accent + " shadow-sm"
                 : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
             }`}
           >
-            {selected && (
-              <div className={`absolute top-2 right-2 w-5 h-5 rounded-full ${c.accentDot} flex items-center justify-center z-10`}>
-                <Check className="w-3 h-3 text-white" />
+            {/* Severity slider — only on Poor Electrical Access, only when selected */}
+            {isElectrical && selected && (
+              <div
+                className="px-2.5 pt-2.5 pb-1 bg-yellow-100/60 border-b border-yellow-300"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Zap className="w-3 h-3 text-yellow-700" />
+                  <span className="text-[10px] font-bold text-yellow-900 uppercase tracking-wide">
+                    Severity {severity}/10
+                  </span>
+                </div>
+                <Slider
+                  min={1}
+                  max={10}
+                  step={1}
+                  value={[severity]}
+                  onValueChange={(v) => onChange({ ...values, poor_electrical_severity: v[0] })}
+                  className="my-1"
+                />
+                <div className="text-[10px] font-semibold text-yellow-900 leading-tight italic h-7 flex items-center">
+                  "{ELECTRICAL_SEVERITY_LABELS[severity]}"
+                </div>
               </div>
             )}
-            <CyclingImage
-              images={c.images}
-              alt={c.label}
-              className="w-full aspect-video"
-              intervalMs={5000}
-            />
-            <div className="p-2.5">
-              <div className="text-sm font-semibold">{c.label}</div>
-              <div className="text-[10px] opacity-70 leading-tight">{c.description}</div>
-            </div>
-          </button>
+
+            <button
+              type="button"
+              onClick={() => toggle(c.id)}
+              className="block w-full text-left"
+            >
+              {selected && (
+                <div className={`absolute top-2 right-2 w-5 h-5 rounded-full ${c.accentDot} flex items-center justify-center z-10`}>
+                  <Check className="w-3 h-3 text-white" />
+                </div>
+              )}
+              <CyclingImage
+                images={c.images}
+                alt={c.label}
+                className="w-full aspect-video"
+                intervalMs={5000}
+              />
+              <div className="p-2.5">
+                <div className="text-sm font-semibold">{c.label}</div>
+                <div className="text-[10px] opacity-70 leading-tight">{c.description}</div>
+              </div>
+            </button>
+          </div>
         );
       })}
     </div>

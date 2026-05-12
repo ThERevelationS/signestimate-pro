@@ -187,6 +187,7 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
                     thick_hollow_walls: item.thick_hollow_walls,
                     parapet: item.parapet,
                     poor_electrical_access: item.poor_electrical_access,
+                    poor_electrical_severity: item.poor_electrical_severity || 1,
                     escort_required: item.escort_required,
                     badging_checkin: item.badging_checkin,
                     after_hours_weekend: item.after_hours_weekend,

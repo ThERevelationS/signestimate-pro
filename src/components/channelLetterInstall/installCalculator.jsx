@@ -31,6 +31,7 @@ export const emptyLineItem = () => ({
   thick_hollow_walls: false,
   parapet: false,
   poor_electrical_access: false,
+  poor_electrical_severity: 1,
   escort_required: false,
   badging_checkin: false,
   after_hours_weekend: false,
@@ -142,12 +143,22 @@ export const calcLineItem = (item, settings, inventory) => {
 
   if (item.thick_hollow_walls) baseHours *= parseFloat(settings.install_thick_walls_multiplier) || 1.2;
   if (item.parapet) baseHours *= parseFloat(settings.install_parapet_multiplier) || 1.4;
-  if (item.poor_electrical_access) baseHours *= parseFloat(settings.install_poor_electrical_multiplier) || 1.3;
   if (item.escort_required) baseHours *= parseFloat(settings.install_escort_multiplier) || 1.15;
   if (item.badging_checkin) baseHours *= parseFloat(settings.install_badging_multiplier) || 1.1;
   if (item.after_hours_weekend) baseHours *= parseFloat(settings.install_after_hours_multiplier) || 1.5;
   if (item.set_hours_installation) baseHours *= parseFloat(settings.install_set_hours_multiplier) || 1.15;
   if (item.poor_site_access) baseHours *= parseFloat(settings.install_poor_site_access_multiplier) || 1.25;
+
+  // Poor Electrical Access — ADDITIVE: severity level adds minutes/letter on top of the size's electrical hookup baseline.
+  // Note: the size's electrical hookup baseline is ALREADY included in baseHours via sizeMinutes() above.
+  // Here we add only the SEVERITY bonus on top of that, scaled by qty_letters (non-raceway only).
+  if (item.poor_electrical_access && item.installation_type !== "raceway") {
+    const level = Math.max(1, Math.min(10, parseInt(item.poor_electrical_severity) || 1));
+    const severityDefaults = { 1: 3, 2: 6, 3: 10, 4: 15, 5: 20, 6: 28, 7: 38, 8: 50, 9: 65, 10: 90 };
+    const bonusMin = parseFloat(settings[`install_poor_electrical_level_${level}`]);
+    const bonus = isNaN(bonusMin) ? severityDefaults[level] : bonusMin;
+    baseHours += ((parseFloat(item.qty_letters) || 0) * bonus) * MIN_TO_HR;
+  }
 
   // Recompute material quantities based on current item state (qty/size/raceway changed)
   const materials = (item.materials || []).map(mat => {

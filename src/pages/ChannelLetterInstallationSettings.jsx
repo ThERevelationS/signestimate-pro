@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Save, Wrench, DollarSign, Clock, Ruler, AlertTriangle, CheckCircle2, Layers, Building2, Fuel, RefreshCw, Type, Receipt } from "lucide-react";
+import { Save, Wrench, DollarSign, Clock, Ruler, AlertTriangle, CheckCircle2, Layers, Building2, Fuel, RefreshCw, Type, Receipt, Zap } from "lucide-react";
 import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
 import { useToast } from "@/components/ui/use-toast";
 import { WALL_MATERIALS } from "@/components/channelLetterInstall/wallMaterials";
@@ -15,24 +15,30 @@ const settingsDefinitions = [
   // Pricing & Labor
   { name: "install_labor_rate", type: "number", category: "install_pricing", label: "Hourly Labor Rate", suffix: "$/hr", description: "Crew rate per hour for installation work", default: "65" },
 
-  // Base Rates per Letter Size (minutes per letter) — split into Drill Pattern/Drill Time + Installation/Prep Time
+  // Base Rates per Letter Size (minutes per letter) — split into Drill Pattern/Drill Time + Installation/Prep Time + Electrical Hookup
   { name: "install_drill_rate_extra_small", type: "number", category: "install_rates", label: "XS — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per XS letter for layout, drill pattern, and drilling", default: "15" },
   { name: "install_prep_rate_extra_small", type: "number", category: "install_rates", label: "XS — Installation / Prep Time", suffix: "min/letter", description: "Minutes per XS letter for prep, mounting, and finish install", default: "30" },
+  { name: "install_electrical_rate_extra_small", type: "number", category: "install_rates", label: "XS — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per XS letter for electrical hookup", default: "5" },
 
   { name: "install_drill_rate_small", type: "number", category: "install_rates", label: "Small — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per small letter for layout, drill pattern, and drilling", default: "30" },
   { name: "install_prep_rate_small", type: "number", category: "install_rates", label: "Small — Installation / Prep Time", suffix: "min/letter", description: "Minutes per small letter for prep, mounting, and finish install", default: "60" },
+  { name: "install_electrical_rate_small", type: "number", category: "install_rates", label: "Small — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per small letter for electrical hookup", default: "10" },
 
   { name: "install_drill_rate_medium", type: "number", category: "install_rates", label: "Medium — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per medium letter for layout, drill pattern, and drilling", default: "50" },
   { name: "install_prep_rate_medium", type: "number", category: "install_rates", label: "Medium — Installation / Prep Time", suffix: "min/letter", description: "Minutes per medium letter for prep, mounting, and finish install", default: "100" },
+  { name: "install_electrical_rate_medium", type: "number", category: "install_rates", label: "Medium — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per medium letter for electrical hookup", default: "15" },
 
   { name: "install_drill_rate_large", type: "number", category: "install_rates", label: "Large — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per large letter for layout, drill pattern, and drilling", default: "80" },
   { name: "install_prep_rate_large", type: "number", category: "install_rates", label: "Large — Installation / Prep Time", suffix: "min/letter", description: "Minutes per large letter for prep, mounting, and finish install", default: "160" },
+  { name: "install_electrical_rate_large", type: "number", category: "install_rates", label: "Large — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per large letter for electrical hookup", default: "20" },
 
   { name: "install_drill_rate_extra_large", type: "number", category: "install_rates", label: "XL — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per XL letter for layout, drill pattern, and drilling", default: "120" },
   { name: "install_prep_rate_extra_large", type: "number", category: "install_rates", label: "XL — Installation / Prep Time", suffix: "min/letter", description: "Minutes per XL letter for prep, mounting, and finish install", default: "240" },
+  { name: "install_electrical_rate_extra_large", type: "number", category: "install_rates", label: "XL — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per XL letter for electrical hookup", default: "25" },
 
   { name: "install_drill_rate_extra_extra_large", type: "number", category: "install_rates", label: "XXL — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per XXL letter for layout, drill pattern, and drilling", default: "170" },
   { name: "install_prep_rate_extra_extra_large", type: "number", category: "install_rates", label: "XXL — Installation / Prep Time", suffix: "min/letter", description: "Minutes per XXL letter for prep, mounting, and finish install", default: "340" },
+  { name: "install_electrical_rate_extra_extra_large", type: "number", category: "install_rates", label: "XXL — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per XXL letter for electrical hookup", default: "30" },
 
   // Raceway Rates — separated into its own tab
   { name: "install_raceway_base_minutes_per_foot", type: "number", category: "install_raceway", label: "Base Cost per Foot", suffix: "min/ft", description: "Base minutes of labor per foot of raceway installed", default: "30" },
@@ -52,7 +58,17 @@ const settingsDefinitions = [
   // Site Condition Multipliers
   { name: "install_thick_walls_multiplier", type: "number", category: "install_site_conditions", label: "Thick / Hollow Walls", suffix: "×", description: "Brick veneer, masonry, hollow cavity", default: "1.2" },
   { name: "install_parapet_multiplier", type: "number", category: "install_site_conditions", label: "Parapet", suffix: "×", description: "Working over rooftop edge wall", default: "1.4" },
-  { name: "install_poor_electrical_multiplier", type: "number", category: "install_site_conditions", label: "Poor Electrical Access", suffix: "×", description: "Difficult conduit / power routing", default: "1.3" },
+  // Poor Electrical Access — 10 severity levels, ADDED minutes per letter on top of the size's electrical hookup baseline
+  { name: "install_poor_electrical_level_1", type: "number", category: "install_electrical_severity", label: "Level 1 — A Bit Harder", suffix: "+min/letter", description: "Extra minutes per letter added to electrical hookup", default: "3" },
+  { name: "install_poor_electrical_level_2", type: "number", category: "install_electrical_severity", label: "Level 2 — Mildly Annoying", suffix: "+min/letter", description: "Extra minutes per letter added to electrical hookup", default: "6" },
+  { name: "install_poor_electrical_level_3", type: "number", category: "install_electrical_severity", label: "Level 3 — Inconvenient", suffix: "+min/letter", description: "Extra minutes per letter added to electrical hookup", default: "10" },
+  { name: "install_poor_electrical_level_4", type: "number", category: "install_electrical_severity", label: "Level 4 — Real Pain", suffix: "+min/letter", description: "Extra minutes per letter added to electrical hookup", default: "15" },
+  { name: "install_poor_electrical_level_5", type: "number", category: "install_electrical_severity", label: "Level 5 — Frustrating", suffix: "+min/letter", description: "Extra minutes per letter added to electrical hookup", default: "20" },
+  { name: "install_poor_electrical_level_6", type: "number", category: "install_electrical_severity", label: "Level 6 — Seriously?", suffix: "+min/letter", description: "Extra minutes per letter added to electrical hookup", default: "28" },
+  { name: "install_poor_electrical_level_7", type: "number", category: "install_electrical_severity", label: "Level 7 — Nightmare Fuel", suffix: "+min/letter", description: "Extra minutes per letter added to electrical hookup", default: "38" },
+  { name: "install_poor_electrical_level_8", type: "number", category: "install_electrical_severity", label: "Level 8 — Who Designed This?", suffix: "+min/letter", description: "Extra minutes per letter added to electrical hookup", default: "50" },
+  { name: "install_poor_electrical_level_9", type: "number", category: "install_electrical_severity", label: "Level 9 — Total Disaster", suffix: "+min/letter", description: "Extra minutes per letter added to electrical hookup", default: "65" },
+  { name: "install_poor_electrical_level_10", type: "number", category: "install_electrical_severity", label: "Level 10 — What the Heck is Wrong With These People!?", suffix: "+min/letter", description: "Extra minutes per letter added to electrical hookup", default: "90" },
   { name: "install_escort_multiplier", type: "number", category: "install_site_conditions", label: "Escort Required", suffix: "×", description: "Must be escorted on-site at all times", default: "1.15" },
   { name: "install_badging_multiplier", type: "number", category: "install_site_conditions", label: "Badging / Check-in", suffix: "×", description: "Security badge or sign-in required", default: "1.1" },
   { name: "install_after_hours_multiplier", type: "number", category: "install_site_conditions", label: "After-Hours / Weekend", suffix: "×", description: "Night, early morning, or weekend install", default: "1.5" },
@@ -128,8 +144,14 @@ const TAB_META = {
   site_conditions: {
     title: "Site Conditions",
     icon: AlertTriangle,
-    description: "Per-condition labor multipliers. 1.0 = no impact, 1.5 = 50% more time.",
+    description: "Per-condition labor multipliers. 1.0 = no impact, 1.5 = 50% more time. Note: Poor Electrical Access is handled separately on the Electrical Severity tab (added minutes, not a multiplier).",
     categories: ["install_site_conditions"],
+  },
+  electrical_severity: {
+    title: "Electrical Severity",
+    icon: Zap,
+    description: "10 severity levels for Poor Electrical Access. The selected level's minutes are ADDED to each letter's Electrical Hookup baseline.",
+    categories: ["install_electrical_severity"],
   },
   wall_materials: {
     title: "Wall Materials",
@@ -397,6 +419,35 @@ export default function ChannelLetterInstallationSettings() {
       );
     };
 
+    const labelFor = (def) => {
+      if (def.label.includes("Drill")) return "Drill Pattern / Drill Time";
+      if (def.label.includes("Electrical")) return "Electrical Hookup";
+      return "Installation / Prep Time";
+    };
+
+    const renderCompactInputWithLabel = (def) => {
+      if (!def) return null;
+      const value = settings[def.name];
+      return (
+        <div>
+          <div className="flex items-baseline justify-between mb-1">
+            <Label htmlFor={def.name} className="text-xs font-medium text-slate-700">{labelFor(def)}</Label>
+            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">min</span>
+          </div>
+          <Input
+            type="number"
+            step="1"
+            id={def.name}
+            value={value || ""}
+            onChange={(e) => updateSetting(def.name, e.target.value)}
+            disabled={isLocked}
+            className="h-9 bg-white border-slate-200 focus:border-slate-400 focus:ring-0 text-sm tabular-nums font-medium"
+            min="0"
+          />
+        </div>
+      );
+    };
+
     return (
       <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl overflow-hidden">
         <CardHeader className="pb-4 border-b border-slate-100">
@@ -407,7 +458,7 @@ export default function ChannelLetterInstallationSettings() {
             <div className="flex-1 min-w-0">
               <CardTitle className="text-base font-semibold text-slate-900 tracking-tight">Base Rates per Letter Size</CardTitle>
               <CardDescription className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                Two minute values per size. The estimator sums them per letter, then applies type/height/site multipliers.
+                Three minute values per size: Drill, Install/Prep, and Electrical Hookup. The estimator sums them per letter, then applies multipliers and adds any Poor Electrical Access severity bonus.
               </CardDescription>
             </div>
           </div>
@@ -417,9 +468,11 @@ export default function ChannelLetterInstallationSettings() {
             {sizes.map(s => {
               const drillDef = findDef(`install_drill_rate_${s.key}`);
               const prepDef = findDef(`install_prep_rate_${s.key}`);
+              const elecDef = findDef(`install_electrical_rate_${s.key}`);
               const drillVal = parseFloat(settings[`install_drill_rate_${s.key}`]) || 0;
               const prepVal = parseFloat(settings[`install_prep_rate_${s.key}`]) || 0;
-              const total = drillVal + prepVal;
+              const elecVal = parseFloat(settings[`install_electrical_rate_${s.key}`]) || 0;
+              const total = drillVal + prepVal + elecVal;
               return (
                 <div key={s.key} className="border border-slate-200 rounded-xl p-4 bg-slate-50/40 hover:bg-slate-50 transition-colors">
                   <div className="flex items-baseline justify-between mb-3">
@@ -433,8 +486,9 @@ export default function ChannelLetterInstallationSettings() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    {renderCompactInput(drillDef)}
-                    {renderCompactInput(prepDef)}
+                    {renderCompactInputWithLabel(drillDef)}
+                    {renderCompactInputWithLabel(prepDef)}
+                    {renderCompactInputWithLabel(elecDef)}
                   </div>
                 </div>
               );
@@ -477,7 +531,7 @@ export default function ChannelLetterInstallationSettings() {
 
   const managementContent = (
     <Tabs defaultValue="pricing_labor" className="w-full">
-      <TabsList className="grid w-full grid-cols-3 lg:grid-cols-9 mb-6 h-auto p-1">
+      <TabsList className="grid w-full grid-cols-3 lg:grid-cols-10 mb-6 h-auto p-1">
         {Object.entries(TAB_META).map(([key, meta]) => {
           const Icon = meta.icon;
           return (
