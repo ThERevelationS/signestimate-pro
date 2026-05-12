@@ -22,6 +22,7 @@ import LettersPurchaseTab from "@/components/channelLetterInstall/LettersPurchas
 import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
 import PhotoEstimateModal from "@/components/channelLetterInstall/PhotoEstimateModal";
 import AIInstallScopeModal from "@/components/channelLetterInstall/AIInstallScopeModal";
+import AddressAutocomplete from "@/components/channelLetterInstall/AddressAutocomplete";
 import { suggestEquipmentForProject, selectedEquipmentFromInventory } from "@/components/channelLetterInstall/equipmentSuggester";
 import {
   calcLineItem,
@@ -508,10 +509,10 @@ export default function NewChannelLetterInstallation() {
                         Site Address
                         <span className="text-xs font-normal text-slate-500">(used for travel mileage)</span>
                       </Label>
-                      <Input
+                      <AddressAutocomplete
                         id="site_address"
                         value={project.site_address || ""}
-                        onChange={(e) => updateProject({ site_address: e.target.value })}
+                        onChange={(val) => updateProject({ site_address: val })}
                         placeholder="e.g., 123 Main St, Cincinnati, OH 45202"
                         className="mt-1"
                       />
