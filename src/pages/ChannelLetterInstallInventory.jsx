@@ -3,9 +3,10 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Package, HardHat } from "lucide-react";
+import { ArrowLeft, Package, HardHat, Box } from "lucide-react";
 import MaterialsInventoryTab from "../components/channelLetterInstall/MaterialsInventoryTab";
 import EquipmentInventoryTab from "../components/channelLetterInstall/EquipmentInventoryTab";
+import DimensionalMaterialsTab from "../components/channelLetterInstall/DimensionalMaterialsTab";
 
 export default function ChannelLetterInstallInventoryPage() {
   const [tab, setTab] = useState("materials");
@@ -29,12 +30,15 @@ export default function ChannelLetterInstallInventoryPage() {
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="grid grid-cols-2 w-full max-w-md mb-4">
+          <TabsList className="grid grid-cols-3 w-full max-w-2xl mb-4">
             <TabsTrigger value="materials" className="gap-2">
-              <Package className="w-4 h-4" /> Materials
+              <Package className="w-4 h-4" /> Install Materials
             </TabsTrigger>
             <TabsTrigger value="equipment" className="gap-2">
               <HardHat className="w-4 h-4" /> Equipment
+            </TabsTrigger>
+            <TabsTrigger value="dimensional" className="gap-2">
+              <Box className="w-4 h-4" /> Dimensional Sheets
             </TabsTrigger>
           </TabsList>
 
@@ -43,6 +47,9 @@ export default function ChannelLetterInstallInventoryPage() {
           </TabsContent>
           <TabsContent value="equipment">
             <EquipmentInventoryTab />
+          </TabsContent>
+          <TabsContent value="dimensional">
+            <DimensionalMaterialsTab />
           </TabsContent>
         </Tabs>
       </div>

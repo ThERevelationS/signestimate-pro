@@ -148,8 +148,8 @@ export default function DimensionalFabModal({ open, onOpenChange, purchase, onSa
                   <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                   <div className="flex-1 text-xs text-amber-800">
                     <p className="font-medium mb-1">No sheet materials in your library yet.</p>
-                    <Link to={createPageUrl("DimensionalLetterMaterials")} className="inline-flex items-center gap-1 underline">
-                      <LinkIcon className="w-3 h-3" /> Open Materials Library
+                    <Link to={createPageUrl("ChannelLetterInstallInventory")} className="inline-flex items-center gap-1 underline">
+                      <LinkIcon className="w-3 h-3" /> Open Inventory → Dimensional Sheets tab
                     </Link>
                   </div>
                 </div>

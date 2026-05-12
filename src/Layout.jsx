@@ -274,20 +274,6 @@ export default function Layout({ children, currentPageName }) {
                             Inventory
                           </Link>
                         )}
-                        {module.id === 'channel_letter_installation' && (
-                          <Link
-                            to={createPageUrl("DimensionalLetterMaterials")}
-                            onClick={(e) => handleNavClick(e, createPageUrl("DimensionalLetterMaterials"))}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
-                              location.pathname === createPageUrl("DimensionalLetterMaterials")
-                                ? 'bg-white text-slate-900 font-medium shadow-sm'
-                                : 'text-slate-700 hover:bg-white/60'
-                            }`}
-                          >
-                            <Server className="w-3 h-3 mr-1" />
-                            Dimensional Letter Materials
-                          </Link>
-                        )}
                         
                         <Link
                           to={createPageUrl(module.settingsPage)}
