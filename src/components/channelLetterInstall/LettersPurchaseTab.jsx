@@ -30,7 +30,7 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject 
     onUpdateProject({ letter_purchases: [...purchases, p] });
   };
 
-  const applyAIPurchases = (aiPurchases) => {
+  const applyAIPurchases = (aiPurchases, mode = "append") => {
     const newOnes = aiPurchases.map((ai) => {
       const base = emptyLetterPurchase(ai.letter_type || "channel_flush_mounted");
       return {
@@ -42,7 +42,9 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject 
         wall_material: ai.wall_material || base.wall_material || "eifs",
       };
     });
-    onUpdateProject({ letter_purchases: [...purchases, ...newOnes] });
+    onUpdateProject({
+      letter_purchases: mode === "replace" ? newOnes : [...purchases, ...newOnes],
+    });
   };
 
   const updatePurchase = (idx, next) => {

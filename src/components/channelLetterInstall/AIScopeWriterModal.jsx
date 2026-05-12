@@ -36,6 +36,7 @@ export default function AIScopeWriterModal({ open, onClose, onApply }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [mode, setMode] = useState("append"); // "append" | "replace"
 
   const generate = async () => {
     if (!rawText.trim()) return;
@@ -70,7 +71,7 @@ ${rawText}`,
 
   const apply = () => {
     if (!result?.letter_purchases?.length) return;
-    onApply(result.letter_purchases);
+    onApply(result.letter_purchases, mode);
     setRawText("");
     setResult(null);
     onClose();
@@ -129,17 +130,37 @@ ${rawText}`,
           )}
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose} disabled={loading}>Cancel</Button>
-          {!result ? (
-            <Button onClick={generate} disabled={loading || !rawText.trim()} className="bg-purple-600 hover:bg-purple-700 text-white">
-              {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</> : <><Sparkles className="w-4 h-4 mr-2" /> Generate Line Items</>}
-            </Button>
-          ) : (
-            <Button onClick={apply} className="bg-green-600 hover:bg-green-700 text-white">
-              <Wand2 className="w-4 h-4 mr-2" /> Add to Estimate
-            </Button>
-          )}
+        <DialogFooter className="gap-2 sm:justify-between flex-wrap">
+          {result ? (
+            <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setMode("append")}
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${mode === "append" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              >
+                Append
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("replace")}
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${mode === "replace" ? "bg-white text-red-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              >
+                Clear & Replace
+              </button>
+            </div>
+          ) : <div />}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose} disabled={loading}>Cancel</Button>
+            {!result ? (
+              <Button onClick={generate} disabled={loading || !rawText.trim()} className="bg-purple-600 hover:bg-purple-700 text-white">
+                {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</> : <><Sparkles className="w-4 h-4 mr-2" /> Generate Line Items</>}
+              </Button>
+            ) : (
+              <Button onClick={apply} className={mode === "replace" ? "bg-red-600 hover:bg-red-700 text-white" : "bg-green-600 hover:bg-green-700 text-white"}>
+                <Wand2 className="w-4 h-4 mr-2" /> {mode === "replace" ? "Replace All Letters" : "Add to Estimate"}
+              </Button>
+            )}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

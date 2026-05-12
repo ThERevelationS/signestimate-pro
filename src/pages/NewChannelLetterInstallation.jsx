@@ -227,7 +227,7 @@ export default function NewChannelLetterInstallation() {
   }, [maxInstallHeight, equipmentInventory, hasLoaded]);
 
   // Apply AI-generated installation items
-  const applyAIInstallItems = (aiItems) => {
+  const applyAIInstallItems = (aiItems, mode = "append") => {
     const newItems = aiItems.map((ai) => {
       const base = emptyLineItem();
       const merged = {
@@ -242,7 +242,10 @@ export default function NewChannelLetterInstallation() {
       merged.materials = defaultMaterialsForItem(merged, inventory);
       return merged;
     });
-    setProject((prev) => ({ ...prev, items: [...prev.items, ...newItems] }));
+    setProject((prev) => ({
+      ...prev,
+      items: mode === "replace" ? newItems : [...prev.items, ...newItems],
+    }));
   };
 
   // Apply Photo→Estimate result as a new line item
