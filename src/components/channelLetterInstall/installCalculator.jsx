@@ -7,6 +7,7 @@ export const TYPE_LABELS = {
   flush_mount: "Flush Mount",
   halo_lit: "Halo-Lit",
   raceway: "Raceway",
+  dimensional_lettering: "Dimensional Lettering",
 };
 
 export const SIZE_LABELS = {
@@ -105,6 +106,9 @@ export const calcLineItem = (item, settings, inventory) => {
     if (item.installation_type === "halo_lit") {
       const haloMultiplier = parseFloat(settings.install_halo_multiplier) || 1.3;
       baseHours *= haloMultiplier;
+    } else if (item.installation_type === "dimensional_lettering") {
+      const dimMultiplier = parseFloat(settings.install_dimensional_lettering_multiplier) || 0.85;
+      baseHours *= dimMultiplier;
     }
   }
 

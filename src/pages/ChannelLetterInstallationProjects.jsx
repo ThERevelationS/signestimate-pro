@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { ChannelLetterInstallation, User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -111,8 +110,8 @@ export default function ChannelLetterInstallationProjects() {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Channel Letter Installation Projects</h1>
-            <p className="text-slate-600">Manage your installation estimates</p>
+            <h1 className="text-3xl font-bold text-slate-900">Channel / Dimensional Letter Installation Projects</h1>
+            <p className="text-slate-600">Manage your channel letter and non-illuminated dimensional lettering estimates</p>
           </div>
           <Link to={createPageUrl("NewChannelLetterInstallation")}>
             <Button className="bg-slate-800 hover:bg-slate-900 text-white px-6 py-3">

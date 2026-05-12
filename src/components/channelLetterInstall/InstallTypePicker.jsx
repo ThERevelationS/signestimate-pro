@@ -40,11 +40,22 @@ const TYPES = [
     accent: "border-purple-500 bg-purple-50 text-purple-900",
     accentDot: "bg-purple-500",
   },
+  {
+    id: "dimensional_lettering",
+    label: "Dimensional Lettering",
+    description: "Non-illuminated solid / fabricated letters",
+    example: "e.g. acrylic, foam, metal flat-cut",
+    images: [
+      "c1dec958a", "7c8c1d09f", "2907d461a", "355d62b6a", "795df3288",
+    ],
+    accent: "border-teal-500 bg-teal-50 text-teal-900",
+    accentDot: "bg-teal-500",
+  },
 ].map(t => ({ ...t, images: t.images.map(id => `${BASE}${id}_generated_image.png`) }));
 
 export default function InstallTypePicker({ value, onChange }) {
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
       {TYPES.map(t => {
         const selected = value === t.id;
         return (

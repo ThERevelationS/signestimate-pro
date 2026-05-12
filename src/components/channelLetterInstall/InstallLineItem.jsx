@@ -20,6 +20,7 @@ const TYPE_BADGE_COLOR = {
   flush_mount: "bg-blue-50 text-blue-700 border-blue-200",
   halo_lit: "bg-amber-50 text-amber-700 border-amber-200",
   raceway: "bg-purple-50 text-purple-700 border-purple-200",
+  dimensional_lettering: "bg-teal-50 text-teal-700 border-teal-200",
 };
 
 export default function InstallLineItem({ item, index, inventory, onUpdate, onRemove, onDuplicate, compact = false }) {

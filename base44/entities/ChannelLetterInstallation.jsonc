@@ -45,7 +45,8 @@
             "enum": [
               "flush_mount",
               "halo_lit",
-              "raceway"
+              "raceway",
+              "dimensional_lettering"
             ],
             "default": "flush_mount"
           },

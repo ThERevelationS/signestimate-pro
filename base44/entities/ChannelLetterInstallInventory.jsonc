@@ -11,6 +11,7 @@
         "flush_mount_hardware",
         "halo_lit_hardware",
         "raceway_material",
+        "dimensional_lettering_hardware",
         "electrical",
         "consumable",
         "other"
@@ -23,6 +24,7 @@
         "flush_mount",
         "halo_lit",
         "raceway",
+        "dimensional_lettering",
         "all"
       ],
       "default": "all"

@@ -29,6 +29,7 @@ const settingsDefinitions = [
 
   // Type Multipliers
   { name: "install_halo_multiplier", type: "number", category: "install_multipliers", label: "Halo-Lit Installations", suffix: "×", description: "Time multiplier for halo-lit (reverse-lit) installs", default: "1.3" },
+  { name: "install_dimensional_lettering_multiplier", type: "number", category: "install_multipliers", label: "Dimensional Lettering (Non-Illuminated)", suffix: "×", description: "Time multiplier for non-illuminated dimensional letters (typically faster — no electrical)", default: "0.85" },
 
   // Height Multipliers
   { name: "install_height_0_12ft", type: "number", category: "install_multipliers", label: "Height 0–12 ft", suffix: "×", description: "Ladder-level work", default: "1.0" },
@@ -363,7 +364,7 @@ export default function ChannelLetterInstallationSettings() {
         {/* Hero header */}
         <div className="mb-8">
           <div className="flex items-center gap-2 text-xs text-slate-500 mb-3">
-            <span>Channel Letter Install</span>
+            <span>Channel Letter / Dimensional Letter Install</span>
             <span className="text-slate-300">/</span>
             <span className="text-slate-700 font-medium">Settings</span>
           </div>
