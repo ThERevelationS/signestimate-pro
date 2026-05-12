@@ -44,7 +44,10 @@ export const defaultMaterialsForItem = (item, inventory) => {
   return (inventory || [])
     .filter(inv => {
       if (!inv.is_default) return false;
-      if (inv.applies_to === "all") return true;
+      // Prefer the new multi-select field; fall back to legacy single-value field.
+      const list = Array.isArray(inv.applies_to_list) ? inv.applies_to_list : [];
+      if (list.length > 0) return list.includes(item.installation_type);
+      if (!inv.applies_to || inv.applies_to === "all") return true;
       return inv.applies_to === item.installation_type;
     })
     .map(inv => materialFromInventory(inv, item));

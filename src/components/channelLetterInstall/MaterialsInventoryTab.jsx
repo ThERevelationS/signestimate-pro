@@ -7,9 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2, Save } from "lucide-react";
+import AppliesToMultiSelect from "./AppliesToMultiSelect";
 
-const CATEGORIES = ["flush_mount_hardware", "halo_lit_hardware", "raceway_material", "electrical", "consumable", "other"];
-const APPLIES_TO = ["all", "flush_mount", "halo_lit", "raceway"];
+const CATEGORIES = ["flush_mount_hardware", "halo_lit_hardware", "raceway_material", "dimensional_lettering_hardware", "electrical", "consumable", "other"];
 
 // Three criteria the user specified, mapped to underlying pricing_mode values
 const CRITERIA_OPTIONS = [
@@ -23,6 +23,7 @@ const emptyItem = () => ({
   item_name: "",
   category: "flush_mount_hardware",
   applies_to: "all",
+  applies_to_list: [],
   pricing_mode: "per_letter_flat",
   cost_per_letter: 0,
   cost_extra_small: 0,
@@ -125,12 +126,10 @@ export default function MaterialsInventoryTab() {
               </div>
               <div className="md:col-span-2">
                 <Label className="text-xs">Applies To</Label>
-                <Select value={it.applies_to} onValueChange={(v) => update(i, { applies_to: v })}>
-                  <SelectTrigger className="h-8 mt-0.5"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {APPLIES_TO.map(c => <SelectItem key={c} value={c}>{c.replace(/_/g, " ")}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <AppliesToMultiSelect
+                  value={Array.isArray(it.applies_to_list) ? it.applies_to_list : (it.applies_to && it.applies_to !== "all" ? [it.applies_to] : [])}
+                  onChange={(list) => update(i, { applies_to_list: list, applies_to: list.length === 0 ? "all" : list[0] })}
+                />
               </div>
               <div className="md:col-span-2">
                 <Label className="text-xs">Criteria</Label>

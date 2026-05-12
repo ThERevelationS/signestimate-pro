@@ -27,7 +27,21 @@
         "dimensional_lettering",
         "all"
       ],
-      "default": "all"
+      "default": "all",
+      "description": "Legacy single-value field. Use applies_to_list for multi-select."
+    },
+    "applies_to_list": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "flush_mount",
+          "halo_lit",
+          "raceway",
+          "dimensional_lettering"
+        ]
+      },
+      "description": "Installation types this material applies to. Empty array = applies to all."
     },
     "pricing_mode": {
       "type": "string",
