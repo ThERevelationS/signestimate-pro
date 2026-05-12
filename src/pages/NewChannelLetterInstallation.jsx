@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator, MapPin } from "lucide-react";
+import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator, MapPin, Copy, DollarSign, Check } from "lucide-react";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import InstallLineItem from "@/components/channelLetterInstall/InstallLineItem";
@@ -227,6 +227,67 @@ export default function NewChannelLetterInstallation() {
 
   const exportCSV = () => downloadCSV(recalculated);
 
+  // --- Copy materials list helpers ---
+  const [materialsCopied, setMaterialsCopied] = useState(null); // "plain" | "priced" | null
+  const flashCopied = (which) => {
+    setMaterialsCopied(which);
+    setTimeout(() => setMaterialsCopied(null), 1800);
+  };
+
+  const buildPlainMaterialsList = () => {
+    if (aggregatedMaterials.length === 0) return "";
+    const sorted = [...aggregatedMaterials].sort((a, b) => a.item_name.localeCompare(b.item_name));
+    const qtyWidth = Math.max(3, ...sorted.map(m => m.quantity.toFixed(2).length));
+    const lines = sorted.map(m => `${m.quantity.toFixed(2).padStart(qtyWidth)}  ${m.item_name}`);
+    return [
+      "MATERIALS LIST",
+      `${project.project_name || "Untitled Project"}${project.estimate_number ? ` — ${project.estimate_number}` : ""}`,
+      "─".repeat(40),
+      ...lines,
+    ].join("\n");
+  };
+
+  const buildPricedMaterialsList = () => {
+    if (aggregatedMaterials.length === 0) return "";
+    const sorted = [...aggregatedMaterials].sort((a, b) => a.item_name.localeCompare(b.item_name));
+    const nameWidth = Math.max(4, ...sorted.map(m => m.item_name.length));
+    const qtyWidth = Math.max(3, ...sorted.map(m => m.quantity.toFixed(2).length));
+    const unitWidth = Math.max(6, ...sorted.map(m => `$${m.unit_cost.toFixed(2)}`.length));
+    const totalWidth = Math.max(6, ...sorted.map(m => `$${m.total_cost.toFixed(2)}`.length));
+
+    const header = `${"Item".padEnd(nameWidth)}  ${"Qty".padStart(qtyWidth)}  ${"Unit".padStart(unitWidth)}  ${"Total".padStart(totalWidth)}`;
+    const divider = "─".repeat(header.length);
+    const rows = sorted.map(m =>
+      `${m.item_name.padEnd(nameWidth)}  ${m.quantity.toFixed(2).padStart(qtyWidth)}  ${`$${m.unit_cost.toFixed(2)}`.padStart(unitWidth)}  ${`$${m.total_cost.toFixed(2)}`.padStart(totalWidth)}`
+    );
+    const totalLine = `${"MATERIALS TOTAL".padEnd(nameWidth + qtyWidth + unitWidth + 4)}  ${fmt(recalculated.total_materials_cost).padStart(totalWidth)}`;
+
+    return [
+      "MATERIALS LIST (WITH PRICING)",
+      `${project.project_name || "Untitled Project"}${project.estimate_number ? ` — ${project.estimate_number}` : ""}`,
+      divider,
+      header,
+      divider,
+      ...rows,
+      divider,
+      totalLine,
+    ].join("\n");
+  };
+
+  const copyMaterialsPlain = async () => {
+    try {
+      await navigator.clipboard.writeText(buildPlainMaterialsList());
+      flashCopied("plain");
+    } catch (e) { alert("Copy failed: " + e.message); }
+  };
+
+  const copyMaterialsPriced = async () => {
+    try {
+      await navigator.clipboard.writeText(buildPricedMaterialsList());
+      flashCopied("priced");
+    } catch (e) { alert("Copy failed: " + e.message); }
+  };
+
   if (isLoading) {
     return (
       <div className="p-6 md:p-8 bg-slate-50 min-h-screen flex items-center justify-center">
@@ -416,12 +477,40 @@ export default function NewChannelLetterInstallation() {
               {/* MATERIALS TAB */}
               <TabsContent value="materials" className="mt-4 space-y-3">
                 <Card className="bg-white border-0 shadow-sm">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Boxes className="w-5 h-5 text-purple-600" />
-                      Aggregated Materials (Pick List)
-                    </CardTitle>
-                    <p className="text-xs text-slate-500">Combined materials across all line items — your shopping list.</p>
+                  <CardHeader className="pb-3 flex flex-row items-start justify-between gap-3 flex-wrap">
+                    <div>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Boxes className="w-5 h-5 text-purple-600" />
+                        Aggregated Materials (Pick List)
+                      </CardTitle>
+                      <p className="text-xs text-slate-500 mt-1">Combined materials across all line items — your shopping list.</p>
+                    </div>
+                    {aggregatedMaterials.length > 0 && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={copyMaterialsPlain}
+                          className="h-8 text-xs"
+                          title="Copy materials list without pricing"
+                        >
+                          {materialsCopied === "plain"
+                            ? <><Check className="w-3.5 h-3.5 mr-1 text-green-600" /> Copied!</>
+                            : <><Copy className="w-3.5 h-3.5 mr-1" /> Copy List</>}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={copyMaterialsPriced}
+                          className="h-8 text-xs"
+                          title="Copy materials list with pricing"
+                        >
+                          {materialsCopied === "priced"
+                            ? <><Check className="w-3.5 h-3.5 mr-1 text-green-600" /> Copied!</>
+                            : <><DollarSign className="w-3.5 h-3.5 mr-1" /> Copy with Pricing</>}
+                        </Button>
+                      </div>
+                    )}
                   </CardHeader>
                   <CardContent className="p-0">
                     {aggregatedMaterials.length === 0 ? (
