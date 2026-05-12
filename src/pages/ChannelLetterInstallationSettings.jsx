@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Save, Wrench, DollarSign, Clock, Ruler, AlertTriangle, CheckCircle2, Layers, Building2, Fuel, RefreshCw } from "lucide-react";
+import { Save, Wrench, DollarSign, Clock, Ruler, AlertTriangle, CheckCircle2, Layers, Building2, Fuel, RefreshCw, Type, Receipt } from "lucide-react";
 import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
 import { useToast } from "@/components/ui/use-toast";
 import { WALL_MATERIALS } from "@/components/channelLetterInstall/wallMaterials";
@@ -68,6 +68,28 @@ const settingsDefinitions = [
   { name: "install_default_truck_mpg", type: "number", category: "install_shop_travel", label: "Default Truck MPG", suffix: "mpg", description: "Fallback MPG if no owned truck is selected on the line item", default: "14" },
   { name: "install_travel_overhead_per_mile", type: "number", category: "install_shop_travel", label: "Vehicle Overhead", suffix: "$/mile", description: "Maintenance / wear allowance per mile (above fuel)", default: "0.25" },
   { name: "install_min_travel_charge", type: "number", category: "install_shop_travel", label: "Minimum Travel Charge", suffix: "$", description: "Floor amount applied if any travel is required", default: "0" },
+
+  // Letter Pricing — Raceway tiers (per linear foot, escalating)
+  { name: "letters_raceway_1st_per_ft", type: "number", category: "letters_raceway_pricing", label: "1st Raceway", suffix: "$/ft", description: "Cost per linear foot for the first raceway on a project", default: "22.53" },
+  { name: "letters_raceway_2nd_per_ft", type: "number", category: "letters_raceway_pricing", label: "2nd Raceway", suffix: "$/ft", description: "Cost per linear foot for the second raceway", default: "23.53" },
+  { name: "letters_raceway_3rd_per_ft", type: "number", category: "letters_raceway_pricing", label: "3rd Raceway", suffix: "$/ft", description: "Cost per linear foot for the third raceway", default: "24.53" },
+  { name: "letters_raceway_4th_per_ft", type: "number", category: "letters_raceway_pricing", label: "4th Raceway", suffix: "$/ft", description: "Cost per linear foot for the fourth (and beyond) raceway", default: "25.53" },
+
+  // Letter Pricing — Channel letters (per vertical inch)
+  { name: "letters_channel_raceway_per_inch", type: "number", category: "letters_channel_pricing", label: "Raceway-Mounted Channel Letters", suffix: "$/in", description: "Cost per vertical inch — channel letters mounted to a raceway", default: "7.10" },
+  { name: "letters_channel_flush_per_inch", type: "number", category: "letters_channel_pricing", label: "Flush-Mounted Channel Letters", suffix: "$/in", description: "Cost per vertical inch — channel letters mounted directly to wall", default: "9.03" },
+  { name: "letters_channel_halo_per_inch", type: "number", category: "letters_channel_pricing", label: "Halo-Lit Channel Letters", suffix: "$/in", description: "Cost per vertical inch — reverse / halo-lit channel letters (~30% premium over flush)", default: "11.75" },
+
+  // Letter Pricing — Capsule / logo / dimensional (per square foot)
+  { name: "letters_capsule_logo_per_sqft", type: "number", category: "letters_area_pricing", label: "Capsule / Logo / Pillbox", suffix: "$/sqft", description: "Cost per square foot for capsule, pillbox, or logo elements", default: "45.37" },
+  { name: "letters_dimensional_per_sqft", type: "number", category: "letters_area_pricing", label: "Dimensional Letters (in-house)", suffix: "$/sqft", description: "Cost per square foot for in-house fabricated dimensional letters", default: "65.00" },
+
+  // Letter Pricing — Default fees & markup
+  { name: "letters_default_delivery_fee", type: "number", category: "letters_fees", label: "Default Delivery / Shipping", suffix: "$", description: "Default delivery fee pre-filled on new projects", default: "90" },
+  { name: "letters_default_design_fee", type: "number", category: "letters_fees", label: "Default Graphic Design Fee", suffix: "$", description: "Default design fee pre-filled on new projects", default: "150" },
+  { name: "letters_default_install_supplies_fee", type: "number", category: "letters_fees", label: "Default Install Supplies", suffix: "$", description: "Default install supplies fee pre-filled on new projects", default: "100" },
+  { name: "letters_default_permitting_fee", type: "number", category: "letters_fees", label: "Default Permitting Fee", suffix: "$", description: "Default permitting fee pre-filled on new projects", default: "750" },
+  { name: "letters_default_markup_percent", type: "number", category: "letters_fees", label: "Default Letters Markup", suffix: "%", description: "Default markup percent applied to the letters subtotal (tier 1)", default: "86.2" },
 ];
 
 const TAB_META = {
@@ -112,6 +134,18 @@ const TAB_META = {
     icon: Building2,
     description: "Shop starting location and travel cost parameters. Fuel price auto-updates daily.",
     categories: ["install_shop_travel"],
+  },
+  letter_pricing: {
+    title: "Letter Pricing",
+    icon: Type,
+    description: "Purchase pricing for channel letters, raceways, capsule/logo, and dimensional letters. Used by the Letters tab on each estimate.",
+    categories: ["letters_raceway_pricing", "letters_channel_pricing", "letters_area_pricing"],
+  },
+  letter_fees: {
+    title: "Letter Fees",
+    icon: Receipt,
+    description: "Default delivery, design, install-supplies, permitting fees, and markup pre-filled on new estimates.",
+    categories: ["letters_fees"],
   },
 };
 
@@ -347,7 +381,7 @@ export default function ChannelLetterInstallationSettings() {
 
   const managementContent = (
     <Tabs defaultValue="pricing_labor" className="w-full">
-      <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 mb-6 h-auto p-1">
+      <TabsList className="grid w-full grid-cols-3 lg:grid-cols-9 mb-6 h-auto p-1">
         {Object.entries(TAB_META).map(([key, meta]) => {
           const Icon = meta.icon;
           return (
