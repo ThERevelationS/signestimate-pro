@@ -15,17 +15,18 @@ const settingsDefinitions = [
   // Pricing & Labor
   { name: "install_labor_rate", type: "number", category: "install_pricing", label: "Hourly Labor Rate", suffix: "$/hr", description: "Crew rate per hour for installation work", default: "65" },
 
-  // Base Rates per Letter Size
-  { name: "install_base_rate_extra_small", type: "number", category: "install_rates", label: "Extra Small (2\"–8\")", suffix: "hrs/letter", description: "Base hours per XS letter", default: "0.75" },
-  { name: "install_base_rate_small", type: "number", category: "install_rates", label: "Small (8\"–12\")", suffix: "hrs/letter", description: "Base hours per small letter", default: "1.5" },
-  { name: "install_base_rate_medium", type: "number", category: "install_rates", label: "Medium (12\"–24\")", suffix: "hrs/letter", description: "Base hours per medium letter", default: "2.5" },
-  { name: "install_base_rate_large", type: "number", category: "install_rates", label: "Large (24\"–48\")", suffix: "hrs/letter", description: "Base hours per large letter", default: "4.0" },
-  { name: "install_base_rate_extra_large", type: "number", category: "install_rates", label: "Extra Large (48\"–60\")", suffix: "hrs/letter", description: "Base hours per XL letter", default: "6.0" },
-  { name: "install_base_rate_extra_extra_large", type: "number", category: "install_rates", label: "XXL (60\"+)", suffix: "hrs/letter", description: "Base hours per XXL letter", default: "8.5" },
+  // Base Rates per Letter Size (minutes per letter)
+  { name: "install_base_rate_extra_small", type: "number", category: "install_rates", label: "Extra Small (2\"–8\")", suffix: "min/letter", description: "Base minutes per XS letter", default: "45" },
+  { name: "install_base_rate_small", type: "number", category: "install_rates", label: "Small (8\"–12\")", suffix: "min/letter", description: "Base minutes per small letter", default: "90" },
+  { name: "install_base_rate_medium", type: "number", category: "install_rates", label: "Medium (12\"–24\")", suffix: "min/letter", description: "Base minutes per medium letter", default: "150" },
+  { name: "install_base_rate_large", type: "number", category: "install_rates", label: "Large (24\"–48\")", suffix: "min/letter", description: "Base minutes per large letter", default: "240" },
+  { name: "install_base_rate_extra_large", type: "number", category: "install_rates", label: "Extra Large (48\"–60\")", suffix: "min/letter", description: "Base minutes per XL letter", default: "360" },
+  { name: "install_base_rate_extra_extra_large", type: "number", category: "install_rates", label: "XXL (60\"+)", suffix: "min/letter", description: "Base minutes per XXL letter", default: "510" },
 
-  // Raceway Rates
-  { name: "install_raceway_rate_per_foot", type: "number", category: "install_rates", label: "Raceway per Foot", suffix: "hrs/ft", description: "Hours per foot of raceway installation", default: "0.5" },
-  { name: "install_raceway_letter_mounting_rate", type: "number", category: "install_rates", label: "Raceway Letter Mounting", suffix: "hrs/letter", description: "Hours per letter mounted to raceway", default: "0.3" },
+  // Raceway Rates — separated into its own tab
+  { name: "install_raceway_base_minutes_per_foot", type: "number", category: "install_raceway", label: "Base Cost per Foot", suffix: "min/ft", description: "Base minutes of labor per foot of raceway installed", default: "30" },
+  { name: "install_raceway_extra_minutes_per_foot", type: "number", category: "install_raceway", label: "Extra Cost per Foot", suffix: "min/ft", description: "Additional minutes per foot for complex / oversized raceway work", default: "0" },
+  { name: "install_raceway_letter_mounting_rate", type: "number", category: "install_raceway", label: "Raceway Letter Mounting", suffix: "min/letter", description: "Minutes per letter mounted to raceway", default: "18" },
 
   // Type Multipliers
   { name: "install_halo_multiplier", type: "number", category: "install_multipliers", label: "Halo-Lit Installations", suffix: "×", description: "Time multiplier for halo-lit (reverse-lit) installs", default: "1.3" },
@@ -79,8 +80,14 @@ const TAB_META = {
   base_rates: {
     title: "Base Rates",
     icon: Ruler,
-    description: "Time required per letter by size and per foot of raceway.",
+    description: "Minutes of labor per letter by size (Flush Mount, Halo-Lit, Dimensional Lettering).",
     categories: ["install_rates"],
+  },
+  raceway: {
+    title: "Raceway",
+    icon: Ruler,
+    description: "Raceway-specific labor: base minutes per foot, extra minutes per foot, and per-letter mounting time.",
+    categories: ["install_raceway"],
   },
   multipliers: {
     title: "Type & Height",
@@ -101,7 +108,7 @@ const TAB_META = {
     categories: ["install_wall_materials"],
   },
   shop_travel: {
-    title: "Shop & Travel",
+    title: "Travel",
     icon: Building2,
     description: "Shop starting location and travel cost parameters. Fuel price auto-updates daily.",
     categories: ["install_shop_travel"],
@@ -247,6 +254,7 @@ export default function ChannelLetterInstallationSettings() {
     const value = settings[def.name];
     let step = "0.01";
     if (def.name.includes("multiplier")) step = "0.05";
+    else if (def.suffix === "min/letter" || def.suffix === "min/ft") step = "1";
     else if (def.name.includes("rate") && !def.name.includes("labor_rate")) step = "0.25";
 
     if (def.type === "text") {
@@ -339,7 +347,7 @@ export default function ChannelLetterInstallationSettings() {
 
   const managementContent = (
     <Tabs defaultValue="pricing_labor" className="w-full">
-      <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 mb-6 h-auto p-1">
+      <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 mb-6 h-auto p-1">
         {Object.entries(TAB_META).map(([key, meta]) => {
           const Icon = meta.icon;
           return (

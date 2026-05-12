@@ -87,24 +87,29 @@ export const materialFromInventory = (inv, item) => {
 export const calcLineItem = (item, settings, inventory) => {
   const laborRate = parseFloat(settings.install_labor_rate) || 65;
 
+  // Base rates are stored in MINUTES — convert to hours when reading.
+  const MIN_TO_HR = 1 / 60;
   const letterSizeRates = {
-    extra_small: parseFloat(settings.install_base_rate_extra_small) || 0.75,
-    small: parseFloat(settings.install_base_rate_small) || 1.5,
-    medium: parseFloat(settings.install_base_rate_medium) || 2.5,
-    large: parseFloat(settings.install_base_rate_large) || 4.0,
-    extra_large: parseFloat(settings.install_base_rate_extra_large) || 6.0,
-    extra_extra_large: parseFloat(settings.install_base_rate_extra_extra_large) || 8.5,
+    extra_small: (parseFloat(settings.install_base_rate_extra_small) || 45) * MIN_TO_HR,
+    small: (parseFloat(settings.install_base_rate_small) || 90) * MIN_TO_HR,
+    medium: (parseFloat(settings.install_base_rate_medium) || 150) * MIN_TO_HR,
+    large: (parseFloat(settings.install_base_rate_large) || 240) * MIN_TO_HR,
+    extra_large: (parseFloat(settings.install_base_rate_extra_large) || 360) * MIN_TO_HR,
+    extra_extra_large: (parseFloat(settings.install_base_rate_extra_extra_large) || 510) * MIN_TO_HR,
   };
 
   let baseHours = 0;
 
   if (item.installation_type === "raceway") {
-    const racewayRatePerFoot = parseFloat(settings.install_raceway_rate_per_foot) || 0.5;
-    baseHours = (parseFloat(item.raceway_length_feet) || 0) * racewayRatePerFoot;
-    const letterMountingRate = parseFloat(settings.install_raceway_letter_mounting_rate) || 0.3;
-    baseHours += (parseFloat(item.qty_letters) || 0) * letterMountingRate;
+    // Raceway: base + extra minutes per foot, plus per-letter mounting minutes.
+    const basePerFt = (parseFloat(settings.install_raceway_base_minutes_per_foot) || 30) * MIN_TO_HR;
+    const extraPerFt = (parseFloat(settings.install_raceway_extra_minutes_per_foot) || 0) * MIN_TO_HR;
+    const racewayHoursPerFoot = basePerFt + extraPerFt;
+    baseHours = (parseFloat(item.raceway_length_feet) || 0) * racewayHoursPerFoot;
+    const letterMountingHours = (parseFloat(settings.install_raceway_letter_mounting_rate) || 18) * MIN_TO_HR;
+    baseHours += (parseFloat(item.qty_letters) || 0) * letterMountingHours;
   } else {
-    const baseRate = letterSizeRates[item.letter_size] || 2.5;
+    const baseRate = letterSizeRates[item.letter_size] || (150 * MIN_TO_HR);
     baseHours = (parseFloat(item.qty_letters) || 0) * baseRate;
     if (item.installation_type === "halo_lit") {
       const haloMultiplier = parseFloat(settings.install_halo_multiplier) || 1.3;

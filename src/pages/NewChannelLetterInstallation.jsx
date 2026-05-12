@@ -323,7 +323,7 @@ export default function NewChannelLetterInstallation() {
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid grid-cols-4 w-full bg-white shadow-sm border border-slate-200 h-12">
+              <TabsList className="grid grid-cols-3 w-full bg-white shadow-sm border border-slate-200 h-12">
                 <TabsTrigger value="project" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
                   <FileText className="w-4 h-4 mr-2" /> Project
                 </TabsTrigger>
@@ -332,9 +332,6 @@ export default function NewChannelLetterInstallation() {
                   <span className="ml-1.5 text-xs bg-slate-200 data-[state=active]:bg-white/20 rounded-full px-1.5 py-0.5">
                     {recalculated.items.length}
                   </span>
-                </TabsTrigger>
-                <TabsTrigger value="materials" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
-                  <Boxes className="w-4 h-4 mr-2" /> Materials
                 </TabsTrigger>
                 <TabsTrigger value="summary" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
                   <Calculator className="w-4 h-4 mr-2" /> Summary
@@ -413,7 +410,7 @@ export default function NewChannelLetterInstallation() {
                       <p className="mt-1 text-xs text-slate-500">
                         Travel cost will be calculated from your shop (
                         <Link to={createPageUrl("ChannelLetterInstallationSettings")} className="underline hover:text-purple-700">
-                          Shop & Travel settings
+                          Travel settings
                         </Link>
                         ) to this address.
                       </p>
@@ -474,14 +471,54 @@ export default function NewChannelLetterInstallation() {
                 )}
               </TabsContent>
 
-              {/* MATERIALS TAB */}
-              <TabsContent value="materials" className="mt-4 space-y-3">
+              {/* SUMMARY TAB */}
+              <TabsContent value="summary" className="mt-4 space-y-3">
+                <Card className="bg-white border-0 shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Estimate Breakdown</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 text-slate-600 text-xs">
+                        <tr>
+                          <th className="text-left px-4 py-2 font-medium w-8">#</th>
+                          <th className="text-left px-4 py-2 font-medium">Description</th>
+                          <th className="text-left px-4 py-2 font-medium">Type</th>
+                          <th className="text-right px-4 py-2 font-medium">Labor</th>
+                          <th className="text-right px-4 py-2 font-medium">Materials</th>
+                          <th className="text-right px-4 py-2 font-medium">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recalculated.items.map((it, i) => (
+                          <tr key={i} className="border-t border-slate-100">
+                            <td className="px-4 py-2 text-slate-500">{i + 1}</td>
+                            <td className="px-4 py-2 font-medium">{it.description || `Item ${i + 1}`}</td>
+                            <td className="px-4 py-2 capitalize text-xs text-slate-600">{it.installation_type?.replace("_", " ")}</td>
+                            <td className="px-4 py-2 text-right tabular-nums">{fmt(it.labor_cost)}</td>
+                            <td className="px-4 py-2 text-right tabular-nums">{fmt(it.materials_cost)}</td>
+                            <td className="px-4 py-2 text-right tabular-nums font-semibold">{fmt(it.item_total_cost)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-slate-50 border-t-2 border-slate-200 text-sm">
+                        <tr>
+                          <td colSpan="3" className="px-4 py-2 text-right font-medium">Subtotals</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-medium">{fmt(recalculated.labor_cost)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-medium">{fmt(recalculated.total_materials_cost)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-bold">{fmt((recalculated.labor_cost || 0) + (recalculated.total_materials_cost || 0))}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </CardContent>
+                </Card>
+
                 <Card className="bg-white border-0 shadow-sm">
                   <CardHeader className="pb-3 flex flex-row items-start justify-between gap-3 flex-wrap">
                     <div>
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Boxes className="w-5 h-5 text-purple-600" />
-                        Aggregated Materials (Pick List)
+                        Materials (Pick List)
                       </CardTitle>
                       <p className="text-xs text-slate-500 mt-1">Combined materials across all line items — your shopping list.</p>
                     </div>
@@ -545,55 +582,6 @@ export default function NewChannelLetterInstallation() {
                         </tfoot>
                       </table>
                     )}
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-blue-50 border-blue-100">
-                  <CardContent className="p-4 text-xs text-blue-900">
-                    <p><strong>Tip:</strong> Materials are auto-calculated from each line item's inventory selections. To customize prices, go to the <Link to={createPageUrl("ChannelLetterInstallInventory")} className="underline font-medium">Inventory page</Link>, or override per-item in the Items tab.</p>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* SUMMARY TAB */}
-              <TabsContent value="summary" className="mt-4 space-y-3">
-                <Card className="bg-white border-0 shadow-sm">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Estimate Breakdown</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50 text-slate-600 text-xs">
-                        <tr>
-                          <th className="text-left px-4 py-2 font-medium w-8">#</th>
-                          <th className="text-left px-4 py-2 font-medium">Description</th>
-                          <th className="text-left px-4 py-2 font-medium">Type</th>
-                          <th className="text-right px-4 py-2 font-medium">Labor</th>
-                          <th className="text-right px-4 py-2 font-medium">Materials</th>
-                          <th className="text-right px-4 py-2 font-medium">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {recalculated.items.map((it, i) => (
-                          <tr key={i} className="border-t border-slate-100">
-                            <td className="px-4 py-2 text-slate-500">{i + 1}</td>
-                            <td className="px-4 py-2 font-medium">{it.description || `Item ${i + 1}`}</td>
-                            <td className="px-4 py-2 capitalize text-xs text-slate-600">{it.installation_type?.replace("_", " ")}</td>
-                            <td className="px-4 py-2 text-right tabular-nums">{fmt(it.labor_cost)}</td>
-                            <td className="px-4 py-2 text-right tabular-nums">{fmt(it.materials_cost)}</td>
-                            <td className="px-4 py-2 text-right tabular-nums font-semibold">{fmt(it.item_total_cost)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot className="bg-slate-50 border-t-2 border-slate-200 text-sm">
-                        <tr>
-                          <td colSpan="3" className="px-4 py-2 text-right font-medium">Subtotals</td>
-                          <td className="px-4 py-2 text-right tabular-nums font-medium">{fmt(recalculated.labor_cost)}</td>
-                          <td className="px-4 py-2 text-right tabular-nums font-medium">{fmt(recalculated.total_materials_cost)}</td>
-                          <td className="px-4 py-2 text-right tabular-nums font-bold">{fmt((recalculated.labor_cost || 0) + (recalculated.total_materials_cost || 0))}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
                   </CardContent>
                 </Card>
               </TabsContent>
