@@ -179,14 +179,16 @@ export default function EquipmentInventoryTab() {
               </SelectContent>
             </Select>
           </div>
-          <div className="md:col-span-2">
+          <div className={mode === "owned" ? "md:col-span-3" : "md:col-span-2"}>
             <Label className="text-xs">Cost</Label>
             {costField(it, origIndex)}
           </div>
-          <div className="md:col-span-1">
-            <Label className="text-xs">Delivery</Label>
-            <Input type="number" step="0.01" value={it.delivery_pickup_cost} onFocus={e => e.target.select()} onChange={(e) => update(origIndex, { delivery_pickup_cost: parseFloat(e.target.value) || 0 })} className="h-8 mt-0.5" />
-          </div>
+          {mode === "rented" && (
+            <div className="md:col-span-1">
+              <Label className="text-xs">Delivery</Label>
+              <Input type="number" step="0.01" value={it.delivery_pickup_cost} onFocus={e => e.target.select()} onChange={(e) => update(origIndex, { delivery_pickup_cost: parseFloat(e.target.value) || 0 })} className="h-8 mt-0.5" />
+            </div>
+          )}
           <div className="md:col-span-1 flex items-end">
             <label className="flex items-center gap-1 cursor-pointer text-xs mb-2">
               <Checkbox checked={it.is_active} onCheckedChange={(c) => update(origIndex, { is_active: !!c })} />
@@ -215,18 +217,13 @@ export default function EquipmentInventoryTab() {
           </div>
         )}
         <div className="grid md:grid-cols-12 gap-2 mt-2">
-          {mode === "rented" ? (
+          {mode === "rented" && (
             <div className="md:col-span-3">
               <Label className="text-xs">Rental Company</Label>
               <Input value={it.rental_company || ""} onChange={(e) => update(origIndex, { rental_company: e.target.value })} className="h-7 text-xs mt-0.5" placeholder="Sunbelt, United, etc." />
             </div>
-          ) : (
-            <div className="md:col-span-3">
-              <Label className="text-xs">Delivery / Setup</Label>
-              <Input type="number" step="0.01" value={it.delivery_pickup_cost} onFocus={e => e.target.select()} onChange={(e) => update(origIndex, { delivery_pickup_cost: parseFloat(e.target.value) || 0 })} className="h-7 text-xs mt-0.5" />
-            </div>
           )}
-          <div className="md:col-span-8">
+          <div className={mode === "rented" ? "md:col-span-8" : "md:col-span-11"}>
             <Label className="text-xs">Notes</Label>
             <Input value={it.notes || ""} onChange={(e) => update(origIndex, { notes: e.target.value })} className="h-7 text-xs mt-0.5" />
           </div>
