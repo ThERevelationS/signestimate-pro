@@ -59,33 +59,27 @@
     },
     "cost_extra_small": {
       "type": "number",
-      "default": 0,
-      "description": "Cost per XS letter (2-8 inch)"
+      "default": 0
     },
     "cost_small": {
       "type": "number",
-      "default": 0,
-      "description": "Cost per small letter (8-12 inch)"
+      "default": 0
     },
     "cost_medium": {
       "type": "number",
-      "default": 0,
-      "description": "Cost per medium letter (12-24 inch)"
+      "default": 0
     },
     "cost_large": {
       "type": "number",
-      "default": 0,
-      "description": "Cost per large letter (24-48 inch)"
+      "default": 0
     },
     "cost_extra_large": {
       "type": "number",
-      "default": 0,
-      "description": "Cost per XL letter (48-60 inch)"
+      "default": 0
     },
     "cost_extra_extra_large": {
       "type": "number",
-      "default": 0,
-      "description": "Cost per XXL letter (60 inch+)"
+      "default": 0
     },
     "cost_per_foot": {
       "type": "number",
@@ -94,6 +88,46 @@
     "cost_flat": {
       "type": "number",
       "default": 0
+    },
+    "quantity_tiers": {
+      "type": "array",
+      "description": "Optional volume discount tiers. Applied to the headline cost.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "min_qty": {
+            "type": "number"
+          },
+          "max_qty": {
+            "type": "number"
+          },
+          "unit_cost": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "price_history": {
+      "type": "array",
+      "description": "Snapshots of past pricing changes.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "changed_at": {
+            "type": "string"
+          },
+          "changed_by": {
+            "type": "string"
+          },
+          "pricing_mode": {
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
     },
     "unit": {
       "type": "string"
@@ -105,8 +139,7 @@
       "type": "string"
     },
     "image_url": {
-      "type": "string",
-      "description": "AI-generated image of this material"
+      "type": "string"
     },
     "is_default": {
       "type": "boolean",

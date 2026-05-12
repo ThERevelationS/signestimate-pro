@@ -15,11 +15,12 @@ export const CATEGORY_MAP = CATEGORIES.reduce((acc, c) => {
   return acc;
 }, {});
 
+// `icon` is a Lucide icon name string; resolved in components that render badges.
 export const CRITERIA_OPTIONS = [
-  { value: "per_letter_flat", label: "Per Letter (Flat)", short: "Per Letter" },
-  { value: "per_letter_by_size", label: "Per Letter (By Size)", short: "By Size" },
-  { value: "per_raceway_foot", label: "Per Raceway (Per Foot)", short: "Per Foot" },
-  { value: "per_project_flat", label: "Per Sign (Flat)", short: "Per Sign" },
+  { value: "per_letter_flat", label: "Per Letter (Flat)", short: "Per Letter", icon: "Type", color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
+  { value: "per_letter_by_size", label: "Per Letter (By Size)", short: "By Size", icon: "Ruler", color: "bg-violet-100 text-violet-700 border-violet-200" },
+  { value: "per_raceway_foot", label: "Per Raceway (Per Foot)", short: "Per Foot", icon: "MoveHorizontal", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
+  { value: "per_project_flat", label: "Per Sign (Flat)", short: "Per Sign", icon: "Hash", color: "bg-rose-100 text-rose-700 border-rose-200" },
 ];
 
 export const CRITERIA_MAP = CRITERIA_OPTIONS.reduce((acc, c) => {
@@ -49,6 +50,8 @@ export const emptyMaterialItem = () => ({
   cost_extra_extra_large: 0,
   cost_per_foot: 0,
   cost_flat: 0,
+  quantity_tiers: [],
+  price_history: [],
   unit: "ea",
   supplier: "",
   notes: "",
