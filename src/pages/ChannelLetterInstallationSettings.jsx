@@ -359,7 +359,95 @@ export default function ChannelLetterInstallationSettings() {
     );
   };
 
+  // Group base rate settings by letter size — renders side-by-side Drill + Prep per size
+  const renderBaseRatesContent = () => {
+    const sizes = [
+      { key: "extra_small", label: 'Extra Small', range: '2"–8"' },
+      { key: "small", label: 'Small', range: '8"–12"' },
+      { key: "medium", label: 'Medium', range: '12"–24"' },
+      { key: "large", label: 'Large', range: '24"–48"' },
+      { key: "extra_large", label: 'Extra Large', range: '48"–60"' },
+      { key: "extra_extra_large", label: 'XXL', range: '60"+' },
+    ];
+
+    const findDef = (name) => settingsDefinitions.find(d => d.name === name);
+
+    const renderCompactInput = (def) => {
+      if (!def) return null;
+      const value = settings[def.name];
+      return (
+        <div>
+          <div className="flex items-baseline justify-between mb-1">
+            <Label htmlFor={def.name} className="text-xs font-medium text-slate-700">
+              {def.label.includes("Drill") ? "Drill Pattern / Drill Time" : "Installation / Prep Time"}
+            </Label>
+            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">min</span>
+          </div>
+          <Input
+            type="number"
+            step="1"
+            id={def.name}
+            value={value || ""}
+            onChange={(e) => updateSetting(def.name, e.target.value)}
+            disabled={isLocked}
+            className="h-9 bg-white border-slate-200 focus:border-slate-400 focus:ring-0 text-sm tabular-nums font-medium"
+            min="0"
+          />
+        </div>
+      );
+    };
+
+    return (
+      <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl overflow-hidden">
+        <CardHeader className="pb-4 border-b border-slate-100">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+              <Ruler className="w-5 h-5 text-slate-700" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-base font-semibold text-slate-900 tracking-tight">Base Rates per Letter Size</CardTitle>
+              <CardDescription className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                Two minute values per size. The estimator sums them per letter, then applies type/height/site multipliers.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-6 pb-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sizes.map(s => {
+              const drillDef = findDef(`install_drill_rate_${s.key}`);
+              const prepDef = findDef(`install_prep_rate_${s.key}`);
+              const drillVal = parseFloat(settings[`install_drill_rate_${s.key}`]) || 0;
+              const prepVal = parseFloat(settings[`install_prep_rate_${s.key}`]) || 0;
+              const total = drillVal + prepVal;
+              return (
+                <div key={s.key} className="border border-slate-200 rounded-xl p-4 bg-slate-50/40 hover:bg-slate-50 transition-colors">
+                  <div className="flex items-baseline justify-between mb-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">{s.label}</div>
+                      <div className="text-[11px] text-slate-500">{s.range}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] uppercase tracking-wider text-slate-400">Total / letter</div>
+                      <div className="text-sm font-bold text-slate-900 tabular-nums">{total} min</div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {renderCompactInput(drillDef)}
+                    {renderCompactInput(prepDef)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   const renderTabContent = (tabKey) => {
+    if (tabKey === "base_rates") return renderBaseRatesContent();
+
     const meta = TAB_META[tabKey];
     const defs = settingsDefinitions.filter(d => meta.categories.includes(d.category));
     const Icon = meta.icon;
