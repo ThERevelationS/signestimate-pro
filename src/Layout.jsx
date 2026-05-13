@@ -25,11 +25,10 @@ import {
   Eye,
   Server,
   User as UserIcon,
-  Users,
   Anchor,
   ChevronDown,
   FileText,
-  Percent
+  Shield
 } from 'lucide-react';
 
 export default function Layout({ children, currentPageName }) {
@@ -311,20 +310,7 @@ export default function Layout({ children, currentPageName }) {
                       <span className="font-medium text-sm">Customer Summaries</span>
                     </Link>
                 </SidebarMenuItem>
-                {currentUser?.role === 'admin' && (
-                  <SidebarMenuItem>
-                    <Link 
-                      to={createPageUrl("TierMarkups")}
-                      onClick={(e) => handleNavClick(e, createPageUrl("TierMarkups"))}
-                      className={`flex items-center gap-2 px-3 py-2 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200 rounded-xl ${
-                        location.pathname === createPageUrl("TierMarkups") ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600'
-                      }`}
-                    >
-                      <Percent className="w-4 h-4"/>
-                      <span className="font-medium text-sm">Tier Markups</span>
-                    </Link>
-                  </SidebarMenuItem>
-                )}
+
                 <SidebarMenuItem>
                     <Link 
                       to={createPageUrl("FormulaViewer")}
@@ -352,14 +338,14 @@ export default function Layout({ children, currentPageName }) {
                 {currentUser?.role === 'admin' && (
                   <SidebarMenuItem>
                     <Link 
-                      to={createPageUrl("UserManagement")}
-                      onClick={(e) => handleNavClick(e, createPageUrl("UserManagement"))}
+                      to={createPageUrl("Admin")}
+                      onClick={(e) => handleNavClick(e, createPageUrl("Admin"))}
                       className={`flex items-center gap-2 px-3 py-2 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200 rounded-xl ${
-                        location.pathname === createPageUrl("UserManagement") ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600'
+                        location.pathname === createPageUrl("Admin") ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600'
                       }`}
                     >
-                      <Users className="w-4 h-4"/>
-                      <span className="font-medium text-sm">User Management</span>
+                      <Shield className="w-4 h-4"/>
+                      <span className="font-medium text-sm">Admin</span>
                     </Link>
                   </SidebarMenuItem>
                 )}

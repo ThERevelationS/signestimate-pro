@@ -4,7 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, Paintbrush, Zap, Router, Wrench, Info } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Calculator, Paintbrush, Zap, Router, Wrench, Info, Anchor, Layers } from "lucide-react";
+import CNCFormulas from "@/components/formulaViewer/CNCFormulas";
+import MetalFormulas from "@/components/formulaViewer/MetalFormulas";
+import ChannelLetterInstallFormulas from "@/components/formulaViewer/ChannelLetterInstallFormulas";
+import BrickStoneFormulas from "@/components/formulaViewer/BrickStoneFormulas";
 
 // Helper function to parse imperial fractions (e.g., "1/2", "1-3/4")
 const parseImperialFraction = (fractionString) => {
@@ -583,57 +588,29 @@ export default function FormulaViewer() {
           <p className="text-slate-600">Comprehensive view of all calculations with every number and formula step</p>
         </div>
 
-        <Card className="bg-white border-0 shadow-sm mb-6">
-          <CardHeader>
-            <div className="flex items-center gap-4">
-              <Label>Select Module:</Label>
-              <Select value={selectedModule} onValueChange={setSelectedModule}>
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="painting">
-                    <div className="flex items-center gap-2">
-                      <Paintbrush className="w-4 h-4" />
-                      Painting Module
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="laser">
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-4 h-4" />
-                      Laser Module
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="cnc">
-                    <div className="flex items-center gap-2">
-                      <Router className="w-4 h-4" />
-                      CNC Module
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="metal">
-                    <div className="flex items-center gap-2">
-                      <Wrench className="w-4 h-4" />
-                      Metal Module
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="foundation">
-                    <div className="flex items-center gap-2">
-                      <Calculator className="w-4 h-4" />
-                      Concrete | Masonry | Poles
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {selectedModule === 'painting' && renderPaintingFormulas()}
-            {selectedModule === 'laser' && renderLaserFormulas()}
-            {selectedModule === 'foundation' && renderFoundationFormulas()}
-            {selectedModule === 'cnc' && <p className="text-slate-500">CNC formulas coming soon...</p>}
-            {selectedModule === 'metal' && <p className="text-slate-500">Metal fabrication formulas coming soon...</p>}
-          </CardContent>
-        </Card>
+        <Tabs value={selectedModule} onValueChange={setSelectedModule} className="w-full">
+          <TabsList className="grid grid-cols-3 md:grid-cols-7 mb-4 h-auto">
+            <TabsTrigger value="painting" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Paintbrush className="w-4 h-4" /> Painting</TabsTrigger>
+            <TabsTrigger value="laser" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Zap className="w-4 h-4" /> Laser</TabsTrigger>
+            <TabsTrigger value="cnc" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Router className="w-4 h-4" /> CNC</TabsTrigger>
+            <TabsTrigger value="metal" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Wrench className="w-4 h-4" /> Metal Fab</TabsTrigger>
+            <TabsTrigger value="channel_letter" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Wrench className="w-4 h-4" /> Letter Install</TabsTrigger>
+            <TabsTrigger value="foundation" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Anchor className="w-4 h-4" /> Foundation</TabsTrigger>
+            <TabsTrigger value="brick_stone" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Layers className="w-4 h-4" /> Brick/Stone</TabsTrigger>
+          </TabsList>
+
+          <Card className="bg-white border-0 shadow-sm">
+            <CardContent className="pt-6">
+              <TabsContent value="painting" className="mt-0">{renderPaintingFormulas()}</TabsContent>
+              <TabsContent value="laser" className="mt-0">{renderLaserFormulas()}</TabsContent>
+              <TabsContent value="cnc" className="mt-0"><CNCFormulas settings={settings} /></TabsContent>
+              <TabsContent value="metal" className="mt-0"><MetalFormulas settings={settings} /></TabsContent>
+              <TabsContent value="channel_letter" className="mt-0"><ChannelLetterInstallFormulas settings={settings} /></TabsContent>
+              <TabsContent value="foundation" className="mt-0">{renderFoundationFormulas()}</TabsContent>
+              <TabsContent value="brick_stone" className="mt-0"><BrickStoneFormulas settings={settings} /></TabsContent>
+            </CardContent>
+          </Card>
+        </Tabs>
       </div>
     </div>
   );

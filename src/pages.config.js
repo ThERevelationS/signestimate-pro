@@ -74,6 +74,7 @@ import PaintProjects from './pages/PaintProjects';
 import PaintSettings from './pages/PaintSettings';
 import UserManagement from './pages/UserManagement';
 import TierMarkups from './pages/TierMarkups';
+import Admin from './pages/Admin';
 import CustomerSummary from './pages/CustomerSummary';
 import CustomerSummaries from './pages/CustomerSummaries';
 import __Layout from './Layout.jsx';
@@ -107,6 +108,7 @@ export const PAGES = {
     "PaintSettings": PaintSettings,
     "UserManagement": UserManagement,
     "TierMarkups": TierMarkups,
+    "Admin": Admin,
     "CustomerSummary": CustomerSummary,
     "CustomerSummaries": CustomerSummaries,
 }
