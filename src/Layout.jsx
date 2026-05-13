@@ -27,7 +27,9 @@ import {
   User as UserIcon,
   Users,
   Anchor,
-  ChevronDown
+  ChevronDown,
+  FileText,
+  Percent
 } from 'lucide-react';
 
 export default function Layout({ children, currentPageName }) {
@@ -297,6 +299,32 @@ export default function Layout({ children, currentPageName }) {
 
           <SidebarFooter className="border-t border-slate-200 p-3 space-y-1">
             <SidebarMenu>
+                <SidebarMenuItem>
+                    <Link 
+                      to={createPageUrl("CustomerSummaries")}
+                      onClick={(e) => handleNavClick(e, createPageUrl("CustomerSummaries"))}
+                      className={`flex items-center gap-2 px-3 py-2 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200 rounded-xl ${
+                        location.pathname === createPageUrl("CustomerSummaries") || location.pathname === createPageUrl("CustomerSummary") ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600'
+                      }`}
+                    >
+                      <FileText className="w-4 h-4"/>
+                      <span className="font-medium text-sm">Customer Summaries</span>
+                    </Link>
+                </SidebarMenuItem>
+                {currentUser?.role === 'admin' && (
+                  <SidebarMenuItem>
+                    <Link 
+                      to={createPageUrl("TierMarkups")}
+                      onClick={(e) => handleNavClick(e, createPageUrl("TierMarkups"))}
+                      className={`flex items-center gap-2 px-3 py-2 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200 rounded-xl ${
+                        location.pathname === createPageUrl("TierMarkups") ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600'
+                      }`}
+                    >
+                      <Percent className="w-4 h-4"/>
+                      <span className="font-medium text-sm">Tier Markups</span>
+                    </Link>
+                  </SidebarMenuItem>
+                )}
                 <SidebarMenuItem>
                     <Link 
                       to={createPageUrl("FormulaViewer")}

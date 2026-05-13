@@ -73,6 +73,9 @@ import NewPaintEstimate from './pages/NewPaintEstimate';
 import PaintProjects from './pages/PaintProjects';
 import PaintSettings from './pages/PaintSettings';
 import UserManagement from './pages/UserManagement';
+import TierMarkups from './pages/TierMarkups';
+import CustomerSummary from './pages/CustomerSummary';
+import CustomerSummaries from './pages/CustomerSummaries';
 import __Layout from './Layout.jsx';
 
 
@@ -103,6 +106,9 @@ export const PAGES = {
     "PaintProjects": PaintProjects,
     "PaintSettings": PaintSettings,
     "UserManagement": UserManagement,
+    "TierMarkups": TierMarkups,
+    "CustomerSummary": CustomerSummary,
+    "CustomerSummaries": CustomerSummaries,
 }
 
 export const pagesConfig = {
