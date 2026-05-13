@@ -84,6 +84,15 @@
             "type": "boolean",
             "default": false
           },
+          "parapet_electrical_routing": {
+            "type": "string",
+            "enum": [
+              "roof",
+              "drop"
+            ],
+            "default": "roof",
+            "description": "Parapet electrical routing \u2014 'roof' = power runs along rooftop (easier), 'drop' = power drops down inside parapet cavity (harder)."
+          },
           "poor_electrical_access": {
             "type": "boolean",
             "default": false

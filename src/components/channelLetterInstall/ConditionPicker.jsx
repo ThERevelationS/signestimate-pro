@@ -1,9 +1,9 @@
 import React from "react";
-import { Check, Zap, Navigation } from "lucide-react";
+import { Check, Zap, Navigation, ArrowDownToLine, Mountain } from "lucide-react";
 import CyclingImage from "./CyclingImage";
 import { Slider } from "@/components/ui/slider";
 
-const ELECTRICAL_SEVERITY_LABELS = {
+const ELECTRICAL_SEVERITY_DEFAULTS = {
   1: "A Bit Harder",
   2: "Mildly Annoying",
   3: "Inconvenient",
@@ -16,7 +16,7 @@ const ELECTRICAL_SEVERITY_LABELS = {
   10: "What the Heck is Wrong With These People!?",
 };
 
-const SITE_ACCESS_SEVERITY_LABELS = {
+const SITE_ACCESS_SEVERITY_DEFAULTS = {
   1: "Mildly Cramped",
   2: "Slightly Awkward",
   3: "Squeeze Play",
@@ -27,6 +27,12 @@ const SITE_ACCESS_SEVERITY_LABELS = {
   8: "Hold My Coffee",
   9: "Mission Impossible",
   10: "Did a Sign Even Belong Here?",
+};
+
+const labelFromSettings = (settings, key, fallback) => {
+  const v = settings && settings[key];
+  if (typeof v === "string" && v.trim()) return v;
+  return fallback;
 };
 
 const BASE = "https://media.base44.com/images/public/68a5a85045cf8570330146ef/";
@@ -122,10 +128,22 @@ const CONDITIONS = [
   },
 ].map(c => ({ ...c, images: c.images.map(id => `${BASE}${id}_generated_image.png`) }));
 
-export default function ConditionPicker({ values, onChange }) {
+export default function ConditionPicker({ values, onChange, settings = {} }) {
   const toggle = (id) => onChange({ ...values, [id]: !values[id] });
   const elecSeverity = Math.max(1, Math.min(10, parseInt(values.poor_electrical_severity) || 1));
   const siteSeverity = Math.max(1, Math.min(10, parseInt(values.poor_site_access_severity) || 1));
+  const parapetRouting = values.parapet_electrical_routing === "drop" ? "drop" : "roof";
+
+  const elecLabel = labelFromSettings(
+    settings,
+    `install_poor_electrical_label_${elecSeverity}`,
+    ELECTRICAL_SEVERITY_DEFAULTS[elecSeverity]
+  );
+  const siteLabel = labelFromSettings(
+    settings,
+    `install_site_access_label_${siteSeverity}`,
+    SITE_ACCESS_SEVERITY_DEFAULTS[siteSeverity]
+  );
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -133,6 +151,7 @@ export default function ConditionPicker({ values, onChange }) {
         const selected = !!values[c.id];
         const isElectrical = c.id === "poor_electrical_access";
         const isSiteAccess = c.id === "poor_site_access";
+        const isParapet = c.id === "parapet";
         return (
           <div
             key={c.id}
@@ -163,7 +182,43 @@ export default function ConditionPicker({ values, onChange }) {
                   className="my-1"
                 />
                 <div className="text-[10px] font-semibold text-yellow-900 leading-tight italic h-7 flex items-center">
-                  "{ELECTRICAL_SEVERITY_LABELS[elecSeverity]}"
+                  "{elecLabel}"
+                </div>
+              </div>
+            )}
+
+            {/* Routing slider — only on Parapet, only when selected */}
+            {isParapet && selected && (
+              <div
+                className="px-2.5 pt-2.5 pb-1 bg-red-100/60 border-b border-red-300"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  {parapetRouting === "drop"
+                    ? <ArrowDownToLine className="w-3 h-3 text-red-700" />
+                    : <Mountain className="w-3 h-3 text-red-700" />
+                  }
+                  <span className="text-[10px] font-bold text-red-900 uppercase tracking-wide">
+                    Electrical Routing
+                  </span>
+                </div>
+                <Slider
+                  min={0}
+                  max={1}
+                  step={1}
+                  value={[parapetRouting === "drop" ? 1 : 0]}
+                  onValueChange={(v) =>
+                    onChange({
+                      ...values,
+                      parapet_electrical_routing: v[0] === 1 ? "drop" : "roof",
+                    })
+                  }
+                  className="my-1"
+                />
+                <div className="text-[10px] font-semibold text-red-900 leading-tight italic h-7 flex items-center">
+                  {parapetRouting === "drop"
+                    ? '"Drops inside parapet" (harder)'
+                    : '"Runs on roof" (easier)'}
                 </div>
               </div>
             )}
@@ -189,7 +244,7 @@ export default function ConditionPicker({ values, onChange }) {
                   className="my-1"
                 />
                 <div className="text-[10px] font-semibold text-rose-900 leading-tight italic h-7 flex items-center">
-                  "{SITE_ACCESS_SEVERITY_LABELS[siteSeverity]}"
+                  "{siteLabel}"
                 </div>
               </div>
             )}

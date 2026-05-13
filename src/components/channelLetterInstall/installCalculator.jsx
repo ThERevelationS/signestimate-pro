@@ -30,6 +30,7 @@ export const emptyLineItem = () => ({
   wall_material: "eifs",
   thick_hollow_walls: false,
   parapet: false,
+  parapet_electrical_routing: "roof",
   poor_electrical_access: false,
   poor_electrical_severity: 1,
   escort_required: false,
@@ -171,12 +172,20 @@ export const calcLineItem = (item, settings, inventory) => {
     }
   }
 
-  // Parapet — ADDITIVE minutes (per letter and per raceway), scales with height/wall mult below.
+  // Parapet — ADDITIVE minutes (per letter and per raceway). Two routing options:
+  //   - "roof"  : electrical runs along the rooftop (easier)
+  //   - "drop"  : electrical drops down inside the parapet cavity (harder — fishing power down)
+  // Defaults to "roof" if not specified.
   if (item.parapet) {
-    const extraPerLetterMin = parseFloat(settings.install_parapet_extra_per_letter);
-    const extraPerRacewayMin = parseFloat(settings.install_parapet_extra_per_raceway);
-    const perLetter = isNaN(extraPerLetterMin) ? 10 : extraPerLetterMin;
-    const perRaceway = isNaN(extraPerRacewayMin) ? 40 : extraPerRacewayMin;
+    const routing = item.parapet_electrical_routing === "drop" ? "drop" : "roof";
+    const perLetterKey = routing === "drop" ? "install_parapet_drop_extra_per_letter" : "install_parapet_roof_extra_per_letter";
+    const perRacewayKey = routing === "drop" ? "install_parapet_drop_extra_per_raceway" : "install_parapet_roof_extra_per_raceway";
+    const perLetterDefault = routing === "drop" ? 18 : 10;
+    const perRacewayDefault = routing === "drop" ? 65 : 40;
+    const extraPerLetterMin = parseFloat(settings[perLetterKey]);
+    const extraPerRacewayMin = parseFloat(settings[perRacewayKey]);
+    const perLetter = isNaN(extraPerLetterMin) ? perLetterDefault : extraPerLetterMin;
+    const perRaceway = isNaN(extraPerRacewayMin) ? perRacewayDefault : extraPerRacewayMin;
     baseHours += (parseFloat(item.qty_letters) || 0) * perLetter * MIN_TO_HR;
     if (item.installation_type === "raceway") {
       baseHours += perRaceway * MIN_TO_HR;

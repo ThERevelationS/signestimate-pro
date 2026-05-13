@@ -23,7 +23,7 @@ const TYPE_BADGE_COLOR = {
   dimensional_lettering: "bg-teal-50 text-teal-700 border-teal-200",
 };
 
-export default function InstallLineItem({ item, index, inventory, onUpdate, onRemove, onDuplicate, compact = false }) {
+export default function InstallLineItem({ item, index, inventory, settings = {}, onUpdate, onRemove, onDuplicate, compact = false }) {
   const [expanded, setExpanded] = useState(!compact);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const isRaceway = item.installation_type === "raceway";
@@ -183,9 +183,11 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
               <Label className="text-xs text-slate-600">Site Conditions <span className="text-slate-400 font-normal">(toggle if applicable)</span></Label>
               <div className="mt-1.5">
                 <ConditionPicker
+                  settings={settings}
                   values={{
                     thick_hollow_walls: item.thick_hollow_walls,
                     parapet: item.parapet,
+                    parapet_electrical_routing: item.parapet_electrical_routing || "roof",
                     poor_electrical_access: item.poor_electrical_access,
                     poor_electrical_severity: item.poor_electrical_severity || 1,
                     escort_required: item.escort_required,

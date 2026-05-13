@@ -106,9 +106,12 @@ const settingsDefinitions = [
   { name: "install_height_30plus_ft", type: "number", category: "install_multipliers", label: "Height 30+ ft", suffix: "×", description: "Crane / special equipment", default: "2.0" },
 
   // Site Condition Multipliers
-  // Parapet — ADDITIVE minutes (per letter and per raceway), not a multiplier
-  { name: "install_parapet_extra_per_letter", type: "number", category: "install_parapet", label: "Extra Time per Letter", suffix: "+min/letter", description: "Additional minutes added per letter when working over a rooftop parapet / edge wall", default: "10" },
-  { name: "install_parapet_extra_per_raceway", type: "number", category: "install_parapet", label: "Extra Time per Raceway", suffix: "+min/raceway", description: "Additional minutes added per raceway line item when working over a parapet", default: "40" },
+  // Parapet — Electrical ON ROOF (easier — power runs across rooftop)
+  { name: "install_parapet_roof_extra_per_letter", type: "number", category: "install_parapet_roof", label: "Extra Time per Letter", suffix: "+min/letter", description: "Electrical runs along the rooftop — extra minutes per letter for parapet edge work", default: "10" },
+  { name: "install_parapet_roof_extra_per_raceway", type: "number", category: "install_parapet_roof", label: "Extra Time per Raceway", suffix: "+min/raceway", description: "Electrical runs along the rooftop — extra minutes per raceway line item for parapet edge work", default: "40" },
+  // Parapet — Electrical DROPS INSIDE parapet (harder — fishing power down the cavity)
+  { name: "install_parapet_drop_extra_per_letter", type: "number", category: "install_parapet_drop", label: "Extra Time per Letter", suffix: "+min/letter", description: "Electrical drops down inside the parapet cavity — extra minutes per letter (typically harder)", default: "18" },
+  { name: "install_parapet_drop_extra_per_raceway", type: "number", category: "install_parapet_drop", label: "Extra Time per Raceway", suffix: "+min/raceway", description: "Electrical drops down inside the parapet cavity — extra minutes per raceway line item", default: "65" },
   // Thick / Hollow Walls — ADDITIVE minutes (per letter and per raceway), not a multiplier
   { name: "install_thick_walls_extra_per_letter", type: "number", category: "install_thick_walls", label: "Extra Time per Letter", suffix: "+min/letter", description: "Additional minutes added per letter when installing into brick veneer, masonry, or hollow-cavity walls", default: "8" },
   { name: "install_thick_walls_extra_per_raceway", type: "number", category: "install_thick_walls", label: "Extra Time per Raceway", suffix: "+min/raceway", description: "Additional minutes added per raceway line item when installing into thick or hollow walls", default: "30" },
@@ -123,6 +126,17 @@ const settingsDefinitions = [
   { name: "install_poor_electrical_level_8", type: "number", category: "install_electrical_severity", label: "Level 8 — Who Designed This?", suffix: "+min/letter", description: "Extra minutes per letter added to electrical hookup", default: "50" },
   { name: "install_poor_electrical_level_9", type: "number", category: "install_electrical_severity", label: "Level 9 — Total Disaster", suffix: "+min/letter", description: "Extra minutes per letter added to electrical hookup", default: "65" },
   { name: "install_poor_electrical_level_10", type: "number", category: "install_electrical_severity", label: "Level 10 — What the Heck is Wrong With These People!?", suffix: "+min/letter", description: "Extra minutes per letter added to electrical hookup", default: "90" },
+  // Poor Electrical Access — Editable level NAMES (shown on the estimator's severity slider)
+  { name: "install_poor_electrical_label_1", type: "text", category: "install_electrical_severity_labels", label: "Level 1 Name", description: "Display name for Poor Electrical Access severity level 1", default: "A Bit Harder" },
+  { name: "install_poor_electrical_label_2", type: "text", category: "install_electrical_severity_labels", label: "Level 2 Name", description: "Display name for Poor Electrical Access severity level 2", default: "Mildly Annoying" },
+  { name: "install_poor_electrical_label_3", type: "text", category: "install_electrical_severity_labels", label: "Level 3 Name", description: "Display name for Poor Electrical Access severity level 3", default: "Inconvenient" },
+  { name: "install_poor_electrical_label_4", type: "text", category: "install_electrical_severity_labels", label: "Level 4 Name", description: "Display name for Poor Electrical Access severity level 4", default: "Real Pain" },
+  { name: "install_poor_electrical_label_5", type: "text", category: "install_electrical_severity_labels", label: "Level 5 Name", description: "Display name for Poor Electrical Access severity level 5", default: "Frustrating" },
+  { name: "install_poor_electrical_label_6", type: "text", category: "install_electrical_severity_labels", label: "Level 6 Name", description: "Display name for Poor Electrical Access severity level 6", default: "Seriously?" },
+  { name: "install_poor_electrical_label_7", type: "text", category: "install_electrical_severity_labels", label: "Level 7 Name", description: "Display name for Poor Electrical Access severity level 7", default: "Nightmare Fuel" },
+  { name: "install_poor_electrical_label_8", type: "text", category: "install_electrical_severity_labels", label: "Level 8 Name", description: "Display name for Poor Electrical Access severity level 8", default: "Who Designed This?" },
+  { name: "install_poor_electrical_label_9", type: "text", category: "install_electrical_severity_labels", label: "Level 9 Name", description: "Display name for Poor Electrical Access severity level 9", default: "Total Disaster" },
+  { name: "install_poor_electrical_label_10", type: "text", category: "install_electrical_severity_labels", label: "Level 10 Name", description: "Display name for Poor Electrical Access severity level 10", default: "What the Heck is Wrong With These People!?" },
   { name: "install_escort_multiplier", type: "number", category: "install_site_conditions", label: "Escort Required", suffix: "×", description: "Must be escorted on-site at all times", default: "1.15" },
   { name: "install_badging_multiplier", type: "number", category: "install_site_conditions", label: "Badging / Check-in", suffix: "×", description: "Security badge or sign-in required", default: "1.1" },
   { name: "install_after_hours_multiplier", type: "number", category: "install_site_conditions", label: "After-Hours / Weekend", suffix: "×", description: "Night, early morning, or weekend install", default: "1.5" },
@@ -138,6 +152,17 @@ const settingsDefinitions = [
   { name: "install_site_access_level_8", type: "number", category: "install_site_access_severity", label: "Level 8 — Hold My Coffee", suffix: "+min/letter", description: "Extra minutes per letter for tight working space", default: "50" },
   { name: "install_site_access_level_9", type: "number", category: "install_site_access_severity", label: "Level 9 — Mission Impossible", suffix: "+min/letter", description: "Extra minutes per letter for tight working space", default: "65" },
   { name: "install_site_access_level_10", type: "number", category: "install_site_access_severity", label: "Level 10 — Did a Sign Even Belong Here?", suffix: "+min/letter", description: "Extra minutes per letter for tight working space", default: "90" },
+  // Poor Site Access — Editable level NAMES (shown on the estimator's severity slider)
+  { name: "install_site_access_label_1", type: "text", category: "install_site_access_severity_labels", label: "Level 1 Name", description: "Display name for Poor Site Access severity level 1", default: "Mildly Cramped" },
+  { name: "install_site_access_label_2", type: "text", category: "install_site_access_severity_labels", label: "Level 2 Name", description: "Display name for Poor Site Access severity level 2", default: "Slightly Awkward" },
+  { name: "install_site_access_label_3", type: "text", category: "install_site_access_severity_labels", label: "Level 3 Name", description: "Display name for Poor Site Access severity level 3", default: "Squeeze Play" },
+  { name: "install_site_access_label_4", type: "text", category: "install_site_access_severity_labels", label: "Level 4 Name", description: "Display name for Poor Site Access severity level 4", default: "Tight Quarters" },
+  { name: "install_site_access_label_5", type: "text", category: "install_site_access_severity_labels", label: "Level 5 Name", description: "Display name for Poor Site Access severity level 5", default: "Obstacle Course" },
+  { name: "install_site_access_label_6", type: "text", category: "install_site_access_severity_labels", label: "Level 6 Name", description: "Display name for Poor Site Access severity level 6", default: "Where Does the Lift Go?" },
+  { name: "install_site_access_label_7", type: "text", category: "install_site_access_severity_labels", label: "Level 7 Name", description: "Display name for Poor Site Access severity level 7", default: "Sketchy Footing" },
+  { name: "install_site_access_label_8", type: "text", category: "install_site_access_severity_labels", label: "Level 8 Name", description: "Display name for Poor Site Access severity level 8", default: "Hold My Coffee" },
+  { name: "install_site_access_label_9", type: "text", category: "install_site_access_severity_labels", label: "Level 9 Name", description: "Display name for Poor Site Access severity level 9", default: "Mission Impossible" },
+  { name: "install_site_access_label_10", type: "text", category: "install_site_access_severity_labels", label: "Level 10 Name", description: "Display name for Poor Site Access severity level 10", default: "Did a Sign Even Belong Here?" },
 
   // Wall Material Multipliers — auto-generated from the shared catalog
   ...WALL_MATERIALS.map(m => ({
@@ -194,7 +219,7 @@ const TAB_META = {
     categories: ["install_rates_flush", "install_rates_halo", "install_rates_dimensional", "install_rates_capsule", "install_rates_raceway"],
   },
   multipliers: {
-    title: "Height",
+    title: "Installation Height",
     icon: Clock,
     description: "Working-height adjustments applied on top of the base installation times.",
     categories: ["install_multipliers"],
@@ -203,7 +228,7 @@ const TAB_META = {
     title: "Site Conditions",
     icon: AlertTriangle,
     description: "Per-condition adjustments. Use the sub-tabs for Multipliers, Electrical Severity, Site Access Severity, Parapet, and Thick / Hollow Walls.",
-    categories: ["install_site_conditions", "install_electrical_severity", "install_site_access_severity", "install_parapet", "install_thick_walls"],
+    categories: ["install_site_conditions", "install_electrical_severity", "install_electrical_severity_labels", "install_site_access_severity", "install_site_access_severity_labels", "install_parapet_roof", "install_parapet_drop", "install_thick_walls"],
   },
   wall_materials: {
     title: "Wall Materials",
@@ -374,8 +399,11 @@ export default function ChannelLetterInstallationSettings() {
     else if (def.name.includes("rate") && !def.name.includes("labor_rate")) step = "0.25";
 
     if (def.type === "text") {
+      // Severity label text settings fit in the same 1/2/3-col grid as numeric settings.
+      // Only the Shop Address (single long text setting) wants to span the full row.
+      const fullSpan = def.name === "install_shop_address";
       return (
-        <div key={def.name} className="md:col-span-3">
+        <div key={def.name} className={fullSpan ? "md:col-span-3" : ""}>
           <div className="flex items-baseline justify-between mb-1.5">
             <Label htmlFor={def.name} className="text-sm font-medium text-slate-800">{def.label}</Label>
           </div>
@@ -572,13 +600,14 @@ export default function ChannelLetterInstallationSettings() {
     );
   };
 
-  // Site Conditions parent — three sub-tabs: Multipliers, Electrical Severity, Thick / Hollow Walls
+  // Site Conditions parent — multi sub-tabs
   const renderSiteConditionsContent = () => {
     const SUBTABS = [
       { key: "multipliers", label: "Multipliers", category: "install_site_conditions", description: "Per-condition labor multipliers. 1.0 = no impact, 1.5 = 50% more time." },
-      { key: "electrical", label: "Electrical Severity", category: "install_electrical_severity", description: "10 severity levels for Poor Electrical Access. The selected level's minutes are ADDED to each letter's Electrical Hookup baseline." },
-      { key: "site_access", label: "Site Access Severity", category: "install_site_access_severity", description: "10 severity levels for Poor Site Access. The selected level's minutes are ADDED to each letter on top of the base install time." },
-      { key: "parapet", label: "Parapet", category: "install_parapet", description: "Additive minutes for working over a rooftop parapet / edge wall — applied per letter and per raceway (not a multiplier)." },
+      { key: "electrical", label: "Electrical Severity", category: "install_electrical_severity", labelsCategory: "install_electrical_severity_labels", description: "10 severity levels for Poor Electrical Access. The selected level's minutes are ADDED to each letter's Electrical Hookup baseline. You can also rename each level — the new name appears on the estimator's severity slider." },
+      { key: "site_access", label: "Site Access Severity", category: "install_site_access_severity", labelsCategory: "install_site_access_severity_labels", description: "10 severity levels for Poor Site Access. The selected level's minutes are ADDED to each letter on top of the base install time. You can also rename each level." },
+      { key: "parapet_roof", label: "Parapet — Electrical on Roof", category: "install_parapet_roof", description: "Parapet job where electrical runs along the rooftop (typically easier). Additive minutes per letter and per raceway." },
+      { key: "parapet_drop", label: "Parapet — Drops Inside", category: "install_parapet_drop", description: "Parapet job where electrical drops down inside the parapet cavity (typically harder — fishing power through the wall). Additive minutes per letter and per raceway." },
       { key: "thick_walls", label: "Thick / Hollow Walls", category: "install_thick_walls", description: "Additive minutes for brick veneer, masonry, or hollow-cavity walls — applied per letter and per raceway (not a multiplier)." },
     ];
 
@@ -592,28 +621,44 @@ export default function ChannelLetterInstallationSettings() {
             <div className="flex-1 min-w-0">
               <CardTitle className="text-base font-semibold text-slate-900 tracking-tight">Site Conditions</CardTitle>
               <CardDescription className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                Per-condition adjustments. Multipliers scale labor time. Electrical Severity and Thick / Hollow Walls are additive minutes.
+                Per-condition adjustments. Multipliers scale labor time. Severity levels and Parapet / Thick / Hollow Walls are additive minutes.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="pt-6 pb-6">
           <Tabs defaultValue="multipliers" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 mb-5 h-auto p-1">
+            <TabsList className="flex flex-wrap w-full mb-5 h-auto p-1 gap-1">
               {SUBTABS.map(st => (
-                <TabsTrigger key={st.key} value={st.key} className="py-2 text-xs">
+                <TabsTrigger key={st.key} value={st.key} className="py-2 text-xs flex-1 min-w-[140px]">
                   {st.label}
                 </TabsTrigger>
               ))}
             </TabsList>
             {SUBTABS.map(st => {
               const defs = settingsDefinitions.filter(d => d.category === st.category);
+              const labelDefs = st.labelsCategory
+                ? settingsDefinitions.filter(d => d.category === st.labelsCategory)
+                : [];
               return (
                 <TabsContent key={st.key} value={st.key} className="space-y-4">
                   <p className="text-xs text-slate-500 italic">{st.description}</p>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     {defs.map(def => renderSettingInput(def))}
                   </div>
+                  {labelDefs.length > 0 && (
+                    <div className="mt-6 pt-5 border-t border-slate-100">
+                      <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">
+                        Severity Slider Names
+                      </div>
+                      <p className="text-xs text-slate-500 italic mb-3">
+                        These names appear on the estimator's severity slider (next to "{st.label}").
+                      </p>
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {labelDefs.map(def => renderSettingInput(def))}
+                      </div>
+                    </div>
+                  )}
                 </TabsContent>
               );
             })}

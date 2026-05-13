@@ -587,6 +587,7 @@ export default function NewChannelLetterInstallation() {
                   <ItemsList
                     items={recalculated.items}
                     inventory={inventory}
+                    settings={settings}
                     compact={false}
                     onUpdate={updateItem}
                     onRemove={removeItem}
