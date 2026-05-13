@@ -1,0 +1,92 @@
+{
+  "name": "CustomerSummary",
+  "type": "object",
+  "properties": {
+    "summary_name": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "estimate_number": {
+      "type": "string"
+    },
+    "tier_number": {
+      "type": "number",
+      "default": 1,
+      "description": "Selected pricing tier 1-8."
+    },
+    "linked_projects": {
+      "type": "array",
+      "description": "List of projects from different modules included in this summary.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "enum": [
+              "channel_letter_installation",
+              "foundation",
+              "brick_stone",
+              "paint",
+              "laser",
+              "cnc",
+              "metal_fabrication"
+            ]
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "project_name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "summary_name"
+  ],
+  "rls": {
+    "create": {},
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
