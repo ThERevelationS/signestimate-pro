@@ -53,6 +53,9 @@ export const emptyLetterPurchase = (type = "channel_flush_mounted") => ({
   raceway_index: 1,
   qty: type === "raceway" ? 1 : 5,
   size_value: type === "raceway" ? 8 : type.startsWith("channel_") ? 24 : 6,
+  // For combined raceway-mounted rows: track the raceway hardware alongside the letters
+  raceway_length_feet: type === "channel_raceway_mounted" ? 8 : 0,
+  raceway_qty: type === "channel_raceway_mounted" ? 1 : 0,
   unit_cost: 0,
   unit_cost_override: false,
   total_cost: 0,
@@ -85,17 +88,42 @@ export const resolveUnitCost = (purchase, settings) => {
   }
 };
 
+// Resolve the raceway tier $/ft cost (used by combined raceway-mounted rows)
+const resolveRacewayTierCost = (racewayIndex, settings) => {
+  const idx = Math.max(1, Math.min(4, num(racewayIndex, 1)));
+  const key = ["letters_raceway_1st_per_ft", "letters_raceway_2nd_per_ft", "letters_raceway_3rd_per_ft", "letters_raceway_4th_per_ft"][idx - 1];
+  return num(settings[key], DEFAULTS[key]);
+};
+
 // Compute totals for a single purchase row
 export const calcLetterPurchase = (purchase, settings) => {
   const unit_cost = resolveUnitCost(purchase, settings);
   const qty = num(purchase.qty);
   const size = num(purchase.size_value);
-  // total = unit_cost × size × qty
+  // Base letters total: unit_cost × size × qty
   // (per-foot × ft × #raceways) OR (per-inch × in × #letters) OR (per-sqft × sqft × #logos)
-  const total_cost = unit_cost * size * qty;
+  const letters_total = unit_cost * size * qty;
+
+  // Combined raceway: when letter_type is channel_raceway_mounted, also add
+  // the raceway hardware cost (tier $/ft × raceway length × # of raceways).
+  let raceway_total = 0;
+  if (purchase.letter_type === "channel_raceway_mounted") {
+    const rwPerFt = resolveRacewayTierCost(purchase.raceway_index, settings);
+    const rwLen = num(purchase.raceway_length_feet);
+    const rwQty = num(purchase.raceway_qty, 1);
+    raceway_total = rwPerFt * rwLen * rwQty;
+  }
+
+  const total_cost = letters_total + raceway_total;
+
   return {
     ...purchase,
     unit_cost,
+    letters_total,
+    raceway_total,
+    raceway_unit_cost: purchase.letter_type === "channel_raceway_mounted"
+      ? resolveRacewayTierCost(purchase.raceway_index, settings)
+      : 0,
     total_cost,
   };
 };
@@ -174,7 +202,10 @@ export const syncInstallItemsFromPurchases = (existingItems, purchases, emptyLin
     // Map sizing fields based on what the purchase row means
     const letter_height_inches = sizeUnit === "in" ? num(p.size_value, 24) : 24;
     const letter_size = sizeUnit === "in" ? inchesToLetterSize(p.size_value) : "medium";
-    const raceway_length_feet = 0; // raceway hardware is its own purchase row
+    // For combined raceway-mounted rows, carry raceway length onto the install item
+    const raceway_length_feet = p.letter_type === "channel_raceway_mounted"
+      ? num(p.raceway_length_feet)
+      : 0;
 
     const patch = {
       description: p.description || LETTER_TYPE_LABELS[p.letter_type],

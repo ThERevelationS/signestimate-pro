@@ -33,11 +33,9 @@ export default function TabBadgeTrigger({ value, icon: Icon, label, amount, coun
           <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" title="Action required" />
         )}
       </div>
-      {hasAmount && (
-        <span className="text-[10px] tabular-nums font-semibold opacity-80">
-          {compact(amount)}
-        </span>
-      )}
+      <span className="text-[10px] tabular-nums font-semibold opacity-80 leading-tight min-h-[12px]">
+        {hasAmount ? compact(amount) : ""}
+      </span>
     </TabsTrigger>
   );
 }

@@ -42,6 +42,7 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
   const [fabModalOpen, setFabModalOpen] = useState(false);
   const isDimensional = purchase.letter_type === "dimensional_letters";
   const hasFabConfig = isDimensional && !!purchase.fab_config?.unit_total_cost;
+  const isCombinedRaceway = purchase.letter_type === "channel_raceway_mounted";
 
   const update = (patch) => onUpdate({ ...purchase, ...patch });
 
@@ -100,7 +101,7 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
           </Select>
         </div>
 
-        {purchase.letter_type === "raceway" && (
+        {(purchase.letter_type === "raceway" || isCombinedRaceway) && (
           <div>
             <Label className="text-xs">Raceway Tier</Label>
             <Select
@@ -120,7 +121,7 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
           </div>
         )}
 
-        <div className={purchase.letter_type === "raceway" ? "" : "md:col-span-2"}>
+        <div className={(purchase.letter_type === "raceway" || isCombinedRaceway) ? "" : "md:col-span-2"}>
           <Label className="text-xs">Description (optional)</Label>
           <Input
             value={purchase.description || ""}
@@ -130,6 +131,14 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
           />
         </div>
       </div>
+
+      {/* Section header for combined raceway-mounted rows */}
+      {isCombinedRaceway && (
+        <div className="flex items-center gap-2 pt-1">
+          <span className="text-[10px] uppercase tracking-wider font-semibold text-indigo-700">Channel Letters</span>
+          <div className="flex-1 h-px bg-indigo-100" />
+        </div>
+      )}
 
       {/* Numbers */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -180,12 +189,71 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
           </div>
         </div>
         <div>
-          <Label className="text-xs">Line Total</Label>
+          <Label className="text-xs">{isCombinedRaceway ? "Letters Total" : "Line Total"}</Label>
           <div className="mt-1 h-9 flex items-center px-3 bg-slate-50 rounded-md border border-slate-200 font-semibold tabular-nums">
-            {fmt(purchase.total_cost)}
+            {fmt(isCombinedRaceway ? purchase.letters_total : purchase.total_cost)}
           </div>
         </div>
       </div>
+
+      {/* Raceway hardware section — shown only for combined raceway-mounted rows */}
+      {isCombinedRaceway && (
+        <>
+          <div className="flex items-center gap-2 pt-2">
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-blue-700">Raceway Hardware</span>
+            <div className="flex-1 h-px bg-blue-100" />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <Label className="text-xs"># of Raceways</Label>
+              <Input
+                type="number"
+                min="0"
+                value={purchase.raceway_qty ?? 1}
+                onChange={(e) => update({ raceway_qty: parseFloat(e.target.value) || 0 })}
+                className="mt-1 h-9"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Raceway Length (ft)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={purchase.raceway_length_feet ?? 0}
+                onChange={(e) => update({ raceway_length_feet: parseFloat(e.target.value) || 0 })}
+                className="mt-1 h-9"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Raceway $/ft</Label>
+              <div className="relative mt-1">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                <Input
+                  type="number"
+                  value={(purchase.raceway_unit_cost || 0).toFixed(2)}
+                  disabled
+                  className="h-9 pl-6 bg-slate-50"
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Raceway Total</Label>
+              <div className="mt-1 h-9 flex items-center px-3 bg-slate-50 rounded-md border border-slate-200 font-semibold tabular-nums">
+                {fmt(purchase.raceway_total)}
+              </div>
+            </div>
+          </div>
+
+          {/* Combined grand total */}
+          <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+            <span className="text-xs text-slate-500">
+              Letters {fmt(purchase.letters_total)} + Raceway {fmt(purchase.raceway_total)} =
+            </span>
+            <span className="text-lg font-bold tabular-nums text-slate-900">{fmt(purchase.total_cost)}</span>
+          </div>
+        </>
+      )}
 
       {/* Dimensional letter fab builder (Material + CNC + Paint) */}
       {isDimensional && (

@@ -201,8 +201,8 @@ const TAB_META = {
   letter_pricing: {
     title: "Letter Pricing",
     icon: Type,
-    description: "Purchase pricing for channel letters, raceways, capsule/logo, and dimensional letters. Used by the Letters tab on each estimate.",
-    categories: ["letters_raceway_pricing", "letters_channel_pricing", "letters_area_pricing"],
+    description: "Purchase pricing for channel letters, capsule/logo, and dimensional letters. (Raceway per-foot pricing lives in Base Installation Times → Raceway.)",
+    categories: ["letters_channel_pricing", "letters_area_pricing"],
   },
   letter_fees: {
     title: "Project Fees",
@@ -482,12 +482,24 @@ export default function ChannelLetterInstallationSettings() {
     );
   };
 
-  // Raceway sub-tab — different layout (per-foot + per-letter + electrical hookup)
+  // Raceway sub-tab — labor times + per-foot purchase pricing (4 tiers)
   const renderRacewayContent = () => {
-    const defs = settingsDefinitions.filter(d => d.category === "install_rates_raceway");
+    const laborDefs = settingsDefinitions.filter(d => d.category === "install_rates_raceway");
+    const tierDefs = settingsDefinitions.filter(d => d.category === "letters_raceway_pricing");
     return (
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {defs.map(def => renderSettingInput(def))}
+      <div className="space-y-6">
+        <div>
+          <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">Labor Times</div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {laborDefs.map(def => renderSettingInput(def))}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">Raceway Purchase Pricing (per linear foot, escalating per raceway)</div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {tierDefs.map(def => renderSettingInput(def))}
+          </div>
+        </div>
       </div>
     );
   };
