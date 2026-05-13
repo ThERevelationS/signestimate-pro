@@ -106,3 +106,68 @@ export function applyMarkups(lines, tier, settings) {
     },
   };
 }
+
+/**
+ * Cost-Plus pricing engine — alternative to applyMarkups().
+ *
+ * Pipeline (per line):
+ *   1. category_markup_pct (optional)  → cost × (1 + pct/100)
+ *   2. labor_multiplier                → applied only to lines flagged as labor
+ *   3. overhead_percent                → flat % on the marked subtotal
+ *   4. profit_percent                  → flat % on the post-overhead subtotal
+ *
+ * @param {Array<{label, cost, category_key, module, is_labor?}>} lines
+ * @param {Object} config - CostPlusConfig record
+ * @returns {Object} { lines: [...], totals: {...} }
+ */
+export function applyCostPlus(lines, config) {
+  const cfg = config || {};
+  const laborMult = Number(cfg.labor_multiplier) || 1;
+  const overheadPct = Number(cfg.overhead_percent) || 0;
+  const profitPct = Number(cfg.profit_percent) || 0;
+  const catMarkups = cfg.category_markups || {};
+
+  // 1+2: per-line category markup, then labor burden on labor lines
+  const marked = lines.map(line => {
+    const cost = Number(line.cost) || 0;
+    const catPct = Number(catMarkups[line.category_key]) || 0;
+    const afterCatMarkup = cost * (1 + catPct / 100);
+    const afterBurden = line.is_labor ? afterCatMarkup * laborMult : afterCatMarkup;
+    return {
+      ...line,
+      cost,
+      category_markup_pct: catPct,
+      labor_burden_applied: line.is_labor ? laborMult : 1,
+      marked_up_cost: afterBurden,
+    };
+  });
+
+  const markedSubtotal = marked.reduce((s, l) => s + l.marked_up_cost, 0);
+  const overheadAmount = markedSubtotal * (overheadPct / 100);
+  const afterOverhead = markedSubtotal + overheadAmount;
+  const profitAmount = afterOverhead * (profitPct / 100);
+  const grandTotal = afterOverhead + profitAmount;
+
+  // Distribute overhead + profit proportionally so each line still has a "final_cost"
+  const totalLift = markedSubtotal > 0 ? grandTotal / markedSubtotal : 1;
+  const finalLines = marked.map(line => ({
+    ...line,
+    volume_discount_applied: 0,
+    final_cost: line.marked_up_cost * totalLift,
+  }));
+
+  const rawSubtotal = finalLines.reduce((s, l) => s + l.cost, 0);
+
+  return {
+    lines: finalLines,
+    totals: {
+      raw_subtotal: rawSubtotal,
+      marked_subtotal: markedSubtotal,
+      overhead_pct: overheadPct,
+      overhead_amount: overheadAmount,
+      profit_pct: profitPct,
+      profit_amount: profitAmount,
+      grand_total: grandTotal,
+    },
+  };
+}

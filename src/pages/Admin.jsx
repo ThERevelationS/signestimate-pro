@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Shield, Users, Percent, AlertTriangle } from 'lucide-react';
 import UserManagementTab from '@/components/admin/UserManagementTab';
-import TierMarkupsTab from '@/components/admin/TierMarkupsTab';
+import MarkupsTab from '@/components/admin/MarkupsTab';
 
 export default function Admin() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -44,9 +44,10 @@ export default function Admin() {
     );
   }
 
-  // Read tab from URL (?tab=tiers or ?tab=users)
+  // Read tab from URL (?tab=markups, ?tab=tiers (legacy), or ?tab=users)
   const params = new URLSearchParams(window.location.search);
-  const initialTab = params.get('tab') === 'tiers' ? 'tiers' : 'users';
+  const tabParam = params.get('tab');
+  const initialTab = (tabParam === 'markups' || tabParam === 'tiers') ? 'markups' : 'users';
 
   return (
     <div className="bg-slate-50 min-h-screen">
@@ -68,13 +69,13 @@ export default function Admin() {
         <Tabs defaultValue={initialTab} className="w-full">
           <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="users"><Users className="w-4 h-4 mr-2" />User Management</TabsTrigger>
-            <TabsTrigger value="tiers"><Percent className="w-4 h-4 mr-2" />Tier Markups</TabsTrigger>
+            <TabsTrigger value="markups"><Percent className="w-4 h-4 mr-2" />Markups</TabsTrigger>
           </TabsList>
           <TabsContent value="users" className="mt-6">
             <UserManagementTab />
           </TabsContent>
-          <TabsContent value="tiers" className="mt-6">
-            <TierMarkupsTab />
+          <TabsContent value="markups" className="mt-6">
+            <MarkupsTab />
           </TabsContent>
         </Tabs>
       </div>
