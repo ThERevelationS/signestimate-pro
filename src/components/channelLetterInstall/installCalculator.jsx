@@ -157,6 +157,19 @@ export const calcLineItem = (item, settings, inventory) => {
     baseHours = (parseFloat(item.qty_letters) || 0) * minutesPerLetter * MIN_TO_HR;
   }
 
+  // Thick / Hollow Walls — ADDITIVE minutes (per letter and per raceway).
+  // Added to baseHours so it still scales with height & wall-material multipliers below.
+  if (item.thick_hollow_walls) {
+    const extraPerLetterMin = parseFloat(settings.install_thick_walls_extra_per_letter);
+    const extraPerRacewayMin = parseFloat(settings.install_thick_walls_extra_per_raceway);
+    const perLetter = isNaN(extraPerLetterMin) ? 8 : extraPerLetterMin;
+    const perRaceway = isNaN(extraPerRacewayMin) ? 30 : extraPerRacewayMin;
+    baseHours += (parseFloat(item.qty_letters) || 0) * perLetter * MIN_TO_HR;
+    if (item.installation_type === "raceway") {
+      baseHours += perRaceway * MIN_TO_HR;
+    }
+  }
+
   // Height multiplier
   const h = parseFloat(item.installation_height_feet) || 0;
   let heightMultiplier = 1.0;
@@ -169,7 +182,6 @@ export const calcLineItem = (item, settings, inventory) => {
   // Wall material multiplier
   baseHours *= getWallMaterialMultiplier(item.wall_material, settings);
 
-  if (item.thick_hollow_walls) baseHours *= parseFloat(settings.install_thick_walls_multiplier) || 1.2;
   if (item.parapet) baseHours *= parseFloat(settings.install_parapet_multiplier) || 1.4;
   if (item.escort_required) baseHours *= parseFloat(settings.install_escort_multiplier) || 1.15;
   if (item.badging_checkin) baseHours *= parseFloat(settings.install_badging_multiplier) || 1.1;

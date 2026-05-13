@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Save, Wrench, DollarSign, Clock, Ruler, AlertTriangle, CheckCircle2, Layers, Building2, Fuel, RefreshCw, Type, Receipt, Zap } from "lucide-react";
+import { Save, Wrench, DollarSign, Clock, Ruler, AlertTriangle, CheckCircle2, Layers, Building2, Fuel, RefreshCw, Type, Receipt } from "lucide-react";
 import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
 import { useToast } from "@/components/ui/use-toast";
 import { WALL_MATERIALS } from "@/components/channelLetterInstall/wallMaterials";
@@ -82,6 +82,16 @@ const settingsDefinitions = [
     xxl: { drill: 140, prep: 280, elec: 0 },
   }),
 
+  // Base Installation Times — Capsule / Logo / Pillbox (mirrors flush-mount defaults; tunable separately)
+  ...buildBaseTimeSet("install_rates_capsule", "capsule", "Capsule / Logo / Pillbox", true, {
+    xs:  { drill: 15,  prep: 30,  elec: 5 },
+    s:   { drill: 30,  prep: 60,  elec: 10 },
+    m:   { drill: 50,  prep: 100, elec: 15 },
+    l:   { drill: 80,  prep: 160, elec: 20 },
+    xl:  { drill: 120, prep: 240, elec: 25 },
+    xxl: { drill: 170, prep: 340, elec: 30 },
+  }),
+
   // Base Installation Times — Raceway (lives inside Base Installation Times now)
   { name: "install_raceway_base_minutes_per_foot", type: "number", category: "install_rates_raceway", label: "Base Cost per Foot", suffix: "min/ft", description: "Base minutes of labor per foot of raceway installed", default: "30" },
   { name: "install_raceway_extra_minutes_per_foot", type: "number", category: "install_rates_raceway", label: "Extra Cost per Foot", suffix: "min/ft", description: "Additional minutes per foot for complex / oversized raceway work", default: "0" },
@@ -95,8 +105,10 @@ const settingsDefinitions = [
   { name: "install_height_30plus_ft", type: "number", category: "install_multipliers", label: "Height 30+ ft", suffix: "×", description: "Crane / special equipment", default: "2.0" },
 
   // Site Condition Multipliers
-  { name: "install_thick_walls_multiplier", type: "number", category: "install_site_conditions", label: "Thick / Hollow Walls", suffix: "×", description: "Brick veneer, masonry, hollow cavity", default: "1.2" },
   { name: "install_parapet_multiplier", type: "number", category: "install_site_conditions", label: "Parapet", suffix: "×", description: "Working over rooftop edge wall", default: "1.4" },
+  // Thick / Hollow Walls — ADDITIVE minutes (per letter and per raceway), not a multiplier
+  { name: "install_thick_walls_extra_per_letter", type: "number", category: "install_thick_walls", label: "Extra Time per Letter", suffix: "+min/letter", description: "Additional minutes added per letter when installing into brick veneer, masonry, or hollow-cavity walls", default: "8" },
+  { name: "install_thick_walls_extra_per_raceway", type: "number", category: "install_thick_walls", label: "Extra Time per Raceway", suffix: "+min/raceway", description: "Additional minutes added per raceway line item when installing into thick or hollow walls", default: "30" },
   // Poor Electrical Access — 10 severity levels, ADDED minutes per letter on top of the size's electrical hookup baseline
   { name: "install_poor_electrical_level_1", type: "number", category: "install_electrical_severity", label: "Level 1 — A Bit Harder", suffix: "+min/letter", description: "Extra minutes per letter added to electrical hookup", default: "3" },
   { name: "install_poor_electrical_level_2", type: "number", category: "install_electrical_severity", label: "Level 2 — Mildly Annoying", suffix: "+min/letter", description: "Extra minutes per letter added to electrical hookup", default: "6" },
@@ -165,8 +177,8 @@ const TAB_META = {
   base_rates: {
     title: "Base Installation Times",
     icon: Ruler,
-    description: "Minutes per letter by installation type and size. Pick a sub-tab to edit Channel Flush, Halo-Lit, Dimensional, or Raceway times.",
-    categories: ["install_rates_flush", "install_rates_halo", "install_rates_dimensional", "install_rates_raceway"],
+    description: "Minutes per letter by installation type and size. Pick a sub-tab to edit Channel Flush, Halo-Lit, Dimensional, Capsule/Logo/Pillbox, or Raceway times.",
+    categories: ["install_rates_flush", "install_rates_halo", "install_rates_dimensional", "install_rates_capsule", "install_rates_raceway"],
   },
   multipliers: {
     title: "Height",
@@ -177,14 +189,8 @@ const TAB_META = {
   site_conditions: {
     title: "Site Conditions",
     icon: AlertTriangle,
-    description: "Per-condition labor multipliers. 1.0 = no impact, 1.5 = 50% more time. Note: Poor Electrical Access is handled separately on the Electrical Severity tab (added minutes, not a multiplier).",
-    categories: ["install_site_conditions"],
-  },
-  electrical_severity: {
-    title: "Electrical Severity",
-    icon: Zap,
-    description: "10 severity levels for Poor Electrical Access. The selected level's minutes are ADDED to each letter's Electrical Hookup baseline.",
-    categories: ["install_electrical_severity"],
+    description: "Per-condition adjustments. Use the sub-tabs for Multipliers, Electrical Severity, and Thick / Hollow Walls.",
+    categories: ["install_site_conditions", "install_electrical_severity", "install_thick_walls"],
   },
   wall_materials: {
     title: "Wall Materials",
@@ -509,6 +515,7 @@ export default function ChannelLetterInstallationSettings() {
       { key: "flush", label: "Channel Flush-Mount", description: "Times for channel letters mounted directly to the wall." },
       { key: "halo", label: "Channel Halo-Lit", description: "Times for reverse / halo-lit channel letters." },
       { key: "dimensional", label: "Dimensional Letters", description: "Times for non-illuminated dimensional letters (no electrical hookup)." },
+      { key: "capsule", label: "Capsule / Logo / Pillbox", description: "Times for capsule, pillbox, and logo elements." },
       { key: "raceway", label: "Raceway", description: "Per-foot, per-letter mounting, and electrical hookup times for raceway installs." },
     ];
 
@@ -529,7 +536,7 @@ export default function ChannelLetterInstallationSettings() {
         </CardHeader>
         <CardContent className="pt-6 pb-6">
           <Tabs defaultValue="flush" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 mb-5 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 mb-5 h-auto p-1">
               {SUBTABS.map(st => (
                 <TabsTrigger key={st.key} value={st.key} className="py-2 text-xs">
                   {st.label}
@@ -542,6 +549,7 @@ export default function ChannelLetterInstallationSettings() {
                 {st.key === "flush" && renderSizeGrid("install_drill_rate_", "install_prep_rate_", "install_electrical_rate_", true)}
                 {st.key === "halo" && renderSizeGrid("install_halo_drill_rate_", "install_halo_prep_rate_", "install_halo_electrical_rate_", true)}
                 {st.key === "dimensional" && renderSizeGrid("install_dimensional_drill_rate_", "install_dimensional_prep_rate_", null, false)}
+                {st.key === "capsule" && renderSizeGrid("install_capsule_drill_rate_", "install_capsule_prep_rate_", "install_capsule_electrical_rate_", true)}
                 {st.key === "raceway" && renderRacewayContent()}
               </TabsContent>
             ))}
@@ -551,8 +559,58 @@ export default function ChannelLetterInstallationSettings() {
     );
   };
 
+  // Site Conditions parent — three sub-tabs: Multipliers, Electrical Severity, Thick / Hollow Walls
+  const renderSiteConditionsContent = () => {
+    const SUBTABS = [
+      { key: "multipliers", label: "Multipliers", category: "install_site_conditions", description: "Per-condition labor multipliers. 1.0 = no impact, 1.5 = 50% more time." },
+      { key: "electrical", label: "Electrical Severity", category: "install_electrical_severity", description: "10 severity levels for Poor Electrical Access. The selected level's minutes are ADDED to each letter's Electrical Hookup baseline." },
+      { key: "thick_walls", label: "Thick / Hollow Walls", category: "install_thick_walls", description: "Additive minutes for brick veneer, masonry, or hollow-cavity walls — applied per letter and per raceway (not a multiplier)." },
+    ];
+
+    return (
+      <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl overflow-hidden">
+        <CardHeader className="pb-4 border-b border-slate-100">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="w-5 h-5 text-slate-700" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-base font-semibold text-slate-900 tracking-tight">Site Conditions</CardTitle>
+              <CardDescription className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                Per-condition adjustments. Multipliers scale labor time. Electrical Severity and Thick / Hollow Walls are additive minutes.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-6 pb-6">
+          <Tabs defaultValue="multipliers" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-5 h-auto p-1">
+              {SUBTABS.map(st => (
+                <TabsTrigger key={st.key} value={st.key} className="py-2 text-xs">
+                  {st.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            {SUBTABS.map(st => {
+              const defs = settingsDefinitions.filter(d => d.category === st.category);
+              return (
+                <TabsContent key={st.key} value={st.key} className="space-y-4">
+                  <p className="text-xs text-slate-500 italic">{st.description}</p>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {defs.map(def => renderSettingInput(def))}
+                  </div>
+                </TabsContent>
+              );
+            })}
+          </Tabs>
+        </CardContent>
+      </Card>
+    );
+  };
+
   const renderTabContent = (tabKey) => {
     if (tabKey === "base_rates") return renderBaseRatesContent();
+    if (tabKey === "site_conditions") return renderSiteConditionsContent();
 
     const meta = TAB_META[tabKey];
     const defs = settingsDefinitions.filter(d => meta.categories.includes(d.category));
@@ -583,7 +641,7 @@ export default function ChannelLetterInstallationSettings() {
 
   const managementContent = (
     <Tabs defaultValue="pricing_labor" className="w-full">
-      <TabsList className="grid w-full grid-cols-3 lg:grid-cols-9 mb-6 h-auto p-1">
+      <TabsList className="grid w-full grid-cols-3 lg:grid-cols-8 mb-6 h-auto p-1">
         {Object.entries(TAB_META).map(([key, meta]) => {
           const Icon = meta.icon;
           return (
