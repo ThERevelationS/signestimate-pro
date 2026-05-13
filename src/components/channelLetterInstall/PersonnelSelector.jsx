@@ -8,7 +8,7 @@ import { recalcPersonnelRow } from "./equipmentSuggester";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 
-const ROLE_OPTIONS = ["Crew Lead", "Installer", "Helper", "Electrician", "Driver", "Other"];
+const ROLE_OPTIONS = ["Crew Lead", "Installer", "Helper"];
 
 const emptyRow = () => ({
   name: "",
@@ -22,18 +22,31 @@ export default function PersonnelSelector({
   personnel = [],
   onChange,
   projectLaborHours = 0,
-  defaultLaborRate = 65,
+  roleRates = {},
   items = [],
 }) {
+  // Resolve the rate for a given role (fallback to Installer rate, then 0)
+  const rateForRole = (role) => {
+    const r = parseFloat(roleRates[role]);
+    if (!isNaN(r) && r > 0) return r;
+    const fallback = parseFloat(roleRates.Installer);
+    return !isNaN(fallback) ? fallback : 0;
+  };
+
   const handleAdd = () => {
     const row = emptyRow();
-    row.hourly_rate = defaultLaborRate;
+    row.hourly_rate = rateForRole(row.role);
     onChange([...personnel, row]);
   };
 
   const handleUpdate = (idx, patch) => {
     const next = [...personnel];
-    next[idx] = recalcPersonnelRow({ ...next[idx], ...patch });
+    const merged = { ...next[idx], ...patch };
+    // When the role changes, auto-fill the rate from the role's setting
+    if ("role" in patch && patch.role !== next[idx].role) {
+      merged.hourly_rate = rateForRole(patch.role);
+    }
+    next[idx] = recalcPersonnelRow(merged);
     onChange(next);
   };
 
@@ -65,15 +78,16 @@ export default function PersonnelSelector({
       : 0;
 
     const roles = ["Crew Lead", "Installer", "Helper", "Helper"];
-    const newCrew = Array.from({ length: crewSize }, (_, i) =>
-      recalcPersonnelRow({
+    const newCrew = Array.from({ length: crewSize }, (_, i) => {
+      const role = roles[i] || "Installer";
+      return recalcPersonnelRow({
         name: "",
-        role: roles[i] || "Installer",
-        hourly_rate: defaultLaborRate,
+        role,
+        hourly_rate: rateForRole(role),
         hours: perPersonHours,
         total_cost: 0,
-      })
-    );
+      });
+    });
     onChange(newCrew);
   };
 

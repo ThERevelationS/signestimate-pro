@@ -609,7 +609,11 @@ export default function NewChannelLetterInstallation() {
                   personnel={recalculated.personnel || []}
                   onChange={(next) => updateProject({ personnel: next })}
                   projectLaborHours={recalculated.labor_hours || 0}
-                  defaultLaborRate={parseFloat(settings.install_labor_rate) || 65}
+                  roleRates={{
+                    "Crew Lead": parseFloat(settings.install_crew_lead_rate) || 75,
+                    "Installer": parseFloat(settings.install_installer_rate) || 65,
+                    "Helper": parseFloat(settings.install_helper_rate) || 35,
+                  }}
                   items={recalculated.items}
                 />
                 {equipmentInventory.length === 0 && (

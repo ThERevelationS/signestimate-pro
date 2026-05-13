@@ -33,9 +33,10 @@ const buildBaseTimeSet = (category, prefix, typeLabel, includeElectrical, defaul
 };
 
 const settingsDefinitions = [
-  // Pricing & Labor
-  { name: "install_labor_rate", type: "number", category: "install_pricing", label: "Installer Hourly Rate", suffix: "$/hr", description: "Primary installer rate per hour", default: "65" },
-  { name: "install_manual_labor_rate", type: "number", category: "install_pricing", label: "Manual Labor Rate", suffix: "$/hr", description: "Hourly rate for on-site helper / manual labor", default: "35" },
+  // Pricing & Labor — one rate per crew role
+  { name: "install_crew_lead_rate", type: "number", category: "install_pricing", label: "Crew Lead Hourly Rate", suffix: "$/hr", description: "Hourly rate for the on-site crew lead / foreman", default: "75" },
+  { name: "install_installer_rate", type: "number", category: "install_pricing", label: "Installer Hourly Rate", suffix: "$/hr", description: "Hourly rate for a primary installer", default: "65" },
+  { name: "install_helper_rate", type: "number", category: "install_pricing", label: "Helper Hourly Rate", suffix: "$/hr", description: "Hourly rate for a helper / general labor", default: "35" },
 
   // Base Installation Times — Channel Flush-Mount (the original/legacy set, names kept for backward compat)
   { name: "install_drill_rate_extra_small", type: "number", category: "install_rates_flush", label: "XS — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per XS letter for layout, drill pattern, and drilling", default: "15" },
