@@ -150,7 +150,7 @@ export default function InstallLineItem({ item, index, inventory, settings = {},
               </div>
             )}
             <div>
-              <Label className="text-xs">Install Height (ft)</Label>
+              <Label className="text-xs">Installation Height (ft)</Label>
               <Input
                 type="number"
                 value={item.installation_height_feet}
