@@ -193,6 +193,7 @@ export default function InstallLineItem({ item, index, inventory, onUpdate, onRe
                     after_hours_weekend: item.after_hours_weekend,
                     set_hours_installation: item.set_hours_installation,
                     poor_site_access: item.poor_site_access,
+                    poor_site_access_severity: item.poor_site_access_severity || 1,
                   }}
                   onChange={(v) => update(v)}
                 />

@@ -113,6 +113,11 @@
             "type": "boolean",
             "default": false
           },
+          "poor_site_access_severity": {
+            "type": "number",
+            "default": 1,
+            "description": "Severity level 1-10 for Poor Site Access \u2014 drives the additive minutes/letter bonus on top of the base install time."
+          },
           "source_letter_purchase_id": {
             "type": "string",
             "description": "Auto-generated items reference the letter_purchases row that spawned them"

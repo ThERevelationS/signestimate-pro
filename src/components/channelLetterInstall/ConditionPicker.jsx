@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, Zap } from "lucide-react";
+import { Check, Zap, Navigation } from "lucide-react";
 import CyclingImage from "./CyclingImage";
 import { Slider } from "@/components/ui/slider";
 
@@ -14,6 +14,19 @@ const ELECTRICAL_SEVERITY_LABELS = {
   8: "Who Designed This?",
   9: "Total Disaster",
   10: "What the Heck is Wrong With These People!?",
+};
+
+const SITE_ACCESS_SEVERITY_LABELS = {
+  1: "Mildly Cramped",
+  2: "Slightly Awkward",
+  3: "Squeeze Play",
+  4: "Tight Quarters",
+  5: "Obstacle Course",
+  6: "Where Does the Lift Go?",
+  7: "Sketchy Footing",
+  8: "Hold My Coffee",
+  9: "Mission Impossible",
+  10: "Did a Sign Even Belong Here?",
 };
 
 const BASE = "https://media.base44.com/images/public/68a5a85045cf8570330146ef/";
@@ -111,13 +124,15 @@ const CONDITIONS = [
 
 export default function ConditionPicker({ values, onChange }) {
   const toggle = (id) => onChange({ ...values, [id]: !values[id] });
-  const severity = Math.max(1, Math.min(10, parseInt(values.poor_electrical_severity) || 1));
+  const elecSeverity = Math.max(1, Math.min(10, parseInt(values.poor_electrical_severity) || 1));
+  const siteSeverity = Math.max(1, Math.min(10, parseInt(values.poor_site_access_severity) || 1));
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
       {CONDITIONS.map(c => {
         const selected = !!values[c.id];
         const isElectrical = c.id === "poor_electrical_access";
+        const isSiteAccess = c.id === "poor_site_access";
         return (
           <div
             key={c.id}
@@ -136,19 +151,45 @@ export default function ConditionPicker({ values, onChange }) {
                 <div className="flex items-center gap-1.5 mb-1">
                   <Zap className="w-3 h-3 text-yellow-700" />
                   <span className="text-[10px] font-bold text-yellow-900 uppercase tracking-wide">
-                    Severity {severity}/10
+                    Severity {elecSeverity}/10
                   </span>
                 </div>
                 <Slider
                   min={1}
                   max={10}
                   step={1}
-                  value={[severity]}
+                  value={[elecSeverity]}
                   onValueChange={(v) => onChange({ ...values, poor_electrical_severity: v[0] })}
                   className="my-1"
                 />
                 <div className="text-[10px] font-semibold text-yellow-900 leading-tight italic h-7 flex items-center">
-                  "{ELECTRICAL_SEVERITY_LABELS[severity]}"
+                  "{ELECTRICAL_SEVERITY_LABELS[elecSeverity]}"
+                </div>
+              </div>
+            )}
+
+            {/* Severity slider — only on Poor Site Access, only when selected */}
+            {isSiteAccess && selected && (
+              <div
+                className="px-2.5 pt-2.5 pb-1 bg-rose-100/60 border-b border-rose-300"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Navigation className="w-3 h-3 text-rose-700" />
+                  <span className="text-[10px] font-bold text-rose-900 uppercase tracking-wide">
+                    Severity {siteSeverity}/10
+                  </span>
+                </div>
+                <Slider
+                  min={1}
+                  max={10}
+                  step={1}
+                  value={[siteSeverity]}
+                  onValueChange={(v) => onChange({ ...values, poor_site_access_severity: v[0] })}
+                  className="my-1"
+                />
+                <div className="text-[10px] font-semibold text-rose-900 leading-tight italic h-7 flex items-center">
+                  "{SITE_ACCESS_SEVERITY_LABELS[siteSeverity]}"
                 </div>
               </div>
             )}

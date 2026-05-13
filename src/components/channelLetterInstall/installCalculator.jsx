@@ -37,6 +37,7 @@ export const emptyLineItem = () => ({
   after_hours_weekend: false,
   set_hours_installation: false,
   poor_site_access: false,
+  poor_site_access_severity: 1,
   materials: [],
 });
 
@@ -170,6 +171,18 @@ export const calcLineItem = (item, settings, inventory) => {
     }
   }
 
+  // Parapet — ADDITIVE minutes (per letter and per raceway), scales with height/wall mult below.
+  if (item.parapet) {
+    const extraPerLetterMin = parseFloat(settings.install_parapet_extra_per_letter);
+    const extraPerRacewayMin = parseFloat(settings.install_parapet_extra_per_raceway);
+    const perLetter = isNaN(extraPerLetterMin) ? 10 : extraPerLetterMin;
+    const perRaceway = isNaN(extraPerRacewayMin) ? 40 : extraPerRacewayMin;
+    baseHours += (parseFloat(item.qty_letters) || 0) * perLetter * MIN_TO_HR;
+    if (item.installation_type === "raceway") {
+      baseHours += perRaceway * MIN_TO_HR;
+    }
+  }
+
   // Height multiplier
   const h = parseFloat(item.installation_height_feet) || 0;
   let heightMultiplier = 1.0;
@@ -182,12 +195,19 @@ export const calcLineItem = (item, settings, inventory) => {
   // Wall material multiplier
   baseHours *= getWallMaterialMultiplier(item.wall_material, settings);
 
-  if (item.parapet) baseHours *= parseFloat(settings.install_parapet_multiplier) || 1.4;
   if (item.escort_required) baseHours *= parseFloat(settings.install_escort_multiplier) || 1.15;
   if (item.badging_checkin) baseHours *= parseFloat(settings.install_badging_multiplier) || 1.1;
   if (item.after_hours_weekend) baseHours *= parseFloat(settings.install_after_hours_multiplier) || 1.5;
   if (item.set_hours_installation) baseHours *= parseFloat(settings.install_set_hours_multiplier) || 1.15;
-  if (item.poor_site_access) baseHours *= parseFloat(settings.install_poor_site_access_multiplier) || 1.25;
+
+  // Poor Site Access — ADDITIVE: severity level adds minutes/letter on top of the base install time.
+  if (item.poor_site_access) {
+    const level = Math.max(1, Math.min(10, parseInt(item.poor_site_access_severity) || 1));
+    const severityDefaults = { 1: 3, 2: 6, 3: 10, 4: 15, 5: 20, 6: 28, 7: 38, 8: 50, 9: 65, 10: 90 };
+    const bonusMin = parseFloat(settings[`install_site_access_level_${level}`]);
+    const bonus = isNaN(bonusMin) ? severityDefaults[level] : bonusMin;
+    baseHours += ((parseFloat(item.qty_letters) || 0) * bonus) * MIN_TO_HR;
+  }
 
   // Poor Electrical Access — ADDITIVE: severity level adds minutes/letter on top of the size's electrical hookup baseline.
   // Note: the size's electrical hookup baseline is ALREADY included in baseHours via sizeMinutesForType() above.

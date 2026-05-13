@@ -106,7 +106,9 @@ const settingsDefinitions = [
   { name: "install_height_30plus_ft", type: "number", category: "install_multipliers", label: "Height 30+ ft", suffix: "×", description: "Crane / special equipment", default: "2.0" },
 
   // Site Condition Multipliers
-  { name: "install_parapet_multiplier", type: "number", category: "install_site_conditions", label: "Parapet", suffix: "×", description: "Working over rooftop edge wall", default: "1.4" },
+  // Parapet — ADDITIVE minutes (per letter and per raceway), not a multiplier
+  { name: "install_parapet_extra_per_letter", type: "number", category: "install_parapet", label: "Extra Time per Letter", suffix: "+min/letter", description: "Additional minutes added per letter when working over a rooftop parapet / edge wall", default: "10" },
+  { name: "install_parapet_extra_per_raceway", type: "number", category: "install_parapet", label: "Extra Time per Raceway", suffix: "+min/raceway", description: "Additional minutes added per raceway line item when working over a parapet", default: "40" },
   // Thick / Hollow Walls — ADDITIVE minutes (per letter and per raceway), not a multiplier
   { name: "install_thick_walls_extra_per_letter", type: "number", category: "install_thick_walls", label: "Extra Time per Letter", suffix: "+min/letter", description: "Additional minutes added per letter when installing into brick veneer, masonry, or hollow-cavity walls", default: "8" },
   { name: "install_thick_walls_extra_per_raceway", type: "number", category: "install_thick_walls", label: "Extra Time per Raceway", suffix: "+min/raceway", description: "Additional minutes added per raceway line item when installing into thick or hollow walls", default: "30" },
@@ -125,7 +127,17 @@ const settingsDefinitions = [
   { name: "install_badging_multiplier", type: "number", category: "install_site_conditions", label: "Badging / Check-in", suffix: "×", description: "Security badge or sign-in required", default: "1.1" },
   { name: "install_after_hours_multiplier", type: "number", category: "install_site_conditions", label: "After-Hours / Weekend", suffix: "×", description: "Night, early morning, or weekend install", default: "1.5" },
   { name: "install_set_hours_multiplier", type: "number", category: "install_site_conditions", label: "Set-Hours Installation", suffix: "×", description: "Fixed time window / scheduled appointment", default: "1.15" },
-  { name: "install_poor_site_access_multiplier", type: "number", category: "install_site_conditions", label: "Poor Site Access", suffix: "×", description: "No lift room, obstructions, tight space", default: "1.25" },
+  // Poor Site Access — 10 severity levels, ADDED minutes per letter on top of the base install time
+  { name: "install_site_access_level_1", type: "number", category: "install_site_access_severity", label: "Level 1 — Mildly Cramped", suffix: "+min/letter", description: "Extra minutes per letter for tight working space", default: "3" },
+  { name: "install_site_access_level_2", type: "number", category: "install_site_access_severity", label: "Level 2 — Slightly Awkward", suffix: "+min/letter", description: "Extra minutes per letter for tight working space", default: "6" },
+  { name: "install_site_access_level_3", type: "number", category: "install_site_access_severity", label: "Level 3 — Squeeze Play", suffix: "+min/letter", description: "Extra minutes per letter for tight working space", default: "10" },
+  { name: "install_site_access_level_4", type: "number", category: "install_site_access_severity", label: "Level 4 — Tight Quarters", suffix: "+min/letter", description: "Extra minutes per letter for tight working space", default: "15" },
+  { name: "install_site_access_level_5", type: "number", category: "install_site_access_severity", label: "Level 5 — Obstacle Course", suffix: "+min/letter", description: "Extra minutes per letter for tight working space", default: "20" },
+  { name: "install_site_access_level_6", type: "number", category: "install_site_access_severity", label: "Level 6 — Where Does the Lift Go?", suffix: "+min/letter", description: "Extra minutes per letter for tight working space", default: "28" },
+  { name: "install_site_access_level_7", type: "number", category: "install_site_access_severity", label: "Level 7 — Sketchy Footing", suffix: "+min/letter", description: "Extra minutes per letter for tight working space", default: "38" },
+  { name: "install_site_access_level_8", type: "number", category: "install_site_access_severity", label: "Level 8 — Hold My Coffee", suffix: "+min/letter", description: "Extra minutes per letter for tight working space", default: "50" },
+  { name: "install_site_access_level_9", type: "number", category: "install_site_access_severity", label: "Level 9 — Mission Impossible", suffix: "+min/letter", description: "Extra minutes per letter for tight working space", default: "65" },
+  { name: "install_site_access_level_10", type: "number", category: "install_site_access_severity", label: "Level 10 — Did a Sign Even Belong Here?", suffix: "+min/letter", description: "Extra minutes per letter for tight working space", default: "90" },
 
   // Wall Material Multipliers — auto-generated from the shared catalog
   ...WALL_MATERIALS.map(m => ({
@@ -190,8 +202,8 @@ const TAB_META = {
   site_conditions: {
     title: "Site Conditions",
     icon: AlertTriangle,
-    description: "Per-condition adjustments. Use the sub-tabs for Multipliers, Electrical Severity, and Thick / Hollow Walls.",
-    categories: ["install_site_conditions", "install_electrical_severity", "install_thick_walls"],
+    description: "Per-condition adjustments. Use the sub-tabs for Multipliers, Electrical Severity, Site Access Severity, Parapet, and Thick / Hollow Walls.",
+    categories: ["install_site_conditions", "install_electrical_severity", "install_site_access_severity", "install_parapet", "install_thick_walls"],
   },
   wall_materials: {
     title: "Wall Materials",
@@ -565,6 +577,8 @@ export default function ChannelLetterInstallationSettings() {
     const SUBTABS = [
       { key: "multipliers", label: "Multipliers", category: "install_site_conditions", description: "Per-condition labor multipliers. 1.0 = no impact, 1.5 = 50% more time." },
       { key: "electrical", label: "Electrical Severity", category: "install_electrical_severity", description: "10 severity levels for Poor Electrical Access. The selected level's minutes are ADDED to each letter's Electrical Hookup baseline." },
+      { key: "site_access", label: "Site Access Severity", category: "install_site_access_severity", description: "10 severity levels for Poor Site Access. The selected level's minutes are ADDED to each letter on top of the base install time." },
+      { key: "parapet", label: "Parapet", category: "install_parapet", description: "Additive minutes for working over a rooftop parapet / edge wall — applied per letter and per raceway (not a multiplier)." },
       { key: "thick_walls", label: "Thick / Hollow Walls", category: "install_thick_walls", description: "Additive minutes for brick veneer, masonry, or hollow-cavity walls — applied per letter and per raceway (not a multiplier)." },
     ];
 
@@ -585,7 +599,7 @@ export default function ChannelLetterInstallationSettings() {
         </CardHeader>
         <CardContent className="pt-6 pb-6">
           <Tabs defaultValue="multipliers" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-5 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 mb-5 h-auto p-1">
               {SUBTABS.map(st => (
                 <TabsTrigger key={st.key} value={st.key} className="py-2 text-xs">
                   {st.label}
