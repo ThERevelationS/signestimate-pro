@@ -181,7 +181,43 @@ const inchesToLetterSize = (inches) => {
 // Build (or update) install line items from the letter_purchases array.
 // Items linked via source_letter_purchase_id are kept in sync;
 // items the user added by hand on the Installation tab are left untouched.
-export const syncInstallItemsFromPurchases = (existingItems, purchases, emptyLineItemFn) => {
+export const syncInstallItemsFromPurchases = (existingItems, purchases, emptyLineItemFn, inventory = []) => {
+  // Inline default-materials selection (kept here to avoid a circular import with installCalculator)
+  const defaultMaterialsForItem = (item) => (inventory || [])
+      .filter(inv => {
+        if (!inv.is_default) return false;
+        const list = Array.isArray(inv.applies_to_list) ? inv.applies_to_list : [];
+        if (list.length > 0) return list.includes(item.installation_type);
+        if (!inv.applies_to || inv.applies_to === "all") return true;
+        return inv.applies_to === item.installation_type;
+      })
+      .map(inv => {
+        const m = {
+          inventory_item_id: inv.id,
+          item_name: inv.item_name,
+          pricing_mode: inv.pricing_mode,
+          unit_cost: 0,
+          quantity: 0,
+          total_cost: 0,
+        };
+        if (inv.pricing_mode === "per_letter_flat") {
+          m.unit_cost = parseFloat(inv.cost_per_letter) || 0;
+          m.quantity = parseFloat(item.qty_letters) || 0;
+        } else if (inv.pricing_mode === "per_letter_by_size") {
+          const sizeKey = `cost_${item.letter_size}`;
+          m.unit_cost = parseFloat(inv[sizeKey]) || 0;
+          m.quantity = parseFloat(item.qty_letters) || 0;
+        } else if (inv.pricing_mode === "per_raceway_foot") {
+          m.unit_cost = parseFloat(inv.cost_per_foot) || 0;
+          m.quantity = parseFloat(item.raceway_length_feet) || 0;
+        } else if (inv.pricing_mode === "per_project_flat") {
+          m.unit_cost = parseFloat(inv.cost_flat) || 0;
+          m.quantity = 1;
+        }
+        m.total_cost = m.unit_cost * m.quantity;
+        return m;
+      });
+
   const items = [...(existingItems || [])];
   const byPurchaseId = new Map();
   items.forEach((it, idx) => {
@@ -221,11 +257,14 @@ export const syncInstallItemsFromPurchases = (existingItems, purchases, emptyLin
 
     if (byPurchaseId.has(p.id)) {
       const idx = byPurchaseId.get(p.id);
+      // Preserve existing materials when re-syncing
       items[idx] = { ...items[idx], ...patch };
     } else {
       // Create a fresh item using the project's empty template, then apply the patch
       const fresh = emptyLineItemFn();
-      items.push({ ...fresh, ...patch, materials: [] });
+      const newItem = { ...fresh, ...patch };
+      newItem.materials = defaultMaterialsForItem(newItem);
+      items.push(newItem);
     }
   }
 

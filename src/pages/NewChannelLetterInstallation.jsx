@@ -119,7 +119,7 @@ export default function NewChannelLetterInstallation() {
         setProject(prev => ({
           ...prev,
           base_supplies_cost: parseFloat(settingsObj.install_base_supplies) || 0,
-          items: [emptyLineItem()],
+          items: [],
         }));
       }
     } catch (e) {
@@ -171,7 +171,7 @@ export default function NewChannelLetterInstallation() {
       const next = { ...prev, ...patch };
       // When letter_purchases changes, keep matching install items in sync
       if ("letter_purchases" in patch) {
-        next.items = syncInstallItemsFromPurchases(next.items, next.letter_purchases, emptyLineItem);
+        next.items = syncInstallItemsFromPurchases(next.items, next.letter_purchases, emptyLineItem, inventory);
       }
       return next;
     });

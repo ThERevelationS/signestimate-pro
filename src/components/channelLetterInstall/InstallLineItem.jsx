@@ -11,6 +11,7 @@ import LetterSizePicker from "./LetterSizePicker";
 import ConditionPicker from "./ConditionPicker";
 import WallMaterialPicker from "./WallMaterialPicker";
 import CostBreakdownBar from "./CostBreakdownBar";
+import InstallHeightSlider from "./InstallHeightSlider";
 import { TYPE_LABELS } from "./installCalculator";
 import { WALL_MATERIAL_MAP } from "./wallMaterials";
 
@@ -107,6 +108,41 @@ export default function InstallLineItem({ item, index, inventory, settings = {},
             }
           </div>
 
+          {/* Qty Letters + Installation Height — at the very top */}
+          <div className="grid md:grid-cols-2 gap-4 bg-slate-50 rounded-lg p-3 border border-slate-200">
+            <div>
+              <Label className="text-xs font-semibold text-slate-700">Qty Letters</Label>
+              <Input
+                type="number"
+                value={item.qty_letters}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => update({ qty_letters: parseFloat(e.target.value) || 0 })}
+                className="h-9 mt-1.5"
+              />
+              {isRaceway && (
+                <div className="mt-3">
+                  <Label className="text-xs font-semibold text-slate-700">Raceway Length (ft)</Label>
+                  <Input
+                    type="number"
+                    value={item.raceway_length_feet}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => update({ raceway_length_feet: parseFloat(e.target.value) || 0 })}
+                    className="h-9 mt-1.5"
+                  />
+                </div>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs font-semibold text-slate-700">Installation Height (ft)</Label>
+              <div className="mt-1.5">
+                <InstallHeightSlider
+                  value={item.installation_height_feet}
+                  onChange={(v) => update({ installation_height_feet: v })}
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Install Type Picker */}
           <div>
             <Label className="text-xs text-slate-600">Installation Type</Label>
@@ -124,43 +160,6 @@ export default function InstallLineItem({ item, index, inventory, settings = {},
               </div>
             </div>
           )}
-
-          {/* Quantities */}
-          <div className="grid md:grid-cols-3 gap-3">
-            <div>
-              <Label className="text-xs">Qty Letters</Label>
-              <Input
-                type="number"
-                value={item.qty_letters}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => update({ qty_letters: parseFloat(e.target.value) || 0 })}
-                className="h-9 mt-1"
-              />
-            </div>
-            {isRaceway && (
-              <div>
-                <Label className="text-xs">Raceway Length (ft)</Label>
-                <Input
-                  type="number"
-                  value={item.raceway_length_feet}
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => update({ raceway_length_feet: parseFloat(e.target.value) || 0 })}
-                  className="h-9 mt-1"
-                />
-              </div>
-            )}
-            <div>
-              <Label className="text-xs">Installation Height (ft)</Label>
-              <Input
-                type="number"
-                value={item.installation_height_feet}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => update({ installation_height_feet: parseFloat(e.target.value) || 0 })}
-                className="h-9 mt-1"
-              />
-            </div>
-
-          </div>
 
           {/* Wall material + Site conditions */}
           <div className="space-y-3 border-t pt-3">
