@@ -11,43 +11,82 @@ import { useToast } from "@/components/ui/use-toast";
 import { WALL_MATERIALS } from "@/components/channelLetterInstall/wallMaterials";
 import { refreshFuelPrice } from "@/functions/refreshFuelPrice";
 
+// Helper to build a set of base-time settings for a given installation type
+const buildBaseTimeSet = (category, prefix, typeLabel, includeElectrical, defaults) => {
+  const sizes = [
+    { key: "extra_small", label: "XS", drillD: defaults.xs.drill, prepD: defaults.xs.prep, elecD: defaults.xs.elec },
+    { key: "small", label: "Small", drillD: defaults.s.drill, prepD: defaults.s.prep, elecD: defaults.s.elec },
+    { key: "medium", label: "Medium", drillD: defaults.m.drill, prepD: defaults.m.prep, elecD: defaults.m.elec },
+    { key: "large", label: "Large", drillD: defaults.l.drill, prepD: defaults.l.prep, elecD: defaults.l.elec },
+    { key: "extra_large", label: "XL", drillD: defaults.xl.drill, prepD: defaults.xl.prep, elecD: defaults.xl.elec },
+    { key: "extra_extra_large", label: "XXL", drillD: defaults.xxl.drill, prepD: defaults.xxl.prep, elecD: defaults.xxl.elec },
+  ];
+  const out = [];
+  sizes.forEach(s => {
+    out.push({ name: `install_${prefix}_drill_rate_${s.key}`, type: "number", category, label: `${s.label} — Drill Pattern / Drill Time`, suffix: "min/letter", description: `Minutes per ${s.label} letter for layout, drill pattern, and drilling (${typeLabel})`, default: String(s.drillD) });
+    out.push({ name: `install_${prefix}_prep_rate_${s.key}`, type: "number", category, label: `${s.label} — Installation / Prep Time`, suffix: "min/letter", description: `Minutes per ${s.label} letter for prep, mounting, and finish install (${typeLabel})`, default: String(s.prepD) });
+    if (includeElectrical) {
+      out.push({ name: `install_${prefix}_electrical_rate_${s.key}`, type: "number", category, label: `${s.label} — Electrical Hookup`, suffix: "min/letter", description: `Baseline minutes per ${s.label} letter for electrical hookup (${typeLabel})`, default: String(s.elecD) });
+    }
+  });
+  return out;
+};
+
 const settingsDefinitions = [
   // Pricing & Labor
-  { name: "install_labor_rate", type: "number", category: "install_pricing", label: "Hourly Labor Rate", suffix: "$/hr", description: "Crew rate per hour for installation work", default: "65" },
+  { name: "install_labor_rate", type: "number", category: "install_pricing", label: "Installer Hourly Rate", suffix: "$/hr", description: "Primary installer rate per hour", default: "65" },
+  { name: "install_manual_labor_rate", type: "number", category: "install_pricing", label: "Manual Labor Rate", suffix: "$/hr", description: "Hourly rate for on-site helper / manual labor", default: "35" },
 
-  // Base Rates per Letter Size (minutes per letter) — split into Drill Pattern/Drill Time + Installation/Prep Time + Electrical Hookup
-  { name: "install_drill_rate_extra_small", type: "number", category: "install_rates", label: "XS — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per XS letter for layout, drill pattern, and drilling", default: "15" },
-  { name: "install_prep_rate_extra_small", type: "number", category: "install_rates", label: "XS — Installation / Prep Time", suffix: "min/letter", description: "Minutes per XS letter for prep, mounting, and finish install", default: "30" },
-  { name: "install_electrical_rate_extra_small", type: "number", category: "install_rates", label: "XS — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per XS letter for electrical hookup", default: "5" },
+  // Base Installation Times — Channel Flush-Mount (the original/legacy set, names kept for backward compat)
+  { name: "install_drill_rate_extra_small", type: "number", category: "install_rates_flush", label: "XS — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per XS letter for layout, drill pattern, and drilling", default: "15" },
+  { name: "install_prep_rate_extra_small", type: "number", category: "install_rates_flush", label: "XS — Installation / Prep Time", suffix: "min/letter", description: "Minutes per XS letter for prep, mounting, and finish install", default: "30" },
+  { name: "install_electrical_rate_extra_small", type: "number", category: "install_rates_flush", label: "XS — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per XS letter for electrical hookup", default: "5" },
 
-  { name: "install_drill_rate_small", type: "number", category: "install_rates", label: "Small — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per small letter for layout, drill pattern, and drilling", default: "30" },
-  { name: "install_prep_rate_small", type: "number", category: "install_rates", label: "Small — Installation / Prep Time", suffix: "min/letter", description: "Minutes per small letter for prep, mounting, and finish install", default: "60" },
-  { name: "install_electrical_rate_small", type: "number", category: "install_rates", label: "Small — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per small letter for electrical hookup", default: "10" },
+  { name: "install_drill_rate_small", type: "number", category: "install_rates_flush", label: "Small — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per small letter for layout, drill pattern, and drilling", default: "30" },
+  { name: "install_prep_rate_small", type: "number", category: "install_rates_flush", label: "Small — Installation / Prep Time", suffix: "min/letter", description: "Minutes per small letter for prep, mounting, and finish install", default: "60" },
+  { name: "install_electrical_rate_small", type: "number", category: "install_rates_flush", label: "Small — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per small letter for electrical hookup", default: "10" },
 
-  { name: "install_drill_rate_medium", type: "number", category: "install_rates", label: "Medium — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per medium letter for layout, drill pattern, and drilling", default: "50" },
-  { name: "install_prep_rate_medium", type: "number", category: "install_rates", label: "Medium — Installation / Prep Time", suffix: "min/letter", description: "Minutes per medium letter for prep, mounting, and finish install", default: "100" },
-  { name: "install_electrical_rate_medium", type: "number", category: "install_rates", label: "Medium — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per medium letter for electrical hookup", default: "15" },
+  { name: "install_drill_rate_medium", type: "number", category: "install_rates_flush", label: "Medium — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per medium letter for layout, drill pattern, and drilling", default: "50" },
+  { name: "install_prep_rate_medium", type: "number", category: "install_rates_flush", label: "Medium — Installation / Prep Time", suffix: "min/letter", description: "Minutes per medium letter for prep, mounting, and finish install", default: "100" },
+  { name: "install_electrical_rate_medium", type: "number", category: "install_rates_flush", label: "Medium — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per medium letter for electrical hookup", default: "15" },
 
-  { name: "install_drill_rate_large", type: "number", category: "install_rates", label: "Large — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per large letter for layout, drill pattern, and drilling", default: "80" },
-  { name: "install_prep_rate_large", type: "number", category: "install_rates", label: "Large — Installation / Prep Time", suffix: "min/letter", description: "Minutes per large letter for prep, mounting, and finish install", default: "160" },
-  { name: "install_electrical_rate_large", type: "number", category: "install_rates", label: "Large — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per large letter for electrical hookup", default: "20" },
+  { name: "install_drill_rate_large", type: "number", category: "install_rates_flush", label: "Large — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per large letter for layout, drill pattern, and drilling", default: "80" },
+  { name: "install_prep_rate_large", type: "number", category: "install_rates_flush", label: "Large — Installation / Prep Time", suffix: "min/letter", description: "Minutes per large letter for prep, mounting, and finish install", default: "160" },
+  { name: "install_electrical_rate_large", type: "number", category: "install_rates_flush", label: "Large — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per large letter for electrical hookup", default: "20" },
 
-  { name: "install_drill_rate_extra_large", type: "number", category: "install_rates", label: "XL — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per XL letter for layout, drill pattern, and drilling", default: "120" },
-  { name: "install_prep_rate_extra_large", type: "number", category: "install_rates", label: "XL — Installation / Prep Time", suffix: "min/letter", description: "Minutes per XL letter for prep, mounting, and finish install", default: "240" },
-  { name: "install_electrical_rate_extra_large", type: "number", category: "install_rates", label: "XL — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per XL letter for electrical hookup", default: "25" },
+  { name: "install_drill_rate_extra_large", type: "number", category: "install_rates_flush", label: "XL — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per XL letter for layout, drill pattern, and drilling", default: "120" },
+  { name: "install_prep_rate_extra_large", type: "number", category: "install_rates_flush", label: "XL — Installation / Prep Time", suffix: "min/letter", description: "Minutes per XL letter for prep, mounting, and finish install", default: "240" },
+  { name: "install_electrical_rate_extra_large", type: "number", category: "install_rates_flush", label: "XL — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per XL letter for electrical hookup", default: "25" },
 
-  { name: "install_drill_rate_extra_extra_large", type: "number", category: "install_rates", label: "XXL — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per XXL letter for layout, drill pattern, and drilling", default: "170" },
-  { name: "install_prep_rate_extra_extra_large", type: "number", category: "install_rates", label: "XXL — Installation / Prep Time", suffix: "min/letter", description: "Minutes per XXL letter for prep, mounting, and finish install", default: "340" },
-  { name: "install_electrical_rate_extra_extra_large", type: "number", category: "install_rates", label: "XXL — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per XXL letter for electrical hookup", default: "30" },
+  { name: "install_drill_rate_extra_extra_large", type: "number", category: "install_rates_flush", label: "XXL — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per XXL letter for layout, drill pattern, and drilling", default: "170" },
+  { name: "install_prep_rate_extra_extra_large", type: "number", category: "install_rates_flush", label: "XXL — Installation / Prep Time", suffix: "min/letter", description: "Minutes per XXL letter for prep, mounting, and finish install", default: "340" },
+  { name: "install_electrical_rate_extra_extra_large", type: "number", category: "install_rates_flush", label: "XXL — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per XXL letter for electrical hookup", default: "30" },
 
-  // Raceway Rates — separated into its own tab
-  { name: "install_raceway_base_minutes_per_foot", type: "number", category: "install_raceway", label: "Base Cost per Foot", suffix: "min/ft", description: "Base minutes of labor per foot of raceway installed", default: "30" },
-  { name: "install_raceway_extra_minutes_per_foot", type: "number", category: "install_raceway", label: "Extra Cost per Foot", suffix: "min/ft", description: "Additional minutes per foot for complex / oversized raceway work", default: "0" },
-  { name: "install_raceway_letter_mounting_rate", type: "number", category: "install_raceway", label: "Raceway Letter Mounting", suffix: "min/letter", description: "Minutes per letter mounted to raceway", default: "18" },
+  // Base Installation Times — Halo-Lit (mirrors flush defaults; user can tune separately)
+  ...buildBaseTimeSet("install_rates_halo", "halo", "Halo-Lit", true, {
+    xs:  { drill: 15,  prep: 30,  elec: 5 },
+    s:   { drill: 30,  prep: 60,  elec: 10 },
+    m:   { drill: 50,  prep: 100, elec: 15 },
+    l:   { drill: 80,  prep: 160, elec: 20 },
+    xl:  { drill: 120, prep: 240, elec: 25 },
+    xxl: { drill: 170, prep: 340, elec: 30 },
+  }),
 
-  // Type Multipliers
-  { name: "install_halo_multiplier", type: "number", category: "install_multipliers", label: "Halo-Lit Installations", suffix: "×", description: "Time multiplier for halo-lit (reverse-lit) installs", default: "1.3" },
-  { name: "install_dimensional_lettering_multiplier", type: "number", category: "install_multipliers", label: "Dimensional Lettering (Non-Illuminated)", suffix: "×", description: "Time multiplier for non-illuminated dimensional letters (typically faster — no electrical)", default: "0.85" },
+  // Base Installation Times — Dimensional (no electrical hookup)
+  ...buildBaseTimeSet("install_rates_dimensional", "dimensional", "Dimensional", false, {
+    xs:  { drill: 10,  prep: 20,  elec: 0 },
+    s:   { drill: 20,  prep: 45,  elec: 0 },
+    m:   { drill: 40,  prep: 80,  elec: 0 },
+    l:   { drill: 65,  prep: 130, elec: 0 },
+    xl:  { drill: 100, prep: 200, elec: 0 },
+    xxl: { drill: 140, prep: 280, elec: 0 },
+  }),
+
+  // Base Installation Times — Raceway (lives inside Base Installation Times now)
+  { name: "install_raceway_base_minutes_per_foot", type: "number", category: "install_rates_raceway", label: "Base Cost per Foot", suffix: "min/ft", description: "Base minutes of labor per foot of raceway installed", default: "30" },
+  { name: "install_raceway_extra_minutes_per_foot", type: "number", category: "install_rates_raceway", label: "Extra Cost per Foot", suffix: "min/ft", description: "Additional minutes per foot for complex / oversized raceway work", default: "0" },
+  { name: "install_raceway_letter_mounting_rate", type: "number", category: "install_rates_raceway", label: "Raceway Letter Mounting", suffix: "min/letter", description: "Minutes per letter mounted to raceway", default: "18" },
+  { name: "install_raceway_electrical_hookup_minutes", type: "number", category: "install_rates_raceway", label: "Electrical Hookup", suffix: "min/raceway", description: "Minutes per raceway for the electrical hookup work", default: "30" },
 
   // Height Multipliers
   { name: "install_height_0_12ft", type: "number", category: "install_multipliers", label: "Height 0–12 ft", suffix: "×", description: "Ladder-level work", default: "1.0" },
@@ -120,25 +159,19 @@ const TAB_META = {
   pricing_labor: {
     title: "Pricing & Labor",
     icon: DollarSign,
-    description: "Core hourly rate applied to all installation labor.",
+    description: "Hourly rates for the primary installer and on-site manual labor.",
     categories: ["install_pricing"],
   },
   base_rates: {
-    title: "Base Rates",
+    title: "Base Installation Times",
     icon: Ruler,
-    description: "Minutes of labor per letter by size, split into Drill Pattern / Drill Time + Installation / Prep Time. The two values are summed per letter.",
-    categories: ["install_rates"],
-  },
-  raceway: {
-    title: "Raceway",
-    icon: Ruler,
-    description: "Raceway-specific labor: base minutes per foot, extra minutes per foot, and per-letter mounting time.",
-    categories: ["install_raceway"],
+    description: "Minutes per letter by installation type and size. Pick a sub-tab to edit Channel Flush, Halo-Lit, Dimensional, or Raceway times.",
+    categories: ["install_rates_flush", "install_rates_halo", "install_rates_dimensional", "install_rates_raceway"],
   },
   multipliers: {
-    title: "Type & Height",
+    title: "Height",
     icon: Clock,
-    description: "Adjustments based on installation type and working height.",
+    description: "Working-height adjustments applied on top of the base installation times.",
     categories: ["install_multipliers"],
   },
   site_conditions: {
@@ -381,8 +414,8 @@ export default function ChannelLetterInstallationSettings() {
     );
   };
 
-  // Group base rate settings by letter size — renders side-by-side Drill + Prep per size
-  const renderBaseRatesContent = () => {
+  // Renders one of the three letter-size base-time grids (flush / halo / dimensional)
+  const renderSizeGrid = (drillPrefix, prepPrefix, elecPrefix, includeElectrical) => {
     const sizes = [
       { key: "extra_small", label: 'Extra Small', range: '2"–8"' },
       { key: "small", label: 'Small', range: '8"–12"' },
@@ -392,54 +425,21 @@ export default function ChannelLetterInstallationSettings() {
       { key: "extra_extra_large", label: 'XXL', range: '60"+' },
     ];
 
-    const findDef = (name) => settingsDefinitions.find(d => d.name === name);
-
-    const renderCompactInput = (def) => {
-      if (!def) return null;
-      const value = settings[def.name];
+    const renderField = (name, label) => {
+      if (!name) return null;
+      const value = settings[name];
       return (
         <div>
           <div className="flex items-baseline justify-between mb-1">
-            <Label htmlFor={def.name} className="text-xs font-medium text-slate-700">
-              {def.label.includes("Drill") ? "Drill Pattern / Drill Time" : "Installation / Prep Time"}
-            </Label>
+            <Label htmlFor={name} className="text-xs font-medium text-slate-700">{label}</Label>
             <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">min</span>
           </div>
           <Input
             type="number"
             step="1"
-            id={def.name}
+            id={name}
             value={value || ""}
-            onChange={(e) => updateSetting(def.name, e.target.value)}
-            disabled={isLocked}
-            className="h-9 bg-white border-slate-200 focus:border-slate-400 focus:ring-0 text-sm tabular-nums font-medium"
-            min="0"
-          />
-        </div>
-      );
-    };
-
-    const labelFor = (def) => {
-      if (def.label.includes("Drill")) return "Drill Pattern / Drill Time";
-      if (def.label.includes("Electrical")) return "Electrical Hookup";
-      return "Installation / Prep Time";
-    };
-
-    const renderCompactInputWithLabel = (def) => {
-      if (!def) return null;
-      const value = settings[def.name];
-      return (
-        <div>
-          <div className="flex items-baseline justify-between mb-1">
-            <Label htmlFor={def.name} className="text-xs font-medium text-slate-700">{labelFor(def)}</Label>
-            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">min</span>
-          </div>
-          <Input
-            type="number"
-            step="1"
-            id={def.name}
-            value={value || ""}
-            onChange={(e) => updateSetting(def.name, e.target.value)}
+            onChange={(e) => updateSetting(name, e.target.value)}
             disabled={isLocked}
             className="h-9 bg-white border-slate-200 focus:border-slate-400 focus:ring-0 text-sm tabular-nums font-medium"
             min="0"
@@ -449,6 +449,58 @@ export default function ChannelLetterInstallationSettings() {
     };
 
     return (
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {sizes.map(s => {
+          const drillName = `${drillPrefix}${s.key}`;
+          const prepName = `${prepPrefix}${s.key}`;
+          const elecName = includeElectrical ? `${elecPrefix}${s.key}` : null;
+          const drillVal = parseFloat(settings[drillName]) || 0;
+          const prepVal = parseFloat(settings[prepName]) || 0;
+          const elecVal = elecName ? (parseFloat(settings[elecName]) || 0) : 0;
+          const total = drillVal + prepVal + elecVal;
+          return (
+            <div key={s.key} className="border border-slate-200 rounded-xl p-4 bg-slate-50/40 hover:bg-slate-50 transition-colors">
+              <div className="flex items-baseline justify-between mb-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">{s.label}</div>
+                  <div className="text-[11px] text-slate-500">{s.range}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] uppercase tracking-wider text-slate-400">Total / letter</div>
+                  <div className="text-sm font-bold text-slate-900 tabular-nums">{total} min</div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {renderField(drillName, "Drill Pattern / Drill Time")}
+                {renderField(prepName, "Installation / Prep Time")}
+                {includeElectrical && renderField(elecName, "Electrical Hookup")}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Raceway sub-tab — different layout (per-foot + per-letter + electrical hookup)
+  const renderRacewayContent = () => {
+    const defs = settingsDefinitions.filter(d => d.category === "install_rates_raceway");
+    return (
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {defs.map(def => renderSettingInput(def))}
+      </div>
+    );
+  };
+
+  const renderBaseRatesContent = () => {
+    const SUBTABS = [
+      { key: "flush", label: "Channel Flush-Mount", description: "Times for channel letters mounted directly to the wall." },
+      { key: "halo", label: "Channel Halo-Lit", description: "Times for reverse / halo-lit channel letters." },
+      { key: "dimensional", label: "Dimensional Letters", description: "Times for non-illuminated dimensional letters (no electrical hookup)." },
+      { key: "raceway", label: "Raceway", description: "Per-foot, per-letter mounting, and electrical hookup times for raceway installs." },
+    ];
+
+    return (
       <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl overflow-hidden">
         <CardHeader className="pb-4 border-b border-slate-100">
           <div className="flex items-start gap-3">
@@ -456,44 +508,32 @@ export default function ChannelLetterInstallationSettings() {
               <Ruler className="w-5 h-5 text-slate-700" />
             </div>
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-base font-semibold text-slate-900 tracking-tight">Base Rates per Letter Size</CardTitle>
+              <CardTitle className="text-base font-semibold text-slate-900 tracking-tight">Base Installation Times</CardTitle>
               <CardDescription className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                Three minute values per size: Drill, Install/Prep, and Electrical Hookup. The estimator sums them per letter, then applies multipliers and adds any Poor Electrical Access severity bonus.
+                Minutes per letter (or per foot for raceway) by installation type and size. The estimator sums these and then applies height and site multipliers.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="pt-6 pb-6">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sizes.map(s => {
-              const drillDef = findDef(`install_drill_rate_${s.key}`);
-              const prepDef = findDef(`install_prep_rate_${s.key}`);
-              const elecDef = findDef(`install_electrical_rate_${s.key}`);
-              const drillVal = parseFloat(settings[`install_drill_rate_${s.key}`]) || 0;
-              const prepVal = parseFloat(settings[`install_prep_rate_${s.key}`]) || 0;
-              const elecVal = parseFloat(settings[`install_electrical_rate_${s.key}`]) || 0;
-              const total = drillVal + prepVal + elecVal;
-              return (
-                <div key={s.key} className="border border-slate-200 rounded-xl p-4 bg-slate-50/40 hover:bg-slate-50 transition-colors">
-                  <div className="flex items-baseline justify-between mb-3">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900">{s.label}</div>
-                      <div className="text-[11px] text-slate-500">{s.range}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[10px] uppercase tracking-wider text-slate-400">Total / letter</div>
-                      <div className="text-sm font-bold text-slate-900 tabular-nums">{total} min</div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    {renderCompactInputWithLabel(drillDef)}
-                    {renderCompactInputWithLabel(prepDef)}
-                    {renderCompactInputWithLabel(elecDef)}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <Tabs defaultValue="flush" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 mb-5 h-auto p-1">
+              {SUBTABS.map(st => (
+                <TabsTrigger key={st.key} value={st.key} className="py-2 text-xs">
+                  {st.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            {SUBTABS.map(st => (
+              <TabsContent key={st.key} value={st.key} className="space-y-4">
+                <p className="text-xs text-slate-500 italic">{st.description}</p>
+                {st.key === "flush" && renderSizeGrid("install_drill_rate_", "install_prep_rate_", "install_electrical_rate_", true)}
+                {st.key === "halo" && renderSizeGrid("install_halo_drill_rate_", "install_halo_prep_rate_", "install_halo_electrical_rate_", true)}
+                {st.key === "dimensional" && renderSizeGrid("install_dimensional_drill_rate_", "install_dimensional_prep_rate_", null, false)}
+                {st.key === "raceway" && renderRacewayContent()}
+              </TabsContent>
+            ))}
+          </Tabs>
         </CardContent>
       </Card>
     );
@@ -531,7 +571,7 @@ export default function ChannelLetterInstallationSettings() {
 
   const managementContent = (
     <Tabs defaultValue="pricing_labor" className="w-full">
-      <TabsList className="grid w-full grid-cols-3 lg:grid-cols-10 mb-6 h-auto p-1">
+      <TabsList className="grid w-full grid-cols-3 lg:grid-cols-9 mb-6 h-auto p-1">
         {Object.entries(TAB_META).map(([key, meta]) => {
           const Icon = meta.icon;
           return (

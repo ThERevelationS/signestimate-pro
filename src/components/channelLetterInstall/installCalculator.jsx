@@ -89,44 +89,72 @@ export const calcLineItem = (item, settings, inventory) => {
   const laborRate = parseFloat(settings.install_labor_rate) || 65;
 
   // Base rates are stored in MINUTES — convert to hours when reading.
-  // Each letter size has two components: Drill Pattern/Drill Time + Installation/Prep Time.
+  // Each installation type has its own set of size-based times.
   const MIN_TO_HR = 1 / 60;
-  const sizeMinutes = (size, drillDefault, prepDefault) => {
-    const drill = parseFloat(settings[`install_drill_rate_${size}`]);
-    const prep = parseFloat(settings[`install_prep_rate_${size}`]);
-    const d = isNaN(drill) ? drillDefault : drill;
-    const p = isNaN(prep) ? prepDefault : prep;
-    return d + p;
+
+  // Defaults by type and size: [drill, prep, electrical]
+  const TYPE_DEFAULTS = {
+    flush_mount: {
+      extra_small: [15, 30, 5],
+      small: [30, 60, 10],
+      medium: [50, 100, 15],
+      large: [80, 160, 20],
+      extra_large: [120, 240, 25],
+      extra_extra_large: [170, 340, 30],
+    },
+    halo_lit: {
+      extra_small: [15, 30, 5],
+      small: [30, 60, 10],
+      medium: [50, 100, 15],
+      large: [80, 160, 20],
+      extra_large: [120, 240, 25],
+      extra_extra_large: [170, 340, 30],
+    },
+    dimensional_lettering: {
+      extra_small: [10, 20, 0],
+      small: [20, 45, 0],
+      medium: [40, 80, 0],
+      large: [65, 130, 0],
+      extra_large: [100, 200, 0],
+      extra_extra_large: [140, 280, 0],
+    },
   };
-  const letterSizeRates = {
-    extra_small: sizeMinutes("extra_small", 15, 30) * MIN_TO_HR,
-    small: sizeMinutes("small", 30, 60) * MIN_TO_HR,
-    medium: sizeMinutes("medium", 50, 100) * MIN_TO_HR,
-    large: sizeMinutes("large", 80, 160) * MIN_TO_HR,
-    extra_large: sizeMinutes("extra_large", 120, 240) * MIN_TO_HR,
-    extra_extra_large: sizeMinutes("extra_extra_large", 170, 340) * MIN_TO_HR,
+
+  // Settings-key prefixes by installation type
+  const PREFIXES = {
+    flush_mount: { drill: "install_drill_rate_", prep: "install_prep_rate_", elec: "install_electrical_rate_" },
+    halo_lit: { drill: "install_halo_drill_rate_", prep: "install_halo_prep_rate_", elec: "install_halo_electrical_rate_" },
+    dimensional_lettering: { drill: "install_dimensional_drill_rate_", prep: "install_dimensional_prep_rate_", elec: null },
+  };
+
+  const sizeMinutesForType = (type, size) => {
+    const prefixes = PREFIXES[type];
+    const defs = TYPE_DEFAULTS[type]?.[size] || [50, 100, 15];
+    if (!prefixes) return defs[0] + defs[1] + defs[2];
+    const drill = parseFloat(settings[`${prefixes.drill}${size}`]);
+    const prep = parseFloat(settings[`${prefixes.prep}${size}`]);
+    const elec = prefixes.elec ? parseFloat(settings[`${prefixes.elec}${size}`]) : NaN;
+    const d = isNaN(drill) ? defs[0] : drill;
+    const p = isNaN(prep) ? defs[1] : prep;
+    const e = prefixes.elec ? (isNaN(elec) ? defs[2] : elec) : 0;
+    return d + p + e;
   };
 
   let baseHours = 0;
 
   if (item.installation_type === "raceway") {
-    // Raceway: base + extra minutes per foot, plus per-letter mounting minutes.
+    // Raceway: base + extra minutes per foot, plus per-letter mounting minutes, plus electrical hookup per raceway line item.
     const basePerFt = (parseFloat(settings.install_raceway_base_minutes_per_foot) || 30) * MIN_TO_HR;
     const extraPerFt = (parseFloat(settings.install_raceway_extra_minutes_per_foot) || 0) * MIN_TO_HR;
     const racewayHoursPerFoot = basePerFt + extraPerFt;
     baseHours = (parseFloat(item.raceway_length_feet) || 0) * racewayHoursPerFoot;
     const letterMountingHours = (parseFloat(settings.install_raceway_letter_mounting_rate) || 18) * MIN_TO_HR;
     baseHours += (parseFloat(item.qty_letters) || 0) * letterMountingHours;
+    const racewayElecHours = (parseFloat(settings.install_raceway_electrical_hookup_minutes) || 30) * MIN_TO_HR;
+    baseHours += racewayElecHours;
   } else {
-    const baseRate = letterSizeRates[item.letter_size] || (150 * MIN_TO_HR);
-    baseHours = (parseFloat(item.qty_letters) || 0) * baseRate;
-    if (item.installation_type === "halo_lit") {
-      const haloMultiplier = parseFloat(settings.install_halo_multiplier) || 1.3;
-      baseHours *= haloMultiplier;
-    } else if (item.installation_type === "dimensional_lettering") {
-      const dimMultiplier = parseFloat(settings.install_dimensional_lettering_multiplier) || 0.85;
-      baseHours *= dimMultiplier;
-    }
+    const minutesPerLetter = sizeMinutesForType(item.installation_type, item.letter_size);
+    baseHours = (parseFloat(item.qty_letters) || 0) * minutesPerLetter * MIN_TO_HR;
   }
 
   // Height multiplier
@@ -150,9 +178,10 @@ export const calcLineItem = (item, settings, inventory) => {
   if (item.poor_site_access) baseHours *= parseFloat(settings.install_poor_site_access_multiplier) || 1.25;
 
   // Poor Electrical Access — ADDITIVE: severity level adds minutes/letter on top of the size's electrical hookup baseline.
-  // Note: the size's electrical hookup baseline is ALREADY included in baseHours via sizeMinutes() above.
-  // Here we add only the SEVERITY bonus on top of that, scaled by qty_letters (non-raceway only).
-  if (item.poor_electrical_access && item.installation_type !== "raceway") {
+  // Note: the size's electrical hookup baseline is ALREADY included in baseHours via sizeMinutesForType() above.
+  // Here we add only the SEVERITY bonus on top of that, scaled by qty_letters.
+  // Excluded for raceway (uses its own per-raceway hookup) and dimensional (no electrical at all).
+  if (item.poor_electrical_access && item.installation_type !== "raceway" && item.installation_type !== "dimensional_lettering") {
     const level = Math.max(1, Math.min(10, parseInt(item.poor_electrical_severity) || 1));
     const severityDefaults = { 1: 3, 2: 6, 3: 10, 4: 15, 5: 20, 6: 28, 7: 38, 8: 50, 9: 65, 10: 90 };
     const bonusMin = parseFloat(settings[`install_poor_electrical_level_${level}`]);
