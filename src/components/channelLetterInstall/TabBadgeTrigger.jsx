@@ -8,16 +8,41 @@ const compact = (v) => {
   return `$${Math.round(n)}`;
 };
 
-export default function TabBadgeTrigger({ value, icon: Icon, label, amount, count, warn, accent }) {
+// Map color prop to active/accent tailwind classes. Defaults to purple (Channel Letters legacy).
+const COLOR_STYLES = {
+  purple: {
+    active: "data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md",
+    accent: "data-[state=inactive]:bg-purple-50 data-[state=inactive]:text-purple-900",
+  },
+  blue: {
+    active: "data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md",
+    accent: "data-[state=inactive]:bg-blue-50 data-[state=inactive]:text-blue-900",
+  },
+  red: {
+    active: "data-[state=active]:bg-red-600 data-[state=active]:text-white data-[state=active]:shadow-md",
+    accent: "data-[state=inactive]:bg-red-50 data-[state=inactive]:text-red-900",
+  },
+  green: {
+    active: "data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-md",
+    accent: "data-[state=inactive]:bg-green-50 data-[state=inactive]:text-green-900",
+  },
+  orange: {
+    active: "data-[state=active]:bg-orange-600 data-[state=active]:text-white data-[state=active]:shadow-md",
+    accent: "data-[state=inactive]:bg-orange-50 data-[state=inactive]:text-orange-900",
+  },
+};
+
+export default function TabBadgeTrigger({ value, icon: Icon, label, amount, count, warn, accent, color = "purple" }) {
   const hasAmount = parseFloat(amount) > 0;
+  const styles = COLOR_STYLES[color] || COLOR_STYLES.purple;
   return (
     <TabsTrigger
       value={value}
       className={`
         flex flex-col items-center justify-center gap-0.5 h-14 rounded-lg
         text-slate-700
-        data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md
-        ${accent ? "data-[state=inactive]:bg-purple-50 data-[state=inactive]:text-purple-900" : ""}
+        ${styles.active}
+        ${accent ? styles.accent : ""}
         relative transition-all
       `}
     >

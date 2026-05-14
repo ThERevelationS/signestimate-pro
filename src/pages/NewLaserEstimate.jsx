@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Plus, Trash2, ArrowLeft, Zap } from "lucide-react";
+import { Save, Plus, Trash2, ArrowLeft, Zap, FileText, ListChecks, Calculator, Settings as SettingsIcon } from "lucide-react";
+import { Tabs, TabsList, TabsContent } from "@/components/ui/tabs";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
+import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
 
 const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/8", "1/2", "3/4"]; // Updated: Removed "1"
 const materials = ["Acrylic", "Wood", "Leather"];
@@ -65,7 +67,7 @@ export default function NewLaserEstimate() {
   const [globalSettings, setGlobalSettings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [activeTab, setActiveTab] = useState("project");
   const [hasLoaded, setHasLoaded] = useState(false);
   useEffect(() => {
     if (!isLoading) setHasLoaded(true);
@@ -1319,7 +1321,18 @@ Best regards`;
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <div className="sticky top-[64px] z-30 -mx-2 px-2 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60">
+                <TabsList className="grid grid-cols-4 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
+                  <TabBadgeTrigger value="project" icon={FileText} label="Project" color="red" />
+                  <TabBadgeTrigger value="items" icon={ListChecks} label="Items" amount={(project.total_machine_cost || 0) + (project.total_labor_cost || 0)} count={project.items.length} color="red" />
+                  <TabBadgeTrigger value="advanced" icon={SettingsIcon} label="Advanced" color="red" />
+                  <TabBadgeTrigger value="summary" icon={Calculator} label="Summary" amount={(project.total_machine_cost || 0) + (project.total_supplies_cost || 0) + (project.total_labor_cost || 0)} accent color="red" />
+                </TabsList>
+              </div>
+
+              <TabsContent value="project" className="mt-4 space-y-4">
             {/* Project Info */}
             <Card className="bg-white border-0 shadow-sm">
               <CardHeader className="pb-3"><CardTitle className="text-lg font-semibold text-slate-900">Project Information</CardTitle></CardHeader>
@@ -1388,13 +1401,15 @@ Best regards`;
                 </div>
               </CardContent>
             </Card>
+              </TabsContent>
 
+              <TabsContent value="items" className="mt-4 space-y-4">
             {/* Items */}
             <Card className="bg-white border-0 shadow-sm">
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-lg font-semibold text-slate-900">Items</CardTitle>
-                  <Button onClick={addItem} size="sm" className="bg-blue-600 hover:bg-blue-700">
+                  <Button onClick={addItem} size="sm" className="bg-red-600 hover:bg-red-700">
                     <Plus className="w-4 h-4 mr-2" />
                     Add Item
                   </Button>
@@ -1586,50 +1601,80 @@ Best regards`;
                 )
                 }
 
-                {/* Advanced Settings */}
-                {project.items.length > 0 &&
-                <div className="border-t pt-4">
-                    <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                    className="w-full">
+              </CardContent>
+            </Card>
+              </TabsContent>
 
-                      {showAdvancedSettings ? 'Hide' : 'Show'} Advanced Settings
-                    </Button>
-                    
-                    {showAdvancedSettings &&
-                  <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
-                        <div>
-                          <Label>Fixed Setup Time (hours)</Label>
-                          <Input
+              <TabsContent value="advanced" className="mt-4 space-y-4">
+                <Card className="bg-white border-0 shadow-sm">
+                  <CardHeader className="pb-3"><CardTitle className="text-lg font-semibold text-slate-900">Advanced Settings</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <Label>Fixed Setup Time (hours)</Label>
+                      <Input
                         type="number"
                         step="0.1"
                         min="0"
                         value={project.fixed_setup_hours}
                         onChange={(e) => setProject((prev) => ({ ...prev, fixed_setup_hours: parseFloat(e.target.value) || 0 }))}
                         className="mt-1" />
-
-                          <p className="text-xs text-slate-500 mt-1">One-time setup labor cost applied to the entire project</p>
-                        </div>
-                        <div>
-                          <Label>Fixed Material Setup Cost ($)</Label>
-                          <Input
+                      <p className="text-xs text-slate-500 mt-1">One-time setup labor cost applied to the entire project</p>
+                    </div>
+                    <div>
+                      <Label>Fixed Material Setup Cost ($)</Label>
+                      <Input
                         type="number"
                         step="1"
                         min="0"
                         value={project.fixed_material_setup_cost}
                         onChange={(e) => setProject((prev) => ({ ...prev, fixed_material_setup_cost: parseFloat(e.target.value) || 0 }))}
                         className="mt-1" />
+                      <p className="text-xs text-slate-500 mt-1">One-time material/setup cost applied to the entire project, added to supplies cost.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-                          <p className="text-xs text-slate-500 mt-1">One-time material/setup cost applied to the entire project, added to supplies cost.</p>
-                        </div>
-                      </div>
-                  }
-                  </div>
-                }
-              </CardContent>
-            </Card>
+              <TabsContent value="summary" className="mt-4 space-y-4">
+                <Card className="bg-white border-0 shadow-sm">
+                  <CardHeader className="pb-3"><CardTitle className="text-lg font-semibold text-slate-900">Estimate Breakdown</CardTitle></CardHeader>
+                  <CardContent className="p-0">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 text-slate-600 text-xs">
+                        <tr>
+                          <th className="text-left px-4 py-2 font-medium w-8">#</th>
+                          <th className="text-left px-4 py-2 font-medium">Description</th>
+                          <th className="text-left px-4 py-2 font-medium">Type</th>
+                          <th className="text-right px-4 py-2 font-medium">Machine</th>
+                          <th className="text-right px-4 py-2 font-medium">Labor</th>
+                          <th className="text-right px-4 py-2 font-medium">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {project.items.map((it, i) => (
+                          <tr key={i} className="border-t border-slate-100">
+                            <td className="px-4 py-2 text-slate-500">{i + 1}</td>
+                            <td className="px-4 py-2 font-medium">{it.description || `Item ${i + 1}`}</td>
+                            <td className="px-4 py-2 capitalize text-xs text-slate-600">{(it.item_type || '').replace(/_/g, ' ')}</td>
+                            <td className="px-4 py-2 text-right tabular-nums">${(it.machine_cost || 0).toFixed(2)}</td>
+                            <td className="px-4 py-2 text-right tabular-nums">${(it.labor_cost || 0).toFixed(2)}</td>
+                            <td className="px-4 py-2 text-right tabular-nums font-semibold">${((it.machine_cost || 0) + (it.labor_cost || 0)).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-slate-50 border-t-2 border-slate-200 text-sm">
+                        <tr>
+                          <td colSpan="3" className="px-4 py-2 text-right font-medium">Totals</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-medium">${(project.total_machine_cost || 0).toFixed(2)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-medium">${(project.total_labor_cost || 0).toFixed(2)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-bold">${((project.total_machine_cost || 0) + (project.total_supplies_cost || 0) + (project.total_labor_cost || 0)).toFixed(2)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Summary Sidebar */}

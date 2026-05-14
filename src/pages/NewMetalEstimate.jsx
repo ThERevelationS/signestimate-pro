@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2, Save, Wrench, Edit, Download, Printer } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Wrench, Edit, Download, Printer, FileText, ListChecks, Calculator } from "lucide-react";
+import { Tabs, TabsList, TabsContent } from "@/components/ui/tabs";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
 
 const itemTypes = ["channel_letters", "cabinet_sign", "monument_sign", "pole_sign", "flat_cut_letters", "fabricated_letters", "frame_assembly", "custom_brackets"];
 // materialTypes is not directly used in the current structure for display, but could be for filtering
@@ -37,6 +39,7 @@ export default function NewMetalEstimate() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [activeTab, setActiveTab] = useState("project");
   useEffect(() => {
     if (!isLoading) setHasLoaded(true);
   }, [isLoading]);
@@ -1117,9 +1120,21 @@ export default function NewMetalEstimate() {
           </div>
         </div>
         <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <div className="sticky top-[64px] z-30 -mx-2 px-2 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60">
+                <TabsList className="grid grid-cols-3 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
+                  <TabBadgeTrigger value="project" icon={FileText} label="Project" color="orange" />
+                  <TabBadgeTrigger value="items" icon={ListChecks} label="Items" amount={grandTotal} count={project.items.length} color="orange" />
+                  <TabBadgeTrigger value="summary" icon={Calculator} label="Summary" amount={grandTotal} accent color="orange" />
+                </TabsList>
+              </div>
+
+              <TabsContent value="project" className="mt-4 space-y-6">
             <Card className="bg-white border-0 shadow-sm"><CardHeader><CardTitle>Project Information</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid md:grid-cols-2 gap-4"><div><Label>Project Name *</Label><Input value={project.project_name} onChange={(e) => setProject(p => ({ ...p, project_name: e.target.value }))} /></div><div><Label>Client Name *</Label><ClientSearchInput value={project.client_name} onChange={(val) => setProject(p => ({ ...p, client_name: val }))} onSelectProject={(data) => { setProject(prev => ({...prev, client_name: data.client_name || prev.client_name, project_name: data.project_name || prev.project_name, estimate_number: data.estimate_number || prev.estimate_number, hyperlink: data.hyperlink || prev.hyperlink })); }} /></div></div><div><Label>Notes</Label><Textarea value={project.notes} onChange={(e) => setProject(p => ({ ...p, notes: e.target.value }))} /></div></CardContent></Card>
-            
+              </TabsContent>
+
+              <TabsContent value="items" className="mt-4 space-y-6">
             <Card className="bg-white border-0 shadow-sm">
                 <CardHeader><div className="flex justify-between items-center"><CardTitle>Project Items</CardTitle><Button onClick={addItem} size="sm"><Plus className="w-4 h-4 mr-2" />Add Item</Button></div></CardHeader>
                 <CardContent className="space-y-6">
@@ -1149,6 +1164,54 @@ export default function NewMetalEstimate() {
                     ))}
                 </CardContent>
             </Card>
+              </TabsContent>
+
+              <TabsContent value="summary" className="mt-4 space-y-6">
+                <Card className="bg-white border-0 shadow-sm">
+                  <CardHeader><CardTitle>Estimate Breakdown</CardTitle></CardHeader>
+                  <CardContent className="p-0">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 text-slate-600 text-xs">
+                        <tr>
+                          <th className="text-left px-4 py-2 font-medium w-8">#</th>
+                          <th className="text-left px-4 py-2 font-medium">Description</th>
+                          <th className="text-left px-4 py-2 font-medium">Type</th>
+                          <th className="text-right px-4 py-2 font-medium">Materials</th>
+                          <th className="text-right px-4 py-2 font-medium">Labor</th>
+                          <th className="text-right px-4 py-2 font-medium">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {project.items.map((it, i) => {
+                          const qty = it.quantity || 1;
+                          const matCost = (it.material_cost || 0) * qty;
+                          const suppliesCost = (it.supplies_cost || 0) * qty;
+                          const laborCost = ((it.fabrication_cost || 0) + (it.welding_cost || 0) + (it.finishing_cost || 0)) * qty;
+                          return (
+                            <tr key={i} className="border-t border-slate-100">
+                              <td className="px-4 py-2 text-slate-500">{i + 1}</td>
+                              <td className="px-4 py-2 font-medium">{it.description || `Item ${i + 1}`}</td>
+                              <td className="px-4 py-2 capitalize text-xs text-slate-600">{(it.item_type || '').replace(/_/g, ' ')}</td>
+                              <td className="px-4 py-2 text-right tabular-nums">${(matCost + suppliesCost).toFixed(2)}</td>
+                              <td className="px-4 py-2 text-right tabular-nums">${laborCost.toFixed(2)}</td>
+                              <td className="px-4 py-2 text-right tabular-nums font-semibold">${(matCost + suppliesCost + laborCost).toFixed(2)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot className="bg-slate-50 border-t-2 border-slate-200 text-sm">
+                        <tr>
+                          <td colSpan="3" className="px-4 py-2 text-right font-medium">Totals</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-medium">${(totalMaterialsCost + totalSuppliesCost).toFixed(2)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-medium">${(totalFabricationCost + totalWeldingCost + totalFinishingCost).toFixed(2)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-bold">${grandTotal.toFixed(2)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </div>
           <div className="space-y-6">
             <Card className="bg-white border-0 shadow-sm sticky top-8"><CardHeader><CardTitle>Cost Summary</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><div className="flex justify-between"><span className="text-slate-600">Total Material Cost:</span><span className="font-medium text-slate-900">${totalMaterialsCost.toFixed(2)}</span></div><div className="flex justify-between"><span className="text-slate-600">Total Supplies Cost:</span><span className="font-medium text-slate-900">${totalSuppliesCost.toFixed(2)}</span></div><div className="flex justify-between"><span className="text-slate-600">Total Fabrication Cost:</span><span className="font-medium text-slate-900">${totalFabricationCost.toFixed(2)}</span></div><div className="flex justify-between"><span className="text-slate-600">Total Welding Cost:</span><span className="font-medium text-slate-900">${totalWeldingCost.toFixed(2)}</span></div><div className="flex justify-between"><span className="text-slate-600">Total Finishing Cost:</span><span className="font-medium text-slate-900">${totalFinishingCost.toFixed(2)}</span></div><div className="mt-4 pt-4 border-t"><div className="flex justify-between items-center"><span className="font-bold text-lg text-slate-900">Grand Total:</span><span className="font-bold text-2xl text-blue-600">${grandTotal.toFixed(2)}</span></div></div></CardContent></Card>

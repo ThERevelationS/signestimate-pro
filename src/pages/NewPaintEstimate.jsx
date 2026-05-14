@@ -6,12 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2, Save, Calculator, Palette, Edit, Mail, X, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Calculator, Palette, Edit, Mail, X, ChevronDown, ChevronUp, FileText, ListChecks } from "lucide-react";
+import { Tabs, TabsList, TabsContent } from "@/components/ui/tabs";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import { generatePaintEstimateHTML } from "@/components/paintEstimate/generatePaintHTML";
+import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
 
 const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/16", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8", "1", "1-1/8", "1-1/4", "1-3/8", "1-1/2", "1-5/8", "1-3/4", "1-7/8", "2", "2-1/4", "2-1/2", "2-3/4", "3", "3-1/4", "3-1/2", "3-3/4", "4"];
 const coverageFactors = ["1/8", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8", "1", "1-1/8", "1-1/4", "1-3/8", "1-1/2", "1-5/8", "1-3/4", "1-7/8", "2"];
@@ -87,6 +89,7 @@ export default function NewPaintEstimate() {
   const [isDeleting, setIsDeleting] = useState(false);
   const { setIsDirty } = useUnsavedChanges();
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [activeTab, setActiveTab] = useState("project");
   useEffect(() => { if (!isLoading) setHasLoaded(true); }, [isLoading]);
   useEffect(() => { if (hasLoaded) setIsDirty(true); }, [project]);
 
@@ -945,7 +948,17 @@ export default function NewPaintEstimate() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <div className="sticky top-[64px] z-30 -mx-2 px-2 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60">
+                <TabsList className="grid grid-cols-3 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
+                  <TabBadgeTrigger value="project" icon={FileText} label="Project" color="blue" />
+                  <TabBadgeTrigger value="items" icon={ListChecks} label="Items" amount={totalPaintMask + totalLiquidPaintAndSupplies + totalLabor} count={project.items.length} color="blue" />
+                  <TabBadgeTrigger value="summary" icon={Calculator} label="Summary" amount={totalPaintMask + totalLiquidPaintAndSupplies + totalLabor} accent color="blue" />
+                </TabsList>
+              </div>
+
+              <TabsContent value="project" className="mt-4 space-y-6">
             <Card className="bg-white border-0 shadow-sm">
               <CardHeader className="px-6 flex flex-col space-y-1.5"><CardTitle className="text-lg font-semibold text-slate-900">Project Information</CardTitle></CardHeader>
               <CardContent className="px-6 space-y-4">
@@ -1013,7 +1026,9 @@ export default function NewPaintEstimate() {
                 </div>
               </CardContent>
             </Card>
+              </TabsContent>
 
+              <TabsContent value="items" className="mt-4 space-y-6">
             <Card className="bg-white border-0 shadow-sm">
               <CardHeader className="px-8 flex flex-col space-y-1.5">
                 <div className="flex items-center justify-between">
@@ -1314,6 +1329,56 @@ export default function NewPaintEstimate() {
                 }
               </CardContent>
             </Card>
+              </TabsContent>
+
+              <TabsContent value="summary" className="mt-4 space-y-6">
+                <Card className="bg-white border-0 shadow-sm">
+                  <CardHeader className="pb-3"><CardTitle className="text-lg font-semibold text-slate-900">Estimate Breakdown</CardTitle></CardHeader>
+                  <CardContent className="p-0">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 text-slate-600 text-xs">
+                        <tr>
+                          <th className="text-left px-4 py-2 font-medium w-8">#</th>
+                          <th className="text-left px-4 py-2 font-medium">Description</th>
+                          <th className="text-left px-4 py-2 font-medium">Type</th>
+                          <th className="text-right px-4 py-2 font-medium">Paint Mask</th>
+                          <th className="text-right px-4 py-2 font-medium">Paint &amp; Supplies</th>
+                          <th className="text-right px-4 py-2 font-medium">Labor</th>
+                          <th className="text-right px-4 py-2 font-medium">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {project.items.map((it, i) => {
+                          const mask = it.supplies_cost || 0;
+                          const paint = it.paint_cost || 0;
+                          const labor = it.labor_cost || 0;
+                          return (
+                            <tr key={i} className="border-t border-slate-100">
+                              <td className="px-4 py-2 text-slate-500">{i + 1}</td>
+                              <td className="px-4 py-2 font-medium">{it.description || `Item ${i + 1}`}</td>
+                              <td className="px-4 py-2 capitalize text-xs text-slate-600">{(it.item_type || '').replace(/_/g, ' ')}</td>
+                              <td className="px-4 py-2 text-right tabular-nums">${mask.toFixed(2)}</td>
+                              <td className="px-4 py-2 text-right tabular-nums">${paint.toFixed(2)}</td>
+                              <td className="px-4 py-2 text-right tabular-nums">${labor.toFixed(2)}</td>
+                              <td className="px-4 py-2 text-right tabular-nums font-semibold">${(mask + paint + labor).toFixed(2)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot className="bg-slate-50 border-t-2 border-slate-200 text-sm">
+                        <tr>
+                          <td colSpan="3" className="px-4 py-2 text-right font-medium">Totals</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-medium">${totalPaintMask.toFixed(2)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-medium">${totalLiquidPaintAndSupplies.toFixed(2)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-medium">${totalLabor.toFixed(2)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-bold">${(totalPaintMask + totalLiquidPaintAndSupplies + totalLabor).toFixed(2)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </div>
 
           <div className="space-y-6">

@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2, Save, Router } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Router, FileText, ListChecks, Calculator } from "lucide-react";
+import { Tabs, TabsList, TabsContent } from "@/components/ui/tabs";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
 
 const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8", "1", "1-1/4", "1-1/2", "2", "2-1/2", "3", "3-1/2", "4"];
 const materials = ["Acrylic", "Wood", "MDF", "Plywood", "PVC", "HDPE", "Aluminum", "Corian"];
@@ -32,6 +34,7 @@ export default function NewCNCEstimate() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [activeTab, setActiveTab] = useState("project");
   useEffect(() => {
     if (!isLoading) setHasLoaded(true);
   }, [isLoading]);
@@ -1024,7 +1027,17 @@ export default function NewCNCEstimate() {
           </div>
         </div>
         <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <div className="sticky top-[64px] z-30 -mx-2 px-2 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60">
+                <TabsList className="grid grid-cols-3 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
+                  <TabBadgeTrigger value="project" icon={FileText} label="Project" color="green" />
+                  <TabBadgeTrigger value="items" icon={ListChecks} label="Items" amount={totalMachine + totalLabor} count={project.items.length} color="green" />
+                  <TabBadgeTrigger value="summary" icon={Calculator} label="Summary" amount={totalMachine + totalLabor} accent color="green" />
+                </TabsList>
+              </div>
+
+              <TabsContent value="project" className="mt-4 space-y-6">
             <Card className="bg-white border-0 shadow-sm">
               <CardHeader><CardTitle>Project Information</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -1046,6 +1059,9 @@ export default function NewCNCEstimate() {
                 <div><Label>Notes</Label><Textarea value={project.notes} onChange={(e) => setProject(p => ({ ...p, notes: e.target.value }))} /></div>
               </CardContent>
             </Card>
+              </TabsContent>
+
+              <TabsContent value="items" className="mt-4 space-y-6">
             <Card className="bg-white border-0 shadow-sm">
               <CardHeader>
                 <div className="flex justify-between items-center">
@@ -1088,6 +1104,48 @@ export default function NewCNCEstimate() {
                 ))}
               </CardContent>
             </Card>
+              </TabsContent>
+
+              <TabsContent value="summary" className="mt-4 space-y-6">
+                <Card className="bg-white border-0 shadow-sm">
+                  <CardHeader><CardTitle>Estimate Breakdown</CardTitle></CardHeader>
+                  <CardContent className="p-0">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 text-slate-600 text-xs">
+                        <tr>
+                          <th className="text-left px-4 py-2 font-medium w-8">#</th>
+                          <th className="text-left px-4 py-2 font-medium">Description</th>
+                          <th className="text-left px-4 py-2 font-medium">Material</th>
+                          <th className="text-right px-4 py-2 font-medium">Machine</th>
+                          <th className="text-right px-4 py-2 font-medium">Labor</th>
+                          <th className="text-right px-4 py-2 font-medium">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {project.items.map((it, i) => (
+                          <tr key={i} className="border-t border-slate-100">
+                            <td className="px-4 py-2 text-slate-500">{i + 1}</td>
+                            <td className="px-4 py-2 font-medium">{it.description || `Item ${i + 1}`}</td>
+                            <td className="px-4 py-2 text-xs text-slate-600">{it.material_type}</td>
+                            <td className="px-4 py-2 text-right tabular-nums">${(it.machine_cost || 0).toFixed(2)}</td>
+                            <td className="px-4 py-2 text-right tabular-nums">${(it.labor_cost || 0).toFixed(2)}</td>
+                            <td className="px-4 py-2 text-right tabular-nums font-semibold">${((it.machine_cost || 0) + (it.labor_cost || 0)).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-slate-50 border-t-2 border-slate-200 text-sm">
+                        <tr>
+                          <td colSpan="3" className="px-4 py-2 text-right font-medium">Totals</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-medium">${totalMachine.toFixed(2)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-medium">${totalLabor.toFixed(2)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-bold">${(totalMachine + totalLabor).toFixed(2)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </div>
           <div className="space-y-6">
             <Card className="bg-white border-0 shadow-sm sticky top-8">
