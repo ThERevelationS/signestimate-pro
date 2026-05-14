@@ -142,6 +142,23 @@ export default function NewChannelLetterInstallation() {
     return { ...project, ...lettersTotals, items: recalcItems, ...totals };
   }, [project, settings, inventory]);
 
+  // Dimensional letters MUST have a Build/Fab config — block tab navigation away from Letters until each is configured
+  const incompleteDimensionalIds = useMemo(
+    () => (recalculated.letter_purchases || [])
+      .filter(p => p.letter_type === "dimensional_letters" && !p.fab_config?.unit_total_cost)
+      .map(p => p.id),
+    [recalculated.letter_purchases]
+  );
+  const hasIncompleteDimensional = incompleteDimensionalIds.length > 0;
+
+  const handleTabChange = (next) => {
+    if (activeTab === "letters" && next !== "letters" && hasIncompleteDimensional) {
+      alert("Please complete the 'Build Fab Cost from CNC + Paint' for each dimensional letter row before continuing.");
+      return;
+    }
+    setActiveTab(next);
+  };
+
   // Aggregate materials across items for the Materials tab
   const aggregatedMaterials = useMemo(() => {
     const map = new Map();
@@ -424,11 +441,11 @@ export default function NewChannelLetterInstallation() {
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
               <div className="sticky top-[64px] z-30 -mx-2 px-2 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60">
                 <TabsList className="grid grid-cols-5 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
                   <TabBadgeTrigger value="project" icon={FileText} label="Project" />
-                  <TabBadgeTrigger value="letters" icon={Type} label="Letters" amount={recalculated.total_letters_cost} />
+                  <TabBadgeTrigger value="letters" icon={Type} label="Letters" amount={recalculated.total_letters_cost} warn={hasIncompleteDimensional} />
                   <TabBadgeTrigger
                     value="items"
                     icon={ListChecks}
@@ -554,6 +571,7 @@ export default function NewChannelLetterInstallation() {
                   project={recalculated}
                   settings={settings}
                   onUpdateProject={updateProject}
+                  incompleteDimensionalIds={incompleteDimensionalIds}
                 />
               </TabsContent>
 

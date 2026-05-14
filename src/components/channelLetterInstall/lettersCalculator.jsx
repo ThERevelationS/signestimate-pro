@@ -51,8 +51,9 @@ export const emptyLetterPurchase = (type = "channel_flush_mounted") => ({
   letter_type: type,
   description: "",
   raceway_index: 1,
-  qty: type === "raceway" ? 1 : 5,
-  size_value: type === "raceway" ? 8 : type.startsWith("channel_") ? 24 : 6,
+  // Dimensional letters: nothing prefilled — user MUST configure via Build Fab Cost modal
+  qty: type === "dimensional_letters" ? 0 : type === "raceway" ? 1 : 5,
+  size_value: type === "dimensional_letters" ? 0 : type === "raceway" ? 8 : type.startsWith("channel_") ? 24 : 6,
   // For combined raceway-mounted rows: track the raceway hardware alongside the letters
   raceway_length_feet: type === "channel_raceway_mounted" ? 8 : 0,
   raceway_qty: type === "channel_raceway_mounted" ? 1 : 0,

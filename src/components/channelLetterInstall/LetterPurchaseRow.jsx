@@ -35,7 +35,7 @@ const TYPE_COLOR = {
   dimensional_letters: "bg-emerald-100 text-emerald-800 border-emerald-200",
 };
 
-export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemove, onDuplicate, index }) {
+export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemove, onDuplicate, index, fabHighlight = false }) {
   const sizeUnit = SIZE_UNITS[purchase.letter_type];
   const autoUnitCost = resolveUnitCost({ ...purchase, unit_cost_override: false }, settings);
   const effectiveUnit = purchase.unit_cost_override ? (parseFloat(purchase.unit_cost) || 0) : autoUnitCost;
@@ -291,15 +291,26 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
               </div>
             </div>
           ) : (
-            <Button
-              variant="outline"
-              onClick={() => setFabModalOpen(true)}
-              className="w-full border-2 border-dashed border-emerald-300 bg-emerald-50/40 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400"
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              Build Fab Cost from CNC + Paint
-              <span className="text-[10px] ml-2 text-emerald-600">(otherwise uses flat $/sqft)</span>
-            </Button>
+            <div className="space-y-1.5">
+              <Button
+                variant="outline"
+                onClick={() => setFabModalOpen(true)}
+                className={
+                  fabHighlight
+                    ? "w-full border-2 border-red-500 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-600 animate-pulse shadow-md"
+                    : "w-full border-2 border-dashed border-emerald-300 bg-emerald-50/40 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400"
+                }
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                Build Fab Cost from CNC + Paint
+                <span className="text-[10px] ml-2 opacity-80">(required for dimensional letters)</span>
+              </Button>
+              {fabHighlight && (
+                <p className="text-xs text-red-600 font-medium text-center">
+                  Required — click above to configure material, CNC &amp; paint.
+                </p>
+              )}
+            </div>
           )}
           <DimensionalFabModal
             open={fabModalOpen}

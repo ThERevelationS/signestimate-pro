@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Plus, Type, Truck, Receipt, Info, Settings, Sparkles, ChevronDown } from "lucide-react";
+import { Plus, Type, Truck, Receipt, Info, Settings, Sparkles, ChevronDown, ArrowUp } from "lucide-react";
 import LetterPurchaseRow from "./LetterPurchaseRow";
 import AIScopeWriterModal from "./AIScopeWriterModal";
 import { emptyLetterPurchase, LETTER_TYPE_LABELS } from "./lettersCalculator";
@@ -20,10 +20,11 @@ const QUICK_ADD = [
   { type: "dimensional_letters", label: "+ Dimensional Letters", color: "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200" },
 ];
 
-export default function LettersPurchaseTab({ project, settings, onUpdateProject }) {
+export default function LettersPurchaseTab({ project, settings, onUpdateProject, incompleteDimensionalIds = [] }) {
   const purchases = project.letter_purchases || [];
   const [aiOpen, setAiOpen] = React.useState(false);
   const [feesOpen, setFeesOpen] = React.useState(false);
+  const incompleteSet = React.useMemo(() => new Set(incompleteDimensionalIds || []), [incompleteDimensionalIds]);
 
   const addPurchase = (type) => {
     const p = emptyLetterPurchase(type);
@@ -117,13 +118,16 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject 
       {/* Purchase rows */}
       {purchases.length === 0 ? (
         <Card className="border-2 border-dashed border-slate-300 bg-white/50">
-          <CardContent className="p-12 text-center text-slate-500">
-            <Type className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-            <p className="mb-3 font-medium">No letter purchases yet</p>
-            <p className="text-xs mb-4">Use the quick-add buttons above to start.</p>
-            <Button onClick={() => addPurchase("channel_flush_mounted")} className="bg-purple-600 hover:bg-purple-700 text-white">
-              <Plus className="w-4 h-4 mr-2" /> Add Flush Mounted Letters
-            </Button>
+          <CardContent className="p-10 text-center text-slate-500">
+            <div className="flex items-end justify-center gap-2 mb-3 h-12 text-purple-500">
+              <ArrowUp className="w-6 h-6 animate-bounce" style={{ animationDelay: "0ms" }} />
+              <ArrowUp className="w-7 h-7 animate-bounce" style={{ animationDelay: "120ms" }} />
+              <ArrowUp className="w-8 h-8 animate-bounce" style={{ animationDelay: "240ms" }} />
+              <ArrowUp className="w-7 h-7 animate-bounce" style={{ animationDelay: "120ms" }} />
+              <ArrowUp className="w-6 h-6 animate-bounce" style={{ animationDelay: "0ms" }} />
+            </div>
+            <p className="mb-1 font-semibold text-slate-700">Add Product</p>
+            <p className="text-xs">Use the quick-add buttons above to choose a letter type.</p>
           </CardContent>
         </Card>
       ) : (
@@ -137,6 +141,7 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject 
               onUpdate={(next) => updatePurchase(idx, next)}
               onRemove={() => removePurchase(idx)}
               onDuplicate={() => duplicatePurchase(idx)}
+              fabHighlight={incompleteSet.has(p.id)}
             />
           ))}
         </div>
