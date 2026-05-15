@@ -10,6 +10,7 @@ import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
 import { useToast } from "@/components/ui/use-toast";
 import { WALL_MATERIALS } from "@/components/channelLetterInstall/wallMaterials";
 import { refreshFuelPrice } from "@/functions/refreshFuelPrice";
+import AutoGrowNotes from "@/components/channelLetterInstall/AutoGrowNotes";
 
 // Helper to build a set of base-time settings for a given installation type
 const buildBaseTimeSet = (category, prefix, typeLabel, includeElectrical, defaults) => {
@@ -24,9 +25,12 @@ const buildBaseTimeSet = (category, prefix, typeLabel, includeElectrical, defaul
   const out = [];
   sizes.forEach(s => {
     out.push({ name: `install_${prefix}_drill_rate_${s.key}`, type: "number", category, label: `${s.label} — Drill Pattern / Drill Time`, suffix: "min/letter", description: `Minutes per ${s.label} letter for layout, drill pattern, and drilling (${typeLabel})`, default: String(s.drillD) });
+    out.push({ name: `install_${prefix}_drill_rate_${s.key}__notes`, type: "text", category, label: `${s.label} — Drill Pattern / Drill Time — Notes`, description: `Internal notes for the ${s.label} drill time (${typeLabel})`, default: "" });
     out.push({ name: `install_${prefix}_prep_rate_${s.key}`, type: "number", category, label: `${s.label} — Installation / Prep Time`, suffix: "min/letter", description: `Minutes per ${s.label} letter for prep, mounting, and finish install (${typeLabel})`, default: String(s.prepD) });
+    out.push({ name: `install_${prefix}_prep_rate_${s.key}__notes`, type: "text", category, label: `${s.label} — Installation / Prep Time — Notes`, description: `Internal notes for the ${s.label} prep time (${typeLabel})`, default: "" });
     if (includeElectrical) {
       out.push({ name: `install_${prefix}_electrical_rate_${s.key}`, type: "number", category, label: `${s.label} — Electrical Hookup`, suffix: "min/letter", description: `Baseline minutes per ${s.label} letter for electrical hookup (${typeLabel})`, default: String(s.elecD) });
+      out.push({ name: `install_${prefix}_electrical_rate_${s.key}__notes`, type: "text", category, label: `${s.label} — Electrical Hookup — Notes`, description: `Internal notes for the ${s.label} electrical hookup time (${typeLabel})`, default: "" });
     }
   });
   return out;
@@ -40,28 +44,46 @@ const settingsDefinitions = [
 
   // Base Installation Times — Channel Flush-Mount (the original/legacy set, names kept for backward compat)
   { name: "install_drill_rate_extra_small", type: "number", category: "install_rates_flush", label: "XS — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per XS letter for layout, drill pattern, and drilling", default: "15" },
+  { name: "install_drill_rate_extra_small__notes", type: "text", category: "install_rates_flush", label: "XS — Drill Pattern / Drill Time — Notes", description: "Internal notes for XS drill time", default: "" },
   { name: "install_prep_rate_extra_small", type: "number", category: "install_rates_flush", label: "XS — Installation / Prep Time", suffix: "min/letter", description: "Minutes per XS letter for prep, mounting, and finish install", default: "30" },
+  { name: "install_prep_rate_extra_small__notes", type: "text", category: "install_rates_flush", label: "XS — Installation / Prep Time — Notes", description: "Internal notes for XS prep time", default: "" },
   { name: "install_electrical_rate_extra_small", type: "number", category: "install_rates_flush", label: "XS — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per XS letter for electrical hookup", default: "5" },
+  { name: "install_electrical_rate_extra_small__notes", type: "text", category: "install_rates_flush", label: "XS — Electrical Hookup — Notes", description: "Internal notes for XS electrical hookup", default: "" },
 
   { name: "install_drill_rate_small", type: "number", category: "install_rates_flush", label: "Small — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per small letter for layout, drill pattern, and drilling", default: "30" },
+  { name: "install_drill_rate_small__notes", type: "text", category: "install_rates_flush", label: "Small — Drill Pattern / Drill Time — Notes", description: "Internal notes for Small drill time", default: "" },
   { name: "install_prep_rate_small", type: "number", category: "install_rates_flush", label: "Small — Installation / Prep Time", suffix: "min/letter", description: "Minutes per small letter for prep, mounting, and finish install", default: "60" },
+  { name: "install_prep_rate_small__notes", type: "text", category: "install_rates_flush", label: "Small — Installation / Prep Time — Notes", description: "Internal notes for Small prep time", default: "" },
   { name: "install_electrical_rate_small", type: "number", category: "install_rates_flush", label: "Small — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per small letter for electrical hookup", default: "10" },
+  { name: "install_electrical_rate_small__notes", type: "text", category: "install_rates_flush", label: "Small — Electrical Hookup — Notes", description: "Internal notes for Small electrical hookup", default: "" },
 
   { name: "install_drill_rate_medium", type: "number", category: "install_rates_flush", label: "Medium — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per medium letter for layout, drill pattern, and drilling", default: "50" },
+  { name: "install_drill_rate_medium__notes", type: "text", category: "install_rates_flush", label: "Medium — Drill Pattern / Drill Time — Notes", description: "Internal notes for Medium drill time", default: "" },
   { name: "install_prep_rate_medium", type: "number", category: "install_rates_flush", label: "Medium — Installation / Prep Time", suffix: "min/letter", description: "Minutes per medium letter for prep, mounting, and finish install", default: "100" },
+  { name: "install_prep_rate_medium__notes", type: "text", category: "install_rates_flush", label: "Medium — Installation / Prep Time — Notes", description: "Internal notes for Medium prep time", default: "" },
   { name: "install_electrical_rate_medium", type: "number", category: "install_rates_flush", label: "Medium — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per medium letter for electrical hookup", default: "15" },
+  { name: "install_electrical_rate_medium__notes", type: "text", category: "install_rates_flush", label: "Medium — Electrical Hookup — Notes", description: "Internal notes for Medium electrical hookup", default: "" },
 
   { name: "install_drill_rate_large", type: "number", category: "install_rates_flush", label: "Large — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per large letter for layout, drill pattern, and drilling", default: "80" },
+  { name: "install_drill_rate_large__notes", type: "text", category: "install_rates_flush", label: "Large — Drill Pattern / Drill Time — Notes", description: "Internal notes for Large drill time", default: "" },
   { name: "install_prep_rate_large", type: "number", category: "install_rates_flush", label: "Large — Installation / Prep Time", suffix: "min/letter", description: "Minutes per large letter for prep, mounting, and finish install", default: "160" },
+  { name: "install_prep_rate_large__notes", type: "text", category: "install_rates_flush", label: "Large — Installation / Prep Time — Notes", description: "Internal notes for Large prep time", default: "" },
   { name: "install_electrical_rate_large", type: "number", category: "install_rates_flush", label: "Large — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per large letter for electrical hookup", default: "20" },
+  { name: "install_electrical_rate_large__notes", type: "text", category: "install_rates_flush", label: "Large — Electrical Hookup — Notes", description: "Internal notes for Large electrical hookup", default: "" },
 
   { name: "install_drill_rate_extra_large", type: "number", category: "install_rates_flush", label: "XL — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per XL letter for layout, drill pattern, and drilling", default: "120" },
+  { name: "install_drill_rate_extra_large__notes", type: "text", category: "install_rates_flush", label: "XL — Drill Pattern / Drill Time — Notes", description: "Internal notes for XL drill time", default: "" },
   { name: "install_prep_rate_extra_large", type: "number", category: "install_rates_flush", label: "XL — Installation / Prep Time", suffix: "min/letter", description: "Minutes per XL letter for prep, mounting, and finish install", default: "240" },
+  { name: "install_prep_rate_extra_large__notes", type: "text", category: "install_rates_flush", label: "XL — Installation / Prep Time — Notes", description: "Internal notes for XL prep time", default: "" },
   { name: "install_electrical_rate_extra_large", type: "number", category: "install_rates_flush", label: "XL — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per XL letter for electrical hookup", default: "25" },
+  { name: "install_electrical_rate_extra_large__notes", type: "text", category: "install_rates_flush", label: "XL — Electrical Hookup — Notes", description: "Internal notes for XL electrical hookup", default: "" },
 
   { name: "install_drill_rate_extra_extra_large", type: "number", category: "install_rates_flush", label: "XXL — Drill Pattern / Drill Time", suffix: "min/letter", description: "Minutes per XXL letter for layout, drill pattern, and drilling", default: "170" },
+  { name: "install_drill_rate_extra_extra_large__notes", type: "text", category: "install_rates_flush", label: "XXL — Drill Pattern / Drill Time — Notes", description: "Internal notes for XXL drill time", default: "" },
   { name: "install_prep_rate_extra_extra_large", type: "number", category: "install_rates_flush", label: "XXL — Installation / Prep Time", suffix: "min/letter", description: "Minutes per XXL letter for prep, mounting, and finish install", default: "340" },
+  { name: "install_prep_rate_extra_extra_large__notes", type: "text", category: "install_rates_flush", label: "XXL — Installation / Prep Time — Notes", description: "Internal notes for XXL prep time", default: "" },
   { name: "install_electrical_rate_extra_extra_large", type: "number", category: "install_rates_flush", label: "XXL — Electrical Hookup", suffix: "min/letter", description: "Baseline minutes per XXL letter for electrical hookup", default: "30" },
+  { name: "install_electrical_rate_extra_extra_large__notes", type: "text", category: "install_rates_flush", label: "XXL — Electrical Hookup — Notes", description: "Internal notes for XXL electrical hookup", default: "" },
 
   // Base Installation Times — Halo-Lit (mirrors flush defaults; user can tune separately)
   ...buildBaseTimeSet("install_rates_halo", "halo", "Halo-Lit", true, {
@@ -475,22 +497,34 @@ export default function ChannelLetterInstallationSettings() {
     const renderField = (name, label) => {
       if (!name) return null;
       const value = settings[name];
+      const notesName = `${name}__notes`;
+      const notesValue = settings[notesName];
       return (
         <div>
           <div className="flex items-baseline justify-between mb-1">
             <Label htmlFor={name} className="text-xs font-medium text-slate-700">{label}</Label>
             <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">min</span>
           </div>
-          <Input
-            type="number"
-            step="1"
-            id={name}
-            value={value || ""}
-            onChange={(e) => updateSetting(name, e.target.value)}
-            disabled={isLocked}
-            className="h-9 bg-white border-slate-200 focus:border-slate-400 focus:ring-0 text-sm tabular-nums font-medium"
-            min="0"
-          />
+          <div className="flex items-start gap-2">
+            <Input
+              type="number"
+              step="1"
+              id={name}
+              value={value || ""}
+              onChange={(e) => updateSetting(name, e.target.value)}
+              disabled={isLocked}
+              className="h-9 w-16 flex-shrink-0 bg-white border-slate-200 focus:border-slate-400 focus:ring-0 text-sm tabular-nums font-medium px-2"
+              min="0"
+              maxLength={3}
+            />
+            <AutoGrowNotes
+              value={notesValue}
+              onChange={(v) => updateSetting(notesName, v)}
+              disabled={isLocked}
+              className="flex-1 min-w-0"
+              minHeightPx={36}
+            />
+          </div>
         </div>
       );
     };
