@@ -6,16 +6,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Save, Server, UserPlus, Paintbrush, Zap, Router, Wrench, Anchor } from 'lucide-react';
+import { Users, Save, Server, UserPlus, Paintbrush, Zap, Router, Wrench, Anchor, Grid3x3 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
+// Keep in sync with Layout.jsx sidebar and ModuleStatus entity enum.
 const moduleDetails = {
-  painting: { label: "Painting Module", icon: Paintbrush },
-  laser: { label: "Laser Module", icon: Zap },
-  cnc: { label: "CNC Module", icon: Router },
-  metal_fabrication: { label: "Metal Fabrication Module", icon: Wrench },
-  channel_letter_installation: { label: "Channel Letter Installation Module", icon: Wrench },
-  foundation: { label: "Concrete | Masonry | Poles Module", icon: Anchor },
+  channel_letter_installation: { label: "Channel & Dimensional Letters | Lobby Signs", icon: Wrench, group: "top" },
+  foundation: { label: "Concrete | Masonry | Poles", icon: Anchor, group: "top" },
+  brick_stone: { label: "Brick & Stone", icon: Grid3x3, group: "top" },
+  painting: { label: "Paint Estimator", icon: Paintbrush, group: "fab" },
+  laser: { label: "Laser Cutting & Engraving", icon: Zap, group: "fab" },
+  cnc: { label: "CNC Routing", icon: Router, group: "fab" },
+  metal_fabrication: { label: "Metal Fabrication", icon: Wrench, group: "fab" },
 };
 
 export default function UserManagementTab() {
