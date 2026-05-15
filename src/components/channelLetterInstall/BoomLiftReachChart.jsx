@@ -202,26 +202,26 @@ export default function BoomLiftReachChart({ installationHeightFeet }) {
 
           {/* Chart */}
           <div className="bg-white border border-slate-200 rounded-lg p-2">
-            <ResponsiveContainer width="100%" height={220}>
-              <ComposedChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 24 }}>
+            <ResponsiveContainer width="100%" height={180}>
+              <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 36 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis
                   dataKey="building_height"
                   type="number"
                   domain={[0, "dataMax"]}
                   tick={{ fontSize: 10, fill: "#64748b" }}
-                  label={{ value: "Building Height (ft)", position: "insideBottom", offset: -8, fontSize: 11, fill: "#475569" }}
+                  label={{ value: "Building Height (ft)", position: "insideBottom", offset: -20, fontSize: 11, fill: "#475569" }}
                 />
                 <YAxis
                   tick={{ fontSize: 10, fill: "#64748b" }}
-                  label={{ value: "Max Parking Distance (ft)", angle: -90, position: "insideLeft", offset: 12, fontSize: 11, fill: "#475569" }}
+                  label={{ value: "Parking Dist (ft)", angle: -90, position: "insideLeft", offset: 14, fontSize: 11, fill: "#475569", style: { textAnchor: "middle" } }}
                 />
                 <Tooltip
                   contentStyle={{ fontSize: 11, padding: "4px 8px", borderRadius: 6 }}
                   formatter={(v) => (v == null ? "out of reach" : `${v} ft`)}
                   labelFormatter={(v) => `Building height: ${v} ft`}
                 />
-                <Legend wrapperStyle={{ fontSize: 10 }} />
+                <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} verticalAlign="top" height={20} />
                 <Area
                   type="monotone"
                   dataKey="parking_distance"

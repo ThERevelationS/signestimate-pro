@@ -20,7 +20,7 @@ import { categorizePaintProject } from "@/components/markup/projectCategorizer";
 import PaintCoverageHelper from "@/components/channelLetterInstall/PaintCoverageHelper";
 import { TrendingUp } from "lucide-react";
 
-const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/16", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8", "1", "1-1/8", "1-1/4", "1-3/8", "1-1/2", "1-5/8", "1-3/4", "1-7/8", "2", "2-1/4", "2-1/2", "2-3/4", "3", "3-1/4", "3-1/2", "3-3/4", "4"];
+const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8", "1", "1-1/8", "1-1/4", "1-3/8", "1-1/2", "1-5/8", "1-3/4", "1-7/8", "2", "2-1/4", "2-1/2", "2-3/4", "3", "3-1/4", "3-1/2", "3-3/4", "4"];
 const coverageFactors = ["1/8", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8", "1", "1-1/8", "1-1/4", "1-3/8", "1-1/2", "1-5/8", "1-3/4", "1-7/8", "2"];
 
 const parseImperialFraction = (fractionString) => {
@@ -183,7 +183,9 @@ export default function NewPaintEstimate() {
 
     if (item.item_type === 'panel' && item.length > 0 && item.width > 0) {
       const faceArea = item.length * item.width / 144;
-      paintableSqFt = item.paint_sides === 'both_sides' ? faceArea * 2 : faceArea;
+      const perimeterInches = 2 * (item.length + item.width);
+      const edgeArea = itemThicknessDecimal > 0 ? perimeterInches * itemThicknessDecimal / 144 : 0;
+      paintableSqFt = item.paint_sides === 'both_sides' ? faceArea * 2 + edgeArea : faceArea + edgeArea;
     } else if (item.item_type === 'lettering' && item.width > 0 && item.length > 0 && itemThicknessDecimal > 0) {
       const letterHeight = item.width;
       const numLetters = item.length;
@@ -435,7 +437,7 @@ export default function NewPaintEstimate() {
         item.letter_size = 'extra_large';
       }
 
-      if (['length', 'width', 'item_type'].includes(field) && item.length > 0 && item.width > 0) {
+      if (['length', 'width', 'item_type', 'thickness'].includes(field) && item.length > 0 && item.width > 0) {
         if (item.item_type === 'panel' || item.item_type === 'complex_shapes') {
           const faceArea = item.length * item.width / 144;
           item.paint_mask_sqft = item.paint_sides === 'both_sides' ? faceArea * 2 : faceArea;
@@ -453,7 +455,9 @@ export default function NewPaintEstimate() {
 
       if (item.item_type === 'panel' && item.length > 0 && item.width > 0) {
         const faceArea = item.length * item.width / 144;
-        paintableSqFt = item.paint_sides === 'both_sides' ? faceArea * 2 : faceArea;
+        const perimeterInches = 2 * (item.length + item.width);
+        const edgeArea = itemThicknessDecimal > 0 ? perimeterInches * itemThicknessDecimal / 144 : 0;
+        paintableSqFt = item.paint_sides === 'both_sides' ? faceArea * 2 + edgeArea : faceArea + edgeArea;
       } else if (item.item_type === 'lettering' && item.width > 0 && item.length > 0 && itemThicknessDecimal > 0) {
         const letterHeight = item.width;
         const numLetters = item.length;
