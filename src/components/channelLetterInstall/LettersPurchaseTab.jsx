@@ -85,6 +85,30 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject,
 
   const purchasesTotal = purchases.reduce((s, p) => s + (parseFloat(p.total_cost) || 0), 0);
 
+  // Aggregate dimensional-letter cost breakdown across all dimensional rows.
+  // Pulls Material / Cutting (CNC or Laser) / Paint / Backer totals from each row's fab_config.
+  const dimensionalBreakdown = React.useMemo(() => {
+    const acc = { material: 0, cnc: 0, laser: 0, paint: 0, backer: 0 };
+    let hasAny = false;
+    for (const p of purchases) {
+      if (p.letter_type !== "dimensional_letters") continue;
+      const fc = p.fab_config;
+      if (!fc) continue;
+      const qty = parseFloat(p.qty) || 0;
+      if (qty <= 0) continue;
+      hasAny = true;
+      acc.material += (parseFloat(fc.unit_material_cost) || 0) * qty;
+      const cutCostTotal = (parseFloat(fc.unit_cut_cost) || 0) * qty;
+      if (fc.cutting_method === "laser") acc.laser += cutCostTotal;
+      else acc.cnc += cutCostTotal;
+      acc.paint += (parseFloat(fc.unit_paint_cost) || 0) * qty;
+      if (p.backer_enabled && p.backer_fab_config?.unit_total_cost) {
+        acc.backer += (parseFloat(p.backer_fab_config.unit_total_cost) || 0) * qty;
+      }
+    }
+    return { ...acc, hasAny };
+  }, [purchases]);
+
   return (
     <div className="space-y-3">
       {/* Intro / quick-add */}
@@ -221,6 +245,29 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject,
       {/* Rollup */}
       <Card className="bg-gradient-to-r from-slate-900 to-slate-800 text-white border-0">
         <CardContent className="p-4 space-y-2">
+          {/* Dimensional letter cost breakdown — Material / CNC / Laser / Paint / Backer */}
+          {dimensionalBreakdown.hasAny && (
+            <div className="bg-white/5 rounded-lg p-3 mb-1 space-y-1 border border-white/10">
+              <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">
+                Dimensional Letter Breakdown
+              </p>
+              {dimensionalBreakdown.material > 0 && (
+                <BreakdownRow label="Material (sheet)" value={dimensionalBreakdown.material} />
+              )}
+              {dimensionalBreakdown.cnc > 0 && (
+                <BreakdownRow label="CNC Routing" value={dimensionalBreakdown.cnc} />
+              )}
+              {dimensionalBreakdown.laser > 0 && (
+                <BreakdownRow label="Laser Cutting" value={dimensionalBreakdown.laser} />
+              )}
+              {dimensionalBreakdown.paint > 0 && (
+                <BreakdownRow label="Paint" value={dimensionalBreakdown.paint} />
+              )}
+              {dimensionalBreakdown.backer > 0 && (
+                <BreakdownRow label="Backer Panel" value={dimensionalBreakdown.backer} />
+              )}
+            </div>
+          )}
           <div className="flex justify-between text-sm">
             <span className="text-slate-300">Letters Subtotal</span>
             <span className="tabular-nums font-medium">{fmt(purchasesTotal)}</span>
@@ -287,5 +334,12 @@ const RollupRow = ({ label, value }) => (
   <div className="flex justify-between text-xs text-slate-400">
     <span>{label}</span>
     <span className="tabular-nums">{`$${(parseFloat(value) || 0).toFixed(2)}`}</span>
+  </div>
+);
+
+const BreakdownRow = ({ label, value }) => (
+  <div className="flex justify-between text-xs">
+    <span className="text-slate-300">{label}</span>
+    <span className="tabular-nums text-slate-100 font-medium">{`$${(parseFloat(value) || 0).toFixed(2)}`}</span>
   </div>
 );

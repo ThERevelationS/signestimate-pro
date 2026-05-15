@@ -46,20 +46,6 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
 
   const update = (patch) => onUpdate({ ...purchase, ...patch });
 
-  const handleTypeChange = (newType) => {
-    // Reset size_value to a sensible default for the new type
-    let size_value = purchase.size_value;
-    if (SIZE_UNITS[newType] !== sizeUnit) {
-      size_value = newType === "raceway" ? 8 : newType.startsWith("channel_") ? 24 : 6;
-    }
-    update({
-      letter_type: newType,
-      size_value,
-      unit_cost_override: false,
-      create_install_item: newType !== "raceway",
-    });
-  };
-
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
       {/* Header row */}
@@ -85,22 +71,8 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
         </div>
       </div>
 
-      {/* Type + raceway-index selector */}
-      <div className="grid md:grid-cols-3 gap-3">
-        <div>
-          <Label className="text-xs">Letter Type</Label>
-          <Select value={purchase.letter_type} onValueChange={handleTypeChange}>
-            <SelectTrigger className="mt-1 h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(LETTER_TYPE_LABELS).map(([v, l]) => (
-                <SelectItem key={v} value={v}>{l}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
+      {/* Raceway-tier selector (only for raceway types) + Description */}
+      <div className={`grid gap-3 ${(purchase.letter_type === "raceway" || isCombinedRaceway) ? "md:grid-cols-2" : "md:grid-cols-1"}`}>
         {(purchase.letter_type === "raceway" || isCombinedRaceway) && (
           <div>
             <Label className="text-xs">Raceway Tier</Label>
@@ -121,7 +93,7 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
           </div>
         )}
 
-        <div className={(purchase.letter_type === "raceway" || isCombinedRaceway) ? "" : "md:col-span-2"}>
+        <div>
           <Label className="text-xs">Description (optional)</Label>
           <Input
             value={purchase.description || ""}
@@ -140,19 +112,44 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
         </div>
       )}
 
-      {/* Numbers — Area/sqft hidden for dimensional letters (set inside fab modal via W×H) */}
-      <div className={`grid grid-cols-2 ${isDimensional ? "md:grid-cols-3" : "md:grid-cols-4"} gap-3`}>
-        <div>
-          <Label className="text-xs">{QTY_LABEL[purchase.letter_type]}</Label>
-          <Input
-            type="number"
-            min="0"
-            value={purchase.qty}
-            onChange={(e) => update({ qty: parseFloat(e.target.value) || 0 })}
-            className="mt-1 h-9"
-          />
+      {/* Numbers — for dimensional letters, only show "# of Letters" (other fields are driven by the inline builder below) */}
+      {isDimensional ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div>
+            <Label className="text-xs">{QTY_LABEL[purchase.letter_type]}</Label>
+            <Input
+              type="number"
+              min="0"
+              value={purchase.qty}
+              onChange={(e) => update({ qty: parseFloat(e.target.value) || 0 })}
+              className="mt-1 h-9"
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Per-Letter Cost</Label>
+            <div className="mt-1 h-9 flex items-center px-3 bg-slate-50 rounded-md border border-slate-200 font-semibold tabular-nums text-slate-700">
+              {fmt(purchase.fab_config?.unit_total_cost)}
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Line Total</Label>
+            <div className="mt-1 h-9 flex items-center px-3 bg-emerald-50 rounded-md border border-emerald-200 font-semibold tabular-nums text-emerald-800">
+              {fmt(purchase.total_cost)}
+            </div>
+          </div>
         </div>
-        {!isDimensional && (
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <Label className="text-xs">{QTY_LABEL[purchase.letter_type]}</Label>
+            <Input
+              type="number"
+              min="0"
+              value={purchase.qty}
+              onChange={(e) => update({ qty: parseFloat(e.target.value) || 0 })}
+              className="mt-1 h-9"
+            />
+          </div>
           <div>
             <Label className="text-xs">{SIZE_LABEL[sizeUnit]}</Label>
             <Input
@@ -164,39 +161,39 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
               className="mt-1 h-9"
             />
           </div>
-        )}
-        <div>
-          <Label className="text-xs flex items-center justify-between">
-            <span>Unit Cost</span>
-            <label className="flex items-center gap-1 text-[10px] text-slate-500 font-normal">
-              <Checkbox
-                checked={!!purchase.unit_cost_override}
-                onCheckedChange={(c) => update({ unit_cost_override: !!c, unit_cost: !!c ? effectiveUnit : 0 })}
-                className="h-3 w-3"
+          <div>
+            <Label className="text-xs flex items-center justify-between">
+              <span>Unit Cost</span>
+              <label className="flex items-center gap-1 text-[10px] text-slate-500 font-normal">
+                <Checkbox
+                  checked={!!purchase.unit_cost_override}
+                  onCheckedChange={(c) => update({ unit_cost_override: !!c, unit_cost: !!c ? effectiveUnit : 0 })}
+                  className="h-3 w-3"
+                />
+                Override
+              </label>
+            </Label>
+            <div className="relative mt-1">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                disabled={!purchase.unit_cost_override}
+                value={purchase.unit_cost_override ? purchase.unit_cost : autoUnitCost.toFixed(2)}
+                onChange={(e) => update({ unit_cost: parseFloat(e.target.value) || 0 })}
+                className="h-9 pl-6"
               />
-              Override
-            </label>
-          </Label>
-          <div className="relative mt-1">
-            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              disabled={!purchase.unit_cost_override}
-              value={purchase.unit_cost_override ? purchase.unit_cost : autoUnitCost.toFixed(2)}
-              onChange={(e) => update({ unit_cost: parseFloat(e.target.value) || 0 })}
-              className="h-9 pl-6"
-            />
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">{isCombinedRaceway ? "Letters Total" : "Line Total"}</Label>
+            <div className="mt-1 h-9 flex items-center px-3 bg-slate-50 rounded-md border border-slate-200 font-semibold tabular-nums">
+              {fmt(isCombinedRaceway ? purchase.letters_total : purchase.total_cost)}
+            </div>
           </div>
         </div>
-        <div>
-          <Label className="text-xs">{isCombinedRaceway ? "Letters Total" : "Line Total"}</Label>
-          <div className="mt-1 h-9 flex items-center px-3 bg-slate-50 rounded-md border border-slate-200 font-semibold tabular-nums">
-            {fmt(isCombinedRaceway ? purchase.letters_total : purchase.total_cost)}
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Raceway hardware section — shown only for combined raceway-mounted rows */}
       {isCombinedRaceway && (
