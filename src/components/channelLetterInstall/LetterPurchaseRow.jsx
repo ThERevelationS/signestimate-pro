@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Trash2, Copy, Link2, Sparkles, Box, Router, Paintbrush } from "lucide-react";
 import { LETTER_TYPE_LABELS, SIZE_UNITS, resolveUnitCost } from "./lettersCalculator";
 import DimensionalFabModal from "./DimensionalFabModal";
+import BackerSection from "./BackerSection";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 
@@ -43,6 +44,7 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
   const isDimensional = purchase.letter_type === "dimensional_letters";
   const hasFabConfig = isDimensional && !!purchase.fab_config?.unit_total_cost;
   const isCombinedRaceway = purchase.letter_type === "channel_raceway_mounted";
+  const backerEnabled = isDimensional && !!purchase.backer_enabled;
 
   const update = (patch) => onUpdate({ ...purchase, ...patch });
 
@@ -65,7 +67,7 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
       {/* Header row */}
       <div className="flex items-center gap-2 flex-wrap">
         <Badge className={`${TYPE_COLOR[purchase.letter_type] || "bg-slate-100"} font-medium`}>
-          #{index + 1} · {LETTER_TYPE_LABELS[purchase.letter_type]}
+          #{index + 1} · {backerEnabled ? "Dimensional Letters w/ Backer" : LETTER_TYPE_LABELS[purchase.letter_type]}
         </Badge>
         {purchase.create_install_item && purchase.letter_type !== "raceway" && (
           <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
@@ -140,8 +142,8 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
         </div>
       )}
 
-      {/* Numbers */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* Numbers — Area/sqft hidden for dimensional letters (set inside fab modal via W×H) */}
+      <div className={`grid grid-cols-2 ${isDimensional ? "md:grid-cols-3" : "md:grid-cols-4"} gap-3`}>
         <div>
           <Label className="text-xs">{QTY_LABEL[purchase.letter_type]}</Label>
           <Input
@@ -152,17 +154,19 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
             className="mt-1 h-9"
           />
         </div>
-        <div>
-          <Label className="text-xs">{SIZE_LABEL[sizeUnit]}</Label>
-          <Input
-            type="number"
-            min="0"
-            step="0.01"
-            value={purchase.size_value}
-            onChange={(e) => update({ size_value: parseFloat(e.target.value) || 0 })}
-            className="mt-1 h-9"
-          />
-        </div>
+        {!isDimensional && (
+          <div>
+            <Label className="text-xs">{SIZE_LABEL[sizeUnit]}</Label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={purchase.size_value}
+              onChange={(e) => update({ size_value: parseFloat(e.target.value) || 0 })}
+              className="mt-1 h-9"
+            />
+          </div>
+        )}
         <div>
           <Label className="text-xs flex items-center justify-between">
             <span>Unit Cost</span>
@@ -318,6 +322,25 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
             purchase={purchase}
             onSave={(patch) => update(patch)}
           />
+
+          {/* Backer panel section — shown only when backer is enabled */}
+          {backerEnabled && (
+            <div className="mt-3">
+              <BackerSection
+                purchase={purchase}
+                onUpdate={(patch) => update(patch)}
+                onDisable={() => update({
+                  backer_enabled: false,
+                  backer_material_id: null,
+                  backer_standoff_inventory_id: null,
+                  backer_standoff_qty: 0,
+                  backer_fab_config: null,
+                  backer_width_inches: 0,
+                  backer_height_inches: 0,
+                })}
+              />
+            </div>
+          )}
         </div>
       )}
 

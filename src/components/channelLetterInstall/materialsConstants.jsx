@@ -6,6 +6,7 @@ export const APPLIES_TO_GROUPS = [
   { value: "halo_lit", label: "Halo-Lit", color: "bg-amber-100 text-amber-800 border-amber-200" },
   { value: "raceway", label: "Raceway", color: "bg-purple-100 text-purple-800 border-purple-200" },
   { value: "dimensional_lettering", label: "Dimensional Lettering", color: "bg-teal-100 text-teal-800 border-teal-200" },
+  { value: "backer", label: "Backer (Standoffs & Hardware)", color: "bg-orange-100 text-orange-800 border-orange-200" },
 ];
 
 // All concrete installation type values used for grouping.
@@ -34,6 +35,7 @@ export const APPLIES_TO_LABEL = {
   halo_lit: "Halo-Lit",
   raceway: "Raceway",
   dimensional_lettering: "Dimensional Lettering",
+  backer: "Backer (Standoffs & Hardware)",
 };
 
 export const emptyMaterialItem = () => ({

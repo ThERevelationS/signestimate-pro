@@ -12,6 +12,7 @@
         "halo_lit",
         "raceway",
         "dimensional_lettering",
+        "backer",
         "all"
       ],
       "default": "all",
@@ -25,7 +26,8 @@
           "flush_mount",
           "halo_lit",
           "raceway",
-          "dimensional_lettering"
+          "dimensional_lettering",
+          "backer"
         ]
       },
       "description": "Installation types this material applies to. Empty array = applies to all."

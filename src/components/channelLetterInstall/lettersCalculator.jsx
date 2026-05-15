@@ -63,6 +63,14 @@ export const emptyLetterPurchase = (type = "channel_flush_mounted") => ({
   create_install_item: type !== "raceway", // raceway is purchase-only by default
   install_height_feet: 12,
   wall_material: "eifs",
+  // Backer (dimensional letters only) — disabled by default
+  backer_enabled: false,
+  backer_material_id: null,
+  backer_width_inches: 0,
+  backer_height_inches: 0,
+  backer_standoff_inventory_id: null,
+  backer_standoff_qty: 0,
+  backer_fab_config: null,
 });
 
 // Resolve the unit cost for a purchase row from settings
@@ -115,13 +123,20 @@ export const calcLetterPurchase = (purchase, settings) => {
     raceway_total = rwPerFt * rwLen * rwQty;
   }
 
-  const total_cost = letters_total + raceway_total;
+  // Backer add-on (dimensional letters only) — total backer fab × qty of letters
+  let backer_total = 0;
+  if (purchase.letter_type === "dimensional_letters" && purchase.backer_enabled && purchase.backer_fab_config?.unit_total_cost) {
+    backer_total = num(purchase.backer_fab_config.unit_total_cost) * qty;
+  }
+
+  const total_cost = letters_total + raceway_total + backer_total;
 
   return {
     ...purchase,
     unit_cost,
     letters_total,
     raceway_total,
+    backer_total,
     raceway_unit_cost: purchase.letter_type === "channel_raceway_mounted"
       ? resolveRacewayTierCost(purchase.raceway_index, settings)
       : 0,
@@ -152,7 +167,7 @@ export const calcLettersTotals = (project, settings) => {
 };
 
 // Map a letter purchase row to an install line item type
-const purchaseTypeToInstallType = (letter_type) => {
+const purchaseTypeToInstallType = (letter_type, backerEnabled = false) => {
   switch (letter_type) {
     case "channel_raceway_mounted":
     case "raceway":
@@ -160,7 +175,7 @@ const purchaseTypeToInstallType = (letter_type) => {
     case "channel_halo_lit":
       return "halo_lit";
     case "dimensional_letters":
-      return "dimensional_lettering";
+      return backerEnabled ? "dimensional_lettering_with_backer" : "dimensional_lettering";
     case "channel_flush_mounted":
     case "capsule_logo_pillbox":
     default:
@@ -233,7 +248,7 @@ export const syncInstallItemsFromPurchases = (existingItems, purchases, emptyLin
 
     validPurchaseIds.add(p.id);
 
-    const installType = purchaseTypeToInstallType(p.letter_type);
+    const installType = purchaseTypeToInstallType(p.letter_type, !!p.backer_enabled);
     const sizeUnit = SIZE_UNITS[p.letter_type];
 
     // Map sizing fields based on what the purchase row means
@@ -254,6 +269,10 @@ export const syncInstallItemsFromPurchases = (existingItems, purchases, emptyLin
       raceway_length_feet,
       wall_material: p.wall_material || "eifs",
       source_letter_purchase_id: p.id,
+      // Backer fields propagate to the install item for install-time pricing
+      backer_width_inches: p.backer_enabled ? num(p.backer_width_inches) : 0,
+      backer_height_inches: p.backer_enabled ? num(p.backer_height_inches) : 0,
+      backer_standoff_qty: p.backer_enabled ? num(p.backer_standoff_qty) : 0,
     };
 
     if (byPurchaseId.has(p.id)) {

@@ -105,6 +105,54 @@ const settingsDefinitions = [
     xxl: { drill: 140, prep: 280, elec: 0 },
   }),
 
+  // Base Installation Times — Dimensional Letters w/ Backer
+  // 6 sqft ranges up to 5ft × 10ft (50 sqft total). Prep is now "Assembly Time".
+  // The drill rate is per-letter drill/prep into the backer. Assembly = mounting letters to backer.
+  // Install of the BACKER itself is sized by sqft (see install_rates_backer_panel below).
+  ...(function buildBackerLetterTimes() {
+    const sizes = [
+      { key: "extra_small",       label: "XS",    drill: 12,  asm: 25 },
+      { key: "small",             label: "Small", drill: 24,  asm: 50 },
+      { key: "medium",            label: "Medium",drill: 45,  asm: 90 },
+      { key: "large",             label: "Large", drill: 70,  asm: 140 },
+      { key: "extra_large",       label: "XL",    drill: 105, asm: 210 },
+      { key: "extra_extra_large", label: "XXL",   drill: 150, asm: 300 },
+    ];
+    const out = [];
+    sizes.forEach(s => {
+      out.push({ name: `install_dim_backer_drill_rate_${s.key}`,         type: "number", category: "install_rates_dim_backer", label: `${s.label} — Drill Pattern / Drill Time`, suffix: "min/letter", description: `Minutes per ${s.label} letter for drill pattern + mounting holes (Dimensional w/ Backer)`, default: String(s.drill) });
+      out.push({ name: `install_dim_backer_drill_rate_${s.key}__notes`,  type: "text",   category: "install_rates_dim_backer", label: `${s.label} — Drill Pattern / Drill Time — Notes`, description: `Internal notes`, default: "" });
+      out.push({ name: `install_dim_backer_prep_rate_${s.key}`,          type: "number", category: "install_rates_dim_backer", label: `${s.label} — Assembly Time`, suffix: "min/letter", description: `Minutes per ${s.label} letter to assemble (mount letter to backer)`, default: String(s.asm) });
+      out.push({ name: `install_dim_backer_prep_rate_${s.key}__notes`,   type: "text",   category: "install_rates_dim_backer", label: `${s.label} — Assembly Time — Notes`, description: `Internal notes`, default: "" });
+    });
+    return out;
+  })(),
+
+  // Backer Panel install times — by panel area (sqft), 6 ranges up to 5ft × 10ft (50 sqft)
+  { name: "install_backer_panel_range_1_max_sqft", type: "number", category: "install_rates_backer_panel", label: "Range 1 — Max Size", suffix: "sqft", description: "Upper bound of sqft for Range 1 (smallest backers)", default: "4" },
+  { name: "install_backer_panel_range_1_minutes",  type: "number", category: "install_rates_backer_panel", label: "Range 1 — Install Time", suffix: "min/backer", description: "Minutes to install one backer panel in this size range", default: "30" },
+  { name: "install_backer_panel_range_1_thickness_extra", type: "number", category: "install_rates_backer_panel", label: "Range 1 — Per 1/4\" Thickness Extra", suffix: "+min", description: "Additional minutes per 1/4 inch of backer thickness in this range", default: "2" },
+
+  { name: "install_backer_panel_range_2_max_sqft", type: "number", category: "install_rates_backer_panel", label: "Range 2 — Max Size", suffix: "sqft", description: "Upper bound of sqft for Range 2", default: "10" },
+  { name: "install_backer_panel_range_2_minutes",  type: "number", category: "install_rates_backer_panel", label: "Range 2 — Install Time", suffix: "min/backer", default: "55" },
+  { name: "install_backer_panel_range_2_thickness_extra", type: "number", category: "install_rates_backer_panel", label: "Range 2 — Per 1/4\" Thickness Extra", suffix: "+min", default: "3" },
+
+  { name: "install_backer_panel_range_3_max_sqft", type: "number", category: "install_rates_backer_panel", label: "Range 3 — Max Size", suffix: "sqft", default: "20" },
+  { name: "install_backer_panel_range_3_minutes",  type: "number", category: "install_rates_backer_panel", label: "Range 3 — Install Time", suffix: "min/backer", default: "90" },
+  { name: "install_backer_panel_range_3_thickness_extra", type: "number", category: "install_rates_backer_panel", label: "Range 3 — Per 1/4\" Thickness Extra", suffix: "+min", default: "5" },
+
+  { name: "install_backer_panel_range_4_max_sqft", type: "number", category: "install_rates_backer_panel", label: "Range 4 — Max Size", suffix: "sqft", default: "32" },
+  { name: "install_backer_panel_range_4_minutes",  type: "number", category: "install_rates_backer_panel", label: "Range 4 — Install Time", suffix: "min/backer", default: "135" },
+  { name: "install_backer_panel_range_4_thickness_extra", type: "number", category: "install_rates_backer_panel", label: "Range 4 — Per 1/4\" Thickness Extra", suffix: "+min", default: "7" },
+
+  { name: "install_backer_panel_range_5_max_sqft", type: "number", category: "install_rates_backer_panel", label: "Range 5 — Max Size", suffix: "sqft", default: "42" },
+  { name: "install_backer_panel_range_5_minutes",  type: "number", category: "install_rates_backer_panel", label: "Range 5 — Install Time", suffix: "min/backer", default: "190" },
+  { name: "install_backer_panel_range_5_thickness_extra", type: "number", category: "install_rates_backer_panel", label: "Range 5 — Per 1/4\" Thickness Extra", suffix: "+min", default: "10" },
+
+  { name: "install_backer_panel_range_6_max_sqft", type: "number", category: "install_rates_backer_panel", label: "Range 6 — Max Size", suffix: "sqft", description: "Upper bound for the largest backers (5ft × 10ft = 50 sqft)", default: "50" },
+  { name: "install_backer_panel_range_6_minutes",  type: "number", category: "install_rates_backer_panel", label: "Range 6 — Install Time", suffix: "min/backer", default: "260" },
+  { name: "install_backer_panel_range_6_thickness_extra", type: "number", category: "install_rates_backer_panel", label: "Range 6 — Per 1/4\" Thickness Extra", suffix: "+min", default: "14" },
+
   // Base Installation Times — Capsule / Logo / Pillbox (mirrors flush-mount defaults; tunable separately)
   ...buildBaseTimeSet("install_rates_capsule", "capsule", "Capsule / Logo / Pillbox", true, {
     xs:  { drill: 15,  prep: 30,  elec: 5 },
@@ -237,8 +285,8 @@ const TAB_META = {
   base_rates: {
     title: "Base Installation Times",
     icon: Ruler,
-    description: "Minutes per letter by installation type and size. Pick a sub-tab to edit Channel Flush, Halo-Lit, Dimensional, Capsule/Logo/Pillbox, or Raceway times.",
-    categories: ["install_rates_flush", "install_rates_halo", "install_rates_dimensional", "install_rates_capsule", "install_rates_raceway"],
+    description: "Minutes per letter by installation type and size. Pick a sub-tab to edit Channel Flush, Halo-Lit, Dimensional, Dimensional w/ Backer, Capsule/Logo/Pillbox, or Raceway times.",
+    categories: ["install_rates_flush", "install_rates_halo", "install_rates_dimensional", "install_rates_dim_backer", "install_rates_backer_panel", "install_rates_capsule", "install_rates_raceway"],
   },
   multipliers: {
     title: "Installation Height",
@@ -563,6 +611,102 @@ export default function ChannelLetterInstallationSettings() {
     );
   };
 
+  // Dimensional Letters w/ Backer — assembly times by letter size + install times by backer sqft
+  const renderDimBackerContent = () => {
+    const sizes = [
+      { key: "extra_small", label: 'Extra Small', range: '2"–8"' },
+      { key: "small", label: 'Small', range: '8"–12"' },
+      { key: "medium", label: 'Medium', range: '12"–24"' },
+      { key: "large", label: 'Large', range: '24"–48"' },
+      { key: "extra_large", label: 'Extra Large', range: '48"–60"' },
+      { key: "extra_extra_large", label: 'XXL', range: '60"+' },
+    ];
+
+    const renderField = (name, label) => {
+      const value = settings[name];
+      const notesName = `${name}__notes`;
+      const notesValue = settings[notesName];
+      return (
+        <div>
+          <div className="flex items-baseline justify-between mb-1">
+            <Label htmlFor={name} className="text-xs font-medium text-slate-700">{label}</Label>
+            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">min</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <Input
+              type="number" step="1" id={name}
+              value={value || ""}
+              onChange={(e) => updateSetting(name, e.target.value)}
+              disabled={isLocked}
+              className="h-9 w-12 flex-shrink-0 bg-white border-slate-200 text-sm tabular-nums font-medium px-1.5 text-center"
+              min="0"
+            />
+            <AutoGrowNotes
+              value={notesValue}
+              onChange={(v) => updateSetting(notesName, v)}
+              disabled={isLocked}
+              className="flex-1 min-w-0"
+              minHeightPx={36}
+            />
+          </div>
+        </div>
+      );
+    };
+
+    const panelDefs = settingsDefinitions.filter(d => d.category === "install_rates_backer_panel");
+
+    return (
+      <div className="space-y-8">
+        {/* Per-letter assembly times by letter size */}
+        <div>
+          <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">
+            Per-Letter Times (Drill + Assembly to Backer)
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sizes.map(s => {
+              const drillName = `install_dim_backer_drill_rate_${s.key}`;
+              const prepName = `install_dim_backer_prep_rate_${s.key}`;
+              const drillVal = parseFloat(settings[drillName]) || 0;
+              const prepVal = parseFloat(settings[prepName]) || 0;
+              const total = drillVal + prepVal;
+              return (
+                <div key={s.key} className="border border-slate-200 rounded-xl p-4 bg-orange-50/30 hover:bg-orange-50/60 transition-colors">
+                  <div className="flex items-baseline justify-between mb-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">{s.label}</div>
+                      <div className="text-[11px] text-slate-500">{s.range}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] uppercase tracking-wider text-slate-400">Total / letter</div>
+                      <div className="text-sm font-bold text-slate-900 tabular-nums">{total} min</div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {renderField(drillName, "Drill Pattern / Drill Time")}
+                    {renderField(prepName, "Assembly Time")}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Per-backer install times by panel sqft */}
+        <div>
+          <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">
+            Per-Backer Install Times (by Panel Size — up to 5ft × 10ft = 50 sqft)
+          </div>
+          <p className="text-xs text-slate-500 italic mb-3">
+            The estimator picks the first range whose max-sqft ≥ the backer's area. Per-1/4" thickness bonus adjusts for heavier panels.
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {panelDefs.map(def => renderSettingInput(def))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Raceway sub-tab — labor times + per-foot purchase pricing (4 tiers)
   const renderRacewayContent = () => {
     const laborDefs = settingsDefinitions.filter(d => d.category === "install_rates_raceway");
@@ -590,6 +734,7 @@ export default function ChannelLetterInstallationSettings() {
       { key: "flush", label: "Channel Flush-Mount", description: "Times for channel letters mounted directly to the wall." },
       { key: "halo", label: "Channel Halo-Lit", description: "Times for reverse / halo-lit channel letters." },
       { key: "dimensional", label: "Dimensional Letters", description: "Times for non-illuminated dimensional letters (no electrical hookup)." },
+      { key: "dim_backer", label: "Dimensional Letters w/ Backer", description: "Times for dimensional letters mounted on a backer panel. Two sections: per-letter assembly times (by letter size), plus per-backer install times (by panel sqft)." },
       { key: "capsule", label: "Capsule / Logo / Pillbox", description: "Times for capsule, pillbox, and logo elements." },
       { key: "raceway", label: "Raceway", description: "Per-foot, per-letter mounting, and electrical hookup times for raceway installs." },
     ];
@@ -611,7 +756,7 @@ export default function ChannelLetterInstallationSettings() {
         </CardHeader>
         <CardContent className="pt-6 pb-6">
           <Tabs defaultValue="flush" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 mb-5 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 mb-5 h-auto p-1">
               {SUBTABS.map(st => (
                 <TabsTrigger key={st.key} value={st.key} className="py-2 text-xs">
                   {st.label}
@@ -624,6 +769,7 @@ export default function ChannelLetterInstallationSettings() {
                 {st.key === "flush" && renderSizeGrid("install_drill_rate_", "install_prep_rate_", "install_electrical_rate_", true)}
                 {st.key === "halo" && renderSizeGrid("install_halo_drill_rate_", "install_halo_prep_rate_", "install_halo_electrical_rate_", true)}
                 {st.key === "dimensional" && renderSizeGrid("install_dimensional_drill_rate_", "install_dimensional_prep_rate_", null, false)}
+                {st.key === "dim_backer" && renderDimBackerContent()}
                 {st.key === "capsule" && renderSizeGrid("install_capsule_drill_rate_", "install_capsule_prep_rate_", "install_capsule_electrical_rate_", true)}
                 {st.key === "raceway" && renderRacewayContent()}
               </TabsContent>

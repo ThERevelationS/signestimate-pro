@@ -50,7 +50,8 @@
               "flush_mount",
               "halo_lit",
               "raceway",
-              "dimensional_lettering"
+              "dimensional_lettering",
+              "dimensional_lettering_with_backer"
             ],
             "default": "flush_mount"
           },
@@ -100,8 +101,7 @@
               "roof",
               "drop"
             ],
-            "default": "roof",
-            "description": "Parapet electrical routing \u2014 'roof' = power runs along rooftop (easier), 'drop' = power drops down inside parapet cavity (harder)."
+            "default": "roof"
           },
           "poor_electrical_access": {
             "type": "boolean",
@@ -109,8 +109,7 @@
           },
           "poor_electrical_severity": {
             "type": "number",
-            "default": 1,
-            "description": "Severity level 1-10 for Poor Electrical Access \u2014 drives the additive minutes/letter bonus on top of the base electrical hookup time."
+            "default": 1
           },
           "escort_required": {
             "type": "boolean",
@@ -134,12 +133,22 @@
           },
           "poor_site_access_severity": {
             "type": "number",
-            "default": 1,
-            "description": "Severity level 1-10 for Poor Site Access \u2014 drives the additive minutes/letter bonus on top of the base install time."
+            "default": 1
           },
           "source_letter_purchase_id": {
-            "type": "string",
-            "description": "Auto-generated items reference the letter_purchases row that spawned them"
+            "type": "string"
+          },
+          "backer_width_inches": {
+            "type": "number",
+            "description": "Backer width (mirrors letter purchase row)"
+          },
+          "backer_height_inches": {
+            "type": "number",
+            "description": "Backer height (mirrors letter purchase row)"
+          },
+          "backer_standoff_qty": {
+            "type": "number",
+            "description": "Standoff count (mirrors letter purchase row)"
           },
           "materials": {
             "type": "array",
@@ -195,8 +204,7 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string",
-            "description": "Stable client-side id used to link to auto-generated install items."
+            "type": "string"
           },
           "letter_type": {
             "type": "string",
@@ -215,23 +223,19 @@
           },
           "raceway_index": {
             "type": "number",
-            "description": "1, 2, 3, or 4 \u2014 which raceway escalation tier to use (per the price sheet).",
             "default": 1
           },
           "qty": {
             "type": "number",
-            "default": 0,
-            "description": "Number of letters, logos, or raceways"
+            "default": 0
           },
           "size_value": {
             "type": "number",
-            "default": 0,
-            "description": "Vertical inches (channel letters), linear feet (raceway), or square feet (capsule/logo/dimensional)"
+            "default": 0
           },
           "unit_cost": {
             "type": "number",
-            "default": 0,
-            "description": "Auto-derived from settings unless overridden"
+            "default": 0
           },
           "unit_cost_override": {
             "type": "boolean",
@@ -243,8 +247,7 @@
           },
           "create_install_item": {
             "type": "boolean",
-            "default": true,
-            "description": "Auto-create a matching line item on the Installation tab"
+            "default": true
           },
           "install_height_feet": {
             "type": "number",
@@ -254,9 +257,46 @@
             "type": "string",
             "default": "eifs"
           },
+          "raceway_length_feet": {
+            "type": "number"
+          },
+          "raceway_qty": {
+            "type": "number"
+          },
           "fab_config": {
             "type": "object",
             "description": "Dimensional letter fabrication breakdown (material + CNC + paint). Populated by the DimensionalFabModal.",
+            "additionalProperties": true
+          },
+          "backer_enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "When true, the dimensional letters are mounted to a backer panel \u2014 switches pricing schedule to 'Dimensional Letters w/ Backer' install times."
+          },
+          "backer_material_id": {
+            "type": "string",
+            "description": "DimensionalLetterMaterial.id used for the backer sheet."
+          },
+          "backer_width_inches": {
+            "type": "number",
+            "description": "Backer panel width (inches)."
+          },
+          "backer_height_inches": {
+            "type": "number",
+            "description": "Backer panel height (inches)."
+          },
+          "backer_standoff_inventory_id": {
+            "type": "string",
+            "description": "ChannelLetterInstallInventory.id of the chosen standoff (applies_to_list includes 'backer')."
+          },
+          "backer_standoff_qty": {
+            "type": "number",
+            "default": 0,
+            "description": "Number of standoffs used to mount the backer to the wall."
+          },
+          "backer_fab_config": {
+            "type": "object",
+            "description": "Backer fabrication breakdown (material + CNC/Laser + optional paint). Populated by BackerFabModal.",
             "additionalProperties": true
           }
         }
@@ -284,8 +324,7 @@
     },
     "letters_markup_percent": {
       "type": "number",
-      "default": 0,
-      "description": "Markup applied to the letter purchase subtotal (does not affect install)."
+      "default": 0
     },
     "letters_subtotal": {
       "type": "number"

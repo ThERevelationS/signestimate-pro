@@ -31,6 +31,21 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject,
     onUpdateProject({ letter_purchases: [...purchases, p] });
   };
 
+  // True when at least one dimensional letters row is on this project
+  const hasDimensional = purchases.some(p => p.letter_type === "dimensional_letters");
+
+  // Enable a backer on the first dimensional row that doesn't already have one
+  const addBackerToFirstDimensional = () => {
+    const idx = purchases.findIndex(p => p.letter_type === "dimensional_letters" && !p.backer_enabled);
+    if (idx === -1) return; // all dimensional rows already have a backer
+    const arr = [...purchases];
+    arr[idx] = { ...arr[idx], backer_enabled: true };
+    onUpdateProject({ letter_purchases: arr });
+  };
+  const allDimensionalHaveBacker = hasDimensional && purchases
+    .filter(p => p.letter_type === "dimensional_letters")
+    .every(p => p.backer_enabled);
+
   const applyAIPurchases = (aiPurchases, mode = "append") => {
     const newOnes = aiPurchases.map((ai) => {
       const base = emptyLetterPurchase(ai.letter_type || "channel_flush_mounted");
@@ -111,6 +126,21 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject,
                 {qa.label}
               </button>
             ))}
+            {/* Backer Panel — only visible when there's a Dimensional Letters row */}
+            {hasDimensional && (
+              <button
+                onClick={addBackerToFirstDimensional}
+                disabled={allDimensionalHaveBacker}
+                title={allDimensionalHaveBacker ? "All Dimensional Letter rows already have a backer" : "Add a backer panel to the first Dimensional Letter row"}
+                className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                  allDimensionalHaveBacker
+                    ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                    : "bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
+                }`}
+              >
+                + Backer Panel
+              </button>
+            )}
           </div>
         </CardContent>
       </Card>
