@@ -117,7 +117,7 @@ export default function Layout({ children, currentPageName }) {
   const topLevelModules = [
     {
       id: 'channel_letter_installation',
-      name: 'Channel / Dimensional Letters / Lobby Signs',
+      name: 'Channel & Dimensional Letters | Lobby Signs',
       icon: Wrench,
       projectsPage: 'ChannelLetterInstallationProjects',
       newEstimatePage: 'NewChannelLetterInstallation',

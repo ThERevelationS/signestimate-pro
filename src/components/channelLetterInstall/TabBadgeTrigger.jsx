@@ -39,28 +39,28 @@ export default function TabBadgeTrigger({ value, icon: Icon, label, amount, coun
     <TabsTrigger
       value={value}
       className={`
-        flex flex-col items-center justify-center gap-0.5 h-14 rounded-lg
+        flex flex-row items-center justify-center gap-1.5 h-7 px-2 rounded-lg
         text-slate-700
         ${styles.active}
         ${accent ? styles.accent : ""}
         relative transition-all
       `}
     >
-      <div className="flex items-center gap-1.5">
-        <Icon className="w-3.5 h-3.5" />
-        <span className="text-xs font-medium">{label}</span>
-        {count != null && (
-          <span className="text-[10px] bg-slate-200 text-slate-700 data-[state=active]:bg-white/20 data-[state=active]:text-white rounded-full px-1.5 py-0 leading-tight">
-            {count}
-          </span>
-        )}
-        {warn && (
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" title="Action required" />
-        )}
-      </div>
-      <span className="text-[10px] tabular-nums font-semibold opacity-80 leading-tight min-h-[12px]">
-        {hasAmount ? compact(amount) : ""}
-      </span>
+      <Icon className="w-3.5 h-3.5" />
+      <span className="text-xs font-medium">{label}</span>
+      {count != null && (
+        <span className="text-[10px] bg-slate-200 text-slate-700 data-[state=active]:bg-white/20 data-[state=active]:text-white rounded-full px-1.5 py-0 leading-tight">
+          {count}
+        </span>
+      )}
+      {hasAmount && (
+        <span className="text-[10px] tabular-nums font-semibold opacity-80 leading-tight">
+          {compact(amount)}
+        </span>
+      )}
+      {warn && (
+        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" title="Action required" />
+      )}
     </TabsTrigger>
   );
 }

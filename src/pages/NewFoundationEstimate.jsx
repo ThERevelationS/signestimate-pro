@@ -32,8 +32,11 @@ import SignageLandscapeTab from '@/components/foundation/SignageLandscapeTab';
 import WallCapsTab from '@/components/foundation/WallCapsTab';
 import { Switch } from '@/components/ui/switch';
 import { User, SaveColor } from '@/entities/all';
-import { Bot, Layout as LayoutIcon, BookOpen } from 'lucide-react';
+import { Bot, Layout as LayoutIcon, BookOpen, FileText as FileTextIcon, Anchor as AnchorIcon, Wrench as WrenchIcon, LayoutGrid, Layers, Image as ImageIcon, Calculator as CalculatorIcon, ClipboardList, TrendingUp } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import TabBadgeTrigger from '@/components/channelLetterInstall/TabBadgeTrigger';
+import CustomerPricingTab from '@/components/markup/CustomerPricingTab';
+import { categorizeFoundationProject } from '@/components/markup/projectCategorizer';
 
 const FoundationProjectEntity = base44.entities.FoundationProject;
 const FoundationInventoryEntity = base44.entities.FoundationInventory;
@@ -1130,17 +1133,18 @@ export default function NewFoundationEstimate() {
           <div className={`flex flex-col min-w-0 pb-12 ${show3D ? 'lg:w-[50%]' : 'w-full'}`}>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col min-h-0">
               <div className="p-4 pb-0 bg-white border-b flex-shrink-0 z-30 sticky top-0 shadow-sm">
-                <TabsList className="mb-4 flex-wrap h-auto bg-slate-100/80 p-1.5 border border-slate-200 rounded-xl shadow-sm">
-                <TabsTrigger value="info">Project Info</TabsTrigger>
-                <TabsTrigger value="foundation">Foundation ({items.length})</TabsTrigger>
+                <TabsList className="mb-4 flex-wrap h-auto bg-white p-1 gap-1 border border-slate-200 rounded-xl shadow-md">
+                <TabBadgeTrigger value="info" icon={FileTextIcon} label="Project Info" color="orange" />
+                <TabBadgeTrigger value="foundation" icon={AnchorIcon} label="Foundation" count={items.length} color="orange" />
                 {items.some(i => i.excavation_method === 'equipment_excavation') && (
-                  <TabsTrigger value="equipment">Equipment {selectedEquipmentList.length > 0 ? `(${selectedEquipmentList.length})` : ''}</TabsTrigger>
+                  <TabBadgeTrigger value="equipment" icon={WrenchIcon} label="Equipment" count={selectedEquipmentList.length > 0 ? selectedEquipmentList.length : undefined} color="orange" />
                 )}
-                <TabsTrigger value="walls_poles">Walls & Poles ({walls.length + polesData.length})</TabsTrigger>
-                <TabsTrigger value="wall_caps">Wall Caps{wallCaps.length > 0 ? ` (${wallCaps.length})` : ''}</TabsTrigger>
-                <TabsTrigger value="beautify">Signage & Landscape</TabsTrigger>
-                <TabsTrigger value="summary">Cost Summary</TabsTrigger>
-                <TabsTrigger value="bom">Bill of Materials</TabsTrigger>
+                <TabBadgeTrigger value="walls_poles" icon={LayoutGrid} label="Walls & Poles" count={walls.length + polesData.length} color="orange" />
+                <TabBadgeTrigger value="wall_caps" icon={Layers} label="Wall Caps" count={wallCaps.length > 0 ? wallCaps.length : undefined} color="orange" />
+                <TabBadgeTrigger value="beautify" icon={ImageIcon} label="Signage & Landscape" color="orange" />
+                <TabBadgeTrigger value="summary" icon={CalculatorIcon} label="Cost Summary" color="orange" />
+                <TabBadgeTrigger value="bom" icon={ClipboardList} label="Bill of Materials" color="orange" />
+                <TabBadgeTrigger value="pricing" icon={TrendingUp} label="Customer Pricing" accent color="orange" />
               </TabsList>
             </div>
 
@@ -1794,6 +1798,29 @@ export default function NewFoundationEstimate() {
               {/* BOM */}
               <TabsContent value="bom" className="space-y-4 pt-4">
                 <BOMTab items={items} walls={walls} project={project} inventory={inventory} />
+              </TabsContent>
+
+              {/* CUSTOMER PRICING — tier markups */}
+              <TabsContent value="pricing" className="space-y-4 pt-4">
+                <CustomerPricingTab
+                  project={{
+                    ...project,
+                    // Provide totals so categorizeFoundationProject can split by category
+                    total_concrete_cost: totals.concreteTotal,
+                    total_rebar_cost: items.reduce((s, it) => s + (calcItemCost(it).rebarCost || 0), 0),
+                    total_forming_materials_cost: items.reduce((s, it) => s + (calcItemCost(it).formingCost || 0), 0),
+                    total_excavation_cost: items.reduce((s, it) => s + (calcItemCost(it).excavationCost || 0), 0),
+                    total_labor_cost: items.reduce((s, it) => {
+                      const c = calcItemCost(it);
+                      return s + (c.pouringCost || 0) + (c.finishingCost || 0);
+                    }, 0) + walls.reduce((s, w) => s + (w.calculatedCosts?.laborCost || 0) + (w.calculatedCosts?.internalLaborCost || 0), 0),
+                    total_pole_cost: totals.polesTotal,
+                    total_equipment_cost: totals.equipmentTotal,
+                    total_wall_cost: totals.wallTotal + (totals.wallCapTotal || 0),
+                  }}
+                  categorize={categorizeFoundationProject}
+                  accentColor="orange"
+                />
               </TabsContent>
             </div>
           </Tabs>

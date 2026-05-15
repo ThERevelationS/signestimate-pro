@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Save, Copy, FileDown, Calculator, TrendingUp } from "lucide-react";
+// Note: Markup % control intentionally removed — all markups are managed on the Customer Pricing tab.
 import CostBreakdownBar from "./CostBreakdownBar";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
@@ -18,7 +19,6 @@ export default function InstallSummaryCard({
   const personnel = parseFloat(project.total_personnel_cost) || 0;
   const letters = parseFloat(project.total_letters_cost) || 0;
   const subtotal = parseFloat(project.subtotal) || 0;
-  const markupAmt = parseFloat(project.markup_amount) || 0;
   const total = parseFloat(project.total_cost) || 0;
 
   const segments = [
@@ -79,34 +79,13 @@ export default function InstallSummaryCard({
           </div>
         )}
 
-        {/* Markup */}
-        <div className="border-t border-white/10 pt-3">
-          <Label className="text-xs text-slate-300">Markup %</Label>
-          <div className="flex items-center gap-2 mt-1">
-            <div className="relative">
-              <Input
-                type="number"
-                step="0.1"
-                value={project.markup_percent ?? 0}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => onUpdate({ markup_percent: parseFloat(e.target.value) || 0 })}
-                className="h-8 text-sm w-24 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus-visible:ring-purple-400"
-              />
-            </div>
-            <span className="text-xs text-slate-400">=</span>
-            <span className="text-sm font-medium tabular-nums text-emerald-300">{fmt(markupAmt)}</span>
-          </div>
-        </div>
-
-        {/* Total */}
+        {/* Total — markups live in the Customer Pricing tab */}
         <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-xl px-4 py-3 shadow-lg border border-purple-400/30">
-          <div className="text-[10px] text-purple-100 uppercase tracking-widest font-semibold">Grand Total</div>
-          <div className="text-3xl font-bold tabular-nums leading-tight">{fmt(total)}</div>
-          {subtotal > 0 && total > subtotal && (
-            <div className="text-[10px] text-purple-200 mt-0.5">
-              Subtotal {fmt(subtotal)} + {(((total - subtotal) / subtotal) * 100).toFixed(1)}% markup
-            </div>
-          )}
+          <div className="text-[10px] text-purple-100 uppercase tracking-widest font-semibold">Subtotal (Before Markup)</div>
+          <div className="text-3xl font-bold tabular-nums leading-tight">{fmt(subtotal || total)}</div>
+          <div className="text-[10px] text-purple-200 mt-0.5">
+            See <span className="font-semibold">Customer Pricing</span> tab for tier-based pricing.
+          </div>
         </div>
 
         {/* Actions */}
