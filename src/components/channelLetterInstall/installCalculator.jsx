@@ -2,6 +2,7 @@
 // Pure functions — no React, no entity calls.
 
 import { getWallMaterialMultiplier } from "./wallMaterials";
+import { heightBucketFor, normalizeEnv, resolveRateMinutes, TYPE_PREFIXES } from "./installSizeRates";
 
 export const TYPE_LABELS = {
   flush_mount: "Flush Mount",
@@ -122,23 +123,18 @@ export const calcLineItem = (item, settings, inventory) => {
     },
   };
 
-  // Settings-key prefixes by installation type
-  const PREFIXES = {
-    flush_mount: { drill: "install_drill_rate_", prep: "install_prep_rate_", elec: "install_electrical_rate_" },
-    halo_lit: { drill: "install_halo_drill_rate_", prep: "install_halo_prep_rate_", elec: "install_halo_electrical_rate_" },
-    dimensional_lettering: { drill: "install_dimensional_drill_rate_", prep: "install_dimensional_prep_rate_", elec: null },
-  };
+  // Resolve env + height bucket for this line item.
+  // Per-item env wins; otherwise the project-level env is passed in via settings._project_install_environment.
+  const env = normalizeEnv(item.install_environment || settings._project_install_environment || "exterior");
+  const heightBucket = heightBucketFor(item.installation_height_feet);
 
   const sizeMinutesForType = (type, size) => {
-    const prefixes = PREFIXES[type];
+    const prefixes = TYPE_PREFIXES[type];
     const defs = TYPE_DEFAULTS[type]?.[size] || [50, 100, 15];
     if (!prefixes) return defs[0] + defs[1] + defs[2];
-    const drill = parseFloat(settings[`${prefixes.drill}${size}`]);
-    const prep = parseFloat(settings[`${prefixes.prep}${size}`]);
-    const elec = prefixes.elec ? parseFloat(settings[`${prefixes.elec}${size}`]) : NaN;
-    const d = isNaN(drill) ? defs[0] : drill;
-    const p = isNaN(prep) ? defs[1] : prep;
-    const e = prefixes.elec ? (isNaN(elec) ? defs[2] : elec) : 0;
+    const d = resolveRateMinutes(settings, prefixes.drill, size, env, heightBucket, defs[0]);
+    const p = resolveRateMinutes(settings, prefixes.prep,  size, env, heightBucket, defs[1]);
+    const e = prefixes.elec ? resolveRateMinutes(settings, prefixes.elec, size, env, heightBucket, defs[2]) : 0;
     return d + p + e;
   };
 
@@ -192,14 +188,9 @@ export const calcLineItem = (item, settings, inventory) => {
     }
   }
 
-  // Height multiplier
-  const h = parseFloat(item.installation_height_feet) || 0;
-  let heightMultiplier = 1.0;
-  if (h <= 12) heightMultiplier = parseFloat(settings.install_height_0_12ft) || 1.0;
-  else if (h <= 20) heightMultiplier = parseFloat(settings.install_height_12_20ft) || 1.3;
-  else if (h <= 30) heightMultiplier = parseFloat(settings.install_height_20_30ft) || 1.6;
-  else heightMultiplier = parseFloat(settings.install_height_30plus_ft) || 2.0;
-  baseHours *= heightMultiplier;
+  // NOTE: A separate "height multiplier" used to be applied here. Heights are now
+  // baked into each per-size rate set (size × height bucket × interior/exterior),
+  // so no extra multiplier is needed.
 
   // Wall material multiplier
   baseHours *= getWallMaterialMultiplier(item.wall_material, settings);

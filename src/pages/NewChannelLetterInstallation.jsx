@@ -24,6 +24,7 @@ import CustomerPricingTab from "@/components/markup/CustomerPricingTab";
 import { categorizeChannelLetterProject } from "@/components/markup/projectCategorizer";
 import PhotoEstimateModal from "@/components/channelLetterInstall/PhotoEstimateModal";
 import AIInstallScopeModal from "@/components/channelLetterInstall/AIInstallScopeModal";
+import ConfirmModal from "@/components/channelLetterInstall/ConfirmModal";
 import AddressAutocomplete from "@/components/channelLetterInstall/AddressAutocomplete";
 import { suggestEquipmentForProject, selectedEquipmentFromInventory } from "@/components/channelLetterInstall/equipmentSuggester";
 import {
@@ -45,6 +46,7 @@ const blankProject = () => ({
   hyperlink: "",
   site_address: "",
   project_scope: "full",
+  install_environment: "exterior",
   items: [],
   letter_purchases: [],
   letters_delivery_fee: 0,
@@ -78,6 +80,7 @@ export default function NewChannelLetterInstallation() {
   const [activeTab, setActiveTab] = useState("project");
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [aiInstallOpen, setAiInstallOpen] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null); // { title, description, ... }
 
   useEffect(() => { if (!isLoading) setHasLoaded(true); }, [isLoading]);
   useEffect(() => { if (hasLoaded) setIsDirty(true); }, [project, hasLoaded, setIsDirty]);
@@ -138,15 +141,19 @@ export default function NewChannelLetterInstallation() {
   const recalculated = useMemo(() => {
     if (!settings || Object.keys(settings).length === 0) return project;
     const scope = project.project_scope || "full";
+    // Inject the project-level Interior/Exterior default so the calculator
+    // can resolve env-qualified setting keys for line items that don't
+    // override it themselves.
+    const settingsWithEnv = { ...settings, _project_install_environment: project.install_environment || "exterior" };
     // 1) Letters tab math — totals each purchase row + project subtotal + markup
     //    Zero out when scope is install_only.
     const lettersTotals = scope === "install_only"
       ? { letters_subtotal: 0, total_letters_cost: 0, letter_purchases: project.letter_purchases || [] }
-      : calcLettersTotals(project, settings);
+      : calcLettersTotals(project, settingsWithEnv);
     // 2) Installation items recompute. Zero out when scope is letters_only.
     const recalcItems = scope === "letters_only"
       ? []
-      : (project.items || []).map(it => calcLineItem(it, settings, inventory));
+      : (project.items || []).map(it => calcLineItem(it, settingsWithEnv, inventory));
     // 3) Project rollup (uses total_letters_cost from step 1).
     //    When letters_only, drop equipment + personnel from the rollup too.
     const projectForTotals = scope === "letters_only"
@@ -167,7 +174,12 @@ export default function NewChannelLetterInstallation() {
 
   const handleTabChange = (next) => {
     if (activeTab === "letters" && next !== "letters" && hasIncompleteDimensional) {
-      alert("Please complete the 'Build Fab Cost from CNC + Paint' for each dimensional letter row before continuing.");
+      setConfirmModal({
+        title: "Finish building your dimensional letters first",
+        description: "Each Dimensional Letters row needs a completed 'Build Fab Cost from CNC + Paint' before you can move on. Click the highlighted row(s) on the Letters tab to configure them.",
+        confirmLabel: "Got it",
+        tone: "warning",
+      });
       return;
     }
     setActiveTab(next);
@@ -452,7 +464,7 @@ export default function NewChannelLetterInstallation() {
           <div>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
               <Wrench className="w-8 h-8 text-purple-600" />
-              {isEditing ? "Edit" : "New"} Channel & Dimensional Letter Estimate
+              {isEditing ? "Edit" : "New"} Channel / Dimensional Letter / Lobby Sign Estimate
             </h1>
             <p className="text-slate-600">Multi-item estimate — letters, install, crew</p>
           </div>
@@ -568,6 +580,39 @@ export default function NewChannelLetterInstallation() {
                         />
                       </div>
                     </div>
+                    {/* Interior / Exterior — project-level default (each line item can override) */}
+                    <div>
+                      <Label className="text-sm font-semibold text-slate-900">Installation Environment</Label>
+                      <p className="text-xs text-slate-500 mt-1 mb-2">
+                        Default for every line item — interior installs typically have different drill/prep times than exterior. You can override this on any line item.
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 max-w-md">
+                        {[
+                          { value: "exterior", label: "Exterior", desc: "Outdoor wall, parapet, storefront", color: "blue" },
+                          { value: "interior", label: "Interior", desc: "Lobby, indoor wall, office signage", color: "amber" },
+                        ].map((opt) => {
+                          const active = (project.install_environment || "exterior") === opt.value;
+                          const ringClass = opt.color === "blue"
+                            ? (active ? "border-blue-500 bg-blue-50 shadow-sm" : "border-slate-200 bg-white hover:border-slate-300")
+                            : (active ? "border-amber-500 bg-amber-50 shadow-sm" : "border-slate-200 bg-white hover:border-slate-300");
+                          const titleClass = opt.color === "blue"
+                            ? (active ? "text-blue-900" : "text-slate-800")
+                            : (active ? "text-amber-900" : "text-slate-800");
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => updateProject({ install_environment: opt.value })}
+                              className={`text-left p-3 rounded-lg border-2 transition-all ${ringClass}`}
+                            >
+                              <div className={`text-sm font-semibold ${titleClass}`}>{opt.label}</div>
+                              <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">{opt.desc}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
                     <div>
                       <Label className="text-sm font-semibold text-slate-900">Project Scope</Label>
                       <p className="text-xs text-slate-500 mt-1 mb-2">
@@ -887,6 +932,15 @@ export default function NewChannelLetterInstallation() {
         open={aiInstallOpen}
         onClose={() => setAiInstallOpen(false)}
         onApply={applyAIInstallItems}
+      />
+
+      <ConfirmModal
+        open={!!confirmModal}
+        onClose={() => setConfirmModal(null)}
+        title={confirmModal?.title}
+        description={confirmModal?.description}
+        confirmLabel={confirmModal?.confirmLabel}
+        tone={confirmModal?.tone}
       />
     </div>
   );

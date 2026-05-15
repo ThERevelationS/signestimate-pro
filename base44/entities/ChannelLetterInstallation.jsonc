@@ -34,7 +34,16 @@
         "letters_only"
       ],
       "default": "full",
-      "description": "Controls which tabs render and which cost rollups are included. 'full' = letters + install. 'install_only' = hide Letters tab and exclude its costs. 'letters_only' = hide Install/Crew tabs and exclude their costs."
+      "description": "Controls which tabs render and which cost rollups are included."
+    },
+    "install_environment": {
+      "type": "string",
+      "enum": [
+        "interior",
+        "exterior"
+      ],
+      "default": "exterior",
+      "description": "Project-level default for Interior vs Exterior installation. Each line item can override."
     },
     "items": {
       "type": "array",
@@ -54,6 +63,14 @@
               "dimensional_lettering_with_backer"
             ],
             "default": "flush_mount"
+          },
+          "install_environment": {
+            "type": "string",
+            "enum": [
+              "interior",
+              "exterior"
+            ],
+            "description": "Per-item override for Interior vs Exterior. If unset, the project default is used."
           },
           "qty_letters": {
             "type": "number",
@@ -139,16 +156,13 @@
             "type": "string"
           },
           "backer_width_inches": {
-            "type": "number",
-            "description": "Backer width (mirrors letter purchase row)"
+            "type": "number"
           },
           "backer_height_inches": {
-            "type": "number",
-            "description": "Backer height (mirrors letter purchase row)"
+            "type": "number"
           },
           "backer_standoff_qty": {
-            "type": "number",
-            "description": "Standoff count (mirrors letter purchase row)"
+            "type": "number"
           },
           "materials": {
             "type": "array",
@@ -265,38 +279,30 @@
           },
           "fab_config": {
             "type": "object",
-            "description": "Dimensional letter fabrication breakdown (material + CNC + paint). Populated by the DimensionalFabModal.",
             "additionalProperties": true
           },
           "backer_enabled": {
             "type": "boolean",
-            "default": false,
-            "description": "When true, the dimensional letters are mounted to a backer panel \u2014 switches pricing schedule to 'Dimensional Letters w/ Backer' install times."
+            "default": false
           },
           "backer_material_id": {
-            "type": "string",
-            "description": "DimensionalLetterMaterial.id used for the backer sheet."
+            "type": "string"
           },
           "backer_width_inches": {
-            "type": "number",
-            "description": "Backer panel width (inches)."
+            "type": "number"
           },
           "backer_height_inches": {
-            "type": "number",
-            "description": "Backer panel height (inches)."
+            "type": "number"
           },
           "backer_standoff_inventory_id": {
-            "type": "string",
-            "description": "ChannelLetterInstallInventory.id of the chosen standoff (applies_to_list includes 'backer')."
+            "type": "string"
           },
           "backer_standoff_qty": {
             "type": "number",
-            "default": 0,
-            "description": "Number of standoffs used to mount the backer to the wall."
+            "default": 0
           },
           "backer_fab_config": {
             "type": "object",
-            "description": "Backer fabrication breakdown (material + CNC/Laser + optional paint). Populated by BackerFabModal.",
             "additionalProperties": true
           }
         }

@@ -11,6 +11,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { WALL_MATERIALS } from "@/components/channelLetterInstall/wallMaterials";
 import { refreshFuelPrice } from "@/functions/refreshFuelPrice";
 import AutoGrowNotes from "@/components/channelLetterInstall/AutoGrowNotes";
+import BaseTimesSizeCard from "@/components/channelLetterInstall/BaseTimesSizeCard";
+import { SIZE_KEYS, HEIGHT_BUCKETS, ENV_KEYS, qualifiedKey } from "@/components/channelLetterInstall/installSizeRates";
 
 // Helper to build a set of base-time settings for a given installation type
 const buildBaseTimeSet = (category, prefix, typeLabel, includeElectrical, defaults) => {
@@ -288,12 +290,6 @@ const TAB_META = {
     description: "Minutes per letter by installation type and size. Pick a sub-tab to edit Channel Flush, Halo-Lit, Dimensional, Dimensional w/ Backer, Capsule/Logo/Pillbox, or Raceway times.",
     categories: ["install_rates_flush", "install_rates_halo", "install_rates_dimensional", "install_rates_dim_backer", "install_rates_backer_panel", "install_rates_capsule", "install_rates_raceway"],
   },
-  multipliers: {
-    title: "Installation Height",
-    icon: Clock,
-    description: "Working-height adjustments applied on top of the base installation times.",
-    categories: ["install_multipliers"],
-  },
   site_conditions: {
     title: "Site Conditions",
     icon: AlertTriangle,
@@ -364,6 +360,35 @@ export default function ChannelLetterInstallationSettings() {
         finalSettings[def.name] = settingsMap[def.name] !== undefined ? settingsMap[def.name] : def.default;
       });
 
+      // Auto-seed the new (env × height) qualified rate keys from the legacy
+      // size-only values so existing apps start with the same minutes copied
+      // across all 8 (interior/exterior × 4 height buckets) instances.
+      const PREFIX_GROUPS = [
+        { drill: "install_drill_rate_",             prep: "install_prep_rate_",             elec: "install_electrical_rate_" },
+        { drill: "install_halo_drill_rate_",        prep: "install_halo_prep_rate_",        elec: "install_halo_electrical_rate_" },
+        { drill: "install_dimensional_drill_rate_", prep: "install_dimensional_prep_rate_", elec: null },
+        { drill: "install_capsule_drill_rate_",     prep: "install_capsule_prep_rate_",     elec: "install_capsule_electrical_rate_" },
+      ];
+      PREFIX_GROUPS.forEach(group => {
+        SIZE_KEYS.forEach(size => {
+          ["drill", "prep", "elec"].forEach(kind => {
+            const prefix = group[kind];
+            if (!prefix) return;
+            const legacyKey = `${prefix}${size}`;
+            const legacyVal = settingsMap[legacyKey] !== undefined ? settingsMap[legacyKey] : finalSettings[legacyKey];
+            if (legacyVal === undefined || legacyVal === null || legacyVal === "") return;
+            ENV_KEYS.forEach(env => {
+              HEIGHT_BUCKETS.forEach(hb => {
+                const qk = qualifiedKey(prefix, size, env, hb.key);
+                if (finalSettings[qk] === undefined && settingsMap[qk] === undefined) {
+                  finalSettings[qk] = String(legacyVal);
+                }
+              });
+            });
+          });
+        });
+      });
+
       setSettings(finalSettings);
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -387,6 +412,8 @@ export default function ChannelLetterInstallationSettings() {
       const updates = [];
       const creates = [];
 
+      // Persist defined settings
+      const definedNames = new Set(settingsDefinitions.map(d => d.name));
       for (const def of settingsDefinitions) {
         const valueToSave = settings[def.name];
         if (valueToSave === undefined || valueToSave === null) continue;
@@ -400,6 +427,30 @@ export default function ChannelLetterInstallationSettings() {
         };
 
         const existing = existingSettingsMap.get(def.name);
+        if (existing) {
+          if (existing.setting_value !== data.setting_value) {
+            updates.push(SettingsEntity.update(existing.id, data));
+          }
+        } else {
+          creates.push(SettingsEntity.create(data));
+        }
+      }
+
+      // Persist DYNAMIC (env × height) qualified rate keys too. These aren't
+      // in settingsDefinitions but are generated on-demand by BaseTimesSizeCard.
+      for (const [name, value] of Object.entries(settings)) {
+        if (definedNames.has(name)) continue;
+        if (name.startsWith("_")) continue; // internal flags
+        if (value === undefined || value === null) continue;
+        const isNotes = name.endsWith("__notes");
+        const data = {
+          setting_name: name,
+          setting_value: String(value),
+          setting_type: isNotes ? "text" : "number",
+          category: "install_rates_dynamic",
+          description: "Auto-managed installation rate (size × height × environment).",
+        };
+        const existing = existingSettingsMap.get(name);
         if (existing) {
           if (existing.setting_value !== data.setting_value) {
             updates.push(SettingsEntity.update(existing.id, data));
@@ -531,7 +582,9 @@ export default function ChannelLetterInstallationSettings() {
     );
   };
 
-  // Renders one of the three letter-size base-time grids (flush / halo / dimensional)
+  // Renders one of the four letter-size base-time grids (flush / halo / dimensional / capsule).
+  // Each card now has its own Interior/Exterior slider toggle + Height bucket selector,
+  // and the inputs edit the (size × env × height) qualified setting keys.
   const renderSizeGrid = (drillPrefix, prepPrefix, elecPrefix, includeElectrical) => {
     const sizes = [
       { key: "extra_small", label: 'Extra Small', range: '2"–8"' },
@@ -542,71 +595,23 @@ export default function ChannelLetterInstallationSettings() {
       { key: "extra_extra_large", label: 'XXL', range: '60"+' },
     ];
 
-    const renderField = (name, label) => {
-      if (!name) return null;
-      const value = settings[name];
-      const notesName = `${name}__notes`;
-      const notesValue = settings[notesName];
-      return (
-        <div>
-          <div className="flex items-baseline justify-between mb-1">
-            <Label htmlFor={name} className="text-xs font-medium text-slate-700">{label}</Label>
-            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">min</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <Input
-              type="number"
-              step="1"
-              id={name}
-              value={value || ""}
-              onChange={(e) => updateSetting(name, e.target.value)}
-              disabled={isLocked}
-              className="h-9 w-12 flex-shrink-0 bg-white border-slate-200 focus:border-slate-400 focus:ring-0 text-sm tabular-nums font-medium px-1.5 text-center"
-              min="0"
-              maxLength={2}
-            />
-            <AutoGrowNotes
-              value={notesValue}
-              onChange={(v) => updateSetting(notesName, v)}
-              disabled={isLocked}
-              className="flex-1 min-w-0"
-              minHeightPx={36}
-            />
-          </div>
-        </div>
-      );
-    };
-
     return (
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sizes.map(s => {
-          const drillName = `${drillPrefix}${s.key}`;
-          const prepName = `${prepPrefix}${s.key}`;
-          const elecName = includeElectrical ? `${elecPrefix}${s.key}` : null;
-          const drillVal = parseFloat(settings[drillName]) || 0;
-          const prepVal = parseFloat(settings[prepName]) || 0;
-          const elecVal = elecName ? (parseFloat(settings[elecName]) || 0) : 0;
-          const total = drillVal + prepVal + elecVal;
-          return (
-            <div key={s.key} className="border border-slate-200 rounded-xl p-4 bg-slate-50/40 hover:bg-slate-50 transition-colors">
-              <div className="flex items-baseline justify-between mb-3">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900">{s.label}</div>
-                  <div className="text-[11px] text-slate-500">{s.range}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[10px] uppercase tracking-wider text-slate-400">Total / letter</div>
-                  <div className="text-sm font-bold text-slate-900 tabular-nums">{total} min</div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {renderField(drillName, "Drill Pattern / Drill Time")}
-                {renderField(prepName, "Installation / Prep Time")}
-                {includeElectrical && renderField(elecName, "Electrical Hookup")}
-              </div>
-            </div>
-          );
-        })}
+        {sizes.map(s => (
+          <BaseTimesSizeCard
+            key={s.key}
+            sizeKey={s.key}
+            sizeLabel={s.label}
+            sizeRange={s.range}
+            drillPrefix={drillPrefix}
+            prepPrefix={prepPrefix}
+            elecPrefix={elecPrefix}
+            includeElectrical={includeElectrical}
+            settings={settings}
+            updateSetting={updateSetting}
+            isLocked={isLocked}
+          />
+        ))}
       </div>
     );
   };

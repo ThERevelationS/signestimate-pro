@@ -108,6 +108,37 @@ export default function InstallLineItem({ item, index, inventory, settings = {},
             }
           </div>
 
+          {/* Interior / Exterior override — defaults to project setting */}
+          <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+            <div className="flex items-center gap-2 mb-2">
+              <Label className="text-xs font-semibold text-slate-700">Installation Environment</Label>
+              <span className="text-[10px] text-slate-400">(overrides project default for this line item)</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1 max-w-md">
+              {[
+                { value: "", label: "Project Default" },
+                { value: "exterior", label: "Exterior" },
+                { value: "interior", label: "Interior" },
+              ].map(opt => {
+                const active = (item.install_environment || "") === opt.value;
+                return (
+                  <button
+                    key={opt.value || "default"}
+                    type="button"
+                    onClick={() => update({ install_environment: opt.value || undefined })}
+                    className={`text-xs px-2 py-1.5 rounded-md border transition-all ${
+                      active
+                        ? "border-purple-500 bg-purple-50 text-purple-900 font-semibold shadow-sm"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Qty Letters + Installation Height — at the very top */}
           <div className="grid md:grid-cols-2 gap-4 bg-slate-50 rounded-lg p-3 border border-slate-200">
             <div>
