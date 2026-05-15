@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, AlertCircle, CheckCircle2, BarChart3, ChevronDown, ChevronUp } from "lucide-react";
+import BoomLiftReachChart from "./BoomLiftReachChart";
 
 // Dynamic-color install height slider.
 //   <= 39 ft  -> green (safe / ladders or small lifts)
@@ -46,6 +48,7 @@ export default function InstallHeightSlider({ value, onChange }) {
   const h = parseFloat(value) || 0;
   const zone = getZone(h);
   const Icon = zone.Icon;
+  const [showChart, setShowChart] = useState(false);
 
   return (
     <div className="space-y-2">
@@ -58,6 +61,18 @@ export default function InstallHeightSlider({ value, onChange }) {
           className="h-9 w-24"
         />
         <span className="text-xs text-slate-500">ft</span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setShowChart((s) => !s)}
+          className="ml-auto h-8 text-xs gap-1.5"
+          title="Show / hide boom lift reach chart"
+        >
+          <BarChart3 className="w-3.5 h-3.5 text-purple-600" />
+          Reach Chart
+          {showChart ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </Button>
       </div>
       <div className="px-1">
         <Slider
@@ -79,6 +94,12 @@ export default function InstallHeightSlider({ value, onChange }) {
         <Icon className="w-3.5 h-3.5 shrink-0" />
         <span className="font-medium">{zone.label}</span>
       </div>
+
+      {showChart && (
+        <div className="border border-purple-200 bg-purple-50/30 rounded-lg p-3">
+          <BoomLiftReachChart installationHeightFeet={h} />
+        </div>
+      )}
     </div>
   );
 }

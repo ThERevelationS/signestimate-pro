@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Trash2, Save, Home, Building2, Fuel } from "lucide-react";
+import { Plus, Trash2, Save, Home, Building2, Fuel, ArrowUpFromLine } from "lucide-react";
 
 const EQUIPMENT_TYPES = [
   { value: "ladder", label: "Ladder" },
@@ -56,6 +56,10 @@ const emptyItem = (mode = "owned") => ({
   equipment_type: mode === "owned" ? "truck" : "scissor_lift",
   ownership: mode,
   max_height_feet: 0,
+  total_boom_height_feet: 0,
+  horizontal_boom_reach_feet: 0,
+  deployed_truck_width_feet: 0,
+  vertical_reach_safety_margin_feet: 2,
   pricing_mode: mode === "owned" ? "owned_flat" : "per_day",
   cost_per_hour: 0,
   cost_per_day: 0,
@@ -147,6 +151,7 @@ export default function EquipmentInventoryTab() {
   const renderRow = (it, origIndex, mode) => {
     const isVehicle = VEHICLE_TYPES.includes(it.equipment_type);
     const showFuel = mode === "owned" && isVehicle;
+    const showBoomFields = it.equipment_type === "boom_lift";
     const pricingOptions = mode === "owned" ? OWNED_PRICING_MODES : RENTED_PRICING_MODES;
     const accent = mode === "owned" ? "bg-emerald-50/40 border-emerald-100" : "bg-blue-50/40 border-blue-100";
 
@@ -196,6 +201,59 @@ export default function EquipmentInventoryTab() {
             </label>
           </div>
         </div>
+        {showBoomFields && (
+          <div className="grid md:grid-cols-12 gap-2 mt-2 p-2 rounded-md bg-purple-100/40 border border-purple-200/60">
+            <div className="md:col-span-12 flex items-center gap-1.5 text-[11px] font-semibold text-purple-900 mb-0.5">
+              <ArrowUpFromLine className="w-3 h-3" />
+              Boom Lift Reach Specs
+              <span className="text-purple-700/70 font-normal">— used by the install height reach chart</span>
+            </div>
+            <div className="md:col-span-3">
+              <Label className="text-xs">Horizontal Reach (ft)</Label>
+              <Input
+                type="number"
+                step="0.5"
+                value={it.horizontal_boom_reach_feet || 0}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => update(origIndex, { horizontal_boom_reach_feet: parseFloat(e.target.value) || 0 })}
+                className="h-8 mt-0.5"
+              />
+            </div>
+            <div className="md:col-span-3">
+              <Label className="text-xs">Total Boom Height (ft)</Label>
+              <Input
+                type="number"
+                step="0.5"
+                value={it.total_boom_height_feet || 0}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => update(origIndex, { total_boom_height_feet: parseFloat(e.target.value) || 0 })}
+                className="h-8 mt-0.5"
+              />
+            </div>
+            <div className="md:col-span-3">
+              <Label className="text-xs">Deployed Truck Width (ft)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                value={it.deployed_truck_width_feet || 0}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => update(origIndex, { deployed_truck_width_feet: parseFloat(e.target.value) || 0 })}
+                className="h-8 mt-0.5"
+              />
+            </div>
+            <div className="md:col-span-3">
+              <Label className="text-xs">Vert Safety Margin (ft)</Label>
+              <Input
+                type="number"
+                step="0.5"
+                value={it.vertical_reach_safety_margin_feet ?? 2}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => update(origIndex, { vertical_reach_safety_margin_feet: parseFloat(e.target.value) || 0 })}
+                className="h-8 mt-0.5"
+              />
+            </div>
+          </div>
+        )}
         {showFuel && (
           <div className="grid md:grid-cols-12 gap-2 mt-2 p-2 rounded-md bg-emerald-100/40 border border-emerald-200/60">
             <div className="md:col-span-3">

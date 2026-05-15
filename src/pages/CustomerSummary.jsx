@@ -18,18 +18,16 @@ import {
 
 const MODULE_LABELS = {
   channel_letter_installation: 'Channel & Dimensional Letters',
-  foundation: 'Foundation / Concrete / Masonry',
-  brick_stone: 'Brick & Stone',
+  foundation: 'Concrete | Masonry | Poles',
   paint: 'Paint Estimator',
-  laser: 'Laser',
-  cnc: 'CNC',
+  laser: 'Laser Cutting & Engraving',
+  cnc: 'CNC Routing',
   metal_fabrication: 'Metal Fabrication',
 };
 
 const MODULE_ENTITY_MAP = {
   channel_letter_installation: 'ChannelLetterInstallation',
   foundation: 'FoundationProject',
-  brick_stone: 'BrickStoneProject',
   paint: 'Project',
   laser: 'LaserProject',
   cnc: 'CNCProject',

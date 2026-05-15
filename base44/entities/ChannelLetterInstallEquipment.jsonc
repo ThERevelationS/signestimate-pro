@@ -37,7 +37,27 @@
     "max_height_feet": {
       "type": "number",
       "default": 0,
-      "description": "Maximum reach height in feet (for matching install height)"
+      "description": "Maximum working/platform height in feet (for matching install height)"
+    },
+    "total_boom_height_feet": {
+      "type": "number",
+      "default": 0,
+      "description": "Total boom lift height (platform height + worker reach). Used by the reach chart. Defaults to max_height_feet when blank."
+    },
+    "horizontal_boom_reach_feet": {
+      "type": "number",
+      "default": 0,
+      "description": "Max horizontal reach of the boom from the pivot point (boom lifts only). Used by the parking-distance reach chart."
+    },
+    "deployed_truck_width_feet": {
+      "type": "number",
+      "default": 0,
+      "description": "Width of the boom lift carriage / truck when deployed with outriggers. Subtracts from horizontal reach because the boom pivot is centered on the truck."
+    },
+    "vertical_reach_safety_margin_feet": {
+      "type": "number",
+      "default": 2,
+      "description": "Vertical safety margin to subtract from the boom's stated max height when plotting the reach envelope (accounts for boom angle near vertical and safe operating zone)."
     },
     "pricing_mode": {
       "type": "string",

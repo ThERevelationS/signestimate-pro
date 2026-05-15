@@ -108,16 +108,6 @@ export function categorizeFoundationProject(p) {
   return lines;
 }
 
-export function categorizeBrickStoneProject(p) {
-  if (!p) return [];
-  const lines = [];
-  const mat = num(p.material_cost) + num(p.core_material_cost);
-  if (mat > 0) lines.push({ module: 'brick_stone', label: 'Brick/Stone Material', cost: mat, category_key: 'outsourced_fab' });
-  const mortar = num(p.mortar_cost);
-  if (mortar > 0) lines.push({ module: 'brick_stone', label: 'Mortar & Supplies', cost: mortar, category_key: 'outsourced_fab' });
-  return lines;
-}
-
 export function categorizePaintProject(p) {
   if (!p) return [];
   const lines = [];
@@ -163,7 +153,6 @@ export function categorizeMetalProject(p) {
 export const MODULE_CATEGORIZERS = {
   channel_letter_installation: categorizeChannelLetterProject,
   foundation: categorizeFoundationProject,
-  brick_stone: categorizeBrickStoneProject,
   paint: categorizePaintProject,
   laser: categorizeLaserProject,
   cnc: categorizeCNCProject,
