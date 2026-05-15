@@ -20,6 +20,7 @@ import ValidationWarnings from "@/components/channelLetterInstall/ValidationWarn
 import EquipmentSelector from "@/components/channelLetterInstall/EquipmentSelector";
 import PersonnelSelector from "@/components/channelLetterInstall/PersonnelSelector";
 import LettersPurchaseTab from "@/components/channelLetterInstall/LettersPurchaseTab";
+import TravelCostCard from "@/components/channelLetterInstall/TravelCostCard";
 import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
 import CustomerPricingTab from "@/components/markup/CustomerPricingTab";
 import { categorizeChannelLetterProject } from "@/components/markup/projectCategorizer";
@@ -61,6 +62,8 @@ const blankProject = () => ({
   base_supplies_cost: 0,
   extra_supplies_cost: 0,
   markup_percent: 0,
+  travel_miles_round_trip: 0,
+  total_travel_cost: 0,
   notes: "",
 });
 
@@ -523,7 +526,7 @@ export default function NewChannelLetterInstallation() {
                       value="crew"
                       icon={HardHat}
                       label="Crew"
-                      amount={(recalculated.total_equipment_cost || 0) + (recalculated.total_personnel_cost || 0)}
+                      amount={(recalculated.total_equipment_cost || 0) + (recalculated.total_personnel_cost || 0) + (recalculated.total_travel_cost || 0)}
                       warn={(recalculated.selected_equipment?.length || 0) === 0}
                     />
                   )}
@@ -778,6 +781,23 @@ export default function NewChannelLetterInstallation() {
                   }}
                   items={recalculated.items}
                 />
+                </div>
+                <div id="clp-travel">
+                  <TravelCostCard
+                    shopAddress={settings.install_shop_address || ""}
+                    siteAddress={project.site_address || ""}
+                    selectedEquipment={recalculated.selected_equipment || []}
+                    equipmentInventory={equipmentInventory}
+                    personnel={recalculated.personnel || []}
+                    settings={settings}
+                    travelMiles={project.travel_miles_round_trip || 0}
+                    onMilesChange={(miles) => updateProject({ travel_miles_round_trip: miles })}
+                    onTotalChange={(total) => {
+                      if ((project.total_travel_cost || 0) !== total) {
+                        updateProject({ total_travel_cost: total });
+                      }
+                    }}
+                  />
                 </div>
                 {equipmentInventory.length === 0 && (
                   <Card className="bg-amber-50 border-amber-200">

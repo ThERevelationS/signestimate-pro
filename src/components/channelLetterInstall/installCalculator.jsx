@@ -273,12 +273,16 @@ export const calcProjectTotals = (project) => {
   const supplies_from_materials = total_materials_cost * (suppliesPct / 100);
   const total_supplies_cost = supplies_from_materials + extra;
 
+  // Travel cost — already computed in the UI and stored on the project. Just roll it in.
+  const total_travel_cost = parseFloat(project.total_travel_cost) || 0;
+
   const subtotal =
     labor_cost +
     total_materials_cost +
     total_supplies_cost +
     total_equipment_cost +
     total_personnel_cost +
+    total_travel_cost +
     total_letters_cost;
   const markupPct = parseFloat(project.markup_percent) || 0;
   const markup_amount = subtotal * (markupPct / 100);
@@ -291,6 +295,7 @@ export const calcProjectTotals = (project) => {
     total_supplies_cost,
     total_equipment_cost,
     total_personnel_cost,
+    total_travel_cost,
     subtotal,
     markup_amount,
     total_cost,

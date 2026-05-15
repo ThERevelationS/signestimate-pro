@@ -155,6 +155,14 @@
           "source_letter_purchase_id": {
             "type": "string"
           },
+          "set_id": {
+            "type": "string",
+            "description": "Letter set grouping id; install items inherit from parent purchase via sync."
+          },
+          "set_parent_id": {
+            "type": "string",
+            "description": "When set, indicates this item is a child of another purchase/item in the same set."
+          },
           "backer_width_inches": {
             "type": "number"
           },
@@ -304,6 +312,14 @@
           "backer_fab_config": {
             "type": "object",
             "additionalProperties": true
+          },
+          "set_id": {
+            "type": "string",
+            "description": "Identifier shared by all purchases in the same set."
+          },
+          "set_parent_id": {
+            "type": "string",
+            "description": "If present, this purchase is a CHILD; the value is the parent purchase id. Children inherit install_height_feet and wall_material from the parent."
           }
         }
       }
@@ -406,6 +422,16 @@
           }
         }
       }
+    },
+    "travel_miles_round_trip": {
+      "type": "number",
+      "default": 0,
+      "description": "Round-trip driving miles between the shop and the site. Used to compute fuel + travel labor."
+    },
+    "total_travel_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Calculated travel cost rollup (fuel + travel labor + overhead) included in project subtotal."
     },
     "supplies_percent_of_materials": {
       "type": "number",

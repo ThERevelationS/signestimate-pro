@@ -17,6 +17,7 @@ export default function InstallSummaryCard({
   const materials = parseFloat(project.total_materials_cost) || 0;
   const equipment = parseFloat(project.total_equipment_cost) || 0;
   const personnel = parseFloat(project.total_personnel_cost) || 0;
+  const travel = parseFloat(project.total_travel_cost) || 0;
   const letters = parseFloat(project.total_letters_cost) || 0;
   const subtotal = parseFloat(project.subtotal) || 0;
   const total = parseFloat(project.total_cost) || 0;
@@ -26,6 +27,7 @@ export default function InstallSummaryCard({
     { label: "Materials",  value: materials, color: "bg-emerald-400" },
     { label: "Equipment",  value: equipment, color: "bg-amber-400" },
     { label: "Personnel",  value: personnel, color: "bg-sky-400" },
+    { label: "Travel",     value: travel,    color: "bg-orange-400" },
     { label: "Letters",    value: letters,   color: "bg-pink-400" },
   ];
 
@@ -57,6 +59,9 @@ export default function InstallSummaryCard({
           )}
           {personnel > 0 && (
             <Row label={`Personnel (${(project.personnel || []).length})`} value={personnel} dot="bg-sky-400" />
+          )}
+          {travel > 0 && (
+            <Row label={`Travel (${(parseFloat(project.travel_miles_round_trip) || 0).toFixed(1)} mi)`} value={travel} dot="bg-orange-400" />
           )}
           {letters > 0 && (
             <Row label={`Letters (${(project.letter_purchases || []).length})`} value={letters} dot="bg-pink-400" />

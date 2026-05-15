@@ -5,10 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Copy, Link2 } from "lucide-react";
+import { Trash2, Copy, Link2, GitBranch, Layers, CornerDownRight } from "lucide-react";
 import { LETTER_TYPE_LABELS, SIZE_UNITS, resolveUnitCost } from "./lettersCalculator";
 import DimensionalFabPanel from "./DimensionalFabPanel";
 import BackerSection from "./BackerSection";
+
+// Letter types that can be added as a child of a set
+const SET_CHILD_TYPES = [
+  { value: "channel_flush_mounted", label: "Flush-Mounted" },
+  { value: "channel_halo_lit", label: "Halo-Lit" },
+  { value: "channel_raceway_mounted", label: "Raceway-Mounted" },
+  { value: "capsule_logo_pillbox", label: "Capsule / Logo" },
+  { value: "dimensional_letters", label: "Dimensional" },
+];
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 
@@ -36,7 +45,20 @@ const TYPE_COLOR = {
   dimensional_letters: "bg-emerald-100 text-emerald-800 border-emerald-200",
 };
 
-export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemove, onDuplicate, index, fabHighlight = false }) {
+export default function LetterPurchaseRow({
+  purchase,
+  settings,
+  onUpdate,
+  onRemove,
+  onDuplicate,
+  onAddToSet,
+  index,
+  fabHighlight = false,
+  setRole = "solo", // "solo" | "parent" | "child"
+  setSize = 1,
+  setIndex = 0,
+}) {
+  const [addToSetOpen, setAddToSetOpen] = React.useState(false);
   // Tour anchors — only applied to the first row so the walkthrough has
   // unique elements to point at. Subsequent rows render without these IDs.
   const isFirst = index === 0;
@@ -50,13 +72,36 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
 
   const update = (patch) => onUpdate({ ...purchase, ...patch });
 
+  const isChild = setRole === "child";
+  const isParent = setRole === "parent";
+
+  // Outer styling — children are indented & have a left accent
+  const containerClass = isChild
+    ? "bg-white rounded-xl border border-slate-200 border-l-4 border-l-purple-400 shadow-sm p-4 space-y-3 ml-6"
+    : isParent
+      ? "bg-white rounded-xl border-2 border-purple-200 shadow-sm p-4 space-y-3"
+      : "bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3";
+
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
+    <div className={containerClass}>
       {/* Header row */}
       <div id={tourId("type-picker")} className="flex items-center gap-2 flex-wrap">
+        {isChild && (
+          <CornerDownRight className="w-4 h-4 text-purple-500 flex-shrink-0" title={`Part of set (item ${setIndex + 1})`} />
+        )}
         <Badge className={`${TYPE_COLOR[purchase.letter_type] || "bg-slate-100"} font-medium`}>
           #{index + 1} · {backerEnabled ? "Dimensional Letters w/ Backer" : LETTER_TYPE_LABELS[purchase.letter_type]}
         </Badge>
+        {isParent && (
+          <Badge className="bg-purple-600 text-white text-xs">
+            <Layers className="w-3 h-3 mr-1" /> Set of {setSize}
+          </Badge>
+        )}
+        {isChild && (
+          <Badge variant="outline" className="text-[10px] text-purple-700 border-purple-300 bg-purple-50">
+            ↳ inherits height & wall from parent
+          </Badge>
+        )}
         {purchase.create_install_item && purchase.letter_type !== "raceway" && (
           <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
             <Link2 className="w-3 h-3 mr-1" /> Auto-creates install item
@@ -66,6 +111,39 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
           <span className="text-lg font-bold tabular-nums text-slate-900 mr-2">
             {fmt(purchase.total_cost)}
           </span>
+          {!isChild && onAddToSet && (
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setAddToSetOpen(o => !o)}
+                className="h-8 w-8 text-purple-600 hover:bg-purple-50"
+                title="Add to set — group multiple letter types as one sign"
+              >
+                <GitBranch className="w-4 h-4" />
+              </Button>
+              {addToSetOpen && (
+                <div className="absolute right-0 top-9 z-20 bg-white border border-slate-200 rounded-lg shadow-lg w-56 py-1 text-xs">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                    Add to set as…
+                  </div>
+                  {SET_CHILD_TYPES.map(t => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => {
+                        onAddToSet(purchase, t.value);
+                        setAddToSetOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-purple-50 text-slate-700"
+                    >
+                      + {t.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <Button variant="ghost" size="icon" onClick={onDuplicate} className="h-8 w-8" title="Duplicate">
             <Copy className="w-4 h-4 text-slate-500" />
           </Button>
@@ -301,7 +379,7 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
             />
             <span>Auto-create matching item on Installation tab</span>
           </label>
-          {purchase.create_install_item && (
+          {purchase.create_install_item && !isChild && (
             <div className="flex items-center gap-2 text-xs">
               <Label className="text-xs">Install Height (ft)</Label>
               <Input
@@ -312,6 +390,11 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
                 onChange={(e) => update({ install_height_feet: parseFloat(e.target.value) || 0 })}
                 className="h-8 w-20"
               />
+            </div>
+          )}
+          {isChild && (
+            <div className="text-[11px] text-purple-700 italic">
+              Install height inherited from the parent in this set.
             </div>
           )}
         </div>

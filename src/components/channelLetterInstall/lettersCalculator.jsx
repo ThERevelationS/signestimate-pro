@@ -46,6 +46,50 @@ const num = (v, fallback = 0) => {
   return isNaN(n) ? fallback : n;
 };
 
+// Generate a stable id for a new set
+export const newSetId = () => `set_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+// Group purchases visually: returns an ordered array of groups, each either
+// { kind: "solo", purchase }   — a normal standalone row
+// { kind: "set", parent, children }  — a parent + its children in the same set
+// Children that don't yet have a parent are treated as solo (defensive).
+export const groupPurchasesBySet = (purchases) => {
+  const list = purchases || [];
+  const byId = new Map(list.map(p => [p.id, p]));
+  const childrenByParent = new Map();
+  list.forEach(p => {
+    if (p.set_parent_id && byId.has(p.set_parent_id)) {
+      const arr = childrenByParent.get(p.set_parent_id) || [];
+      arr.push(p);
+      childrenByParent.set(p.set_parent_id, arr);
+    }
+  });
+  const seen = new Set();
+  const groups = [];
+  for (const p of list) {
+    if (seen.has(p.id)) continue;
+    // Treat as a parent if it has children OR has set_id but no set_parent_id
+    if (!p.set_parent_id && childrenByParent.has(p.id)) {
+      const children = childrenByParent.get(p.id);
+      groups.push({ kind: "set", parent: p, children });
+      seen.add(p.id);
+      children.forEach(c => seen.add(c.id));
+    } else if (!p.set_parent_id) {
+      groups.push({ kind: "solo", purchase: p });
+      seen.add(p.id);
+    }
+    // Children whose parent doesn't exist will be picked up at the end as solo (defensive)
+  }
+  // Defensive: orphan children
+  for (const p of list) {
+    if (!seen.has(p.id)) {
+      groups.push({ kind: "solo", purchase: p });
+      seen.add(p.id);
+    }
+  }
+  return groups;
+};
+
 export const emptyLetterPurchase = (type = "channel_flush_mounted") => ({
   id: `lp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
   letter_type: type,
@@ -242,6 +286,9 @@ export const syncInstallItemsFromPurchases = (existingItems, purchases, emptyLin
 
   const validPurchaseIds = new Set();
 
+  // Build a lookup of purchases by id so children can inherit from their parent
+  const purchasesById = new Map((purchases || []).map(p => [p.id, p]));
+
   for (const p of (purchases || [])) {
     if (!p.create_install_item) continue;
     if (p.letter_type === "raceway") continue; // raceway is a hardware purchase, not an install line
@@ -259,16 +306,24 @@ export const syncInstallItemsFromPurchases = (existingItems, purchases, emptyLin
       ? num(p.raceway_length_feet)
       : 0;
 
+    // Letter set inheritance: if this purchase is a child of a set, inherit
+    // install_height_feet and wall_material from the parent purchase.
+    const parent = p.set_parent_id ? purchasesById.get(p.set_parent_id) : null;
+    const inheritedInstallHeight = parent ? num(parent.install_height_feet, 12) : num(p.install_height_feet, 12);
+    const inheritedWallMaterial = parent ? (parent.wall_material || "eifs") : (p.wall_material || "eifs");
+
     const patch = {
       description: p.description || LETTER_TYPE_LABELS[p.letter_type],
       installation_type: installType,
       qty_letters: num(p.qty),
       letter_size,
       letter_height_inches,
-      installation_height_feet: num(p.install_height_feet, 12),
+      installation_height_feet: inheritedInstallHeight,
       raceway_length_feet,
-      wall_material: p.wall_material || "eifs",
+      wall_material: inheritedWallMaterial,
       source_letter_purchase_id: p.id,
+      set_id: p.set_id || undefined,
+      set_parent_id: p.set_parent_id || undefined,
       // Backer fields propagate to the install item for install-time pricing
       backer_width_inches: p.backer_enabled ? num(p.backer_width_inches) : 0,
       backer_height_inches: p.backer_enabled ? num(p.backer_height_inches) : 0,

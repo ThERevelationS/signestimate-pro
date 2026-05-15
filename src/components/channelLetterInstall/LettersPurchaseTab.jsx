@@ -8,7 +8,8 @@ import { createPageUrl } from "@/utils";
 import { Plus, Type, Truck, Receipt, Info, Settings, Sparkles, ChevronDown, ArrowUp } from "lucide-react";
 import LetterPurchaseRow from "./LetterPurchaseRow";
 import AIScopeWriterModal from "./AIScopeWriterModal";
-import { emptyLetterPurchase, LETTER_TYPE_LABELS } from "./lettersCalculator";
+import { emptyLetterPurchase, LETTER_TYPE_LABELS, groupPurchasesBySet, newSetId } from "./lettersCalculator";
+import { Layers } from "lucide-react";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 
@@ -79,8 +80,71 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject,
     const arr = [...purchases];
     const copy = JSON.parse(JSON.stringify(arr[idx]));
     copy.id = `lp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    // A duplicated row should NOT clone set membership — that would create orphan/duplicate children
+    copy.set_id = undefined;
+    copy.set_parent_id = undefined;
     arr.splice(idx + 1, 0, copy);
     onUpdateProject({ letter_purchases: arr });
+  };
+
+  // Add a CHILD purchase that inherits install_height_feet & wall_material from the parent.
+  // If the parent doesn't yet have a set_id, give it one and insert the new child right after it.
+  const addToSet = (parent, childType) => {
+    const arr = [...purchases];
+    const parentIdx = arr.findIndex(p => p.id === parent.id);
+    if (parentIdx === -1) return;
+
+    const sid = parent.set_id || newSetId();
+    if (!parent.set_id) {
+      arr[parentIdx] = { ...arr[parentIdx], set_id: sid };
+    }
+
+    const child = emptyLetterPurchase(childType);
+    child.set_id = sid;
+    child.set_parent_id = parent.id;
+    // Inherit location-style fields from the parent
+    child.install_height_feet = parent.install_height_feet;
+    child.wall_material = parent.wall_material || "eifs";
+
+    // Insert immediately after the parent (and after any existing children of that parent)
+    let insertAt = parentIdx + 1;
+    while (insertAt < arr.length && arr[insertAt].set_parent_id === parent.id) insertAt++;
+    arr.splice(insertAt, 0, child);
+    onUpdateProject({ letter_purchases: arr });
+  };
+
+  // When a parent in a set changes install_height_feet or wall_material, propagate to children.
+  // This keeps "inherit from parent" semantics live in the UI.
+  const updatePurchaseWithSetSync = (idx, next) => {
+    const arr = [...purchases];
+    const prev = arr[idx];
+    arr[idx] = next;
+
+    const heightChanged = (prev.install_height_feet || 0) !== (next.install_height_feet || 0);
+    const wallChanged = (prev.wall_material || "") !== (next.wall_material || "");
+    if (next.set_id && !next.set_parent_id && (heightChanged || wallChanged)) {
+      // It's a parent — propagate to its children
+      for (let i = 0; i < arr.length; i++) {
+        if (arr[i].set_parent_id === next.id) {
+          arr[i] = {
+            ...arr[i],
+            install_height_feet: next.install_height_feet,
+            wall_material: next.wall_material || "eifs",
+          };
+        }
+      }
+    }
+    onUpdateProject({ letter_purchases: arr });
+  };
+
+  // Removing a parent should remove its children too
+  const removePurchaseWithSetCleanup = (idx) => {
+    const target = purchases[idx];
+    if (!target) return;
+    const ids = new Set([target.id]);
+    // If this is a parent, also remove all its children
+    purchases.forEach(p => { if (p.set_parent_id === target.id) ids.add(p.id); });
+    onUpdateProject({ letter_purchases: purchases.filter(p => !ids.has(p.id)) });
   };
 
   const purchasesTotal = purchases.reduce((s, p) => s + (parseFloat(p.total_cost) || 0), 0);
@@ -186,19 +250,74 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject,
         </Card>
       ) : (
         <div className="space-y-2">
-          {purchases.map((p, idx) => (
-            <div key={p.id || idx} id={idx === 0 ? "clp-letter-purchase-row" : undefined}>
-              <LetterPurchaseRow
-                index={idx}
-                purchase={p}
-                settings={settings}
-                onUpdate={(next) => updatePurchase(idx, next)}
-                onRemove={() => removePurchase(idx)}
-                onDuplicate={() => duplicatePurchase(idx)}
-                fabHighlight={incompleteSet.has(p.id)}
-              />
-            </div>
-          ))}
+          {groupPurchasesBySet(purchases).map((group, gi) => {
+            if (group.kind === "solo") {
+              const p = group.purchase;
+              const idx = purchases.findIndex(x => x.id === p.id);
+              return (
+                <div key={p.id || gi} id={idx === 0 ? "clp-letter-purchase-row" : undefined}>
+                  <LetterPurchaseRow
+                    index={idx}
+                    purchase={p}
+                    settings={settings}
+                    onUpdate={(next) => updatePurchaseWithSetSync(idx, next)}
+                    onRemove={() => removePurchaseWithSetCleanup(idx)}
+                    onDuplicate={() => duplicatePurchase(idx)}
+                    onAddToSet={addToSet}
+                    fabHighlight={incompleteSet.has(p.id)}
+                  />
+                </div>
+              );
+            }
+            // Set group
+            const { parent, children } = group;
+            const parentIdx = purchases.findIndex(x => x.id === parent.id);
+            const setSize = 1 + children.length;
+            const setTotal = (parseFloat(parent.total_cost) || 0)
+              + children.reduce((s, c) => s + (parseFloat(c.total_cost) || 0), 0);
+            return (
+              <div key={parent.id || gi} className="space-y-2 bg-purple-50/40 rounded-2xl p-2 border border-purple-100">
+                <LetterPurchaseRow
+                  index={parentIdx}
+                  purchase={parent}
+                  settings={settings}
+                  onUpdate={(next) => updatePurchaseWithSetSync(parentIdx, next)}
+                  onRemove={() => removePurchaseWithSetCleanup(parentIdx)}
+                  onDuplicate={() => duplicatePurchase(parentIdx)}
+                  onAddToSet={addToSet}
+                  fabHighlight={incompleteSet.has(parent.id)}
+                  setRole="parent"
+                  setSize={setSize}
+                />
+                {children.map((c, ci) => {
+                  const cidx = purchases.findIndex(x => x.id === c.id);
+                  return (
+                    <LetterPurchaseRow
+                      key={c.id}
+                      index={cidx}
+                      purchase={c}
+                      settings={settings}
+                      onUpdate={(next) => updatePurchase(cidx, next)}
+                      onRemove={() => removePurchase(cidx)}
+                      onDuplicate={() => duplicatePurchase(cidx)}
+                      fabHighlight={incompleteSet.has(c.id)}
+                      setRole="child"
+                      setSize={setSize}
+                      setIndex={ci + 1}
+                    />
+                  );
+                })}
+                <div className="flex items-center justify-end gap-3 pr-2 pt-1">
+                  <span className="text-[11px] text-purple-700 flex items-center gap-1">
+                    <Layers className="w-3 h-3" /> Set total ({setSize} items)
+                  </span>
+                  <span className="text-base font-bold tabular-nums text-purple-900">
+                    {fmt(setTotal)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
