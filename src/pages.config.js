@@ -59,6 +59,7 @@ import FoundationProjects from './pages/FoundationProjects';
 import FoundationSettings from './pages/FoundationSettings';
 import Home from './pages/Home';
 import Inventory from './pages/Inventory';
+import MasterInventory from './pages/MasterInventory';
 import LaserProjects from './pages/LaserProjects';
 import LaserSettings from './pages/LaserSettings';
 import MetalProjects from './pages/MetalProjects';
@@ -93,6 +94,7 @@ export const PAGES = {
     "FoundationSettings": FoundationSettings,
     "Home": Home,
     "Inventory": Inventory,
+    "MasterInventory": MasterInventory,
     "LaserProjects": LaserProjects,
     "LaserSettings": LaserSettings,
     "MetalProjects": MetalProjects,
