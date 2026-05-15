@@ -13,6 +13,7 @@ const EQUIPMENT_TYPES = [
   { value: "ladder", label: "Ladder" },
   { value: "scissor_lift", label: "Scissor Lift" },
   { value: "boom_lift", label: "Boom Lift" },
+  { value: "boom_truck", label: "Boom Truck" },
   { value: "scaffold", label: "Scaffold" },
   { value: "truck", label: "Truck" },
   { value: "car", label: "Car" },
@@ -24,7 +25,8 @@ const EQUIPMENT_TYPES = [
   { value: "other", label: "Other" },
 ];
 
-const VEHICLE_TYPES = ["truck", "car", "van", "flatbed"];
+const VEHICLE_TYPES = ["truck", "car", "van", "flatbed", "boom_truck"];
+const BOOM_TYPES = ["boom_lift", "boom_truck"];
 
 const FUEL_TYPES = [
   { value: "na", label: "N/A" },
@@ -151,7 +153,7 @@ export default function EquipmentInventoryTab() {
   const renderRow = (it, origIndex, mode) => {
     const isVehicle = VEHICLE_TYPES.includes(it.equipment_type);
     const showFuel = mode === "owned" && isVehicle;
-    const showBoomFields = it.equipment_type === "boom_lift";
+    const showBoomFields = BOOM_TYPES.includes(it.equipment_type);
     const pricingOptions = mode === "owned" ? OWNED_PRICING_MODES : RENTED_PRICING_MODES;
     const accent = mode === "owned" ? "bg-emerald-50/40 border-emerald-100" : "bg-blue-50/40 border-blue-100";
 
@@ -205,7 +207,7 @@ export default function EquipmentInventoryTab() {
           <div className="grid md:grid-cols-12 gap-2 mt-2 p-2 rounded-md bg-purple-100/40 border border-purple-200/60">
             <div className="md:col-span-12 flex items-center gap-1.5 text-[11px] font-semibold text-purple-900 mb-0.5">
               <ArrowUpFromLine className="w-3 h-3" />
-              Boom Lift Reach Specs
+              {it.equipment_type === "boom_truck" ? "Boom Truck Reach Specs" : "Boom Lift Reach Specs"}
               <span className="text-purple-700/70 font-normal">— used by the install height reach chart</span>
             </div>
             <div className="md:col-span-3">

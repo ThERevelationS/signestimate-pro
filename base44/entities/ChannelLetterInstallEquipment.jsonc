@@ -12,6 +12,7 @@
         "ladder",
         "scissor_lift",
         "boom_lift",
+        "boom_truck",
         "scaffold",
         "truck",
         "car",
@@ -47,7 +48,7 @@
     "horizontal_boom_reach_feet": {
       "type": "number",
       "default": 0,
-      "description": "Max horizontal reach of the boom from the pivot point (boom lifts only). Used by the parking-distance reach chart."
+      "description": "Max horizontal reach of the boom from the pivot point (boom lifts / boom trucks only). Used by the parking-distance reach chart."
     },
     "deployed_truck_width_feet": {
       "type": "number",

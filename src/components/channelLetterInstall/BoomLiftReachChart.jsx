@@ -57,7 +57,7 @@ export default function BoomLiftReachChart({ installationHeightFeet }) {
       try {
         const list = await ChannelLetterInstallEquipment.list("sort_order");
         const booms = list.filter(
-          (e) => e.equipment_type === "boom_lift" && e.is_active !== false
+          (e) => (e.equipment_type === "boom_lift" || e.equipment_type === "boom_truck") && e.is_active !== false
         );
         setAllEquipment(booms);
         // Auto-select the smallest boom whose max height ≥ install height,
@@ -119,7 +119,7 @@ export default function BoomLiftReachChart({ installationHeightFeet }) {
   if (allEquipment.length === 0) {
     return (
       <div className="text-xs text-slate-600 bg-amber-50 border border-amber-200 rounded p-3 leading-relaxed">
-        No boom lifts in your equipment inventory yet. Add one in{" "}
+        No boom lifts or boom trucks in your equipment inventory yet. Add one in{" "}
         <span className="font-semibold">Channel Letter Inventory → Equipment</span> with{" "}
         <span className="font-semibold">Horizontal Boom Reach</span>,{" "}
         <span className="font-semibold">Total Boom Height</span>, and{" "}
@@ -136,15 +136,16 @@ export default function BoomLiftReachChart({ installationHeightFeet }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs font-semibold text-slate-700">Boom Lift:</span>
+        <span className="text-xs font-semibold text-slate-700">Boom Lift / Truck:</span>
         <Select value={selectedId} onValueChange={setSelectedId}>
-          <SelectTrigger className="h-8 w-[260px] text-xs">
-            <SelectValue placeholder="Choose a boom lift" />
+          <SelectTrigger className="h-8 w-[280px] text-xs">
+            <SelectValue placeholder="Choose a boom lift or truck" />
           </SelectTrigger>
           <SelectContent>
             {allEquipment.map((e) => (
               <SelectItem key={e.id} value={e.id} className="text-xs">
                 {e.equipment_name} — {e.max_height_feet || 0}ft max
+                {e.equipment_type === "boom_truck" ? " (Truck)" : ""}
               </SelectItem>
             ))}
           </SelectContent>
