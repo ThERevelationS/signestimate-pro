@@ -14,6 +14,9 @@ import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import { generatePaintEstimateHTML } from "@/components/paintEstimate/generatePaintHTML";
 import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
+import CustomerPricingTab from "@/components/markup/CustomerPricingTab";
+import { categorizePaintProject } from "@/components/markup/projectCategorizer";
+import { TrendingUp } from "lucide-react";
 
 const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/16", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8", "1", "1-1/8", "1-1/4", "1-3/8", "1-1/2", "1-5/8", "1-3/4", "1-7/8", "2", "2-1/4", "2-1/2", "2-3/4", "3", "3-1/4", "3-1/2", "3-3/4", "4"];
 const coverageFactors = ["1/8", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8", "1", "1-1/8", "1-1/4", "1-3/8", "1-1/2", "1-5/8", "1-3/4", "1-7/8", "2"];
@@ -951,10 +954,11 @@ export default function NewPaintEstimate() {
           <div className="lg:col-span-2">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <div className="sticky top-[64px] z-30 -mx-2 px-2 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60">
-                <TabsList className="grid grid-cols-3 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
+                <TabsList className="grid grid-cols-4 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
                   <TabBadgeTrigger value="project" icon={FileText} label="Project" color="blue" />
                   <TabBadgeTrigger value="items" icon={ListChecks} label="Items" amount={totalPaintMask + totalLiquidPaintAndSupplies + totalLabor} count={project.items.length} color="blue" />
-                  <TabBadgeTrigger value="summary" icon={Calculator} label="Summary" amount={totalPaintMask + totalLiquidPaintAndSupplies + totalLabor} accent color="blue" />
+                  <TabBadgeTrigger value="summary" icon={Calculator} label="Summary" amount={totalPaintMask + totalLiquidPaintAndSupplies + totalLabor} color="blue" />
+                  <TabBadgeTrigger value="pricing" icon={TrendingUp} label="Customer Pricing" accent color="blue" />
                 </TabsList>
               </div>
 
@@ -1377,6 +1381,19 @@ export default function NewPaintEstimate() {
                     </table>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="pricing" className="mt-4 space-y-6">
+                <CustomerPricingTab
+                  project={{
+                    ...project,
+                    total_paint_mask_cost: totalPaintMask,
+                    total_liquid_paint_and_supplies_cost: totalLiquidPaintAndSupplies,
+                    total_labor_cost: totalLabor,
+                  }}
+                  categorize={categorizePaintProject}
+                  accentColor="blue"
+                />
               </TabsContent>
             </Tabs>
           </div>

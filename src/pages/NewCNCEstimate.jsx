@@ -6,13 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2, Save, Router, FileText, ListChecks, Calculator } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Router, FileText, ListChecks, Calculator, TrendingUp } from "lucide-react";
 import { Tabs, TabsList, TabsContent } from "@/components/ui/tabs";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
+import CustomerPricingTab from "@/components/markup/CustomerPricingTab";
+import { categorizeCNCProject } from "@/components/markup/projectCategorizer";
 
 const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8", "1", "1-1/4", "1-1/2", "2", "2-1/2", "3", "3-1/2", "4"];
 const materials = ["Acrylic", "Wood", "MDF", "Plywood", "PVC", "HDPE", "Aluminum", "Corian"];
@@ -1030,10 +1032,11 @@ export default function NewCNCEstimate() {
           <div className="lg:col-span-2">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <div className="sticky top-[64px] z-30 -mx-2 px-2 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60">
-                <TabsList className="grid grid-cols-3 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
+                <TabsList className="grid grid-cols-4 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
                   <TabBadgeTrigger value="project" icon={FileText} label="Project" color="green" />
                   <TabBadgeTrigger value="items" icon={ListChecks} label="Items" amount={totalMachine + totalLabor} count={project.items.length} color="green" />
-                  <TabBadgeTrigger value="summary" icon={Calculator} label="Summary" amount={totalMachine + totalLabor} accent color="green" />
+                  <TabBadgeTrigger value="summary" icon={Calculator} label="Summary" amount={totalMachine + totalLabor} color="green" />
+                  <TabBadgeTrigger value="pricing" icon={TrendingUp} label="Customer Pricing" accent color="green" />
                 </TabsList>
               </div>
 
@@ -1144,6 +1147,14 @@ export default function NewCNCEstimate() {
                     </table>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="pricing" className="mt-4 space-y-6">
+                <CustomerPricingTab
+                  project={{ ...project, total_machine_cost: totalMachine, total_labor_cost: totalLabor }}
+                  categorize={categorizeCNCProject}
+                  accentColor="green"
+                />
               </TabsContent>
             </Tabs>
           </div>

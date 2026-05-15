@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator, MapPin, Copy, DollarSign, Check, HardHat, Type, Camera, Sparkles } from "lucide-react";
+import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator, MapPin, Copy, DollarSign, Check, HardHat, Type, Camera, Sparkles, TrendingUp } from "lucide-react";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import InstallLineItem from "@/components/channelLetterInstall/InstallLineItem";
@@ -20,6 +20,8 @@ import EquipmentSelector from "@/components/channelLetterInstall/EquipmentSelect
 import PersonnelSelector from "@/components/channelLetterInstall/PersonnelSelector";
 import LettersPurchaseTab from "@/components/channelLetterInstall/LettersPurchaseTab";
 import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
+import CustomerPricingTab from "@/components/markup/CustomerPricingTab";
+import { categorizeChannelLetterProject } from "@/components/markup/projectCategorizer";
 import PhotoEstimateModal from "@/components/channelLetterInstall/PhotoEstimateModal";
 import AIInstallScopeModal from "@/components/channelLetterInstall/AIInstallScopeModal";
 import AddressAutocomplete from "@/components/channelLetterInstall/AddressAutocomplete";
@@ -443,7 +445,7 @@ export default function NewChannelLetterInstallation() {
           <div className="lg:col-span-2">
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
               <div className="sticky top-[64px] z-30 -mx-2 px-2 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60">
-                <TabsList className="grid grid-cols-5 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
+                <TabsList className="grid grid-cols-6 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
                   <TabBadgeTrigger value="project" icon={FileText} label="Project" />
                   <TabBadgeTrigger value="letters" icon={Type} label="Letters" amount={recalculated.total_letters_cost} warn={hasIncompleteDimensional} />
                   <TabBadgeTrigger
@@ -460,7 +462,8 @@ export default function NewChannelLetterInstallation() {
                     amount={(recalculated.total_equipment_cost || 0) + (recalculated.total_personnel_cost || 0)}
                     warn={(recalculated.selected_equipment?.length || 0) === 0}
                   />
-                  <TabBadgeTrigger value="summary" icon={Calculator} label="Summary" amount={recalculated.total_cost} accent />
+                  <TabBadgeTrigger value="summary" icon={Calculator} label="Summary" amount={recalculated.total_cost} />
+                  <TabBadgeTrigger value="pricing" icon={TrendingUp} label="Customer Pricing" accent />
                 </TabsList>
               </div>
 
@@ -761,6 +764,15 @@ export default function NewChannelLetterInstallation() {
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              {/* CUSTOMER PRICING TAB */}
+              <TabsContent value="pricing" className="mt-4 space-y-3">
+                <CustomerPricingTab
+                  project={recalculated}
+                  categorize={categorizeChannelLetterProject}
+                  accentColor="purple"
+                />
               </TabsContent>
             </Tabs>
           </div>

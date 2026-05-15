@@ -13,6 +13,9 @@ import { Tabs, TabsList, TabsContent } from "@/components/ui/tabs";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
+import CustomerPricingTab from "@/components/markup/CustomerPricingTab";
+import { categorizeLaserProject } from "@/components/markup/projectCategorizer";
+import { TrendingUp } from "lucide-react";
 
 const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/8", "1/2", "3/4"]; // Updated: Removed "1"
 const materials = ["Acrylic", "Wood", "Leather"];
@@ -1324,11 +1327,12 @@ Best regards`;
           <div className="lg:col-span-2">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <div className="sticky top-[64px] z-30 -mx-2 px-2 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60">
-                <TabsList className="grid grid-cols-4 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
+                <TabsList className="grid grid-cols-5 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
                   <TabBadgeTrigger value="project" icon={FileText} label="Project" color="red" />
                   <TabBadgeTrigger value="items" icon={ListChecks} label="Items" amount={(project.total_machine_cost || 0) + (project.total_labor_cost || 0)} count={project.items.length} color="red" />
                   <TabBadgeTrigger value="advanced" icon={SettingsIcon} label="Advanced" color="red" />
-                  <TabBadgeTrigger value="summary" icon={Calculator} label="Summary" amount={(project.total_machine_cost || 0) + (project.total_supplies_cost || 0) + (project.total_labor_cost || 0)} accent color="red" />
+                  <TabBadgeTrigger value="summary" icon={Calculator} label="Summary" amount={(project.total_machine_cost || 0) + (project.total_supplies_cost || 0) + (project.total_labor_cost || 0)} color="red" />
+                  <TabBadgeTrigger value="pricing" icon={TrendingUp} label="Customer Pricing" accent color="red" />
                 </TabsList>
               </div>
 
@@ -1673,6 +1677,14 @@ Best regards`;
                     </table>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="pricing" className="mt-4 space-y-4">
+                <CustomerPricingTab
+                  project={project}
+                  categorize={categorizeLaserProject}
+                  accentColor="red"
+                />
               </TabsContent>
             </Tabs>
           </div>

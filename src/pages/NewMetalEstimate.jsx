@@ -6,13 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2, Save, Wrench, Edit, Download, Printer, FileText, ListChecks, Calculator } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Wrench, Edit, Download, Printer, FileText, ListChecks, Calculator, TrendingUp } from "lucide-react";
 import { Tabs, TabsList, TabsContent } from "@/components/ui/tabs";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
+import CustomerPricingTab from "@/components/markup/CustomerPricingTab";
+import { categorizeMetalProject } from "@/components/markup/projectCategorizer";
 
 const itemTypes = ["channel_letters", "cabinet_sign", "monument_sign", "pole_sign", "flat_cut_letters", "fabricated_letters", "frame_assembly", "custom_brackets"];
 // materialTypes is not directly used in the current structure for display, but could be for filtering
@@ -1123,10 +1125,11 @@ export default function NewMetalEstimate() {
           <div className="lg:col-span-2">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <div className="sticky top-[64px] z-30 -mx-2 px-2 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60">
-                <TabsList className="grid grid-cols-3 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
+                <TabsList className="grid grid-cols-4 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
                   <TabBadgeTrigger value="project" icon={FileText} label="Project" color="orange" />
                   <TabBadgeTrigger value="items" icon={ListChecks} label="Items" amount={grandTotal} count={project.items.length} color="orange" />
-                  <TabBadgeTrigger value="summary" icon={Calculator} label="Summary" amount={grandTotal} accent color="orange" />
+                  <TabBadgeTrigger value="summary" icon={Calculator} label="Summary" amount={grandTotal} color="orange" />
+                  <TabBadgeTrigger value="pricing" icon={TrendingUp} label="Customer Pricing" accent color="orange" />
                 </TabsList>
               </div>
 
@@ -1210,6 +1213,21 @@ export default function NewMetalEstimate() {
                     </table>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="pricing" className="mt-4 space-y-6">
+                <CustomerPricingTab
+                  project={{
+                    ...project,
+                    total_material_cost: totalMaterialsCost,
+                    total_supplies_cost: totalSuppliesCost,
+                    total_fabrication_cost: totalFabricationCost,
+                    total_welding_cost: totalWeldingCost,
+                    total_finishing_cost: totalFinishingCost,
+                  }}
+                  categorize={categorizeMetalProject}
+                  accentColor="orange"
+                />
               </TabsContent>
             </Tabs>
           </div>
