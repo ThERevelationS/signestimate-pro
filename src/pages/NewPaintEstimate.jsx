@@ -17,6 +17,7 @@ import { upsertCustomerSummaryForEstimate } from "@/components/customerSummary/u
 import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
 import CustomerPricingTab from "@/components/markup/CustomerPricingTab";
 import { categorizePaintProject } from "@/components/markup/projectCategorizer";
+import PaintCoverageHelper from "@/components/channelLetterInstall/PaintCoverageHelper";
 import { TrendingUp } from "lucide-react";
 
 const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/16", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8", "1", "1-1/8", "1-1/4", "1-3/8", "1-1/2", "1-5/8", "1-3/4", "1-7/8", "2", "2-1/4", "2-1/2", "2-3/4", "3", "3-1/4", "3-1/2", "3-3/4", "4"];
@@ -533,28 +534,28 @@ export default function NewPaintEstimate() {
     });
   };
 
-  const handleCoverageFactorChange = (index, factorStr) => {
-    const factor = parseImperialFraction(factorStr);
-    const item = project.items[index];
-    let faceArea = 0;
-
+  // Compute the face area in sqft for an item (single side, no mirroring).
+  // Used by the Approx Coverage Helper.
+  const getItemFaceAreaSqft = (item) => {
+    if (!item) return 0;
     if ((item.item_type === 'panel' || item.item_type === 'complex_shapes') && item.length > 0 && item.width > 0) {
-      faceArea = item.length * item.width / 144;
-    } else if (item.item_type === 'lettering' && item.width > 0 && item.length > 0) {
+      return (item.length * item.width) / 144;
+    }
+    if (item.item_type === 'lettering' && item.width > 0 && item.length > 0) {
       const letterHeight = item.width;
       const numLetters = item.length;
-      faceArea = Math.pow(letterHeight, 2) * 0.8 * numLetters / 144;
+      return (Math.pow(letterHeight, 2) * 0.8 * numLetters) / 144;
     }
+    return 0;
+  };
 
-    const calculatedMaskSqFt = faceArea * factor;
-
+  // Apply paint mask helper changes (manual sqft or coverage-factor pick).
+  // Runs the full item recompute so cost totals stay in sync.
+  const applyPaintMaskPatch = (index, patch) => {
     setProject((prev) => {
       const newItems = [...prev.items];
-      newItems[index] = {
-        ...newItems[index],
-        approx_coverage_factor: factorStr,
-        paint_mask_sqft: calculatedMaskSqFt
-      };
+      const merged = { ...newItems[index], ...patch };
+      newItems[index] = calculateItemCosts(merged, globalSettings, liquidPaintRate, getLaborMultiplier, prev.paint_supplies_per_sqft);
       return { ...prev, items: newItems };
     });
   };
@@ -1244,36 +1245,15 @@ export default function NewPaintEstimate() {
                           </div>
 
                           {item.paint_colors && item.paint_colors.length > 1 &&
-                      <div className="mt-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                                    <div>
-                                        <Label>Paint Mask Square Feet</Label>
-                                        <Input
-                              type="number"
-                              min="0"
-                              step="0.25"
-                              value={item.paint_mask_sqft || ""}
-                              onFocus={(e) => e.target.select()}
-                              onChange={(e) => updateItem(index, 'paint_mask_sqft', parseFloat(e.target.value) || 0)}
-                              className="mt-1" />
-
-                                        <p className="text-xs text-slate-500 mt-1">Manually enter sqft or use the helper.</p>
-                                    </div>
-                                    <div>
-                                        <Label>Approx. Coverage Helper</Label>
-                                        <Select value={item.approx_coverage_factor || '1/4'} onValueChange={(value) => handleCoverageFactorChange(index, value)}>
-                                            <SelectTrigger className="mt-1">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {coverageFactors.map((size) =>
-                                <SelectItem key={size} value={size}>{size}</SelectItem>
-                                )}
-                                            </SelectContent>
-                                        </Select>
-                                        <p className="text-xs text-slate-500 mt-1">Calculates mask sqft based on face area.</p>
-                                    </div>
-                                </div>
+                      <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                                <p className="text-xs font-semibold text-purple-900 mb-2">Paint Mask (multi-color)</p>
+                                <PaintCoverageHelper
+                                  faceAreaSqft={getItemFaceAreaSqft(item)}
+                                  bothSides={item.paint_sides === 'both_sides'}
+                                  value={item.paint_mask_sqft || 0}
+                                  factor={item.approx_coverage_factor || '1/4'}
+                                  onChange={(patch) => applyPaintMaskPatch(index, patch)}
+                                />
                             </div>
                       }
                         </div>

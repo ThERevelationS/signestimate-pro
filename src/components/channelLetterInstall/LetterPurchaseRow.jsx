@@ -1,13 +1,13 @@
-import React, { useState } from "react";
+import React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Copy, Link2, Sparkles, Box, Router, Paintbrush } from "lucide-react";
+import { Trash2, Copy, Link2 } from "lucide-react";
 import { LETTER_TYPE_LABELS, SIZE_UNITS, resolveUnitCost } from "./lettersCalculator";
-import DimensionalFabModal from "./DimensionalFabModal";
+import DimensionalFabPanel from "./DimensionalFabPanel";
 import BackerSection from "./BackerSection";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
@@ -40,9 +40,7 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
   const sizeUnit = SIZE_UNITS[purchase.letter_type];
   const autoUnitCost = resolveUnitCost({ ...purchase, unit_cost_override: false }, settings);
   const effectiveUnit = purchase.unit_cost_override ? (parseFloat(purchase.unit_cost) || 0) : autoUnitCost;
-  const [fabModalOpen, setFabModalOpen] = useState(false);
   const isDimensional = purchase.letter_type === "dimensional_letters";
-  const hasFabConfig = isDimensional && !!purchase.fab_config?.unit_total_cost;
   const isCombinedRaceway = purchase.letter_type === "channel_raceway_mounted";
   const backerEnabled = isDimensional && !!purchase.backer_enabled;
 
@@ -259,87 +257,35 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
         </>
       )}
 
-      {/* Dimensional letter fab builder (Material + CNC + Paint) */}
+      {/* Dimensional letter fab builder — inline, no modal */}
       {isDimensional && (
-        <div className="border-t pt-3">
-          {hasFabConfig ? (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 space-y-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Sparkles className="w-4 h-4 text-emerald-600" />
-                <span className="text-sm font-semibold text-emerald-900">Auto-built from CNC + Paint</span>
-                <Badge variant="outline" className="bg-white text-xs text-emerald-700 border-emerald-300 ml-auto">
-                  {fmt(purchase.fab_config.unit_total_cost)} / letter
-                </Badge>
-              </div>
-              <div className="flex gap-3 text-[11px] text-emerald-800 flex-wrap">
-                {purchase.fab_config.material_name && (
-                  <span className="flex items-center gap-1"><Box className="w-3 h-3" /> {purchase.fab_config.material_name}</span>
-                )}
-                <span className="flex items-center gap-1"><Router className="w-3 h-3" /> CNC {fmt(purchase.fab_config.unit_cnc_cost)}</span>
-                {purchase.fab_config.paint_letters && (
-                  <span className="flex items-center gap-1"><Paintbrush className="w-3 h-3" /> Paint {fmt(purchase.fab_config.unit_paint_cost)}</span>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => setFabModalOpen(true)} className="bg-white">
-                  <Sparkles className="w-3.5 h-3.5 mr-1" /> Edit Fab Details
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => update({ fab_config: null, unit_cost_override: false, unit_cost: 0 })}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  Reset to flat $/sqft
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              <Button
-                variant="outline"
-                onClick={() => setFabModalOpen(true)}
-                className={
-                  fabHighlight
-                    ? "w-full border-2 border-red-500 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-600 animate-pulse shadow-md"
-                    : "w-full border-2 border-dashed border-emerald-300 bg-emerald-50/40 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400"
-                }
-              >
-                <Sparkles className="w-4 h-4 mr-2" />
-                Build Fab Cost from CNC + Paint
-                <span className="text-[10px] ml-2 opacity-80">(required for dimensional letters)</span>
-              </Button>
-              {fabHighlight && (
-                <p className="text-xs text-red-600 font-medium text-center">
-                  Required — click above to configure material, CNC &amp; paint.
-                </p>
-              )}
-            </div>
-          )}
-          <DimensionalFabModal
-            open={fabModalOpen}
-            onOpenChange={setFabModalOpen}
+        <div className="border-t pt-3 space-y-3">
+          <DimensionalFabPanel
             purchase={purchase}
-            onSave={(patch) => update(patch)}
+            onUpdate={(patch) => update(patch)}
+            onReset={() => update({ fab_config: null, unit_cost_override: false, unit_cost: 0 })}
           />
+          {fabHighlight && !purchase.fab_config?.unit_total_cost && (
+            <p className="text-xs text-red-600 font-medium text-center">
+              Required — pick a sheet material above to build the fab cost.
+            </p>
+          )}
 
           {/* Backer panel section — shown only when backer is enabled */}
           {backerEnabled && (
-            <div className="mt-3">
-              <BackerSection
-                purchase={purchase}
-                onUpdate={(patch) => update(patch)}
-                onDisable={() => update({
-                  backer_enabled: false,
-                  backer_material_id: null,
-                  backer_standoff_inventory_id: null,
-                  backer_standoff_qty: 0,
-                  backer_fab_config: null,
-                  backer_width_inches: 0,
-                  backer_height_inches: 0,
-                })}
-              />
-            </div>
+            <BackerSection
+              purchase={purchase}
+              onUpdate={(patch) => update(patch)}
+              onDisable={() => update({
+                backer_enabled: false,
+                backer_material_id: null,
+                backer_standoff_inventory_id: null,
+                backer_standoff_qty: 0,
+                backer_fab_config: null,
+                backer_width_inches: 0,
+                backer_height_inches: 0,
+              })}
+            />
           )}
         </div>
       )}
