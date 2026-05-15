@@ -32,19 +32,32 @@ export default function ChannelLetterInstallFormulas({ settings }) {
     installation_height_feet: 14,
     raceway_length_feet: 0,
     wall_material: 'eifs',
-    thick_hollow_walls: false,
-    parapet: false,
+    // All site/condition toggles default ON so the viewer shows every step.
+    thick_hollow_walls: true,
+    parapet: true,
     parapet_electrical_routing: 'roof',
-    escort_required: false,
-    badging_checkin: false,
-    after_hours_weekend: false,
-    set_hours_installation: false,
-    poor_site_access: false,
+    escort_required: true,
+    badging_checkin: true,
+    after_hours_weekend: true,
+    set_hours_installation: true,
+    poor_site_access: true,
     poor_site_access_severity: 3,
-    poor_electrical_access: false,
+    poor_electrical_access: true,
     poor_electrical_severity: 3,
     materials_cost: 250,
     labor_rate: parseFloat(settings.install_labor_rate) || 65,
+
+    // ---- Letters Purchase inputs (everything the Letters tab calculates) ----
+    letter_type: 'channel_flush_mounted',
+    letters_qty: 10,
+    letters_size_value: 24,            // vertical inches (channel) / sqft (logo) / ft (raceway)
+    letters_unit_cost: 9.03,           // per-inch flush default
+    letters_delivery_fee: 90,
+    letters_design_fee: 150,
+    letters_install_supplies_fee: 100,
+    letters_permitting_fee: 750,
+    letters_other_fee: 0,
+    letters_markup_percent: 86.2,
   });
   const set = (k, val) => setV(p => ({ ...p, [k]: val }));
   const setNum = (k, val) => setV(p => ({ ...p, [k]: parseFloat(val) || 0 }));
@@ -143,13 +156,71 @@ export default function ChannelLetterInstallFormulas({ settings }) {
 
   const totalHours = stepHours;
   const laborCost = totalHours * v.labor_rate;
-  const totalCost = laborCost + v.materials_cost;
+  const installTotalCost = laborCost + v.materials_cost;
+
+  // ============================================================
+  // LETTERS PURCHASE MATH (mirrors components/channelLetterInstall/lettersCalculator.js)
+  // ============================================================
+  const lettersBaseTotal = v.letters_unit_cost * v.letters_size_value * v.letters_qty;
+  const lettersSubtotal =
+    lettersBaseTotal +
+    v.letters_delivery_fee +
+    v.letters_design_fee +
+    v.letters_install_supplies_fee +
+    v.letters_permitting_fee +
+    v.letters_other_fee;
+  const lettersMarkupAmount = lettersSubtotal * (v.letters_markup_percent / 100);
+  const lettersTotal = lettersSubtotal + lettersMarkupAmount;
+
+  // Grand total = letters + install
+  const totalCost = installTotalCost + lettersTotal;
 
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       <div>
         <h3 className="font-semibold text-slate-900 mb-4">Demo Values (Editable)</h3>
         <div className="space-y-3">
+
+          {/* ---------- Letters Purchase inputs ---------- */}
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 space-y-2">
+            <h4 className="font-medium text-sm text-purple-900">Letters Purchase</h4>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">Letter Type</Label>
+                <Select value={v.letter_type} onValueChange={(val) => set('letter_type', val)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="raceway">Raceway (per ft)</SelectItem>
+                    <SelectItem value="channel_raceway_mounted">Raceway Mounted (per in)</SelectItem>
+                    <SelectItem value="channel_flush_mounted">Flush Mounted (per in)</SelectItem>
+                    <SelectItem value="channel_halo_lit">Halo-Lit (per in)</SelectItem>
+                    <SelectItem value="capsule_logo_pillbox">Capsule/Logo (per sqft)</SelectItem>
+                    <SelectItem value="dimensional_letters">Dimensional (per sqft)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Qty</Label>
+                <Input type="number" value={v.letters_qty} onChange={(e) => setNum('letters_qty', e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Size Value</Label>
+                <Input type="number" value={v.letters_size_value} onChange={(e) => setNum('letters_size_value', e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Unit Cost ($)</Label>
+                <Input type="number" step="0.01" value={v.letters_unit_cost} onChange={(e) => setNum('letters_unit_cost', e.target.value)} />
+              </div>
+              <div><Label className="text-xs">Delivery Fee</Label><Input type="number" value={v.letters_delivery_fee} onChange={(e) => setNum('letters_delivery_fee', e.target.value)} /></div>
+              <div><Label className="text-xs">Design Fee</Label><Input type="number" value={v.letters_design_fee} onChange={(e) => setNum('letters_design_fee', e.target.value)} /></div>
+              <div><Label className="text-xs">Install Supplies</Label><Input type="number" value={v.letters_install_supplies_fee} onChange={(e) => setNum('letters_install_supplies_fee', e.target.value)} /></div>
+              <div><Label className="text-xs">Permitting</Label><Input type="number" value={v.letters_permitting_fee} onChange={(e) => setNum('letters_permitting_fee', e.target.value)} /></div>
+              <div><Label className="text-xs">Other</Label><Input type="number" value={v.letters_other_fee} onChange={(e) => setNum('letters_other_fee', e.target.value)} /></div>
+              <div><Label className="text-xs">Markup %</Label><Input type="number" step="0.1" value={v.letters_markup_percent} onChange={(e) => setNum('letters_markup_percent', e.target.value)} /></div>
+            </div>
+          </div>
+
+          <h4 className="font-medium text-sm text-slate-700 pt-2">Installation</h4>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>Installation Type</Label>
@@ -240,6 +311,29 @@ export default function ChannelLetterInstallFormulas({ settings }) {
       <div className="bg-slate-50 p-4 rounded-lg space-y-3 overflow-y-auto">
         <h3 className="font-semibold text-slate-900">Live Calculations (Step-by-Step)</h3>
 
+        {/* ---------- Letters Purchase math ---------- */}
+        <FormulaSection title="Letters Purchase — Base Cost" color="purple">
+          <FormulaLine label={`Type: ${v.letter_type}`} />
+          <FormulaLine label="Base" formula={`$${v.letters_unit_cost} × ${v.letters_size_value} × ${v.letters_qty}`} result={`$${lettersBaseTotal.toFixed(2)}`} highlight />
+        </FormulaSection>
+
+        <FormulaSection title="Letters Purchase — Fees" color="purple">
+          <FormulaLine label="Delivery" result={`$${v.letters_delivery_fee.toFixed(2)}`} />
+          <FormulaLine label="Design" result={`$${v.letters_design_fee.toFixed(2)}`} />
+          <FormulaLine label="Install Supplies" result={`$${v.letters_install_supplies_fee.toFixed(2)}`} />
+          <FormulaLine label="Permitting" result={`$${v.letters_permitting_fee.toFixed(2)}`} />
+          <FormulaLine label="Other" result={`$${v.letters_other_fee.toFixed(2)}`} />
+          <FormulaLine label="Subtotal" result={`$${lettersSubtotal.toFixed(2)}`} highlight />
+        </FormulaSection>
+
+        <FormulaSection title="Letters Purchase — Markup" color="purple">
+          <FormulaLine label={`× (1 + ${v.letters_markup_percent}%)`} formula={`$${lettersSubtotal.toFixed(2)} × ${(1 + v.letters_markup_percent / 100).toFixed(3)}`} result={`$${lettersTotal.toFixed(2)}`} highlight />
+        </FormulaSection>
+
+        <div className="border-t-2 border-slate-300 pt-2">
+          <h4 className="font-semibold text-slate-900 mb-1">Installation Math</h4>
+        </div>
+
         <FormulaSection title="Step 1: Base Hours" color="blue">
           {log.map((l, i) => <FormulaLine key={i} {...l} />)}
           <FormulaLine label="Base hours" result={`${baseHoursBeforeMods.toFixed(3)} hrs`} highlight />
@@ -291,12 +385,14 @@ export default function ChannelLetterInstallFormulas({ settings }) {
           <FormulaLine label="Total Hours" result={`${totalHours.toFixed(3)} hrs`} highlight />
           <FormulaLine label="Labor Cost" formula={`${totalHours.toFixed(3)} × $${v.labor_rate}/hr`} result={`$${laborCost.toFixed(2)}`} highlight />
           <FormulaLine label="Materials Cost" result={`$${v.materials_cost.toFixed(2)}`} />
+          <FormulaLine label="Install Total" result={`$${installTotalCost.toFixed(2)}`} highlight />
         </FormulaSection>
 
         <div className="bg-slate-800 text-white p-3 rounded">
-          <h4 className="font-medium mb-2">Final Total</h4>
-          <div className="flex justify-between text-sm"><span>Labor:</span><span>${laborCost.toFixed(2)}</span></div>
-          <div className="flex justify-between text-sm"><span>Materials:</span><span>${v.materials_cost.toFixed(2)}</span></div>
+          <h4 className="font-medium mb-2">Final Total (Letters + Install)</h4>
+          <div className="flex justify-between text-sm"><span>Letters Total:</span><span>${lettersTotal.toFixed(2)}</span></div>
+          <div className="flex justify-between text-sm"><span>Install Labor:</span><span>${laborCost.toFixed(2)}</span></div>
+          <div className="flex justify-between text-sm"><span>Install Materials:</span><span>${v.materials_cost.toFixed(2)}</span></div>
           <div className="flex justify-between font-bold text-lg border-t border-slate-600 pt-2 mt-2">
             <span>TOTAL:</span><span>${totalCost.toFixed(2)}</span>
           </div>

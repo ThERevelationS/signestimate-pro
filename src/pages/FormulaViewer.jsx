@@ -5,11 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Calculator, Paintbrush, Zap, Router, Wrench, Info, Anchor, Layers } from "lucide-react";
+import { Calculator, Paintbrush, Zap, Router, Wrench, Info, Anchor } from "lucide-react";
 import CNCFormulas from "@/components/formulaViewer/CNCFormulas";
 import MetalFormulas from "@/components/formulaViewer/MetalFormulas";
 import ChannelLetterInstallFormulas from "@/components/formulaViewer/ChannelLetterInstallFormulas";
-import BrickStoneFormulas from "@/components/formulaViewer/BrickStoneFormulas";
+import LaserFormulas from "@/components/formulaViewer/LaserFormulas";
+import ConcreteMasonryPolesFormulas from "@/components/formulaViewer/ConcreteMasonryPolesFormulas";
 
 // Helper function to parse imperial fractions (e.g., "1/2", "1-3/4")
 const parseImperialFraction = (fractionString) => {
@@ -442,139 +443,6 @@ export default function FormulaViewer() {
     );
   };
 
-  const renderFoundationFormulas = () => {
-    const lenFt = demoValues.length_inches / 12;
-    const widFt = demoValues.width_inches / 12;
-    const depFt = demoValues.depth_inches / 12;
-    const volCY = (lenFt * widFt * depFt) / 27;
-    const excVolCY = volCY * 1.25;
-    const excCost = excVolCY * demoValues.excavation_time_per_cy * demoValues.main_labor_rate;
-
-    const perimFt = 2 * (lenFt + widFt);
-    const formingArea = perimFt * depFt;
-    const formingCost = formingArea * demoValues.forming_cost_per_sqft * demoValues.quantity_foundation;
-
-    return (
-      <div className="space-y-6">
-        <div className="grid md:grid-cols-2 gap-6">
-          <div>
-            <h3 className="font-semibold text-slate-900 mb-4">Demo Values (Editable)</h3>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <div><Label>Length (in)</Label><Input type="number" value={demoValues.length_inches} onChange={(e) => updateDemoValue('length_inches', e.target.value)} /></div>
-                <div><Label>Width (in)</Label><Input type="number" value={demoValues.width_inches} onChange={(e) => updateDemoValue('width_inches', e.target.value)} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div><Label>Depth (in)</Label><Input type="number" value={demoValues.depth_inches} onChange={(e) => updateDemoValue('depth_inches', e.target.value)} /></div>
-                <div><Label>Quantity</Label><Input type="number" value={demoValues.quantity_foundation} onChange={(e) => updateDemoValue('quantity_foundation', e.target.value)} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div><Label>Main Labor Rate ($/hr)</Label><Input type="number" value={demoValues.main_labor_rate} onChange={(e) => updateDemoValue('main_labor_rate', e.target.value)} /></div>
-                <div><Label>Excavation Time (hrs/CY)</Label><Input type="number" value={demoValues.excavation_time_per_cy} onChange={(e) => updateDemoValue('excavation_time_per_cy', e.target.value)} /></div>
-              </div>
-              <div><Label>Forming Rate ($/sqft)</Label><Input type="number" value={demoValues.forming_cost_per_sqft} onChange={(e) => updateDemoValue('forming_cost_per_sqft', e.target.value)} /></div>
-            </div>
-          </div>
-          
-          <div className="bg-slate-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-slate-900 mb-4">Live Calculations (Spread Footing)</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span>Volume (CY):</span>
-                <span className="font-mono">({lenFt.toFixed(2)}' × {widFt.toFixed(2)}' × {depFt.toFixed(2)}') ÷ 27 = {volCY.toFixed(2)} CY</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Excavation Volume (1.25x factor):</span>
-                <span className="font-mono">{volCY.toFixed(2)} CY × 1.25 = {excVolCY.toFixed(2)} CY</span>
-              </div>
-              <div className="flex justify-between font-semibold border-t pt-2 mt-2">
-                <span>Excavation Labor Cost:</span>
-                <span className="font-mono">{excVolCY.toFixed(2)} CY × {demoValues.excavation_time_per_cy} hrs × ${demoValues.main_labor_rate}/hr = ${(excCost * demoValues.quantity_foundation).toFixed(2)}</span>
-              </div>
-              
-              <div className="flex justify-between border-t pt-2 mt-2">
-                <span>Forming Area:</span>
-                <span className="font-mono">({lenFt.toFixed(2)}' + {widFt.toFixed(2)}') × 2 × {depFt.toFixed(2)}' = {formingArea.toFixed(2)} sqft</span>
-              </div>
-              <div className="flex justify-between font-semibold border-t pt-2 mt-2">
-                <span>Forming Cost:</span>
-                <span className="font-mono">{formingArea.toFixed(2)} sqft × ${demoValues.forming_cost_per_sqft} = ${formingCost.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderLaserFormulas = () => {
-    const cutTimeMinutes = demoValues.cut_length / demoValues.cut_speed;
-    const engraveTimeMinutes = demoValues.engrave_area / demoValues.engrave_speed;
-    const machineTimeHours = (cutTimeMinutes + engraveTimeMinutes) / 60;
-    const handlingTimeHours = machineTimeHours * (demoValues.handling_percentage / 100);
-    const machineCost = machineTimeHours * demoValues.machine_rate;
-    const laborCost = handlingTimeHours * demoValues.laser_labor_rate;
-
-    return (
-      <div className="space-y-6">
-        <div className="grid md:grid-cols-2 gap-6">
-          <div>
-            <h3 className="font-semibold text-slate-900 mb-4">Demo Values (Editable)</h3>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <div><Label>Cut Length (in)</Label><Input type="number" value={demoValues.cut_length} onChange={(e) => updateDemoValue('cut_length', e.target.value)} /></div>
-                <div><Label>Cut Speed (in/min)</Label><Input type="number" value={demoValues.cut_speed} onChange={(e) => updateDemoValue('cut_speed', e.target.value)} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div><Label>Engrave Area (sqin)</Label><Input type="number" value={demoValues.engrave_area} onChange={(e) => updateDemoValue('engrave_area', e.target.value)} /></div>
-                <div><Label>Engrave Speed (sqin/min)</Label><Input type="number" value={demoValues.engrave_speed} onChange={(e) => updateDemoValue('engrave_speed', e.target.value)} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div><Label>Machine Rate ($/hr)</Label><Input type="number" value={demoValues.machine_rate} onChange={(e) => updateDemoValue('machine_rate', e.target.value)} /></div>
-                <div><Label>Labor Rate ($/hr)</Label><Input type="number" value={demoValues.laser_labor_rate} onChange={(e) => updateDemoValue('laser_labor_rate', e.target.value)} /></div>
-              </div>
-              <div><Label>Handling % of Machine Time</Label><Input type="number" value={demoValues.handling_percentage} onChange={(e) => updateDemoValue('handling_percentage', e.target.value)} /></div>
-            </div>
-          </div>
-          
-          <div className="bg-slate-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-slate-900 mb-4">Live Calculations</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span>Cut Time:</span>
-                <span className="font-mono">{demoValues.cut_length} ÷ {demoValues.cut_speed} = {cutTimeMinutes.toFixed(2)} min</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Engrave Time:</span>
-                <span className="font-mono">{demoValues.engrave_area} ÷ {demoValues.engrave_speed} = {engraveTimeMinutes.toFixed(2)} min</span>
-              </div>
-              <div className="flex justify-between border-t pt-2 mt-2">
-                <span>Total Machine Time:</span>
-                <span className="font-mono">{cutTimeMinutes.toFixed(2)} + {engraveTimeMinutes.toFixed(2)} = {(cutTimeMinutes + engraveTimeMinutes).toFixed(2)} min</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Machine Hours:</span>
-                <span className="font-mono">{(cutTimeMinutes + engraveTimeMinutes).toFixed(2)} min ÷ 60 = {machineTimeHours.toFixed(3)} hrs</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Handling Hours:</span>
-                <span className="font-mono">{machineTimeHours.toFixed(3)} hrs × {demoValues.handling_percentage}% = {handlingTimeHours.toFixed(3)} hrs</span>
-              </div>
-              <div className="flex justify-between font-semibold border-t pt-2 mt-2">
-                <span>Machine Cost:</span>
-                <span className="font-mono">{machineTimeHours.toFixed(3)} hrs × ${demoValues.machine_rate} = ${machineCost.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between font-semibold">
-                <span>Labor Cost:</span>
-                <span className="font-mono">{handlingTimeHours.toFixed(3)} hrs × ${demoValues.laser_labor_rate} = ${laborCost.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   if (isLoading) return <div className="p-8">Loading formulas...</div>;
 
   return (
@@ -589,25 +457,23 @@ export default function FormulaViewer() {
         </div>
 
         <Tabs value={selectedModule} onValueChange={setSelectedModule} className="w-full">
-          <TabsList className="grid grid-cols-3 md:grid-cols-7 mb-4 h-auto">
+          <TabsList className="grid grid-cols-2 md:grid-cols-6 mb-4 h-auto">
             <TabsTrigger value="painting" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Paintbrush className="w-4 h-4" /> Painting</TabsTrigger>
             <TabsTrigger value="laser" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Zap className="w-4 h-4" /> Laser</TabsTrigger>
             <TabsTrigger value="cnc" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Router className="w-4 h-4" /> CNC</TabsTrigger>
             <TabsTrigger value="metal" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Wrench className="w-4 h-4" /> Metal Fab</TabsTrigger>
-            <TabsTrigger value="channel_letter" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Wrench className="w-4 h-4" /> Letter Install</TabsTrigger>
-            <TabsTrigger value="foundation" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Anchor className="w-4 h-4" /> Foundation</TabsTrigger>
-            <TabsTrigger value="brick_stone" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Layers className="w-4 h-4" /> Brick/Stone</TabsTrigger>
+            <TabsTrigger value="channel_letter" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Wrench className="w-4 h-4" /> Channel & Dimensional</TabsTrigger>
+            <TabsTrigger value="concrete_masonry_poles" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Anchor className="w-4 h-4" /> Concrete | Masonry | Poles</TabsTrigger>
           </TabsList>
 
           <Card className="bg-white border-0 shadow-sm">
             <CardContent className="pt-6">
               <TabsContent value="painting" className="mt-0">{renderPaintingFormulas()}</TabsContent>
-              <TabsContent value="laser" className="mt-0">{renderLaserFormulas()}</TabsContent>
+              <TabsContent value="laser" className="mt-0"><LaserFormulas settings={settings} /></TabsContent>
               <TabsContent value="cnc" className="mt-0"><CNCFormulas settings={settings} /></TabsContent>
               <TabsContent value="metal" className="mt-0"><MetalFormulas settings={settings} /></TabsContent>
               <TabsContent value="channel_letter" className="mt-0"><ChannelLetterInstallFormulas settings={settings} /></TabsContent>
-              <TabsContent value="foundation" className="mt-0">{renderFoundationFormulas()}</TabsContent>
-              <TabsContent value="brick_stone" className="mt-0"><BrickStoneFormulas settings={settings} /></TabsContent>
+              <TabsContent value="concrete_masonry_poles" className="mt-0"><ConcreteMasonryPolesFormulas settings={settings} /></TabsContent>
             </CardContent>
           </Card>
         </Tabs>

@@ -37,7 +37,9 @@ export default function Layout({ children, currentPageName }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [moduleStatuses, setModuleStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(true);
-  const [expandedModule, setExpandedModule] = useState(null);
+  // Track each open module independently so a parent dropdown (e.g. "Single
+  // Point Fabrication") can stay open while a child module is also open.
+  const [expandedModules, setExpandedModules] = useState({});
   const [isDirty, setIsDirty] = useState(false);
   const [showNavWarning, setShowNavWarning] = useState(false);
   const [pendingNavPath, setPendingNavPath] = useState(null);
@@ -65,7 +67,7 @@ export default function Layout({ children, currentPageName }) {
   };
 
   const handleToggle = (moduleId) => {
-    setExpandedModule(prev => prev === moduleId ? null : moduleId);
+    setExpandedModules(prev => ({ ...prev, [moduleId]: !prev[moduleId] }));
   };
 
 
@@ -214,7 +216,7 @@ export default function Layout({ children, currentPageName }) {
                 const renderModule = (module) => {
                   const isEnabled = hasPermission(module.id);
                   if (!isEnabled) return null;
-                  const isExpanded = expandedModule === module.id;
+                  const isExpanded = !!expandedModules[module.id];
                   return (
                     <SidebarMenuItem key={module.id}>
                       <div
@@ -298,7 +300,7 @@ export default function Layout({ children, currentPageName }) {
 
                 // Visible Single Point modules (filtered by permission)
                 const visibleSinglePoint = singlePointModules.filter(m => hasPermission(m.id));
-                const isSinglePointExpanded = expandedModule === 'single_point_fabrication';
+                const isSinglePointExpanded = !!expandedModules['single_point_fabrication'];
 
                 return (
                   <>
