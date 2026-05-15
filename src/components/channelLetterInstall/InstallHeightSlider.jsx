@@ -9,7 +9,7 @@ import BoomLiftReachChart from "./BoomLiftReachChart";
 //   <= 39 ft  -> green (safe / ladders or small lifts)
 //   40-54 ft  -> yellow ("Can we reach from our parking location?")
 //   >= 55 ft  -> red   ("Rental Boom Lift Required")
-const MAX_FT = 120;
+const MAX_FT = 180;
 
 const getZone = (h) => {
   if (h >= 55) return {
@@ -87,6 +87,7 @@ export default function InstallHeightSlider({ value, onChange }) {
           <span>0</span>
           <span className="text-emerald-600">40</span>
           <span className="text-yellow-600">55</span>
+          <span>120</span>
           <span>{MAX_FT}+</span>
         </div>
       </div>

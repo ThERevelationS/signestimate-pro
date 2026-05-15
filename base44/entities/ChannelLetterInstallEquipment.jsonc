@@ -23,8 +23,7 @@
         "safety",
         "other"
       ],
-      "default": "ladder",
-      "description": "Type/category of equipment"
+      "default": "ladder"
     },
     "ownership": {
       "type": "string",
@@ -33,32 +32,48 @@
         "rented"
       ],
       "default": "rented",
-      "description": "Whether the equipment is owned by the shop or rented. Rented equipment is excluded from travel fuel calculations."
+      "description": "Whether the equipment is owned by the shop or rented."
     },
     "max_height_feet": {
       "type": "number",
       "default": 0,
-      "description": "Maximum working/platform height in feet (for matching install height)"
+      "description": "Maximum working/platform height in feet"
     },
     "total_boom_height_feet": {
       "type": "number",
-      "default": 0,
-      "description": "Total boom lift height (platform height + worker reach). Used by the reach chart. Defaults to max_height_feet when blank."
+      "default": 0
     },
     "horizontal_boom_reach_feet": {
       "type": "number",
-      "default": 0,
-      "description": "Max horizontal reach of the boom from the pivot point (boom lifts / boom trucks only). Used by the parking-distance reach chart."
+      "default": 0
     },
     "deployed_truck_width_feet": {
       "type": "number",
-      "default": 0,
-      "description": "Width of the boom lift carriage / truck when deployed with outriggers. Subtracts from horizontal reach because the boom pivot is centered on the truck."
+      "default": 0
     },
     "vertical_reach_safety_margin_feet": {
       "type": "number",
-      "default": 2,
-      "description": "Vertical safety margin to subtract from the boom's stated max height when plotting the reach envelope (accounts for boom angle near vertical and safe operating zone)."
+      "default": 2
+    },
+    "is_default_for_height": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this boom lift / boom truck is the default pick when an install falls inside its height range."
+    },
+    "default_height_min_feet": {
+      "type": "number",
+      "default": 0,
+      "description": "Bottom of the install-height range this boom is the default for (inclusive)."
+    },
+    "default_height_max_feet": {
+      "type": "number",
+      "default": 0,
+      "description": "Top of the install-height range this boom is the default for (inclusive)."
+    },
+    "idle_running_cost_per_hour": {
+      "type": "number",
+      "default": 0,
+      "description": "Per-hour cost of running the boom/truck idle on-site (fuel + wear). Charged in addition to rental/flat rate."
     },
     "pricing_mode": {
       "type": "string",
@@ -70,8 +85,7 @@
         "per_month",
         "per_project_flat"
       ],
-      "default": "per_day",
-      "description": "How this equipment is priced"
+      "default": "per_day"
     },
     "cost_per_hour": {
       "type": "number",
@@ -91,18 +105,15 @@
     },
     "cost_flat": {
       "type": "number",
-      "default": 0,
-      "description": "Flat cost (owned equipment day-rate or per-project)"
+      "default": 0
     },
     "delivery_pickup_cost": {
       "type": "number",
-      "default": 0,
-      "description": "One-time delivery/pickup fee"
+      "default": 0
     },
     "mpg": {
       "type": "number",
-      "default": 0,
-      "description": "Miles per gallon \u2014 only applies to owned vehicles. Used for travel fuel cost calculations."
+      "default": 0
     },
     "fuel_type": {
       "type": "string",
@@ -111,8 +122,7 @@
         "gasoline",
         "diesel"
       ],
-      "default": "na",
-      "description": "Fuel type used by this equipment for travel cost calculations. Only owned vehicles factor into fuel costs."
+      "default": "na"
     },
     "rental_company": {
       "type": "string"
@@ -122,8 +132,7 @@
     },
     "is_active": {
       "type": "boolean",
-      "default": true,
-      "description": "Available for selection"
+      "default": true
     },
     "sort_order": {
       "type": "number",

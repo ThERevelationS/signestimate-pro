@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Users, Wand2 } from "lucide-react";
-import { recalcPersonnelRow } from "./equipmentSuggester";
+import { recalcPersonnelRow, suggestPersonnelForProject } from "./equipmentSuggester";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 
@@ -56,38 +56,11 @@ export default function PersonnelSelector({
     onChange(next);
   };
 
-  // Quick-fill: build a suggested crew from project height & letter count
+  // Quick-fill: build a suggested crew from project height & letter count.
+  // Uses the shared suggestPersonnelForProject helper so the auto-trigger and
+  // the manual button produce the exact same crew.
   const handleAutoFillCrew = () => {
-    const maxHeight = items.reduce(
-      (m, it) => Math.max(m, parseFloat(it.installation_height_feet) || 0),
-      0
-    );
-    const totalLetters = items.reduce(
-      (s, it) => s + (parseFloat(it.qty_letters) || 0),
-      0
-    );
-
-    let crewSize = 2;
-    if (maxHeight > 30) crewSize = 4;
-    else if (maxHeight > 20) crewSize = 3;
-    else if (maxHeight > 12) crewSize = 2;
-    if (totalLetters > 30 && crewSize < 3) crewSize += 1;
-
-    const perPersonHours = projectLaborHours
-      ? +(projectLaborHours / crewSize).toFixed(2)
-      : 0;
-
-    const roles = ["Crew Lead", "Installer", "Helper", "Helper"];
-    const newCrew = Array.from({ length: crewSize }, (_, i) => {
-      const role = roles[i] || "Installer";
-      return recalcPersonnelRow({
-        name: "",
-        role,
-        hourly_rate: rateForRole(role),
-        hours: perPersonHours,
-        total_cost: 0,
-      });
-    });
+    const newCrew = suggestPersonnelForProject(items, projectLaborHours, rateForRole);
     onChange(newCrew);
   };
 

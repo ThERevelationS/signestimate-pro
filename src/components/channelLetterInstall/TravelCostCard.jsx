@@ -26,9 +26,12 @@ export default function TravelCostCard({
   travelMiles = 0,
   onMilesChange,
   onTotalChange,
+  autoTriggerKey, // changing this value causes a re-calc (used when the Crew tab is entered)
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // Tracks the last shop/site pair we auto-calculated for, to avoid loops.
+  const [lastAutoKey, setLastAutoKey] = useState(null);
 
   const gasPrice = parseFloat(settings.install_gasoline_price_per_gallon) || 3.5;
   const dieselPrice = parseFloat(settings.install_diesel_price_per_gallon) || 4.0;
@@ -106,6 +109,23 @@ export default function TravelCostCard({
     }
     setLoading(false);
   };
+
+  // Auto-calculate when the Crew tab is entered (autoTriggerKey changes),
+  // as long as we have addresses and haven't already calculated this exact pair.
+  useEffect(() => {
+    if (autoTriggerKey == null) return;
+    const key = `${shopAddress || ""}|${siteAddress || ""}`;
+    if (!shopAddress?.trim() || !siteAddress?.trim()) return;
+    if (lastAutoKey === key) return;
+    // Skip if we already have miles for this pair (e.g. loaded from saved project)
+    if ((parseFloat(travelMiles) || 0) > 0 && lastAutoKey === null) {
+      setLastAutoKey(key);
+      return;
+    }
+    setLastAutoKey(key);
+    handleCalculate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTriggerKey, shopAddress, siteAddress]);
 
   return (
     <Card className="bg-white border-0 shadow-sm">

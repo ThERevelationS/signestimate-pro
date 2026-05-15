@@ -5,7 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Sparkles, HardHat, AlertCircle } from "lucide-react";
+import { Plus, Trash2, Sparkles, HardHat, AlertCircle, Clock } from "lucide-react";
+
+const BOOM_TYPES = new Set(["boom_lift", "boom_truck"]);
+const fmtMoney = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 import {
   suggestEquipmentForProject,
   selectedEquipmentFromInventory,
@@ -232,6 +235,47 @@ export default function EquipmentSelector({
                       </Button>
                     </div>
                   </div>
+                  {BOOM_TYPES.has(row.equipment_type) && (parseFloat(row.idle_running_cost_per_hour) || 0) > 0 && (
+                    <div className="mt-2 pt-2 border-t border-slate-200 grid md:grid-cols-12 gap-2 items-end bg-amber-50/50 -mx-3 -mb-3 px-3 py-2 rounded-b-lg">
+                      <div className="md:col-span-5 flex items-center gap-1.5 text-xs text-amber-900">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span className="font-medium">Idle running on-site</span>
+                        <span className="text-amber-700/80">— added to rental rate</span>
+                      </div>
+                      <div className="md:col-span-2">
+                        <Label className="text-xs">Idle Hours</Label>
+                        <Input
+                          type="number"
+                          step="0.25"
+                          value={row.idle_hours || 0}
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) =>
+                            handleUpdate(idx, { idle_hours: parseFloat(e.target.value) || 0 })
+                          }
+                          className="h-8 mt-0.5"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Label className="text-xs">$/hr Idle</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={row.idle_running_cost_per_hour || 0}
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) =>
+                            handleUpdate(idx, { idle_running_cost_per_hour: parseFloat(e.target.value) || 0 })
+                          }
+                          className="h-8 mt-0.5"
+                        />
+                      </div>
+                      <div className="md:col-span-3 text-right">
+                        <div className="text-[10px] text-amber-800">Idle Cost</div>
+                        <div className="text-sm font-semibold tabular-nums text-amber-900">
+                          {fmtMoney(row.idle_cost)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex justify-end mt-2 pt-2 border-t border-slate-200 text-sm">
                     <span className="text-slate-600 mr-2">Line Total:</span>
                     <span className="font-semibold tabular-nums">{fmt(row.total_cost)}</span>

@@ -62,6 +62,10 @@ const emptyItem = (mode = "owned") => ({
   horizontal_boom_reach_feet: 0,
   deployed_truck_width_feet: 0,
   vertical_reach_safety_margin_feet: 2,
+  is_default_for_height: false,
+  default_height_min_feet: 0,
+  default_height_max_feet: 0,
+  idle_running_cost_per_hour: 0,
   pricing_mode: mode === "owned" ? "owned_flat" : "per_day",
   cost_per_hour: 0,
   cost_per_day: 0,
@@ -253,6 +257,55 @@ export default function EquipmentInventoryTab() {
                 onChange={(e) => update(origIndex, { vertical_reach_safety_margin_feet: parseFloat(e.target.value) || 0 })}
                 className="h-8 mt-0.5"
               />
+            </div>
+
+            {/* Auto-pick-by-height + idle running cost */}
+            <div className="md:col-span-12 mt-1 pt-2 border-t border-purple-200/50 grid md:grid-cols-12 gap-2 items-end">
+              <div className="md:col-span-3 flex items-end">
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs mb-2">
+                  <Checkbox
+                    checked={!!it.is_default_for_height}
+                    onCheckedChange={(c) => update(origIndex, { is_default_for_height: !!c })}
+                  />
+                  <span className="font-medium text-purple-900">Default pick for height range</span>
+                </label>
+              </div>
+              <div className="md:col-span-2">
+                <Label className="text-xs">Min Install Ht (ft)</Label>
+                <Input
+                  type="number"
+                  value={it.default_height_min_feet || 0}
+                  disabled={!it.is_default_for_height}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => update(origIndex, { default_height_min_feet: parseFloat(e.target.value) || 0 })}
+                  className="h-8 mt-0.5"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label className="text-xs">Max Install Ht (ft)</Label>
+                <Input
+                  type="number"
+                  value={it.default_height_max_feet || 0}
+                  disabled={!it.is_default_for_height}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => update(origIndex, { default_height_max_feet: parseFloat(e.target.value) || 0 })}
+                  className="h-8 mt-0.5"
+                />
+              </div>
+              <div className="md:col-span-3">
+                <Label className="text-xs">Idle Running $/hr (on-site)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={it.idle_running_cost_per_hour || 0}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => update(origIndex, { idle_running_cost_per_hour: parseFloat(e.target.value) || 0 })}
+                  className="h-8 mt-0.5"
+                />
+              </div>
+              <div className="md:col-span-2 text-[10px] text-purple-700/80 pb-1.5">
+                Charged on top of rental — fuel + wear while running idle on-site.
+              </div>
             </div>
           </div>
         )}

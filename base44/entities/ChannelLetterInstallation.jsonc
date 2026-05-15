@@ -33,8 +33,7 @@
         "install_only",
         "letters_only"
       ],
-      "default": "full",
-      "description": "Controls which tabs render and which cost rollups are included."
+      "default": "full"
     },
     "install_environment": {
       "type": "string",
@@ -42,286 +41,20 @@
         "interior",
         "exterior"
       ],
-      "default": "exterior",
-      "description": "Project-level default for Interior vs Exterior installation. Each line item can override."
+      "default": "exterior"
     },
     "items": {
       "type": "array",
       "items": {
         "type": "object",
-        "properties": {
-          "description": {
-            "type": "string"
-          },
-          "installation_type": {
-            "type": "string",
-            "enum": [
-              "flush_mount",
-              "halo_lit",
-              "raceway",
-              "dimensional_lettering",
-              "dimensional_lettering_with_backer"
-            ],
-            "default": "flush_mount"
-          },
-          "install_environment": {
-            "type": "string",
-            "enum": [
-              "interior",
-              "exterior"
-            ],
-            "description": "Per-item override for Interior vs Exterior. If unset, the project default is used."
-          },
-          "qty_letters": {
-            "type": "number",
-            "default": 0
-          },
-          "letter_size": {
-            "type": "string",
-            "enum": [
-              "extra_small",
-              "small",
-              "medium",
-              "large",
-              "extra_large",
-              "extra_extra_large"
-            ],
-            "default": "medium"
-          },
-          "letter_height_inches": {
-            "type": "number",
-            "default": 24
-          },
-          "installation_height_feet": {
-            "type": "number",
-            "default": 12
-          },
-          "raceway_length_feet": {
-            "type": "number",
-            "default": 0
-          },
-          "wall_material": {
-            "type": "string",
-            "default": "eifs"
-          },
-          "thick_hollow_walls": {
-            "type": "boolean",
-            "default": false
-          },
-          "parapet": {
-            "type": "boolean",
-            "default": false
-          },
-          "parapet_electrical_routing": {
-            "type": "string",
-            "enum": [
-              "roof",
-              "drop"
-            ],
-            "default": "roof"
-          },
-          "poor_electrical_access": {
-            "type": "boolean",
-            "default": false
-          },
-          "poor_electrical_severity": {
-            "type": "number",
-            "default": 1
-          },
-          "escort_required": {
-            "type": "boolean",
-            "default": false
-          },
-          "badging_checkin": {
-            "type": "boolean",
-            "default": false
-          },
-          "after_hours_weekend": {
-            "type": "boolean",
-            "default": false
-          },
-          "set_hours_installation": {
-            "type": "boolean",
-            "default": false
-          },
-          "poor_site_access": {
-            "type": "boolean",
-            "default": false
-          },
-          "poor_site_access_severity": {
-            "type": "number",
-            "default": 1
-          },
-          "source_letter_purchase_id": {
-            "type": "string"
-          },
-          "set_id": {
-            "type": "string",
-            "description": "Letter set grouping id; install items inherit from parent purchase via sync."
-          },
-          "set_parent_id": {
-            "type": "string",
-            "description": "When set, indicates this item is a child of another purchase/item in the same set."
-          },
-          "backer_width_inches": {
-            "type": "number"
-          },
-          "backer_height_inches": {
-            "type": "number"
-          },
-          "backer_standoff_qty": {
-            "type": "number"
-          },
-          "materials": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "inventory_item_id": {
-                  "type": "string"
-                },
-                "item_name": {
-                  "type": "string"
-                },
-                "pricing_mode": {
-                  "type": "string"
-                },
-                "unit_cost": {
-                  "type": "number"
-                },
-                "quantity": {
-                  "type": "number"
-                },
-                "total_cost": {
-                  "type": "number"
-                },
-                "is_custom": {
-                  "type": "boolean"
-                },
-                "image_url": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "labor_hours": {
-            "type": "number"
-          },
-          "labor_cost": {
-            "type": "number"
-          },
-          "materials_cost": {
-            "type": "number"
-          },
-          "item_total_cost": {
-            "type": "number"
-          }
-        }
+        "additionalProperties": true
       }
     },
     "letter_purchases": {
       "type": "array",
-      "description": "Channel letter purchase line items (separate from installation labor).",
       "items": {
         "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "letter_type": {
-            "type": "string",
-            "enum": [
-              "raceway",
-              "channel_raceway_mounted",
-              "channel_flush_mounted",
-              "channel_halo_lit",
-              "capsule_logo_pillbox",
-              "dimensional_letters"
-            ],
-            "default": "channel_flush_mounted"
-          },
-          "description": {
-            "type": "string"
-          },
-          "raceway_index": {
-            "type": "number",
-            "default": 1
-          },
-          "qty": {
-            "type": "number",
-            "default": 0
-          },
-          "size_value": {
-            "type": "number",
-            "default": 0
-          },
-          "unit_cost": {
-            "type": "number",
-            "default": 0
-          },
-          "unit_cost_override": {
-            "type": "boolean",
-            "default": false
-          },
-          "total_cost": {
-            "type": "number",
-            "default": 0
-          },
-          "create_install_item": {
-            "type": "boolean",
-            "default": true
-          },
-          "install_height_feet": {
-            "type": "number",
-            "default": 12
-          },
-          "wall_material": {
-            "type": "string",
-            "default": "eifs"
-          },
-          "raceway_length_feet": {
-            "type": "number"
-          },
-          "raceway_qty": {
-            "type": "number"
-          },
-          "fab_config": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "backer_enabled": {
-            "type": "boolean",
-            "default": false
-          },
-          "backer_material_id": {
-            "type": "string"
-          },
-          "backer_width_inches": {
-            "type": "number"
-          },
-          "backer_height_inches": {
-            "type": "number"
-          },
-          "backer_standoff_inventory_id": {
-            "type": "string"
-          },
-          "backer_standoff_qty": {
-            "type": "number",
-            "default": 0
-          },
-          "backer_fab_config": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "set_id": {
-            "type": "string",
-            "description": "Identifier shared by all purchases in the same set."
-          },
-          "set_parent_id": {
-            "type": "string",
-            "description": "If present, this purchase is a CHILD; the value is the parent purchase id. Children inherit install_height_feet and wall_material from the parent."
-          }
-        }
+        "additionalProperties": true
       }
     },
     "letters_delivery_fee": {
@@ -391,6 +124,19 @@
             "type": "number",
             "default": 0
           },
+          "idle_hours": {
+            "type": "number",
+            "default": 0,
+            "description": "Hours this boom equipment will idle running on-site (added on top of the rental/flat rate)."
+          },
+          "idle_running_cost_per_hour": {
+            "type": "number",
+            "default": 0
+          },
+          "idle_cost": {
+            "type": "number",
+            "default": 0
+          },
           "notes": {
             "type": "string"
           }
@@ -425,13 +171,11 @@
     },
     "travel_miles_round_trip": {
       "type": "number",
-      "default": 0,
-      "description": "Round-trip driving miles between the shop and the site. Used to compute fuel + travel labor."
+      "default": 0
     },
     "total_travel_cost": {
       "type": "number",
-      "default": 0,
-      "description": "Calculated travel cost rollup (fuel + travel labor + overhead) included in project subtotal."
+      "default": 0
     },
     "supplies_percent_of_materials": {
       "type": "number",

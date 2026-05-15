@@ -21,6 +21,7 @@ import EquipmentSelector from "@/components/channelLetterInstall/EquipmentSelect
 import PersonnelSelector from "@/components/channelLetterInstall/PersonnelSelector";
 import LettersPurchaseTab from "@/components/channelLetterInstall/LettersPurchaseTab";
 import TravelCostCard from "@/components/channelLetterInstall/TravelCostCard";
+import SummaryDetailsCard from "@/components/channelLetterInstall/SummaryDetailsCard";
 import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
 import CustomerPricingTab from "@/components/markup/CustomerPricingTab";
 import { categorizeChannelLetterProject } from "@/components/markup/projectCategorizer";
@@ -28,7 +29,7 @@ import PhotoEstimateModal from "@/components/channelLetterInstall/PhotoEstimateM
 import AIInstallScopeModal from "@/components/channelLetterInstall/AIInstallScopeModal";
 import ConfirmModal from "@/components/channelLetterInstall/ConfirmModal";
 import AddressAutocomplete from "@/components/channelLetterInstall/AddressAutocomplete";
-import { suggestEquipmentForProject, selectedEquipmentFromInventory } from "@/components/channelLetterInstall/equipmentSuggester";
+import { suggestEquipmentForProject, selectedEquipmentFromInventory, suggestPersonnelForProject } from "@/components/channelLetterInstall/equipmentSuggester";
 import {
   calcLineItem,
   calcProjectTotals,
@@ -288,6 +289,29 @@ export default function NewChannelLetterInstallation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maxInstallHeight, equipmentInventory, hasLoaded]);
 
+  // Auto-fill personnel when the user enters the Crew & Equipment tab and the crew is empty.
+  // Uses the same suggester as the "Auto-Suggest Crew" button, so the result is identical.
+  useEffect(() => {
+    if (!hasLoaded) return;
+    if (activeTab !== "crew") return;
+    if ((project.personnel || []).length > 0) return; // never overwrite user choice
+    if (!project.items || project.items.length === 0) return;
+    const projectLaborHours = recalculated.labor_hours || 0;
+    if (projectLaborHours <= 0) return;
+    const rateForRole = (role) => {
+      const map = {
+        "Crew Lead": parseFloat(settings.install_crew_lead_rate) || 75,
+        "Installer": parseFloat(settings.install_installer_rate) || 65,
+        "Helper": parseFloat(settings.install_helper_rate) || 35,
+      };
+      return map[role] ?? map.Installer;
+    };
+    const newCrew = suggestPersonnelForProject(project.items, projectLaborHours, rateForRole);
+    if (newCrew.length === 0) return;
+    setProject((prev) => ({ ...prev, personnel: newCrew }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, hasLoaded]);
+
   // Apply AI-generated installation items
   const applyAIInstallItems = (aiItems, mode = "append") => {
     const newItems = aiItems.map((ai) => {
@@ -525,7 +549,7 @@ export default function NewChannelLetterInstallation() {
                     <TabBadgeTrigger
                       value="crew"
                       icon={HardHat}
-                      label="Crew"
+                      label="Crew & Equipment"
                       amount={(recalculated.total_equipment_cost || 0) + (recalculated.total_personnel_cost || 0) + (recalculated.total_travel_cost || 0)}
                       warn={(recalculated.selected_equipment?.length || 0) === 0}
                     />
@@ -797,6 +821,7 @@ export default function NewChannelLetterInstallation() {
                         updateProject({ total_travel_cost: total });
                       }
                     }}
+                    autoTriggerKey={activeTab === "crew" ? "crew" : null}
                   />
                 </div>
                 {equipmentInventory.length === 0 && (
@@ -814,45 +839,9 @@ export default function NewChannelLetterInstallation() {
 
               {/* SUMMARY TAB */}
               <TabsContent value="summary" className="mt-4 space-y-3">
-                <Card id="clp-summary-breakdown" className="bg-white border-0 shadow-sm">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Estimate Breakdown</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50 text-slate-600 text-xs">
-                        <tr>
-                          <th className="text-left px-4 py-2 font-medium w-8">#</th>
-                          <th className="text-left px-4 py-2 font-medium">Description</th>
-                          <th className="text-left px-4 py-2 font-medium">Type</th>
-                          <th className="text-right px-4 py-2 font-medium">Labor</th>
-                          <th className="text-right px-4 py-2 font-medium">Materials</th>
-                          <th className="text-right px-4 py-2 font-medium">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {recalculated.items.map((it, i) => (
-                          <tr key={i} className="border-t border-slate-100">
-                            <td className="px-4 py-2 text-slate-500">{i + 1}</td>
-                            <td className="px-4 py-2 font-medium">{it.description || `Item ${i + 1}`}</td>
-                            <td className="px-4 py-2 capitalize text-xs text-slate-600">{it.installation_type?.replace("_", " ")}</td>
-                            <td className="px-4 py-2 text-right tabular-nums">{fmt(it.labor_cost)}</td>
-                            <td className="px-4 py-2 text-right tabular-nums">{fmt(it.materials_cost)}</td>
-                            <td className="px-4 py-2 text-right tabular-nums font-semibold">{fmt(it.item_total_cost)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot className="bg-slate-50 border-t-2 border-slate-200 text-sm">
-                        <tr>
-                          <td colSpan="3" className="px-4 py-2 text-right font-medium">Subtotals</td>
-                          <td className="px-4 py-2 text-right tabular-nums font-medium">{fmt(recalculated.labor_cost)}</td>
-                          <td className="px-4 py-2 text-right tabular-nums font-medium">{fmt(recalculated.total_materials_cost)}</td>
-                          <td className="px-4 py-2 text-right tabular-nums font-bold">{fmt((recalculated.labor_cost || 0) + (recalculated.total_materials_cost || 0))}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </CardContent>
-                </Card>
+                <div id="clp-summary-breakdown">
+                  <SummaryDetailsCard project={recalculated} />
+                </div>
 
                 <Card id="clp-summary-materials" className="bg-white border-0 shadow-sm">
                   <CardHeader className="pb-3 flex flex-row items-start justify-between gap-3 flex-wrap">
