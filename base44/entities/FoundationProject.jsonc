@@ -251,12 +251,10 @@
       }
     },
     "beautify_data_url": {
-      "type": "string",
-      "description": "Base64 encoded JPEG of the ground texture"
+      "type": "string"
     },
     "poles": {
       "type": "array",
-      "description": "Poles placed on foundations",
       "items": {
         "type": "object",
         "properties": {
@@ -295,7 +293,6 @@
     },
     "walls": {
       "type": "array",
-      "description": "Wall sections built above the foundation",
       "items": {
         "type": "object",
         "properties": {
@@ -396,6 +393,43 @@
                 "type": "number"
               }
             }
+          }
+        }
+      }
+    },
+    "wall_caps": {
+      "type": "array",
+      "description": "Wall cap pieces placed on top of outer walls.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cap_inventory_id": {
+            "type": "string"
+          },
+          "wall_index": {
+            "type": "number"
+          },
+          "segment_index": {
+            "type": "number"
+          },
+          "position_along_segment_inches": {
+            "type": "number"
+          },
+          "length_inches": {
+            "type": "number",
+            "description": "Actual cut length used. May be shorter than stock; full stock is still charged."
+          },
+          "rotation_offset_degrees": {
+            "type": "number",
+            "default": 0
+          },
+          "lateral_offset_inches": {
+            "type": "number",
+            "default": 0,
+            "description": "Side-to-side offset from wall centerline (negative = outer side)"
           }
         }
       }
@@ -523,6 +557,9 @@
       "type": "number"
     },
     "total_wall_cost": {
+      "type": "number"
+    },
+    "total_wall_cap_cost": {
       "type": "number"
     },
     "notes": {

@@ -8,8 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Trash2, Plus, Edit, Package, Building2, Layers, Wrench } from 'lucide-react';
+import { Trash2, Plus, Edit, Package, Building2, Layers, Wrench, Square } from 'lucide-react';
 import EquipmentInventoryTab from '@/components/foundation/EquipmentInventoryTab';
+import WallCapsInventoryTab from '@/components/foundation/WallCapsInventoryTab';
 
 const FoundationInventoryEntity = base44.entities.FoundationInventory;
 
@@ -415,6 +416,7 @@ export default function FoundationInventoryPage() {
           <TabsTrigger value="equipment" className="flex items-center gap-1"><Wrench className="w-3 h-3" /> Equipment</TabsTrigger>
           <TabsTrigger value="poles">Poles</TabsTrigger>
           <TabsTrigger value="fill_material"><Layers className="w-3 h-3 mr-1" />Wall Fill</TabsTrigger>
+          <TabsTrigger value="wall_cap" className="flex items-center gap-1"><Square className="w-3 h-3" /> Wall Caps</TabsTrigger>
         </TabsList>
 
         {/* WALL MATERIALS TAB */}
@@ -524,6 +526,11 @@ export default function FoundationInventoryPage() {
         {/* EQUIPMENT (Custom UI) */}
         <TabsContent value="equipment">
             <EquipmentInventoryTab allItems={items} loadItems={loadItems} isAdmin={isAdmin} />
+        </TabsContent>
+
+        {/* WALL CAPS (Custom UI) */}
+        <TabsContent value="wall_cap">
+            <WallCapsInventoryTab allItems={items} FoundationInventoryEntity={FoundationInventoryEntity} loadItems={loadItems} isAdmin={isAdmin} />
         </TabsContent>
 
         {/* GENERIC TABS */}

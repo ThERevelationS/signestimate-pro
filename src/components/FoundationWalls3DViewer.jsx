@@ -5,7 +5,7 @@ import { Camera, Maximize, Minimize, Undo, Redo, ArrowUp, ArrowDown, ArrowLeft, 
 import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';
 
-export default function FoundationWalls3DViewer({ items = [], walls = [], polesData = [], polesInventory = [], formingInventory = [], beautifyDataUrl = null, onUndo, onRedo, canUndo, canRedo }) {
+export default function FoundationWalls3DViewer({ items = [], walls = [], polesData = [], polesInventory = [], formingInventory = [], wallCaps = [], capInventory = [], beautifyDataUrl = null, onUndo, onRedo, canUndo, canRedo }) {
   const mountRef = useRef(null);
   const rendererRef = useRef(null);
   const sceneRef = useRef(null);
@@ -643,6 +643,142 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
       }
     });
 
+    // ── WALL CAPS ────────────────────────────────────────────────────────────
+    // Caps sit on top of outer walls. Each cap references (wall_index, segment_index)
+    // and a position along that segment (in inches). Internal walls are NEVER capped.
+    wallCaps.forEach((cap) => {
+      const wall = walls[cap.wall_index];
+      const seg = wall?.shape?.segments?.[cap.segment_index];
+      if (!seg || !seg.p1 || !seg.p2) return;
+      const capInv = capInventory.find(c => c.id === cap.cap_inventory_id);
+      if (!capInv) return;
+
+      // Wall top Y (matches drawWallLayer's wallTopY calculation)
+      const outerMat = wall.selectedMaterial;
+      if (!outerMat) return;
+      const mortarGap = wall.mortarGapInches ?? 0.375;
+      const brickH = (outerMat.wall_unit_height_inches || outerMat.brick_height_inches || 2.25) * INCH;
+      const mortarFt = mortarGap * INCH;
+      const courseH = brickH + mortarFt;
+      const layerHeightInches = wall.heightInches ?? 24;
+      const numCourses = Math.max(1, Math.round(layerHeightInches * INCH / courseH));
+      const wallTopY = gradeOffsetFt + numCourses * courseH;
+
+      // Segment direction in feet
+      const x1 = seg.p1.x * INCH, z1 = seg.p1.y * INCH;
+      const x2 = seg.p2.x * INCH, z2 = seg.p2.y * INCH;
+      const dx = x2 - x1, dz = z2 - z1;
+      const segLenFt = Math.sqrt(dx * dx + dz * dz);
+      if (segLenFt < 0.01) return;
+      const ux = dx / segLenFt, uz = dz / segLenFt;
+      // Perpendicular (right-hand normal)
+      const nx = -uz, nz = ux;
+
+      const capLenFt = (cap.length_inches || 48) * INCH;
+      const capWFt = (capInv.cap_width_inches || 8) * INCH;
+      const capHFt = (capInv.cap_height_inches || 2) * INCH;
+      const posFt = (cap.position_along_segment_inches || 0) * INCH;
+      const latFt = (cap.lateral_offset_inches || 0) * INCH;
+
+      // Cap center in world space
+      const centerLocalAlong = posFt + capLenFt / 2;
+      const cx = x1 + ux * centerLocalAlong + nx * latFt;
+      const cz = z1 + uz * centerLocalAlong + nz * latFt;
+
+      let colorHex = 0x9ca3af;
+      if (capInv.cap_color) {
+        const parsed = parseInt(capInv.cap_color.replace('#', ''), 16);
+        if (!isNaN(parsed)) colorHex = parsed;
+      }
+
+      const capMat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        roughness: 0.7,
+        metalness: 0.05,
+        transparent: xrayMode,
+        opacity: xrayMode ? 0.6 : 1.0,
+        depthWrite: !xrayMode,
+      });
+
+      const segAngle = -Math.atan2(dz, dx);
+      const rotOffset = -((cap.rotation_offset_degrees || 0) * Math.PI / 180);
+
+      const profile = capInv.cap_profile || 'flat';
+      let capMesh;
+      if (profile === 'rounded') {
+        // Half-cylinder on top of a thin slab
+        const slabGeo = new THREE.BoxGeometry(capLenFt, capHFt * 0.4, capWFt);
+        const slab = new THREE.Mesh(slabGeo, capMat);
+        slab.position.y = -capHFt * 0.3;
+        const roundGeo = new THREE.CylinderGeometry(capWFt / 2, capWFt / 2, capLenFt, 16, 1, false, 0, Math.PI);
+        const round = new THREE.Mesh(roundGeo, capMat);
+        round.rotation.z = Math.PI / 2;
+        round.position.y = -capHFt * 0.1;
+        capMesh = new THREE.Group();
+        capMesh.add(slab); capMesh.add(round);
+      } else if (profile === 'peaked') {
+        // Triangular prism on top of slab
+        const slabGeo = new THREE.BoxGeometry(capLenFt, capHFt * 0.4, capWFt);
+        const slab = new THREE.Mesh(slabGeo, capMat);
+        slab.position.y = -capHFt * 0.3;
+        const peakShape = new THREE.Shape();
+        peakShape.moveTo(-capWFt / 2, 0);
+        peakShape.lineTo(capWFt / 2, 0);
+        peakShape.lineTo(0, capHFt * 0.6);
+        peakShape.lineTo(-capWFt / 2, 0);
+        const peakGeo = new THREE.ExtrudeGeometry(peakShape, { depth: capLenFt, bevelEnabled: false });
+        peakGeo.translate(0, 0, -capLenFt / 2);
+        const peak = new THREE.Mesh(peakGeo, capMat);
+        peak.rotation.y = Math.PI / 2;
+        peak.position.y = -capHFt * 0.1;
+        capMesh = new THREE.Group();
+        capMesh.add(slab); capMesh.add(peak);
+      } else if (profile === 'beveled') {
+        // Trapezoidal cross-section via ExtrudeGeometry
+        const w2 = capWFt / 2, h = capHFt;
+        const bevel = capWFt * 0.15;
+        const bShape = new THREE.Shape();
+        bShape.moveTo(-w2, 0);
+        bShape.lineTo(w2, 0);
+        bShape.lineTo(w2 - bevel, h);
+        bShape.lineTo(-w2 + bevel, h);
+        bShape.lineTo(-w2, 0);
+        const bGeo = new THREE.ExtrudeGeometry(bShape, { depth: capLenFt, bevelEnabled: false });
+        bGeo.translate(0, -h / 2, -capLenFt / 2);
+        capMesh = new THREE.Mesh(bGeo, capMat);
+        capMesh.rotation.y = Math.PI / 2;
+      } else if (profile === 'stepped') {
+        const baseGeo = new THREE.BoxGeometry(capLenFt, capHFt * 0.5, capWFt);
+        const base = new THREE.Mesh(baseGeo, capMat);
+        base.position.y = -capHFt * 0.25;
+        const topGeo = new THREE.BoxGeometry(capLenFt * 0.92, capHFt * 0.5, capWFt * 0.78);
+        const top = new THREE.Mesh(topGeo, capMat);
+        top.position.y = capHFt * 0.25;
+        capMesh = new THREE.Group();
+        capMesh.add(base); capMesh.add(top);
+      } else {
+        // flat
+        const geo = new THREE.BoxGeometry(capLenFt, capHFt, capWFt);
+        capMesh = new THREE.Mesh(geo, capMat);
+      }
+
+      const wrap = new THREE.Group();
+      wrap.add(capMesh);
+      // Position cap so its bottom rests on wallTopY
+      wrap.position.set(cx, wallTopY + capHFt / 2, cz);
+      wrap.rotation.y = segAngle + rotOffset;
+      // Edges
+      if (capMesh.geometry) {
+        const edges = new THREE.LineSegments(
+          new THREE.EdgesGeometry(capMesh.geometry),
+          new THREE.LineBasicMaterial({ color: 0x334155, transparent: xrayMode, opacity: xrayMode ? 0.4 : 1 })
+        );
+        capMesh.add(edges);
+      }
+      if (capMesh.castShadow !== undefined) capMesh.castShadow = true;
+      scene.add(wrap);
+    });
+
     // ── POLES ─────────────────────────────────────────────────────────────────
     polesData.forEach(p => {
         const inv = polesInventory.find(i => i.id === p.pole_id);
@@ -795,7 +931,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
       controlsRef.current.target.set(cx, 0, cz);
       controlsRef.current.update();
     }
-  }, [items, walls, polesData, xrayMode]);
+  }, [items, walls, polesData, wallCaps, capInventory, xrayMode]);
 
   // ── Update Ground Texture ───────────────────────────────────────────────────
   useEffect(() => {

@@ -23,7 +23,8 @@
         "pole",
         "brick_stone",
         "fill_material",
-        "wall_material"
+        "wall_material",
+        "wall_cap"
       ],
       "description": "Type of material"
     },
@@ -33,8 +34,7 @@
         "spread_foot",
         "pillar",
         "general"
-      ],
-      "description": "Specific foundation type this material is used for"
+      ]
     },
     "lumber_size": {
       "type": "string",
@@ -143,6 +143,41 @@
         "textured",
         "glazed"
       ]
+    },
+    "cap_stock_length_inches": {
+      "type": "number",
+      "description": "Stock length of one wall cap piece in inches"
+    },
+    "cap_width_inches": {
+      "type": "number",
+      "description": "Cap width (perpendicular to wall direction) in inches"
+    },
+    "cap_height_inches": {
+      "type": "number",
+      "description": "Cap thickness/height (vertical) in inches"
+    },
+    "cap_profile": {
+      "type": "string",
+      "enum": [
+        "flat",
+        "beveled",
+        "rounded",
+        "peaked",
+        "stepped"
+      ],
+      "description": "Top profile of the wall cap"
+    },
+    "cap_color": {
+      "type": "string",
+      "description": "Hex color for 3D rendering"
+    },
+    "cap_stock_price": {
+      "type": "number",
+      "description": "Price per full stock piece (charged in full per cut)"
+    },
+    "is_cuttable": {
+      "type": "boolean",
+      "description": "True if the item can be cut to length on-site (e.g. wall caps, rebar)"
     },
     "equipment_type": {
       "type": "string"
@@ -259,28 +294,22 @@
       "type": "number"
     },
     "small_load_fee_1_1_75": {
-      "type": "number",
-      "description": "Small load fee for 1-1.75 YD"
+      "type": "number"
     },
     "small_load_fee_2_2_75": {
-      "type": "number",
-      "description": "Small load fee for 2-2.75 YD"
+      "type": "number"
     },
     "small_load_fee_3_3_75": {
-      "type": "number",
-      "description": "Small load fee for 3-3.75 YD"
+      "type": "number"
     },
     "small_load_fee_4_4_25": {
-      "type": "number",
-      "description": "Small load fee for 4-4.25 YD"
+      "type": "number"
     },
     "small_load_fee_4_5_4_75": {
-      "type": "number",
-      "description": "Small load fee for 4.5-4.75 YD"
+      "type": "number"
     },
     "fuel_surcharge": {
-      "type": "number",
-      "description": "Fuel/delivery surcharge per load"
+      "type": "number"
     }
   },
   "required": [

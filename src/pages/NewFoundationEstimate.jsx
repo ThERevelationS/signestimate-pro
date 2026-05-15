@@ -29,6 +29,7 @@ import FoundationItemRow from '@/components/foundation/FoundationItemRow';
 import SaveAsTemplateDialog from '@/components/foundation/SaveAsTemplateDialog';
 import TemplatePickerDialog from '@/components/foundation/TemplatePickerDialog';
 import SignageLandscapeTab from '@/components/foundation/SignageLandscapeTab';
+import WallCapsTab from '@/components/foundation/WallCapsTab';
 import { Switch } from '@/components/ui/switch';
 import { User, SaveColor } from '@/entities/all';
 import { Bot, Layout as LayoutIcon, BookOpen } from 'lucide-react';
@@ -145,6 +146,7 @@ export default function NewFoundationEstimate() {
   const [polesData, setPolesData] = useState([]);
   const [items, setItems] = useState([newItem()]);
   const [walls, setWalls] = useState([]);
+  const [wallCaps, setWallCaps] = useState([]);
   const [selectedEquipmentList, setSelectedEquipmentList] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [wallMaterials, setWallMaterials] = useState([]);
@@ -387,6 +389,7 @@ export default function NewFoundationEstimate() {
             _id: w._id || Date.now() + Math.random() 
           })) : []);
           setPolesData(p.poles || []);
+          setWallCaps(p.wall_caps || []);
           setSelectedEquipmentList(p.selected_equipment?.length ? p.selected_equipment.map(e => ({ ...e, _id: e._id || Date.now() + Math.random() })) : []);
         }
       } catch (err) {
@@ -792,8 +795,16 @@ export default function NewFoundationEstimate() {
       return sum + entryTotal;
     }, 0);
 
+    // Wall caps — full stock charged per placed cap piece
+    const capInventory = inventory.filter(i => i.material_type === 'wall_cap');
+    const wallCapTotal = (wallCaps || []).reduce((sum, c) => {
+      const inv = capInventory.find(i => i.id === c.cap_inventory_id);
+      return sum + (inv ? parseFloat(inv.cap_stock_price || 0) : 0);
+    }, 0);
+
     return { 
-      itemsTotal, wallTotal, polesTotal, equipmentTotal, grand: itemsTotal + wallTotal + polesTotal + equipmentTotal,
+      itemsTotal, wallTotal, polesTotal, equipmentTotal, wallCapTotal,
+      grand: itemsTotal + wallTotal + polesTotal + equipmentTotal + wallCapTotal,
       concreteTotal,
       trucksList,
       totalConcreteYards,
@@ -837,11 +848,13 @@ export default function NewFoundationEstimate() {
       items: items.map(({ _id, ...rest }) => rest),
       walls: walls.map(({ _id, ...rest }) => rest),
       poles: polesData.map(({ id, ...rest }) => rest),
+      wall_caps: wallCaps,
       selected_equipment: selectedEquipmentList.map(({ _id, ...rest }) => rest),
       total_excavation_cost: total_excavation,
       total_equipment_cost: total_equipment,
       total_labor_cost: total_labor,
       total_concrete_cost: total_materials,
+      total_wall_cap_cost: totals.wallCapTotal,
       total_rebar_cost: 0,
     };
     
@@ -908,11 +921,13 @@ export default function NewFoundationEstimate() {
       items: items.map(({ _id, ...rest }) => rest),
       walls: walls.map(({ _id, ...rest }) => rest),
       poles: polesData.map(({ id, ...rest }) => rest),
+      wall_caps: wallCaps,
       selected_equipment: selectedEquipmentList.map(({ _id, ...rest }) => rest),
       total_excavation_cost: total_excavation,
       total_equipment_cost: total_equipment,
       total_labor_cost: total_labor,
       total_concrete_cost: total_materials,
+      total_wall_cap_cost: totals.wallCapTotal,
       total_rebar_cost: 0,
     };
     
@@ -1122,6 +1137,7 @@ export default function NewFoundationEstimate() {
                   <TabsTrigger value="equipment">Equipment {selectedEquipmentList.length > 0 ? `(${selectedEquipmentList.length})` : ''}</TabsTrigger>
                 )}
                 <TabsTrigger value="walls_poles">Walls & Poles ({walls.length + polesData.length})</TabsTrigger>
+                <TabsTrigger value="wall_caps">Wall Caps{wallCaps.length > 0 ? ` (${wallCaps.length})` : ''}</TabsTrigger>
                 <TabsTrigger value="beautify">Signage & Landscape</TabsTrigger>
                 <TabsTrigger value="summary">Cost Summary</TabsTrigger>
                 <TabsTrigger value="bom">Bill of Materials</TabsTrigger>
@@ -1711,6 +1727,17 @@ export default function NewFoundationEstimate() {
 
               </TabsContent>
 
+              {/* WALL CAPS */}
+              <TabsContent value="wall_caps">
+                <WallCapsTab
+                  walls={walls}
+                  wallCaps={wallCaps}
+                  setWallCaps={setWallCaps}
+                  capInventory={inventory.filter(i => i.material_type === 'wall_cap')}
+                  markDirty={markDirty}
+                />
+              </TabsContent>
+
               {/* BEAUTIFY */}
               <TabsContent value="beautify">
                 <SignageLandscapeTab
@@ -1795,6 +1822,8 @@ export default function NewFoundationEstimate() {
                  polesData={polesData} 
                  polesInventory={poles} 
                  formingInventory={formingInventory} 
+                 wallCaps={wallCaps}
+                 capInventory={inventory.filter(i => i.material_type === 'wall_cap')}
                  beautifyDataUrl={project.beautify_data_url} 
                  onUndo={handleUndo}
                  onRedo={handleRedo}
