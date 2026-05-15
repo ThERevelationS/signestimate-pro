@@ -12,6 +12,7 @@ import { Save, Plus, Trash2, ArrowLeft, Zap, FileText, ListChecks, Calculator, S
 import { Tabs, TabsList, TabsContent } from "@/components/ui/tabs";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
+import { upsertCustomerSummaryForEstimate } from "@/components/customerSummary/upsertCustomerSummary";
 import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
 import CustomerPricingTab from "@/components/markup/CustomerPricingTab";
 import { categorizeLaserProject } from "@/components/markup/projectCategorizer";
@@ -343,13 +344,22 @@ export default function NewLaserEstimate() {
         status: 'calculated'
       };
 
+      let savedId = editId;
       if (isEditing && editId) {
         await LaserProject.update(editId, dataToSave);
         alert('Project updated successfully!');
       } else {
-        await LaserProject.create(dataToSave);
+        const created = await LaserProject.create(dataToSave);
+        savedId = created?.id;
         alert('Project saved successfully!');
       }
+      await upsertCustomerSummaryForEstimate({
+        module: "laser",
+        client_name: project.client_name,
+        project_id: savedId,
+        project_name: project.project_name,
+        estimate_number: project.estimate_number,
+      });
       window.location.href = createPageUrl("LaserProjects"); // Changed navigate to window.location.href
     } catch (error) {
       console.error('Error saving project:', error);

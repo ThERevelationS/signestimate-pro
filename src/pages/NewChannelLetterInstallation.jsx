@@ -34,6 +34,7 @@ import {
 } from "@/components/channelLetterInstall/installCalculator";
 import { calcLettersTotals, syncInstallItemsFromPurchases } from "@/components/channelLetterInstall/lettersCalculator";
 import { buildSummaryText, downloadCSV } from "@/components/channelLetterInstall/installExport";
+import { upsertCustomerSummaryForEstimate } from "@/components/customerSummary/upsertCustomerSummary";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 
@@ -43,6 +44,7 @@ const blankProject = () => ({
   estimate_number: "",
   hyperlink: "",
   site_address: "",
+  project_scope: "full",
   items: [],
   letter_purchases: [],
   letters_delivery_fee: 0,
@@ -135,12 +137,22 @@ export default function NewChannelLetterInstallation() {
   // Recalc on every change
   const recalculated = useMemo(() => {
     if (!settings || Object.keys(settings).length === 0) return project;
+    const scope = project.project_scope || "full";
     // 1) Letters tab math — totals each purchase row + project subtotal + markup
-    const lettersTotals = calcLettersTotals(project, settings);
-    // 2) Installation items recompute
-    const recalcItems = (project.items || []).map(it => calcLineItem(it, settings, inventory));
-    // 3) Project rollup (uses total_letters_cost from step 1)
-    const totals = calcProjectTotals({ ...project, ...lettersTotals, items: recalcItems });
+    //    Zero out when scope is install_only.
+    const lettersTotals = scope === "install_only"
+      ? { letters_subtotal: 0, total_letters_cost: 0, letter_purchases: project.letter_purchases || [] }
+      : calcLettersTotals(project, settings);
+    // 2) Installation items recompute. Zero out when scope is letters_only.
+    const recalcItems = scope === "letters_only"
+      ? []
+      : (project.items || []).map(it => calcLineItem(it, settings, inventory));
+    // 3) Project rollup (uses total_letters_cost from step 1).
+    //    When letters_only, drop equipment + personnel from the rollup too.
+    const projectForTotals = scope === "letters_only"
+      ? { ...project, ...lettersTotals, items: recalcItems, selected_equipment: [], personnel: [] }
+      : { ...project, ...lettersTotals, items: recalcItems };
+    const totals = calcProjectTotals(projectForTotals);
     return { ...project, ...lettersTotals, items: recalcItems, ...totals };
   }, [project, settings, inventory]);
 
@@ -160,6 +172,19 @@ export default function NewChannelLetterInstallation() {
     }
     setActiveTab(next);
   };
+
+  // Project scope helpers — control which tabs / rollups are active
+  const scope = project.project_scope || "full";
+  const showLettersTab = scope !== "install_only";
+  const showInstallTab = scope !== "letters_only";
+  const showCrewTab = scope !== "letters_only";
+
+  // If the active tab gets hidden by a scope change, fall back to Project
+  useEffect(() => {
+    if (activeTab === "letters" && !showLettersTab) setActiveTab("project");
+    if ((activeTab === "items" || activeTab === "crew") && scope === "letters_only") setActiveTab("project");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope]);
 
   // Aggregate materials across items for the Materials tab
   const aggregatedMaterials = useMemo(() => {
@@ -308,7 +333,7 @@ export default function NewChannelLetterInstallation() {
       setActiveTab("project");
       return;
     }
-    if (!project.selected_equipment || project.selected_equipment.length === 0) {
+    if (scope !== "letters_only" && (!project.selected_equipment || project.selected_equipment.length === 0)) {
       alert("Please select at least one piece of equipment before saving.");
       setActiveTab("crew");
       return;
@@ -317,11 +342,20 @@ export default function NewChannelLetterInstallation() {
     setIsDirty(false);
     try {
       const dataToSave = { ...recalculated, status: "calculated" };
+      let savedId = editId;
       if (isEditing && editId) {
         await ChannelLetterInstallation.update(editId, dataToSave);
       } else {
-        await ChannelLetterInstallation.create(dataToSave);
+        const created = await ChannelLetterInstallation.create(dataToSave);
+        savedId = created?.id;
       }
+      await upsertCustomerSummaryForEstimate({
+        module: "channel_letter_installation",
+        client_name: project.client_name,
+        project_id: savedId,
+        project_name: project.project_name,
+        estimate_number: project.estimate_number,
+      });
       navigate(createPageUrl("ChannelLetterInstallationProjects"));
     } catch (e) {
       console.error(e);
@@ -445,26 +479,37 @@ export default function NewChannelLetterInstallation() {
           <div className="lg:col-span-2">
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
               <div className="sticky top-[64px] z-30 -mx-2 px-2 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60">
-                <TabsList className="grid grid-cols-6 w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
+                {(() => {
+                  const visibleTabsCount = 3 + (showLettersTab ? 1 : 0) + (showInstallTab ? 1 : 0) + (showCrewTab ? 1 : 0);
+                  return (
+                <TabsList className={`grid w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1`} style={{ gridTemplateColumns: `repeat(${visibleTabsCount}, minmax(0, 1fr))` }}>
                   <TabBadgeTrigger value="project" icon={FileText} label="Project" />
-                  <TabBadgeTrigger value="letters" icon={Type} label="Letters" amount={recalculated.total_letters_cost} warn={hasIncompleteDimensional} />
-                  <TabBadgeTrigger
-                    value="items"
-                    icon={ListChecks}
-                    label="Install"
-                    amount={(recalculated.labor_cost || 0) + (recalculated.total_materials_cost || 0)}
-                    count={recalculated.items.length}
-                  />
-                  <TabBadgeTrigger
-                    value="crew"
-                    icon={HardHat}
-                    label="Crew"
-                    amount={(recalculated.total_equipment_cost || 0) + (recalculated.total_personnel_cost || 0)}
-                    warn={(recalculated.selected_equipment?.length || 0) === 0}
-                  />
+                  {showLettersTab && (
+                    <TabBadgeTrigger value="letters" icon={Type} label="Letters" amount={recalculated.total_letters_cost} warn={hasIncompleteDimensional} />
+                  )}
+                  {showInstallTab && (
+                    <TabBadgeTrigger
+                      value="items"
+                      icon={ListChecks}
+                      label="Install"
+                      amount={(recalculated.labor_cost || 0) + (recalculated.total_materials_cost || 0)}
+                      count={recalculated.items.length}
+                    />
+                  )}
+                  {showCrewTab && (
+                    <TabBadgeTrigger
+                      value="crew"
+                      icon={HardHat}
+                      label="Crew"
+                      amount={(recalculated.total_equipment_cost || 0) + (recalculated.total_personnel_cost || 0)}
+                      warn={(recalculated.selected_equipment?.length || 0) === 0}
+                    />
+                  )}
                   <TabBadgeTrigger value="summary" icon={Calculator} label="Summary" amount={recalculated.total_cost} />
                   <TabBadgeTrigger value="pricing" icon={TrendingUp} label="Customer Pricing" accent />
                 </TabsList>
+                  );
+                })()}
               </div>
 
               {/* PROJECT TAB */}
@@ -524,6 +569,38 @@ export default function NewChannelLetterInstallation() {
                       </div>
                     </div>
                     <div>
+                      <Label className="text-sm font-semibold text-slate-900">Project Scope</Label>
+                      <p className="text-xs text-slate-500 mt-1 mb-2">
+                        Choose what this estimate covers. Hidden tabs are excluded from totals.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {[
+                          { value: "full", label: "Letters + Install", desc: "Both letter purchases and installation labor" },
+                          { value: "install_only", label: "Installation Only", desc: "Install labor only — no letter purchases" },
+                          { value: "letters_only", label: "Lettering / Logo Only", desc: "Letter purchases only — no install or crew" },
+                        ].map((opt) => {
+                          const active = (project.project_scope || "full") === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => updateProject({ project_scope: opt.value })}
+                              className={`text-left p-3 rounded-lg border-2 transition-all ${
+                                active
+                                  ? "border-purple-500 bg-purple-50 shadow-sm"
+                                  : "border-slate-200 bg-white hover:border-slate-300"
+                              }`}
+                            >
+                              <div className={`text-sm font-semibold ${active ? "text-purple-900" : "text-slate-800"}`}>
+                                {opt.label}
+                              </div>
+                              <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">{opt.desc}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div>
                       <Label htmlFor="site_address" className="flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-purple-600" />
                         Site Address
@@ -562,8 +639,11 @@ export default function NewChannelLetterInstallation() {
                 </Card>
 
                 <div className="flex justify-end">
-                  <Button onClick={() => setActiveTab("letters")} className="bg-purple-600 hover:bg-purple-700 text-white">
-                    Continue to Letters →
+                  <Button
+                    onClick={() => setActiveTab(showLettersTab ? "letters" : (showInstallTab ? "items" : "summary"))}
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                  >
+                    Continue to {showLettersTab ? "Letters" : (showInstallTab ? "Install" : "Summary")} →
                   </Button>
                 </div>
               </TabsContent>

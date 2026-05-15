@@ -10,6 +10,7 @@ import { ArrowLeft, Plus, Trash2, Save, Router, FileText, ListChecks, Calculator
 import { Tabs, TabsList, TabsContent } from "@/components/ui/tabs";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
+import { upsertCustomerSummaryForEstimate } from "@/components/customerSummary/upsertCustomerSummary";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
@@ -182,7 +183,14 @@ export default function NewCNCEstimate() {
       const { totalMachine, totalLabor } = calculateTotals();
       const finalProject = { ...project, total_machine_cost: totalMachine, total_labor_cost: totalLabor, status: 'calculated' }
       
-      await CNCProject.create(finalProject);
+      const created = await CNCProject.create(finalProject);
+      await upsertCustomerSummaryForEstimate({
+        module: "cnc",
+        client_name: project.client_name,
+        project_id: created?.id,
+        project_name: project.project_name,
+        estimate_number: project.estimate_number,
+      });
       navigate(createPageUrl("CNCProjects"));
     } catch (error) {
       console.error('Error saving project:', error);

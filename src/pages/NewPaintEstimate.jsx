@@ -13,6 +13,7 @@ import { createPageUrl } from "@/utils";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import { generatePaintEstimateHTML } from "@/components/paintEstimate/generatePaintHTML";
+import { upsertCustomerSummaryForEstimate } from "@/components/customerSummary/upsertCustomerSummary";
 import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
 import CustomerPricingTab from "@/components/markup/CustomerPricingTab";
 import { categorizePaintProject } from "@/components/markup/projectCategorizer";
@@ -686,11 +687,20 @@ export default function NewPaintEstimate() {
         status: 'calculated'
       };
 
+      let savedId = editId;
       if (isEditing) {
         await Project.update(editId, finalProject);
       } else {
-        await Project.create(finalProject);
+        const created = await Project.create(finalProject);
+        savedId = created?.id;
       }
+      await upsertCustomerSummaryForEstimate({
+        module: "paint",
+        client_name: project.client_name,
+        project_id: savedId,
+        project_name: project.project_name,
+        estimate_number: project.estimate_number,
+      });
 
       // Use window.location for reliable navigation
       window.location.href = createPageUrl("PaintProjects");

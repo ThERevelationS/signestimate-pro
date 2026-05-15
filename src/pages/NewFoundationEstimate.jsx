@@ -18,6 +18,7 @@ import SharedCanvas from '@/components/SharedCanvas';
 import FoundationWalls3DViewer from '@/components/FoundationWalls3DViewer';
 import { UnsavedChangesContext } from '@/components/UnsavedChangesContext';
 import ClientSearchInput from "@/components/ClientSearchInput";
+import { upsertCustomerSummaryForEstimate } from "@/components/customerSummary/upsertCustomerSummary";
 import SummaryTab from '@/components/foundation/SummaryTab';
 import BOMTab from '@/components/foundation/BOMTab';
 import EquipmentTab from '@/components/foundation/EquipmentTab';
@@ -893,12 +894,25 @@ export default function NewFoundationEstimate() {
     
     const currentId = project.id || editId;
     try {
+      let savedId = currentId;
       if (currentId) { 
         await FoundationProjectEntity.update(currentId, data); 
       } else { 
         const created = await FoundationProjectEntity.create(data); 
+        savedId = created.id;
         setProject(prev => ({...prev, id: created.id}));
         window.history.replaceState(null, '', `?id=${created.id}`);
+      }
+      // Don't auto-update the CustomerSummary on background auto-saves —
+      // only on explicit user-driven saves.
+      if (!isAutoSave) {
+        upsertCustomerSummaryForEstimate({
+          module: "foundation",
+          client_name: project.client_name,
+          project_id: savedId,
+          project_name: project.project_name,
+          estimate_number: project.estimate_number,
+        });
       }
       setIsDirty(false);
       setLastSaved(new Date());
@@ -955,6 +969,13 @@ export default function NewFoundationEstimate() {
       const created = await FoundationProjectEntity.create(data); 
       setProject(prev => ({...prev, id: created.id, project_name: data.project_name}));
       window.history.replaceState(null, '', `?id=${created.id}`);
+      upsertCustomerSummaryForEstimate({
+        module: "foundation",
+        client_name: project.client_name,
+        project_id: created.id,
+        project_name: data.project_name,
+        estimate_number: project.estimate_number,
+      });
       setIsDirty(false);
       setLastSaved(new Date());
     } catch (e) {

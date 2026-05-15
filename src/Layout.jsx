@@ -28,7 +28,8 @@ import {
   Anchor,
   ChevronDown,
   FileText,
-  Shield
+  Shield,
+  Factory
 } from 'lucide-react';
 
 export default function Layout({ children, currentPageName }) {
@@ -109,7 +110,36 @@ export default function Layout({ children, currentPageName }) {
     return globalStatus !== undefined ? globalStatus : true;
   };
 
-  const modules = [
+  // Top-level module dropdowns (always shown in this order)
+  const topLevelModules = [
+    {
+      id: 'channel_letter_installation',
+      name: 'Channel & Dimensional Letters',
+      icon: Wrench,
+      projectsPage: 'ChannelLetterInstallationProjects',
+      newEstimatePage: 'NewChannelLetterInstallation',
+      settingsPage: 'ChannelLetterInstallationSettings',
+      inventoryPage: 'ChannelLetterInstallInventory',
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      hoverColor: 'hover:bg-purple-100'
+    },
+    {
+      id: 'foundation',
+      name: 'Concrete | Masonry | Poles',
+      icon: Anchor,
+      projectsPage: 'FoundationProjects',
+      newEstimatePage: 'NewFoundationEstimate',
+      settingsPage: 'FoundationSettings',
+      inventoryPage: 'FoundationInventory',
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-50',
+      hoverColor: 'hover:bg-amber-100'
+    }
+  ];
+
+  // Modules grouped under the "Single Point Fabrication" dropdown
+  const singlePointModules = [
     {
       id: 'painting',
       name: 'Paint Estimator',
@@ -154,30 +184,6 @@ export default function Layout({ children, currentPageName }) {
       bgColor: 'bg-orange-50',
       hoverColor: 'hover:bg-orange-100',
       inventoryPage: 'Inventory'
-    },
-    {
-      id: 'channel_letter_installation',
-      name: 'Channel & Dimensional Letters',
-      icon: Wrench,
-      projectsPage: 'ChannelLetterInstallationProjects',
-      newEstimatePage: 'NewChannelLetterInstallation',
-      settingsPage: 'ChannelLetterInstallationSettings',
-      inventoryPage: 'ChannelLetterInstallInventory',
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      hoverColor: 'hover:bg-purple-100'
-    },
-    {
-      id: 'foundation',
-      name: 'Concrete | Masonry | Poles',
-      icon: Anchor,
-      projectsPage: 'FoundationProjects',
-      newEstimatePage: 'NewFoundationEstimate',
-      settingsPage: 'FoundationSettings',
-      inventoryPage: 'FoundationInventory',
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50',
-      hoverColor: 'hover:bg-amber-100'
     }
   ];
 
@@ -204,95 +210,134 @@ export default function Layout({ children, currentPageName }) {
 
           <SidebarContent className="px-4 py-4">
             <SidebarMenu className="space-y-1">
-              {modules.map((module) => {
-                const isEnabled = hasPermission(module.id);
-
-                if (!isEnabled) {
-                  return null;
-                }
-
-                const isExpanded = expandedModule === module.id;
-
-                return (
-                  <SidebarMenuItem key={module.id}>
-                    <div 
-                      className={`${module.bgColor} ${module.hoverColor} rounded-xl p-3 transition-all duration-200 cursor-pointer`}
-                      onClick={() => handleToggle(module.id)}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <module.icon className={`w-5 h-5 ${module.color}`} />
-                          <span className="font-semibold text-slate-900 text-sm">{module.name}</span>
-                        </div>
-                        <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
-                      </div>
-
-                      <div 
-                        className="space-y-1 transition-all duration-300 ease-in-out"
-                        style={{
-                          maxHeight: isExpanded ? '500px' : '0px',
-                          opacity: isExpanded ? 1 : 0,
-                          overflow: 'hidden',
-                          pointerEvents: isExpanded ? 'auto' : 'none'
-                        }}
-                        onClick={(e) => e.stopPropagation()}
+              {(() => {
+                const renderModule = (module) => {
+                  const isEnabled = hasPermission(module.id);
+                  if (!isEnabled) return null;
+                  const isExpanded = expandedModule === module.id;
+                  return (
+                    <SidebarMenuItem key={module.id}>
+                      <div
+                        className={`${module.bgColor} ${module.hoverColor} rounded-xl p-3 transition-all duration-200 cursor-pointer`}
+                        onClick={() => handleToggle(module.id)}
                       >
-                        <Link
-                          to={createPageUrl(module.projectsPage)}
-                          onClick={(e) => handleNavClick(e, createPageUrl(module.projectsPage))}
-                          className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
-                            location.pathname === createPageUrl(module.projectsPage)
-                              ? 'bg-white text-slate-900 font-medium shadow-sm'
-                              : 'text-slate-700 hover:bg-white/60'
-                          }`}
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <module.icon className={`w-5 h-5 ${module.color}`} />
+                            <span className="font-semibold text-slate-900 text-sm">{module.name}</span>
+                          </div>
+                          <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                        </div>
+
+                        <div
+                          className="space-y-1 transition-all duration-300 ease-in-out"
+                          style={{
+                            maxHeight: isExpanded ? '500px' : '0px',
+                            opacity: isExpanded ? 1 : 0,
+                            overflow: 'hidden',
+                            pointerEvents: isExpanded ? 'auto' : 'none'
+                          }}
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          View Projects
-                        </Link>
-                        
-                        <Link
-                          to={createPageUrl(module.newEstimatePage)}
-                          onClick={(e) => handleNavClick(e, createPageUrl(module.newEstimatePage))}
-                          className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
-                            location.pathname === createPageUrl(module.newEstimatePage)
-                              ? 'bg-white text-slate-900 font-medium shadow-sm'
-                              : 'text-slate-700 hover:bg-white/60'
-                          }`}
-                        >
-                          New Estimate
-                        </Link>
-                        
-                        {module.inventoryPage && (
                           <Link
-                            to={createPageUrl(module.inventoryPage)}
-                            onClick={(e) => handleNavClick(e, createPageUrl(module.inventoryPage))}
+                            to={createPageUrl(module.projectsPage)}
+                            onClick={(e) => handleNavClick(e, createPageUrl(module.projectsPage))}
                             className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
-                              location.pathname === createPageUrl(module.inventoryPage)
+                              location.pathname === createPageUrl(module.projectsPage)
                                 ? 'bg-white text-slate-900 font-medium shadow-sm'
                                 : 'text-slate-700 hover:bg-white/60'
                             }`}
                           >
-                            <Server className="w-3 h-3 mr-1" />
-                            Inventory
+                            View Projects
                           </Link>
-                        )}
-                        
-                        <Link
-                          to={createPageUrl(module.settingsPage)}
-                          onClick={(e) => handleNavClick(e, createPageUrl(module.settingsPage))}
-                          className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
-                            location.pathname === createPageUrl(module.settingsPage)
-                              ? 'bg-white text-slate-900 font-medium shadow-sm'
-                              : 'text-slate-700 hover:bg-white/60'
-                          }`}
-                        >
-                          <Settings className="w-3 h-3 mr-1" />
-                          Settings
-                        </Link>
+
+                          <Link
+                            to={createPageUrl(module.newEstimatePage)}
+                            onClick={(e) => handleNavClick(e, createPageUrl(module.newEstimatePage))}
+                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
+                              location.pathname === createPageUrl(module.newEstimatePage)
+                                ? 'bg-white text-slate-900 font-medium shadow-sm'
+                                : 'text-slate-700 hover:bg-white/60'
+                            }`}
+                          >
+                            New Estimate
+                          </Link>
+
+                          {module.inventoryPage && (
+                            <Link
+                              to={createPageUrl(module.inventoryPage)}
+                              onClick={(e) => handleNavClick(e, createPageUrl(module.inventoryPage))}
+                              className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
+                                location.pathname === createPageUrl(module.inventoryPage)
+                                  ? 'bg-white text-slate-900 font-medium shadow-sm'
+                                  : 'text-slate-700 hover:bg-white/60'
+                              }`}
+                            >
+                              <Server className="w-3 h-3 mr-1" />
+                              Inventory
+                            </Link>
+                          )}
+
+                          <Link
+                            to={createPageUrl(module.settingsPage)}
+                            onClick={(e) => handleNavClick(e, createPageUrl(module.settingsPage))}
+                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
+                              location.pathname === createPageUrl(module.settingsPage)
+                                ? 'bg-white text-slate-900 font-medium shadow-sm'
+                                : 'text-slate-700 hover:bg-white/60'
+                            }`}
+                          >
+                            <Settings className="w-3 h-3 mr-1" />
+                            Settings
+                          </Link>
+                        </div>
                       </div>
-                    </div>
-                  </SidebarMenuItem>
+                    </SidebarMenuItem>
+                  );
+                };
+
+                // Visible Single Point modules (filtered by permission)
+                const visibleSinglePoint = singlePointModules.filter(m => hasPermission(m.id));
+                const isSinglePointExpanded = expandedModule === 'single_point_fabrication';
+
+                return (
+                  <>
+                    {/* Top-level: Channel & Dimensional Letters, Concrete | Masonry | Poles */}
+                    {topLevelModules.map(renderModule)}
+
+                    {/* "Single Point Fabrication" parent dropdown — contains Paint / Laser / CNC / Metal */}
+                    {visibleSinglePoint.length > 0 && (
+                      <SidebarMenuItem key="single_point_fabrication">
+                        <div
+                          className="bg-slate-100 hover:bg-slate-200 rounded-xl p-3 transition-all duration-200 cursor-pointer"
+                          onClick={() => handleToggle('single_point_fabrication')}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Factory className="w-5 h-5 text-slate-700" />
+                              <span className="font-semibold text-slate-900 text-sm">Single Point Fabrication</span>
+                            </div>
+                            <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${isSinglePointExpanded ? 'rotate-180' : ''}`} />
+                          </div>
+
+                          <div
+                            className="space-y-1 transition-all duration-300 ease-in-out mt-2"
+                            style={{
+                              maxHeight: isSinglePointExpanded ? '2000px' : '0px',
+                              opacity: isSinglePointExpanded ? 1 : 0,
+                              overflow: 'hidden',
+                              pointerEvents: isSinglePointExpanded ? 'auto' : 'none'
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {visibleSinglePoint.map(renderModule)}
+                          </div>
+                        </div>
+                      </SidebarMenuItem>
+                    )}
+                  </>
                 );
-              })}
+              })()}
             </SidebarMenu>
           </SidebarContent>
 

@@ -26,6 +26,16 @@
       ],
       "default": "draft"
     },
+    "project_scope": {
+      "type": "string",
+      "enum": [
+        "full",
+        "install_only",
+        "letters_only"
+      ],
+      "default": "full",
+      "description": "Controls which tabs render and which cost rollups are included. 'full' = letters + install. 'install_only' = hide Letters tab and exclude its costs. 'letters_only' = hide Install/Crew tabs and exclude their costs."
+    },
     "items": {
       "type": "array",
       "items": {
@@ -440,44 +450,5 @@
     "client_name",
     "estimate_number",
     "hyperlink"
-  ],
-  "rls": {
-    "create": {},
-    "read": {
-      "$or": [
-        {
-          "created_by": "{{user.email}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
-    "update": {
-      "$or": [
-        {
-          "created_by": "{{user.email}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
-    "delete": {
-      "$or": [
-        {
-          "created_by": "{{user.email}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    }
-  }
+  ]
 }

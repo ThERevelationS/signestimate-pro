@@ -513,9 +513,9 @@ export default function ChannelLetterInstallationSettings() {
               value={value || ""}
               onChange={(e) => updateSetting(name, e.target.value)}
               disabled={isLocked}
-              className="h-9 w-16 flex-shrink-0 bg-white border-slate-200 focus:border-slate-400 focus:ring-0 text-sm tabular-nums font-medium px-2"
+              className="h-9 w-12 flex-shrink-0 bg-white border-slate-200 focus:border-slate-400 focus:ring-0 text-sm tabular-nums font-medium px-1.5 text-center"
               min="0"
-              maxLength={3}
+              maxLength={2}
             />
             <AutoGrowNotes
               value={notesValue}

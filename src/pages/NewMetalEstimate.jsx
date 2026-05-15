@@ -10,6 +10,7 @@ import { ArrowLeft, Plus, Trash2, Save, Wrench, Edit, Download, Printer, FileTex
 import { Tabs, TabsList, TabsContent } from "@/components/ui/tabs";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
+import { upsertCustomerSummaryForEstimate } from "@/components/customerSummary/upsertCustomerSummary";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
@@ -250,11 +251,20 @@ export default function NewMetalEstimate() {
           status: 'calculated' 
       };
       
+      let savedId = editId;
       if (isEditing) {
         await MetalProject.update(editId, finalProject);
       } else {
-        await MetalProject.create(finalProject);
+        const created = await MetalProject.create(finalProject);
+        savedId = created?.id;
       }
+      await upsertCustomerSummaryForEstimate({
+        module: "metal_fabrication",
+        client_name: project.client_name,
+        project_id: savedId,
+        project_name: project.project_name,
+        estimate_number: project.estimate_number,
+      });
       navigate(createPageUrl("MetalProjects"));
     } catch (error) {
       console.error('Error saving project:', error);
