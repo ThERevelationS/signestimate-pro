@@ -16,6 +16,9 @@ import ReportStats from '@/components/report/ReportStats';
 import ReportFilters from '@/components/report/ReportFilters';
 import ReportCard from '@/components/report/ReportCard';
 import ReportDetailDialog from '@/components/report/ReportDetailDialog';
+import ReportAssistantChat from '@/components/report/ReportAssistantChat';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Sparkles, PencilLine } from 'lucide-react';
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from '@/components/report/reportConstants';
 
 const PRIORITY_RANK = Object.fromEntries(PRIORITY_OPTIONS.map((p, i) => [p.value, PRIORITY_OPTIONS.length - i]));
@@ -196,7 +199,22 @@ export default function Report() {
         {/* Body: form + list */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <ReportForm onSubmit={handleSubmit} submitting={submitting} />
+            <Tabs defaultValue="assistant" className="w-full">
+              <TabsList className="grid grid-cols-2 w-full mb-3">
+                <TabsTrigger value="assistant" className="text-xs gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />AI Assistant
+                </TabsTrigger>
+                <TabsTrigger value="manual" className="text-xs gap-1.5">
+                  <PencilLine className="w-3.5 h-3.5" />Manual Form
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="assistant" className="mt-0">
+                <ReportAssistantChat onReportSaved={loadData} />
+              </TabsContent>
+              <TabsContent value="manual" className="mt-0">
+                <ReportForm onSubmit={handleSubmit} submitting={submitting} />
+              </TabsContent>
+            </Tabs>
           </div>
 
           <div className="lg:col-span-2 space-y-4">
