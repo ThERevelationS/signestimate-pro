@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Box, Router, Paintbrush, Calculator, AlertCircle, Sparkles, Link as LinkIcon } from "lucide-react";
+import {
+  Box, Router, Zap, Paintbrush, Calculator, AlertCircle, Sparkles,
+  Link as LinkIcon, RefreshCw,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { DimensionalLetterMaterial, Settings as SettingsEntity } from "@/entities/all";
@@ -14,7 +17,12 @@ import {
   calcDimensionalUnitCost,
   materialCostPerSqin,
   emptyFabConfig,
+  getActiveRates,
+  getPaintRates,
+  lookupCutSpeed,
+  lookupCutMultiplier,
   PAINT_SIDES_LABELS,
+  CUTTING_METHOD_LABELS,
 } from "./dimensionalFabCalculator";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
@@ -25,36 +33,40 @@ export default function DimensionalFabModal({ open, onOpenChange, purchase, onSa
   const [fab, setFab] = useState(emptyFabConfig());
   const [loading, setLoading] = useState(true);
 
-  // Load materials + relevant settings (CNC + Paint)
+  // Pull settings as a flat name→value map (matches what CNC/Laser/Paint settings pages write)
+  const loadSettings = useCallback(async () => {
+    const settingsList = await SettingsEntity.list();
+    const map = {};
+    settingsList.forEach(s => { map[s.setting_name] = s.setting_value; });
+    setSettings(map);
+    return map;
+  }, []);
+
+  // Load everything when modal opens
   useEffect(() => {
     if (!open) return;
     (async () => {
       setLoading(true);
       try {
-        const [mats, settingsList] = await Promise.all([
+        const [mats] = await Promise.all([
           DimensionalLetterMaterial.filter({ is_active: true }, "sort_order"),
-          SettingsEntity.list(),
+          loadSettings(),
         ]);
         setMaterials(mats);
-        // Build a flat settings map keyed by setting_name → setting_value
-        const map = {};
-        settingsList.forEach(s => { map[s.setting_name] = s.setting_value; });
-        // Expose just the bits the calculator needs
-        setSettings({
-          machine_rate_per_hour: map.cnc_machine_rate_per_hour || map.machine_rate_per_hour || 75,
-          labor_rate: map.cnc_labor_rate || map.labor_rate || 45,
-          paint_labor_rate: map.paint_labor_rate || map.labor_rate || 60,
-          paint_supplies_rate_per_sqft: map.paint_supplies_rate_per_sqft || 2.5,
-          paint_liquid_paint_per_sqft: map.paint_liquid_paint_per_sqft || map.paint_supplies_per_sqft || 1.25,
-        });
 
         // Seed fab from purchase, or use empty default
-        const seed = purchase?.fab_config ? { ...emptyFabConfig(), ...purchase.fab_config } : emptyFabConfig();
+        const seed = purchase?.fab_config
+          ? { ...emptyFabConfig(), ...purchase.fab_config }
+          : emptyFabConfig();
+
+        // Back-compat: older fab_configs used cnc_cut_speed_ipm / cnc_setup_minutes
+        if (seed.cnc_cut_speed_ipm && !seed.cut_speed_ipm) seed.cut_speed_ipm = seed.cnc_cut_speed_ipm;
+        if (seed.cnc_setup_minutes != null && seed.setup_minutes == null) seed.setup_minutes = seed.cnc_setup_minutes;
+
         // If purchase has size_value (sqft), back-fill letter dimensions from it for new configs
         if (!purchase?.fab_config && purchase?.size_value) {
-          // Treat size_value (sqft) as area per letter — derive a roughly square shape.
           const sqin = (parseFloat(purchase.size_value) || 0) * 144;
-          const side = Math.sqrt(sqin / 0.55); // reverse our 0.55 fill factor
+          const side = Math.sqrt(sqin / 0.55);
           seed.letter_height_inches = Math.round(side);
           seed.letter_width_inches = Math.round(side * 0.75);
         }
@@ -64,20 +76,43 @@ export default function DimensionalFabModal({ open, onOpenChange, purchase, onSa
       }
       setLoading(false);
     })();
-  }, [open, purchase]);
+  }, [open, purchase, loadSettings]);
+
+  const update = (patch) => setFab(prev => ({ ...prev, ...patch }));
 
   // Update fab when a material is picked — refresh thickness + cost_per_sqin + paint default
+  // + auto-pull the cut speed & multiplier for this material/method from settings.
   const selectMaterial = (id) => {
     const m = materials.find(x => x.id === id);
     if (!m) return;
+    const matType = m.material_type || "";
+    const speedFromSettings = lookupCutSpeed(fab.cutting_method, m.thickness_inches, settings);
+    const multiplierFromSettings = lookupCutMultiplier(fab.cutting_method, matType, settings);
     setFab(prev => ({
       ...prev,
       material_id: m.id,
       material_name: m.material_name,
+      material_type: matType,
       material_thickness_inches: m.thickness_inches,
       material_cost_per_sqin: materialCostPerSqin(m),
       sheet_yield_factor: m.yield_factor,
       paint_letters: !!m.needs_painting,
+      cut_speed_ipm: speedFromSettings ?? prev.cut_speed_ipm,
+      cut_multiplier: multiplierFromSettings,
+    }));
+  };
+
+  // When the cutting method changes, refresh cut speed + multiplier from THAT method's settings.
+  const setCuttingMethod = (method) => {
+    const thickness = fab.material_thickness_inches;
+    const matType = fab.material_type;
+    const speedFromSettings = lookupCutSpeed(method, thickness, settings);
+    const multiplierFromSettings = lookupCutMultiplier(method, matType, settings);
+    setFab(prev => ({
+      ...prev,
+      cutting_method: method,
+      cut_speed_ipm: speedFromSettings ?? prev.cut_speed_ipm,
+      cut_multiplier: multiplierFromSettings,
     }));
   };
 
@@ -87,42 +122,50 @@ export default function DimensionalFabModal({ open, onOpenChange, purchase, onSa
     return calcDimensionalUnitCost(fab, qty, settings);
   }, [fab, purchase?.qty, settings]);
 
-  const update = (patch) => setFab(prev => ({ ...prev, ...patch }));
+  // Live rate readouts (always pulled fresh from settings)
+  const activeRates = useMemo(
+    () => getActiveRates(fab.cutting_method, settings),
+    [fab.cutting_method, settings]
+  );
+  const paintR = useMemo(() => getPaintRates(settings), [settings]);
 
   const handleSave = () => {
-    // Compute final, persist fab_config + override unit cost on the purchase row
     const qty = parseFloat(purchase?.qty) || 1;
     const final = calcDimensionalUnitCost(fab, qty, settings);
     onSave({
       fab_config: {
         material_id: final.material_id,
         material_name: final.material_name,
+        material_type: final.material_type,
         material_thickness_inches: final.material_thickness_inches,
         material_cost_per_sqin: final.material_cost_per_sqin,
         sheet_yield_factor: final.sheet_yield_factor,
         letter_height_inches: final.letter_height_inches,
         letter_width_inches: final.letter_width_inches,
         letter_perimeter_inches: final.letter_perimeter_inches,
-        cnc_cut_speed_ipm: final.cnc_cut_speed_ipm,
-        cnc_setup_minutes: final.cnc_setup_minutes,
+        cutting_method: final.cutting_method,
+        cut_speed_ipm: final.cut_speed_ipm,
+        setup_minutes: final.setup_minutes,
+        cut_multiplier: final.cut_multiplier,
         paint_letters: final.paint_letters,
         paint_sides: final.paint_sides,
         num_paint_colors: final.num_paint_colors,
         unit_material_cost: final.unit_material_cost,
-        unit_cnc_cost: final.unit_cnc_cost,
+        unit_cut_cost: final.unit_cut_cost,
         unit_paint_cost: final.unit_paint_cost,
         unit_total_cost: final.unit_total_cost,
       },
-      // Override the row's unit cost with the computed result.
-      // The Letters tab multiplies unit_cost × size_value × qty.
-      // For dimensional letters, size_value is sqft. We want total = unit_total_cost × qty,
-      // so set unit_cost = unit_total_cost / sqft_per_letter, with size_value = sqft per letter.
       unit_cost_override: true,
       unit_cost: final.unit_total_cost / Math.max(0.01, (final.face_area_sqin || 1) / 144),
-      size_value: (final.face_area_sqin || 1) / 144, // sqft per letter
+      size_value: (final.face_area_sqin || 1) / 144,
     });
     onOpenChange(false);
   };
+
+  const isLaser = fab.cutting_method === "laser";
+  const cutSettingsPage = isLaser ? "LaserSettings" : "CNCSettings";
+  const cutIcon = isLaser ? Zap : Router;
+  const cutColor = isLaser ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -133,7 +176,7 @@ export default function DimensionalFabModal({ open, onOpenChange, purchase, onSa
             Dimensional Letter Fabrication
           </DialogTitle>
           <p className="text-xs text-slate-500">
-            Build the unit cost from material + CNC routing + paint. Live preview at the bottom.
+            Material + cutting + paint — all rates pulled live from your CNC, Laser, and Paint settings.
           </p>
         </DialogHeader>
 
@@ -219,15 +262,33 @@ export default function DimensionalFabModal({ open, onOpenChange, purchase, onSa
               </div>
             </Section>
 
-            {/* CNC */}
-            <Section icon={Router} title="2. CNC Routing" color="bg-green-50 text-green-700">
-              <div className="grid grid-cols-2 gap-3">
+            {/* CUTTING (CNC or Laser) */}
+            <Section icon={cutIcon} title="2. Cutting" color={cutColor}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="md:col-span-1">
+                  <Label className="text-xs">Method</Label>
+                  <Select value={fab.cutting_method} onValueChange={setCuttingMethod}>
+                    <SelectTrigger className="h-9 mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cnc">
+                        <span className="inline-flex items-center gap-2">
+                          <Router className="w-3.5 h-3.5 text-green-600" /> {CUTTING_METHOD_LABELS.cnc}
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="laser">
+                        <span className="inline-flex items-center gap-2">
+                          <Zap className="w-3.5 h-3.5 text-red-600" /> {CUTTING_METHOD_LABELS.laser}
+                        </span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div>
                   <Label className="text-xs">Cut Speed (in/min)</Label>
                   <Input
                     type="number" min="1" step="1"
-                    value={fab.cnc_cut_speed_ipm}
-                    onChange={(e) => update({ cnc_cut_speed_ipm: parseFloat(e.target.value) || 50 })}
+                    value={fab.cut_speed_ipm}
+                    onChange={(e) => update({ cut_speed_ipm: parseFloat(e.target.value) || 50 })}
                     className="h-9 mt-1 tabular-nums"
                   />
                 </div>
@@ -235,16 +296,40 @@ export default function DimensionalFabModal({ open, onOpenChange, purchase, onSa
                   <Label className="text-xs">Setup Time (min, total)</Label>
                   <Input
                     type="number" min="0" step="1"
-                    value={fab.cnc_setup_minutes}
-                    onChange={(e) => update({ cnc_setup_minutes: parseFloat(e.target.value) || 0 })}
+                    value={fab.setup_minutes}
+                    onChange={(e) => update({ setup_minutes: parseFloat(e.target.value) || 0 })}
                     className="h-9 mt-1 tabular-nums"
                   />
                 </div>
               </div>
-              <p className="text-[11px] text-slate-500">
-                Machine rate: ${parseFloat(settings.machine_rate_per_hour).toFixed(0)}/hr · Operator: ${parseFloat(settings.labor_rate).toFixed(0)}/hr
-                {" "}<Link to={createPageUrl("CNCSettings")} className="underline ml-1">Edit</Link>
-              </p>
+              <div>
+                <Label className="text-xs">Material Cut Multiplier</Label>
+                <Input
+                  type="number" min="0.01" step="0.1"
+                  value={fab.cut_multiplier}
+                  onChange={(e) => update({ cut_multiplier: parseFloat(e.target.value) || 1 })}
+                  className="h-9 mt-1 tabular-nums max-w-[140px]"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Auto-pulled from settings when you select a material. e.g. Aluminum = 2.0× on CNC.
+                </p>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500 bg-slate-50 rounded-md px-2 py-1.5">
+                <span>
+                  Machine: <strong>${activeRates.machine_rate.toFixed(0)}/hr</strong> · Operator: <strong>${activeRates.labor_rate.toFixed(0)}/hr</strong>
+                </span>
+                <span className="flex items-center gap-2">
+                  <Link to={createPageUrl(cutSettingsPage)} className="underline">Edit {isLaser ? "Laser" : "CNC"} settings</Link>
+                  <button
+                    type="button"
+                    onClick={loadSettings}
+                    title="Refresh rates from settings"
+                    className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-800"
+                  >
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </span>
+              </div>
             </Section>
 
             {/* PAINT */}
@@ -278,8 +363,8 @@ export default function DimensionalFabModal({ open, onOpenChange, purchase, onSa
                 </div>
               )}
               <p className="text-[11px] text-slate-500">
-                Paint labor: ${parseFloat(settings.paint_labor_rate).toFixed(0)}/hr · Supplies: ${parseFloat(settings.paint_supplies_rate_per_sqft).toFixed(2)}/sqft · Paint: ${parseFloat(settings.paint_liquid_paint_per_sqft).toFixed(2)}/sqft
-                {" "}<Link to={createPageUrl("PaintSettings")} className="underline ml-1">Edit</Link>
+                Labor: ${paintR.labor_rate.toFixed(0)}/hr · Supplies: ${paintR.supplies_per_sqft.toFixed(2)}/sqft · Liquid paint: ${paintR.liquid_paint_per_sqft.toFixed(2)}/sqft
+                {" "}<Link to={createPageUrl("PaintSettings")} className="underline ml-1">Edit Paint settings</Link>
               </p>
             </Section>
 
@@ -293,7 +378,11 @@ export default function DimensionalFabModal({ open, onOpenChange, purchase, onSa
                 </Badge>
               </div>
               <PreviewRow label="Material" value={computed.unit_material_cost} subtitle={`${(computed.face_area_sqin || 0).toFixed(1)} sqin`} />
-              <PreviewRow label="CNC Routing" value={computed.unit_cnc_cost} subtitle={`${(computed.cut_length_inches || 0).toFixed(0)}" cut`} />
+              <PreviewRow
+                label={CUTTING_METHOD_LABELS[fab.cutting_method] || "Cutting"}
+                value={computed.unit_cut_cost}
+                subtitle={`${(computed.cut_length_inches || 0).toFixed(0)}" cut`}
+              />
               {fab.paint_letters && (
                 <PreviewRow label="Paint" value={computed.unit_paint_cost} subtitle={PAINT_SIDES_LABELS[fab.paint_sides]} />
               )}
