@@ -59,6 +59,7 @@ export default function HelpAssistant({ activeTab, manualTrigger, onManualTrigge
   const [step, setStep] = useState(0);
   const [bubbleStyle, setBubbleStyle] = useState({ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', opacity: 0 });
   const [tutorialsSeen, setTutorialsSeen] = useState(null); // null = loading
+  const [tutorialsDisabled, setTutorialsDisabled] = useState(false);
 
   const steps = tourData[activeTab] || [];
   const tutorialKey = `foundation_${activeTab}`;
@@ -66,9 +67,23 @@ export default function HelpAssistant({ activeTab, manualTrigger, onManualTrigge
   // Load seen tutorials from user record
   useEffect(() => {
     User.me()
-      .then(user => setTutorialsSeen(user?.tutorials_seen || {}))
+      .then(user => {
+        setTutorialsSeen(user?.tutorials_seen || {});
+        setTutorialsDisabled(!!user?.tutorials_disabled);
+      })
       .catch(() => setTutorialsSeen({}));
   }, []);
+
+  const handleDisableAll = async () => {
+    setTutorialsDisabled(true);
+    try {
+      await User.updateMyUserData({ tutorials_disabled: true });
+    } catch (e) {
+      console.error('Failed to save tutorial preference:', e);
+    }
+    setOpen(false);
+    if (onManualTriggerClose) onManualTriggerClose();
+  };
 
   useEffect(() => {
     if (open && steps.length > 0 && onStepChange) {
@@ -94,6 +109,12 @@ export default function HelpAssistant({ activeTab, manualTrigger, onManualTrigge
     // Wait for tutorialsSeen to load
     if (tutorialsSeen === null) return;
 
+    // Globally disabled — never auto-open
+    if (tutorialsDisabled) {
+      setOpen(false);
+      return;
+    }
+
     if (!tutorialsSeen[tutorialKey] && steps.length > 0) {
       const t = setTimeout(() => {
         setOpen(true);
@@ -103,7 +124,7 @@ export default function HelpAssistant({ activeTab, manualTrigger, onManualTrigge
     } else {
       setOpen(false);
     }
-  }, [activeTab, manualTrigger, steps.length, tutorialsSeen, tutorialKey]);
+  }, [activeTab, manualTrigger, steps.length, tutorialsSeen, tutorialKey, tutorialsDisabled]);
 
   const updatePosition = useCallback(() => {
     if (!open || steps.length === 0) return;
@@ -209,6 +230,14 @@ export default function HelpAssistant({ activeTab, manualTrigger, onManualTrigge
             </Button>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={handleDisableAll}
+          className="mt-3 text-[11px] text-slate-400 hover:text-slate-700 underline w-full text-center"
+        >
+          Don't show tutorials again
+        </button>
         
         {/* Tail */}
         {currentStep.targetId && bubbleStyle.transform === 'translate(-50%, 0)' && (

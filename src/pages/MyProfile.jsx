@@ -125,6 +125,17 @@ export default function MyProfile() {
     }
   };
 
+  const handleToggleTutorialsDisabled = async (checked) => {
+    // Switch is "Show tutorials" — when OFF, tutorials are disabled.
+    const disabled = !checked;
+    setUser(prev => ({ ...prev, tutorials_disabled: disabled }));
+    try {
+      await User.updateMyUserData({ tutorials_disabled: disabled });
+    } catch (e) {
+      console.error("Failed to update tutorial preference", e);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-6 md:p-8 bg-slate-50 min-h-screen flex items-center justify-center">
@@ -309,6 +320,20 @@ export default function MyProfile() {
                   <Switch
                     checked={user?.auto_save_enabled !== false}
                     onCheckedChange={handleToggleAutoSave}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <Zap className="w-5 h-5 text-purple-500" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">Show Tutorial Pop-ups</p>
+                      <p className="text-xs text-slate-500">Turn off to suppress all help tours on every page</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={user?.tutorials_disabled !== true}
+                    onCheckedChange={handleToggleTutorialsDisabled}
                   />
                 </div>
 

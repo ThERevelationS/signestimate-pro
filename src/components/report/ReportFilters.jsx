@@ -1,13 +1,97 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, X } from 'lucide-react';
+import { Search, X, ListFilter, Check, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { STATUS_OPTIONS, PRIORITY_OPTIONS, CATEGORY_OPTIONS, TYPE_OPTIONS } from './reportConstants';
 
-export default function ReportFilters({ filters, setFilters, sortBy, setSortBy }) {
-  const clear = () => setFilters({ search: '', type: 'all', status: 'all', priority: 'all', category: 'all', mine: false });
-  const hasFilters = filters.search || filters.type !== 'all' || filters.status !== 'all' || filters.priority !== 'all' || filters.category !== 'all' || filters.mine;
+const defaultFilters = {
+  search: '',
+  type: 'all',
+  status: 'all',
+  priority: 'all',
+  hidden_categories: [],
+  show_completed: false,
+  mine: false,
+};
+
+// Small click-outside multi-select for categories
+function CategoryMultiSelect({ hidden, setHidden }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  const toggle = (val) => {
+    setHidden(hidden.includes(val) ? hidden.filter(v => v !== val) : [...hidden, val]);
+  };
+
+  const shownCount = CATEGORY_OPTIONS.length - hidden.length;
+  const label = hidden.length === 0
+    ? 'All Categories'
+    : `${shownCount}/${CATEGORY_OPTIONS.length} Categories`;
+
+  return (
+    <div ref={ref} className="relative">
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-9 gap-1.5"
+        onClick={() => setOpen(o => !o)}
+      >
+        <ListFilter className="w-3.5 h-3.5" />
+        {label}
+      </Button>
+      {open && (
+        <div className="absolute right-0 mt-1 z-30 bg-white border border-slate-200 rounded-lg shadow-lg w-64 py-2 text-sm">
+          <div className="px-3 pb-2 flex items-center justify-between text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-100">
+            <span>Show categories</span>
+            <button
+              type="button"
+              onClick={() => setHidden([])}
+              className="text-blue-600 hover:underline normal-case tracking-normal text-[11px]"
+            >
+              Show all
+            </button>
+          </div>
+          {CATEGORY_OPTIONS.map(c => {
+            const visible = !hidden.includes(c.value);
+            return (
+              <button
+                key={c.value}
+                type="button"
+                onClick={() => toggle(c.value)}
+                className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 text-left"
+              >
+                <span className={`w-4 h-4 rounded border flex items-center justify-center ${visible ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
+                  {visible && <Check className="w-3 h-3 text-white" />}
+                </span>
+                <span className="text-slate-700">{c.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ReportFilters({ filters, setFilters }) {
+  const clear = () => setFilters(defaultFilters);
+  const hasFilters =
+    filters.search ||
+    filters.type !== 'all' ||
+    filters.status !== 'all' ||
+    filters.priority !== 'all' ||
+    (filters.hidden_categories || []).length > 0 ||
+    filters.show_completed ||
+    filters.mine;
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-wrap items-center gap-2">
@@ -45,23 +129,21 @@ export default function ReportFilters({ filters, setFilters, sortBy, setSortBy }
         </SelectContent>
       </Select>
 
-      <Select value={filters.category} onValueChange={v => setFilters({ ...filters, category: v })}>
-        <SelectTrigger className="w-[170px] h-9"><SelectValue placeholder="Category" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Categories</SelectItem>
-          {CATEGORY_OPTIONS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-        </SelectContent>
-      </Select>
+      <CategoryMultiSelect
+        hidden={filters.hidden_categories || []}
+        setHidden={(next) => setFilters({ ...filters, hidden_categories: next })}
+      />
 
-      <Select value={sortBy} onValueChange={setSortBy}>
-        <SelectTrigger className="w-[150px] h-9"><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="newest">Newest First</SelectItem>
-          <SelectItem value="oldest">Oldest First</SelectItem>
-          <SelectItem value="priority">Priority (High → Low)</SelectItem>
-          <SelectItem value="status">By Status</SelectItem>
-        </SelectContent>
-      </Select>
+      <Button
+        variant={filters.show_completed ? "default" : "outline"}
+        size="sm"
+        className="h-9 gap-1.5"
+        onClick={() => setFilters({ ...filters, show_completed: !filters.show_completed })}
+        title={filters.show_completed ? "Completed reports are visible" : "Completed reports are hidden"}
+      >
+        {filters.show_completed ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+        {filters.show_completed ? 'Hide Completed' : 'Show Completed'}
+      </Button>
 
       <Button
         variant={filters.mine ? "default" : "outline"}

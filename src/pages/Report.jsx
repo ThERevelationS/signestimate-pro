@@ -19,10 +19,19 @@ import ReportDetailDialog from '@/components/report/ReportDetailDialog';
 import ReportAssistantChat from '@/components/report/ReportAssistantChat';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Sparkles, PencilLine } from 'lucide-react';
-import { PRIORITY_OPTIONS, STATUS_OPTIONS } from '@/components/report/reportConstants';
+import { PRIORITY_OPTIONS } from '@/components/report/reportConstants';
 
 const PRIORITY_RANK = Object.fromEntries(PRIORITY_OPTIONS.map((p, i) => [p.value, PRIORITY_OPTIONS.length - i]));
-const STATUS_RANK = Object.fromEntries(STATUS_OPTIONS.map((s, i) => [s.value, i]));
+
+// Auto-sort order requested by the user:
+// In Progress at the top, then Open (new), Completed in the middle (only when shown),
+// Won't Fix at the bottom.
+const STATUS_GROUP_RANK = {
+  in_progress: 0,
+  open: 1,
+  completed: 2,
+  wont_fix: 3,
+};
 
 export default function Report() {
   const { toast } = useToast();
@@ -35,9 +44,14 @@ export default function Report() {
   const [savingEmail, setSavingEmail] = useState(false);
 
   const [filters, setFilters] = useState({
-    search: '', type: 'all', status: 'all', priority: 'all', category: 'all', mine: false,
+    search: '',
+    type: 'all',
+    status: 'all',
+    priority: 'all',
+    hidden_categories: [], // categories the user has chosen to hide
+    show_completed: false, // completed reports are hidden by default
+    mine: false,
   });
-  const [sortBy, setSortBy] = useState('newest');
 
   const [activeReport, setActiveReport] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -129,11 +143,15 @@ export default function Report() {
 
   const filtered = useMemo(() => {
     const q = filters.search.trim().toLowerCase();
+    const hiddenCats = new Set(filters.hidden_categories || []);
     let list = reports.filter(r => {
       if (filters.type !== 'all' && r.type !== filters.type) return false;
       if (filters.status !== 'all' && r.status !== filters.status) return false;
       if (filters.priority !== 'all' && (r.priority || 'medium') !== filters.priority) return false;
-      if (filters.category !== 'all' && (r.category || 'other') !== filters.category) return false;
+      if (hiddenCats.has(r.category || 'other')) return false;
+      // Completed reports are hidden by default unless the user opts to show them
+      // (unless the user is explicitly filtering for 'completed' via the status select).
+      if (!filters.show_completed && filters.status !== 'completed' && r.status === 'completed') return false;
       if (filters.mine && r.created_by !== currentUser?.email) return false;
       if (q) {
         const hay = [r.title, r.description, r.created_by, r.page_location, r.admin_notes]
@@ -143,16 +161,19 @@ export default function Report() {
       return true;
     });
 
-    list = [...list];
-    if (sortBy === 'newest') list.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
-    else if (sortBy === 'oldest') list.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
-    else if (sortBy === 'priority') {
-      list.sort((a, b) => (PRIORITY_RANK[b.priority || 'medium'] || 0) - (PRIORITY_RANK[a.priority || 'medium'] || 0));
-    } else if (sortBy === 'status') {
-      list.sort((a, b) => (STATUS_RANK[a.status || 'open'] || 0) - (STATUS_RANK[b.status || 'open'] || 0));
-    }
+    // Auto-sort: group by status (In Progress → Open → Completed → Won't Fix),
+    // within each group sort by priority (high → low), then newest first.
+    list = [...list].sort((a, b) => {
+      const gA = STATUS_GROUP_RANK[a.status || 'open'] ?? 1;
+      const gB = STATUS_GROUP_RANK[b.status || 'open'] ?? 1;
+      if (gA !== gB) return gA - gB;
+      const pA = PRIORITY_RANK[a.priority || 'medium'] || 0;
+      const pB = PRIORITY_RANK[b.priority || 'medium'] || 0;
+      if (pA !== pB) return pB - pA;
+      return new Date(b.created_date) - new Date(a.created_date);
+    });
     return list;
-  }, [reports, filters, sortBy, currentUser]);
+  }, [reports, filters, currentUser]);
 
   return (
     <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
@@ -218,7 +239,7 @@ export default function Report() {
           </div>
 
           <div className="lg:col-span-2 space-y-4">
-            <ReportFilters filters={filters} setFilters={setFilters} sortBy={sortBy} setSortBy={setSortBy} />
+            <ReportFilters filters={filters} setFilters={setFilters} />
 
             <div className="flex items-center justify-between px-1">
               <h3 className="text-sm font-semibold text-slate-700">

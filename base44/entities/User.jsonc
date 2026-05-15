@@ -44,6 +44,11 @@
         "type": "boolean"
       }
     },
+    "tutorials_disabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, tutorial help pop-ups are suppressed globally for this user."
+    },
     "auto_save_enabled": {
       "type": "boolean",
       "default": true,
