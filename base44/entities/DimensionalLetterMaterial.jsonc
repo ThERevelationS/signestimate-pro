@@ -58,6 +58,11 @@
       "default": true,
       "description": "If false, default to skipping paint cost (e.g., already finished)"
     },
+    "allow_laser": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this material can be cut on the laser. Some materials (e.g., PVC, ACM, certain metals) should NOT be cut on the laser. When false, the cutting method is forced to CNC in the dimensional fab panel."
+    },
     "notes": {
       "type": "string"
     },

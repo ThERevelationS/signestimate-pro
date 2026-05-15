@@ -37,6 +37,10 @@ const TYPE_COLOR = {
 };
 
 export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemove, onDuplicate, index, fabHighlight = false }) {
+  // Tour anchors — only applied to the first row so the walkthrough has
+  // unique elements to point at. Subsequent rows render without these IDs.
+  const isFirst = index === 0;
+  const tourId = (suffix) => (isFirst ? `clp-letter-${suffix}` : undefined);
   const sizeUnit = SIZE_UNITS[purchase.letter_type];
   const autoUnitCost = resolveUnitCost({ ...purchase, unit_cost_override: false }, settings);
   const effectiveUnit = purchase.unit_cost_override ? (parseFloat(purchase.unit_cost) || 0) : autoUnitCost;
@@ -49,7 +53,7 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
       {/* Header row */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div id={tourId("type-picker")} className="flex items-center gap-2 flex-wrap">
         <Badge className={`${TYPE_COLOR[purchase.letter_type] || "bg-slate-100"} font-medium`}>
           #{index + 1} · {backerEnabled ? "Dimensional Letters w/ Backer" : LETTER_TYPE_LABELS[purchase.letter_type]}
         </Badge>
@@ -115,7 +119,7 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
       {/* Numbers — for dimensional letters, only show "# of Letters" (other fields are driven by the inline builder below) */}
       {isDimensional ? (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <div>
+          <div id={tourId("qty")}>
             <Label className="text-xs">{QTY_LABEL[purchase.letter_type]}</Label>
             <Input
               type="number"
@@ -140,7 +144,7 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div>
+          <div id={tourId("qty")}>
             <Label className="text-xs">{QTY_LABEL[purchase.letter_type]}</Label>
             <Input
               type="number"
@@ -150,7 +154,7 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
               className="mt-1 h-9"
             />
           </div>
-          <div>
+          <div id={tourId("size")}>
             <Label className="text-xs">{SIZE_LABEL[sizeUnit]}</Label>
             <Input
               type="number"
@@ -256,7 +260,7 @@ export default function LetterPurchaseRow({ purchase, settings, onUpdate, onRemo
 
       {/* Dimensional letter fab builder — inline, no modal */}
       {isDimensional && (
-        <div className="border-t pt-3 space-y-3">
+        <div id={tourId("dimensional-fab")} className="border-t pt-3 space-y-3">
           <DimensionalFabPanel
             purchase={purchase}
             onUpdate={(patch) => update(patch)}

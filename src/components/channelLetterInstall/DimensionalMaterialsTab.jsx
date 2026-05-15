@@ -74,6 +74,7 @@ export default function DimensionalMaterialsTab() {
         color: "",
         supplier: "",
         needs_painting: true,
+        allow_laser: true,
         notes: "",
         is_active: true,
         sort_order: prev.length,
@@ -306,13 +307,23 @@ export default function DimensionalMaterialsTab() {
                         className="h-8 mt-1 tabular-nums"
                       />
                     </div>
-                    <div className="flex items-end gap-3 pb-1">
+                    <div className="flex items-end gap-3 pb-1 flex-wrap">
                       <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
                         <Checkbox
                           checked={!!m.needs_painting}
                           onCheckedChange={(c) => updateMaterial(idx, { needs_painting: !!c })}
                         />
                         Needs Paint
+                      </label>
+                      <label
+                        className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer"
+                        title="If unchecked, this material cannot be cut on the laser (e.g., PVC, ACM) — only CNC will be available."
+                      >
+                        <Checkbox
+                          checked={m.allow_laser !== false}
+                          onCheckedChange={(c) => updateMaterial(idx, { allow_laser: !!c })}
+                        />
+                        Allow Laser
                       </label>
                       <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
                         <Checkbox

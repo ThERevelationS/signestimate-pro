@@ -140,7 +140,7 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject,
               </Link>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 pt-1">
+          <div id="clp-add-letter-row" className="flex flex-wrap gap-2 pt-1">
             {QUICK_ADD.map(qa => (
               <button
                 key={qa.type}
@@ -187,22 +187,23 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject,
       ) : (
         <div className="space-y-2">
           {purchases.map((p, idx) => (
-            <LetterPurchaseRow
-              key={p.id || idx}
-              index={idx}
-              purchase={p}
-              settings={settings}
-              onUpdate={(next) => updatePurchase(idx, next)}
-              onRemove={() => removePurchase(idx)}
-              onDuplicate={() => duplicatePurchase(idx)}
-              fabHighlight={incompleteSet.has(p.id)}
-            />
+            <div key={p.id || idx} id={idx === 0 ? "clp-letter-purchase-row" : undefined}>
+              <LetterPurchaseRow
+                index={idx}
+                purchase={p}
+                settings={settings}
+                onUpdate={(next) => updatePurchase(idx, next)}
+                onRemove={() => removePurchase(idx)}
+                onDuplicate={() => duplicatePurchase(idx)}
+                fabHighlight={incompleteSet.has(p.id)}
+              />
+            </div>
           ))}
         </div>
       )}
 
       {/* Project-level fees — Advanced Settings */}
-      <Card className="bg-white border-0 shadow-sm overflow-hidden">
+      <Card id="clp-letter-fees" className="bg-white border-0 shadow-sm overflow-hidden">
         <button
           type="button"
           onClick={() => setFeesOpen(o => !o)}

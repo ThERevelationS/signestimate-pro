@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator, MapPin, Copy, DollarSign, Check, HardHat, Type, Camera, Sparkles, TrendingUp } from "lucide-react";
+import { Plus, ArrowLeft, Wrench, Package, FileText, ListChecks, Boxes, Calculator, MapPin, Copy, DollarSign, Check, HardHat, Type, Camera, Sparkles, TrendingUp, HelpCircle } from "lucide-react";
+import ChannelLetterHelpAssistant from "@/components/channelLetterInstall/ChannelLetterHelpAssistant";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import InstallLineItem from "@/components/channelLetterInstall/InstallLineItem";
@@ -81,6 +82,7 @@ export default function NewChannelLetterInstallation() {
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [aiInstallOpen, setAiInstallOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null); // { title, description, ... }
+  const [helpTrigger, setHelpTrigger] = useState(false);
 
   useEffect(() => { if (!isLoading) setHasLoaded(true); }, [isLoading]);
   useEffect(() => { if (hasLoaded) setIsDirty(true); }, [project, hasLoaded, setIsDirty]);
@@ -471,6 +473,14 @@ export default function NewChannelLetterInstallation() {
           <div className="flex gap-2 flex-wrap">
             <Button
               variant="outline"
+              onClick={() => setHelpTrigger(true)}
+              className="bg-purple-50 border-purple-200 text-purple-800 hover:bg-purple-100"
+              title="Walk me through this page"
+            >
+              <HelpCircle className="w-4 h-4 mr-2" /> Help
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => setPhotoModalOpen(true)}
               className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200 text-purple-800 hover:from-purple-100 hover:to-pink-100"
             >
@@ -532,7 +542,7 @@ export default function NewChannelLetterInstallation() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid md:grid-cols-2 gap-4">
-                      <div>
+                      <div id="clp-client-name">
                         <Label htmlFor="client_name">Client Name *</Label>
                         <ClientSearchInput
                           value={project.client_name}
@@ -547,7 +557,7 @@ export default function NewChannelLetterInstallation() {
                           placeholder="Enter client name"
                         />
                       </div>
-                      <div>
+                      <div id="clp-project-name">
                         <Label htmlFor="project_name">Project Name *</Label>
                         <Input
                           id="project_name"
@@ -559,7 +569,7 @@ export default function NewChannelLetterInstallation() {
                       </div>
                     </div>
                     <div className="grid md:grid-cols-2 gap-4">
-                      <div>
+                      <div id="clp-estimate-number">
                         <Label htmlFor="estimate_number">Estimate Number *</Label>
                         <Input
                           id="estimate_number"
@@ -569,7 +579,7 @@ export default function NewChannelLetterInstallation() {
                           className="mt-1"
                         />
                       </div>
-                      <div>
+                      <div id="clp-hyperlink">
                         <Label htmlFor="hyperlink">Project Link *</Label>
                         <Input
                           id="hyperlink"
@@ -581,7 +591,7 @@ export default function NewChannelLetterInstallation() {
                       </div>
                     </div>
                     {/* Interior / Exterior — project-level default (each line item can override) */}
-                    <div>
+                    <div id="clp-install-env">
                       <Label className="text-sm font-semibold text-slate-900">Installation Environment</Label>
                       <p className="text-xs text-slate-500 mt-1 mb-2">
                         Default for every line item — interior installs typically have different drill/prep times than exterior. You can override this on any line item.
@@ -613,7 +623,7 @@ export default function NewChannelLetterInstallation() {
                       </div>
                     </div>
 
-                    <div>
+                    <div id="clp-project-scope">
                       <Label className="text-sm font-semibold text-slate-900">Project Scope</Label>
                       <p className="text-xs text-slate-500 mt-1 mb-2">
                         Choose what this estimate covers. Hidden tabs are excluded from totals.
@@ -645,7 +655,7 @@ export default function NewChannelLetterInstallation() {
                         })}
                       </div>
                     </div>
-                    <div>
+                    <div id="clp-site-address">
                       <Label htmlFor="site_address" className="flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-purple-600" />
                         Site Address
@@ -669,7 +679,7 @@ export default function NewChannelLetterInstallation() {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white border-0 shadow-sm">
+                <Card id="clp-notes" className="bg-white border-0 shadow-sm">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg">Notes</CardTitle>
                   </CardHeader>
@@ -705,7 +715,7 @@ export default function NewChannelLetterInstallation() {
 
               {/* INSTALLATION TAB (formerly Items) */}
               <TabsContent value="items" className="mt-4 space-y-3">
-                <div className="flex items-center justify-end gap-2 bg-white rounded-lg border border-slate-200 px-3 py-2 shadow-sm">
+                <div id="clp-install-ai" className="flex items-center justify-end gap-2 bg-white rounded-lg border border-slate-200 px-3 py-2 shadow-sm">
                   <Button
                     onClick={() => setAiInstallOpen(true)}
                     size="sm"
@@ -730,28 +740,33 @@ export default function NewChannelLetterInstallation() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <ItemsList
-                    items={recalculated.items}
-                    inventory={inventory}
-                    settings={settings}
-                    compact={false}
-                    onUpdate={updateItem}
-                    onRemove={removeItem}
-                    onDuplicate={duplicateItem}
-                    onReorder={reorderItems}
-                  />
+                  <div id="clp-install-row">
+                    <ItemsList
+                      items={recalculated.items}
+                      inventory={inventory}
+                      settings={settings}
+                      compact={false}
+                      onUpdate={updateItem}
+                      onRemove={removeItem}
+                      onDuplicate={duplicateItem}
+                      onReorder={reorderItems}
+                    />
+                  </div>
                 )}
               </TabsContent>
 
               {/* CREW & EQUIPMENT TAB */}
               <TabsContent value="crew" className="mt-4 space-y-3">
-                <EquipmentSelector
-                  selectedEquipment={recalculated.selected_equipment || []}
-                  onChange={(next) => updateProject({ selected_equipment: next })}
-                  equipmentInventory={equipmentInventory}
-                  items={recalculated.items}
-                  projectLaborHours={recalculated.labor_hours || 0}
-                />
+                <div id="clp-equipment">
+                  <EquipmentSelector
+                    selectedEquipment={recalculated.selected_equipment || []}
+                    onChange={(next) => updateProject({ selected_equipment: next })}
+                    equipmentInventory={equipmentInventory}
+                    items={recalculated.items}
+                    projectLaborHours={recalculated.labor_hours || 0}
+                  />
+                </div>
+                <div id="clp-personnel">
                 <PersonnelSelector
                   personnel={recalculated.personnel || []}
                   onChange={(next) => updateProject({ personnel: next })}
@@ -763,6 +778,7 @@ export default function NewChannelLetterInstallation() {
                   }}
                   items={recalculated.items}
                 />
+                </div>
                 {equipmentInventory.length === 0 && (
                   <Card className="bg-amber-50 border-amber-200">
                     <CardContent className="p-3 text-xs text-amber-900">
@@ -778,7 +794,7 @@ export default function NewChannelLetterInstallation() {
 
               {/* SUMMARY TAB */}
               <TabsContent value="summary" className="mt-4 space-y-3">
-                <Card className="bg-white border-0 shadow-sm">
+                <Card id="clp-summary-breakdown" className="bg-white border-0 shadow-sm">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg">Estimate Breakdown</CardTitle>
                   </CardHeader>
@@ -818,7 +834,7 @@ export default function NewChannelLetterInstallation() {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white border-0 shadow-sm">
+                <Card id="clp-summary-materials" className="bg-white border-0 shadow-sm">
                   <CardHeader className="pb-3 flex flex-row items-start justify-between gap-3 flex-wrap">
                     <div>
                       <CardTitle className="text-lg flex items-center gap-2">
@@ -921,6 +937,12 @@ export default function NewChannelLetterInstallation() {
           </div>
         </div>
       </div>
+
+      <ChannelLetterHelpAssistant
+        activeTab={activeTab}
+        manualTrigger={helpTrigger}
+        onManualTriggerClose={() => setHelpTrigger(false)}
+      />
 
       <PhotoEstimateModal
         open={photoModalOpen}

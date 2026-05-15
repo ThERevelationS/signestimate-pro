@@ -82,13 +82,23 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
 
   const update = (patch) => setFab((prev) => ({ ...prev, ...patch }));
 
-  // When material changes, refresh thickness + per-sqin cost + auto-cut params
+  // Currently-selected material record (used to gate laser availability)
+  const selectedMaterial = useMemo(
+    () => materials.find((x) => x.id === fab.material_id) || null,
+    [materials, fab.material_id]
+  );
+  const laserDisallowed = selectedMaterial ? selectedMaterial.allow_laser === false : false;
+
+  // When material changes, refresh thickness + per-sqin cost + auto-cut params.
+  // If the new material disallows laser and the current method is laser, force CNC.
   const selectMaterial = (id) => {
     const m = materials.find((x) => x.id === id);
     if (!m) return;
     const matType = m.material_type || "";
-    const speedFromSettings = lookupCutSpeed(fab.cutting_method, m.thickness_inches, settings);
-    const multiplierFromSettings = lookupCutMultiplier(fab.cutting_method, matType, settings);
+    const forceCnc = m.allow_laser === false && fab.cutting_method === "laser";
+    const nextMethod = forceCnc ? "cnc" : fab.cutting_method;
+    const speedFromSettings = lookupCutSpeed(nextMethod, m.thickness_inches, settings);
+    const multiplierFromSettings = lookupCutMultiplier(nextMethod, matType, settings);
     setFab((prev) => ({
       ...prev,
       material_id: m.id,
@@ -98,12 +108,15 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
       material_cost_per_sqin: materialCostPerSqin(m),
       sheet_yield_factor: m.yield_factor,
       paint_letters: !!m.needs_painting,
+      cutting_method: nextMethod,
       cut_speed_ipm: speedFromSettings ?? prev.cut_speed_ipm,
       cut_multiplier: multiplierFromSettings,
     }));
   };
 
   const setCuttingMethod = (method) => {
+    if (method === "laser" && laserDisallowed) return; // hard-gate
+
     const speedFromSettings = lookupCutSpeed(method, fab.material_thickness_inches, settings);
     const multiplierFromSettings = lookupCutMultiplier(method, fab.material_type, settings);
     setFab((prev) => ({
@@ -270,7 +283,15 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
         title="2. Cutting"
         color={isLaser ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}
       >
-        <CuttingMethodSlider value={fab.cutting_method} onChange={setCuttingMethod} />
+        <CuttingMethodSlider value={fab.cutting_method} onChange={setCuttingMethod} disableLaser={laserDisallowed} />
+        {laserDisallowed && (
+          <div className="bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 text-[11px] text-amber-800 flex items-start gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+            <span>
+              <strong>{selectedMaterial?.material_name}</strong> is not laser-cuttable — CNC is being used. (Change in Inventory → Dimensional Sheets if this is wrong.)
+            </span>
+          </div>
+        )}
         <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500 bg-slate-50 rounded-md px-2 py-1.5">
           <span>
             Machine: <strong>${activeRates.machine_rate.toFixed(0)}/hr</strong> · Operator: <strong>${activeRates.labor_rate.toFixed(0)}/hr</strong>
