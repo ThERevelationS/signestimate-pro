@@ -114,13 +114,14 @@ export default function LetterPurchaseRow({
           {!isChild && onAddToSet && (
             <div className="relative">
               <Button
-                variant="ghost"
-                size="icon"
+                variant="outline"
+                size="sm"
                 onClick={() => setAddToSetOpen(o => !o)}
-                className="h-8 w-8 text-purple-600 hover:bg-purple-50"
-                title="Add to set — group multiple letter types as one sign"
+                className="h-8 px-3 border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 hover:text-purple-800 font-medium"
+                title="Group multiple letter types together as one sign"
               >
-                <GitBranch className="w-4 h-4" />
+                <GitBranch className="w-3.5 h-3.5 mr-1.5" />
+                Add to Set
               </Button>
               {addToSetOpen && (
                 <div className="absolute right-0 top-9 z-20 bg-white border border-slate-200 rounded-lg shadow-lg w-56 py-1 text-xs">

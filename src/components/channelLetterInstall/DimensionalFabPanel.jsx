@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
-  Box, Paintbrush, Calculator, AlertCircle, Sparkles,
+  Box, Paintbrush, Calculator, AlertCircle,
   Link as LinkIcon, RefreshCw, Router, Zap, Trash2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -25,6 +25,7 @@ import {
 } from "./dimensionalFabCalculator";
 import CuttingMethodSlider from "./CuttingMethodSlider";
 import PaintCoverageHelper from "./PaintCoverageHelper";
+import { estimateAverageLetterWidth } from "./letterWidthCalculator";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 
@@ -71,6 +72,8 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
           seed.letter_height_inches = Math.round(side);
           seed.letter_width_inches = Math.round(side * 0.75);
         }
+        // width_override defaults to false — width is auto-calculated unless toggled on
+        if (seed.width_override === undefined) seed.width_override = false;
         setFab(seed);
       } catch (e) {
         console.error("Failed to load fab inputs:", e);
@@ -146,6 +149,7 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
         sheet_yield_factor: final.sheet_yield_factor,
         letter_height_inches: final.letter_height_inches,
         letter_width_inches: final.letter_width_inches,
+        width_override: !!fab.width_override,
         letter_perimeter_inches: final.letter_perimeter_inches,
         cutting_method: final.cutting_method,
         cut_speed_ipm: final.cut_speed_ipm,
@@ -191,36 +195,41 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
     update({ paint_colors: list, num_paint_colors: Math.max(1, list.length) });
   };
 
+  // Auto-fill width from height unless oversize-override is on.
+  // Reacts every render: if user changes height and width is not overridden, width is recalculated.
+  const oversize = !!fab.width_override;
+  useEffect(() => {
+    if (loading) return;
+    if (oversize) return;
+    const h = parseFloat(fab.letter_height_inches) || 0;
+    if (h <= 0) return;
+    const autoW = estimateAverageLetterWidth(h);
+    if (autoW !== fab.letter_width_inches) {
+      setFab((prev) => ({ ...prev, letter_width_inches: autoW }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fab.letter_height_inches, oversize, loading]);
+
   if (loading) {
     return (
-      <div className="border-2 border-emerald-200 bg-emerald-50/40 rounded-xl p-4 text-center text-slate-500">
+      <div className="rounded-xl p-4 text-center text-slate-500">
         Loading material library…
       </div>
     );
   }
 
   return (
-    <div className="border-2 border-emerald-200 bg-emerald-50/30 rounded-xl p-4 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-emerald-600" />
-          <span className="text-sm font-semibold text-emerald-900">Dimensional Letter Fabrication</span>
-          <Badge className="bg-emerald-200 text-emerald-900 border-emerald-300 text-[10px]">INLINE BUILDER</Badge>
+    <div className="space-y-3">
+      {/* Inline mini-header — no separate "Dimensional Letter Fabrication" outer bubble */}
+      {onReset && (
+        <div className="flex items-center justify-end">
+          <Button size="sm" variant="ghost" onClick={onReset} className="h-7 text-xs text-red-600 hover:bg-red-50">
+            Reset to flat $/sqft
+          </Button>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-white text-emerald-700 border-emerald-300">
-            {fmt(computed.unit_total_cost)} / letter
-          </Badge>
-          {onReset && (
-            <Button size="sm" variant="ghost" onClick={onReset} className="h-7 text-xs text-red-600 hover:bg-red-50">
-              Reset to flat $/sqft
-            </Button>
-          )}
-        </div>
-      </div>
+      )}
 
-      {/* 1. Material */}
+      {/* 1. Material — sheet, height, width all on ONE row */}
       <Section icon={Box} title="1. Material" color="bg-blue-50 text-blue-700">
         {materials.length === 0 ? (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
@@ -233,48 +242,65 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
             </div>
           </div>
         ) : (
-          <div>
-            <Label className="text-xs">Sheet Material</Label>
-            <Select value={fab.material_id || ""} onValueChange={selectMaterial}>
-              <SelectTrigger className="h-9 mt-1 bg-white">
-                <SelectValue placeholder="Select material..." />
-              </SelectTrigger>
-              <SelectContent>
-                {materials.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.material_name} — {m.thickness_inches}"
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+              <div className="md:col-span-6">
+                <Label className="text-xs">Sheet Material</Label>
+                <Select value={fab.material_id || ""} onValueChange={selectMaterial}>
+                  <SelectTrigger className="h-9 mt-1 bg-white">
+                    <SelectValue placeholder="Select material..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {materials.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.material_name} — {m.thickness_inches}"
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="md:col-span-3">
+                <Label className="text-xs">Letter Height (in)</Label>
+                <Input
+                  type="number" min="0" step="0.5"
+                  value={fab.letter_height_inches}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => update({ letter_height_inches: parseFloat(e.target.value) || 0 })}
+                  className="h-9 mt-1 bg-white tabular-nums"
+                />
+              </div>
+              <div className="md:col-span-3">
+                <Label className="text-xs flex items-center justify-between gap-1">
+                  <span>Letter Width (avg, in)</span>
+                  <label className="flex items-center gap-1 text-[10px] text-slate-500 font-normal cursor-pointer">
+                    <Checkbox
+                      checked={oversize}
+                      onCheckedChange={(c) => update({ width_override: !!c })}
+                      className="h-3 w-3"
+                    />
+                    Oversize
+                  </label>
+                </Label>
+                <Input
+                  type="number" min="0" step="0.5"
+                  value={fab.letter_width_inches}
+                  onFocus={(e) => e.target.select()}
+                  disabled={!oversize}
+                  onChange={(e) => update({ letter_width_inches: parseFloat(e.target.value) || 0 })}
+                  className={`h-9 mt-1 tabular-nums ${oversize ? "bg-white" : "bg-slate-50 text-slate-600"}`}
+                />
+              </div>
+            </div>
             {fab.material_id && (
-              <p className="text-[11px] text-slate-500 mt-1">
+              <p className="text-[11px] text-slate-500">
                 Thickness: <strong>{fab.material_thickness_inches}"</strong> · ≈ {fmt(fab.material_cost_per_sqin * 144)}/sqft after {Math.round(fab.sheet_yield_factor * 100)}% yield
+                {!oversize && (
+                  <span className="ml-2 text-slate-400">· Width auto-calculated from height (avg of 10 fonts). Check <strong>Oversize</strong> to edit.</span>
+                )}
               </p>
             )}
-          </div>
+          </>
         )}
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-xs">Letter Height (in)</Label>
-            <Input
-              type="number" min="0" step="0.5"
-              value={fab.letter_height_inches}
-              onChange={(e) => update({ letter_height_inches: parseFloat(e.target.value) || 0 })}
-              className="h-9 mt-1 bg-white tabular-nums"
-            />
-          </div>
-          <div>
-            <Label className="text-xs">Letter Width (avg, in)</Label>
-            <Input
-              type="number" min="0" step="0.5"
-              value={fab.letter_width_inches}
-              onChange={(e) => update({ letter_width_inches: parseFloat(e.target.value) || 0 })}
-              className="h-9 mt-1 bg-white tabular-nums"
-            />
-          </div>
-        </div>
       </Section>
 
       {/* 2. Cutting */}

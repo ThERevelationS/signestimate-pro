@@ -56,11 +56,9 @@ export default function AddressAutocomplete({ value, onChange, placeholder, clas
     setLoading(true);
     try {
       const res = await base44.integrations.Core.InvokeLLM({
-        prompt: `Return up to 5 real US street-address autocomplete suggestions for this partial input: "${q}".
-Each must be a real, plausible mailing address (street number + street, city, state abbreviation, ZIP). 
-Do not invent obviously fake addresses. If the input is ambiguous, prefer well-known commercial corridors.
-Return JSON only.`,
-        add_context_from_internet: true,
+        prompt: `Return up to 5 plausible US street-address autocomplete completions for: "${q}".
+Each must look like a real mailing address (street number + street, city, state abbr, ZIP).
+Prefer well-known streets/cities. Be FAST — do not search the web. JSON only.`,
         response_json_schema: SCHEMA,
         model: "gemini_3_flash"
       });
@@ -79,7 +77,7 @@ Return JSON only.`,
     onChange(v);
     setOpen(true);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchSuggestions(v), 500);
+    debounceRef.current = setTimeout(() => fetchSuggestions(v), 250);
   };
 
   const selectSuggestion = (s) => {

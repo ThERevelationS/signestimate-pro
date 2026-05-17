@@ -183,9 +183,10 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject,
               <Type className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-slate-900">Letter Purchase</h3>
+              <h3 className="font-semibold text-slate-900">Letters & Logos — Fabricate or Purchase</h3>
               <p className="text-xs text-slate-600">
-                Build up the cost of the letters themselves (separate from installation labor).
+                Build up the cost of the signage itself — letters, logos, and dimensional pieces you either
+                fabricate in-house or purchase from a vendor (separate from installation labor).
                 Each line auto-creates a matching item on the Installation tab.
               </p>
             </div>
