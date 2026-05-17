@@ -17,8 +17,8 @@ export const emptyFabConfig = () => ({
   sheet_yield_factor: 0.7,
 
   // Letter geometry — used for area + cut length
-  letter_height_inches: 24,
-  letter_width_inches: 18, // average width per letter (for area calculation)
+  letter_height_inches: 0,
+  letter_width_inches: 0, // average width per letter (for area calculation)
   letter_perimeter_inches: 0, // 0 = auto-estimate from H + W (rectangle bound)
 
   // Cutting method — drives which estimator's rates we pull from

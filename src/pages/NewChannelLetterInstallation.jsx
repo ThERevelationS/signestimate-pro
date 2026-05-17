@@ -132,6 +132,9 @@ export default function NewChannelLetterInstallation() {
         setProject(prev => ({
           ...prev,
           base_supplies_cost: parseFloat(settingsObj.install_base_supplies) || 0,
+          // Pre-fill project-level fees from settings defaults
+          letters_delivery_fee: parseFloat(settingsObj.letters_default_delivery_fee) || 0,
+          letters_other_fee: parseFloat(settingsObj.letters_default_other_fee) || 0,
           items: [],
         }));
       }

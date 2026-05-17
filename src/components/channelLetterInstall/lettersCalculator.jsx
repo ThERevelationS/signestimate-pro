@@ -122,9 +122,14 @@ export const resolveUnitCost = (purchase, settings) => {
   if (purchase.unit_cost_override) return num(purchase.unit_cost);
   switch (purchase.letter_type) {
     case "raceway": {
-      const idx = Math.max(1, Math.min(4, num(purchase.raceway_index, 1)));
-      const key = ["letters_raceway_1st_per_ft", "letters_raceway_2nd_per_ft", "letters_raceway_3rd_per_ft", "letters_raceway_4th_per_ft"][idx - 1];
-      return num(settings[key], DEFAULTS[key]);
+      // Standalone raceway row: tier driven by purchase.qty (# of raceways) using avg-tier math
+      const qty = Math.max(1, Math.min(4, Math.floor(num(purchase.qty, 1))));
+      let sum = 0;
+      for (let i = 0; i < qty; i++) {
+        const k = ["letters_raceway_1st_per_ft", "letters_raceway_2nd_per_ft", "letters_raceway_3rd_per_ft", "letters_raceway_4th_per_ft"][i];
+        sum += num(settings[k], DEFAULTS[k]);
+      }
+      return sum / qty;
     }
     case "channel_raceway_mounted":
       return num(settings.letters_channel_raceway_per_inch, DEFAULTS.letters_channel_raceway_per_inch);
@@ -141,35 +146,80 @@ export const resolveUnitCost = (purchase, settings) => {
   }
 };
 
-// Resolve the raceway tier $/ft cost (used by combined raceway-mounted rows)
-const resolveRacewayTierCost = (racewayIndex, settings) => {
-  const idx = Math.max(1, Math.min(4, num(racewayIndex, 1)));
-  const key = ["letters_raceway_1st_per_ft", "letters_raceway_2nd_per_ft", "letters_raceway_3rd_per_ft", "letters_raceway_4th_per_ft"][idx - 1];
-  return num(settings[key], DEFAULTS[key]);
+// Resolve the raceway tier $/ft cost. Tier is now driven by raceway_qty:
+// 1 raceway -> tier 1, 2 -> tier 2, ... capped at tier 4. When qty > 1, this
+// returns the AVERAGE $/ft across raceways 1..qty so the (avg × length × qty)
+// math produces the correct escalating total.
+const racewayTierKeys = [
+  "letters_raceway_1st_per_ft",
+  "letters_raceway_2nd_per_ft",
+  "letters_raceway_3rd_per_ft",
+  "letters_raceway_4th_per_ft",
+];
+const resolveRacewayAvgPerFt = (racewayQty, settings) => {
+  const q = Math.max(1, Math.min(4, Math.floor(num(racewayQty, 1))));
+  let sum = 0;
+  for (let i = 0; i < q; i++) {
+    sum += num(settings[racewayTierKeys[i]], DEFAULTS[racewayTierKeys[i]]);
+  }
+  return sum / q;
 };
 
 // Compute totals for a single purchase row
 export const calcLetterPurchase = (purchase, settings) => {
-  const unit_cost = resolveUnitCost(purchase, settings);
   const qty = num(purchase.qty);
   const size = num(purchase.size_value);
-  // Base letters total: unit_cost × size × qty
-  // (per-foot × ft × #raceways) OR (per-inch × in × #letters) OR (per-sqft × sqft × #logos)
-  const letters_total = unit_cost * size * qty;
+  const isDimensional = purchase.letter_type === "dimensional_letters";
+  const isCombinedRaceway = purchase.letter_type === "channel_raceway_mounted";
+
+  // Dimensional letters always price off the fab_config (per-letter unit cost × qty).
+  // Per-letter override (purchase.unit_cost_override) lets the user pin the per-letter cost.
+  let unit_cost;
+  let letters_total;
+
+  if (isDimensional) {
+    const fabUnit = num(purchase.fab_config?.unit_total_cost);
+    const perLetter = purchase.unit_cost_override ? num(purchase.unit_cost) : fabUnit;
+    letters_total = perLetter * qty;
+    unit_cost = perLetter;
+  } else {
+    // Standard pricing: unit_cost × size × qty
+    // letters_total_override pins the total and back-solves unit_cost from qty.
+    const autoUnit = resolveUnitCost({ ...purchase, unit_cost_override: false }, settings);
+    if (purchase.letters_total_override) {
+      letters_total = num(purchase.letters_total);
+      // Back-solve unit cost from total when size and qty are non-zero
+      unit_cost = (size > 0 && qty > 0) ? letters_total / (size * qty) : 0;
+    } else {
+      unit_cost = purchase.unit_cost_override ? num(purchase.unit_cost) : autoUnit;
+      letters_total = unit_cost * size * qty;
+    }
+  }
 
   // Combined raceway: when letter_type is channel_raceway_mounted, also add
-  // the raceway hardware cost (tier $/ft × raceway length × # of raceways).
+  // the raceway hardware cost. Tier is driven by raceway_qty (1=tier1, 2=tier2, ...).
   let raceway_total = 0;
-  if (purchase.letter_type === "channel_raceway_mounted") {
-    const rwPerFt = resolveRacewayTierCost(purchase.raceway_index, settings);
+  let raceway_unit_cost = 0;
+  if (isCombinedRaceway) {
     const rwLen = num(purchase.raceway_length_feet);
     const rwQty = num(purchase.raceway_qty, 1);
-    raceway_total = rwPerFt * rwLen * rwQty;
+    const avgPerFt = resolveRacewayAvgPerFt(rwQty, settings);
+    if (purchase.raceway_total_override) {
+      raceway_total = num(purchase.raceway_total);
+      // Back-solve $/ft from total / (length × qty)
+      raceway_unit_cost = (rwLen > 0 && rwQty > 0) ? raceway_total / (rwLen * rwQty) : 0;
+    } else if (purchase.raceway_unit_cost_override) {
+      raceway_unit_cost = num(purchase.raceway_unit_cost);
+      raceway_total = raceway_unit_cost * rwLen * rwQty;
+    } else {
+      raceway_unit_cost = avgPerFt;
+      raceway_total = avgPerFt * rwLen * rwQty;
+    }
   }
 
   // Backer add-on (dimensional letters only) — total backer fab × qty of letters
   let backer_total = 0;
-  if (purchase.letter_type === "dimensional_letters" && purchase.backer_enabled && purchase.backer_fab_config?.unit_total_cost) {
+  if (isDimensional && purchase.backer_enabled && purchase.backer_fab_config?.unit_total_cost) {
     backer_total = num(purchase.backer_fab_config.unit_total_cost) * qty;
   }
 
@@ -181,9 +231,7 @@ export const calcLetterPurchase = (purchase, settings) => {
     letters_total,
     raceway_total,
     backer_total,
-    raceway_unit_cost: purchase.letter_type === "channel_raceway_mounted"
-      ? resolveRacewayTierCost(purchase.raceway_index, settings)
-      : 0,
+    raceway_unit_cost,
     total_cost,
   };
 };

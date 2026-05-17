@@ -65,13 +65,6 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
         // back-compat
         if (seed.cnc_cut_speed_ipm && !seed.cut_speed_ipm) seed.cut_speed_ipm = seed.cnc_cut_speed_ipm;
         if (seed.cnc_setup_minutes != null && seed.setup_minutes == null) seed.setup_minutes = seed.cnc_setup_minutes;
-        // Seed letter dims from purchase.size_value if blank
-        if (!purchase?.fab_config && purchase?.size_value && !seed.letter_height_inches) {
-          const sqin = (parseFloat(purchase.size_value) || 0) * 144;
-          const side = Math.sqrt(sqin / 0.55);
-          seed.letter_height_inches = Math.round(side);
-          seed.letter_width_inches = Math.round(side * 0.75);
-        }
         // width_override defaults to false — width is auto-calculated unless toggled on
         if (seed.width_override === undefined) seed.width_override = false;
         setFab(seed);
@@ -135,7 +128,11 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
   const activeRates = useMemo(() => getActiveRates(fab.cutting_method, settings), [fab.cutting_method, settings]);
   const paintR = useMemo(() => getPaintRates(settings), [settings]);
 
-  // Persist whenever fab changes (debounced via effect — only after first load)
+  // Persist whenever fab changes (debounced via effect — only after first load).
+  // We DO NOT touch unit_cost_override here — the user controls that via the
+  // override checkbox on the Per-Letter Cost field. The dimensional pricing
+  // path in lettersCalculator reads fab_config.unit_total_cost directly when
+  // unit_cost_override is false.
   useEffect(() => {
     if (loading) return;
     const final = calcDimensionalUnitCost(fab, qty, settings);
@@ -166,8 +163,6 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
         unit_paint_cost: final.unit_paint_cost,
         unit_total_cost: final.unit_total_cost,
       },
-      unit_cost_override: true,
-      unit_cost: final.unit_total_cost / Math.max(0.01, (final.face_area_sqin || 1) / 144),
       size_value: (final.face_area_sqin || 1) / 144,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -220,15 +215,6 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
 
   return (
     <div className="space-y-3">
-      {/* Inline mini-header — no separate "Dimensional Letter Fabrication" outer bubble */}
-      {onReset && (
-        <div className="flex items-center justify-end">
-          <Button size="sm" variant="ghost" onClick={onReset} className="h-7 text-xs text-red-600 hover:bg-red-50">
-            Reset to flat $/sqft
-          </Button>
-        </div>
-      )}
-
       {/* 1. Material — sheet, height, width all on ONE row */}
       <Section icon={Box} title="1. Material" color="bg-blue-50 text-blue-700">
         {materials.length === 0 ? (

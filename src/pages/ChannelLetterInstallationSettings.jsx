@@ -10,8 +10,10 @@ import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
 import { useToast } from "@/components/ui/use-toast";
 import { WALL_MATERIALS } from "@/components/channelLetterInstall/wallMaterials";
 import { refreshFuelPrice } from "@/functions/refreshFuelPrice";
-import AutoGrowNotes from "@/components/channelLetterInstall/AutoGrowNotes";
 import BaseTimesSizeCard from "@/components/channelLetterInstall/BaseTimesSizeCard";
+import BackerLetterTimesCard from "@/components/channelLetterInstall/BackerLetterTimesCard";
+import BackerPanelTimesCard from "@/components/channelLetterInstall/BackerPanelTimesCard";
+import RacewayTimesCard from "@/components/channelLetterInstall/RacewayTimesCard";
 import { SIZE_KEYS, HEIGHT_BUCKETS, ENV_KEYS, qualifiedKey } from "@/components/channelLetterInstall/installSizeRates";
 
 // Helper to build a set of base-time settings for a given installation type
@@ -617,6 +619,8 @@ export default function ChannelLetterInstallationSettings() {
   };
 
   // Dimensional Letters w/ Backer — assembly times by letter size + install times by backer sqft
+  // Reworked to use BackerLetterTimesCard + BackerPanelTimesCard so it visually matches the
+  // other Base Installation Times sub-tabs.
   const renderDimBackerContent = () => {
     const sizes = [
       { key: "extra_small", label: 'Extra Small', range: '2"–8"' },
@@ -627,76 +631,29 @@ export default function ChannelLetterInstallationSettings() {
       { key: "extra_extra_large", label: 'XXL', range: '60"+' },
     ];
 
-    const renderField = (name, label) => {
-      const value = settings[name];
-      const notesName = `${name}__notes`;
-      const notesValue = settings[notesName];
-      return (
-        <div>
-          <div className="flex items-baseline justify-between mb-1">
-            <Label htmlFor={name} className="text-xs font-medium text-slate-700">{label}</Label>
-            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">min</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <Input
-              type="number" step="1" id={name}
-              value={value || ""}
-              onChange={(e) => updateSetting(name, e.target.value)}
-              disabled={isLocked}
-              className="h-9 w-12 flex-shrink-0 bg-white border-slate-200 text-sm tabular-nums font-medium px-1.5 text-center"
-              min="0"
-            />
-            <AutoGrowNotes
-              value={notesValue}
-              onChange={(v) => updateSetting(notesName, v)}
-              disabled={isLocked}
-              className="flex-1 min-w-0"
-              minHeightPx={36}
-            />
-          </div>
-        </div>
-      );
-    };
-
-    const panelDefs = settingsDefinitions.filter(d => d.category === "install_rates_backer_panel");
-
     return (
       <div className="space-y-8">
-        {/* Per-letter assembly times by letter size */}
+        {/* Per-letter assembly times by letter size — uniform card grid */}
         <div>
           <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">
             Per-Letter Times (Drill + Assembly to Backer)
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sizes.map(s => {
-              const drillName = `install_dim_backer_drill_rate_${s.key}`;
-              const prepName = `install_dim_backer_prep_rate_${s.key}`;
-              const drillVal = parseFloat(settings[drillName]) || 0;
-              const prepVal = parseFloat(settings[prepName]) || 0;
-              const total = drillVal + prepVal;
-              return (
-                <div key={s.key} className="border border-slate-200 rounded-xl p-4 bg-orange-50/30 hover:bg-orange-50/60 transition-colors">
-                  <div className="flex items-baseline justify-between mb-3">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900">{s.label}</div>
-                      <div className="text-[11px] text-slate-500">{s.range}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[10px] uppercase tracking-wider text-slate-400">Total / letter</div>
-                      <div className="text-sm font-bold text-slate-900 tabular-nums">{total} min</div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    {renderField(drillName, "Drill Pattern / Drill Time")}
-                    {renderField(prepName, "Assembly Time")}
-                  </div>
-                </div>
-              );
-            })}
+            {sizes.map(s => (
+              <BackerLetterTimesCard
+                key={s.key}
+                sizeKey={s.key}
+                sizeLabel={s.label}
+                sizeRange={s.range}
+                settings={settings}
+                updateSetting={updateSetting}
+                isLocked={isLocked}
+              />
+            ))}
           </div>
         </div>
 
-        {/* Per-backer install times by panel sqft */}
+        {/* Per-backer install times by panel sqft — uniform card grid */}
         <div>
           <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">
             Per-Backer Install Times (by Panel Size — up to 5ft × 10ft = 50 sqft)
@@ -704,30 +661,135 @@ export default function ChannelLetterInstallationSettings() {
           <p className="text-xs text-slate-500 italic mb-3">
             The estimator picks the first range whose max-sqft ≥ the backer's area. Per-1/4" thickness bonus adjusts for heavier panels.
           </p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {panelDefs.map(def => renderSettingInput(def))}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map(r => (
+              <BackerPanelTimesCard
+                key={r}
+                rangeNumber={r}
+                settings={settings}
+                updateSetting={updateSetting}
+                isLocked={isLocked}
+              />
+            ))}
           </div>
         </div>
       </div>
     );
   };
 
-  // Raceway sub-tab — labor times + per-foot purchase pricing (4 tiers)
+  // Raceway sub-tab — labor times + per-foot purchase pricing.
+  // Reworked into uniform RacewayTimesCard grid that matches the other tabs.
   const renderRacewayContent = () => {
-    const laborDefs = settingsDefinitions.filter(d => d.category === "install_rates_raceway");
-    const tierDefs = settingsDefinitions.filter(d => d.category === "letters_raceway_pricing");
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div>
           <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">Labor Times</div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {laborDefs.map(def => renderSettingInput(def))}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <RacewayTimesCard
+              title="Base Cost"
+              subtitle="Per linear foot"
+              badgeLabel="Per Foot of Raceway"
+              badgeColor="blue"
+              settingName="install_raceway_base_minutes_per_foot"
+              unitLabel="min / ft"
+              suffix="min/ft"
+              description="Baseline minutes of labor per foot of raceway installed."
+              settings={settings}
+              updateSetting={updateSetting}
+              isLocked={isLocked}
+            />
+            <RacewayTimesCard
+              title="Extra Cost"
+              subtitle="Per linear foot"
+              badgeLabel="Per Foot of Raceway"
+              badgeColor="blue"
+              settingName="install_raceway_extra_minutes_per_foot"
+              unitLabel="min / ft"
+              suffix="min/ft"
+              description="Additional minutes per foot for complex / oversized raceway work."
+              settings={settings}
+              updateSetting={updateSetting}
+              isLocked={isLocked}
+            />
+            <RacewayTimesCard
+              title="Letter Mounting"
+              subtitle="Channel letters → raceway"
+              badgeLabel="Per Letter"
+              badgeColor="indigo"
+              settingName="install_raceway_letter_mounting_rate"
+              unitLabel="min / letter"
+              suffix="min/letter"
+              description="Minutes per letter mounted to a raceway."
+              settings={settings}
+              updateSetting={updateSetting}
+              isLocked={isLocked}
+            />
+            <RacewayTimesCard
+              title="Electrical Hookup"
+              subtitle="Per raceway"
+              badgeLabel="Per Raceway"
+              badgeColor="sky"
+              settingName="install_raceway_electrical_hookup_minutes"
+              unitLabel="min / raceway"
+              suffix="min/raceway"
+              description="Minutes per raceway for the electrical hookup work."
+              settings={settings}
+              updateSetting={updateSetting}
+              isLocked={isLocked}
+            />
           </div>
         </div>
+
         <div>
-          <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">Raceway Purchase Pricing (per linear foot, escalating per raceway)</div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {tierDefs.map(def => renderSettingInput(def))}
+          <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            Raceway Purchase Pricing
+          </div>
+          <p className="text-xs text-slate-500 italic mb-3">
+            Per linear foot, escalating per raceway. The estimator picks the tier based on the # of raceways on the row (1=1st, 2=2nd, 3=3rd, 4+=4th).
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => {
+              const settingName = ["letters_raceway_1st_per_ft", "letters_raceway_2nd_per_ft", "letters_raceway_3rd_per_ft", "letters_raceway_4th_per_ft"][i - 1];
+              const label = ["1st", "2nd", "3rd", "4th"][i - 1];
+              const value = settings[settingName];
+              const numVal = parseFloat(value) || 0;
+              return (
+                <div key={settingName} className="border border-slate-200 rounded-xl p-4 bg-emerald-50/30 hover:bg-emerald-50/60 transition-colors space-y-3">
+                  <div className="flex items-baseline justify-between">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">{label} Raceway</div>
+                      <div className="text-[11px] text-slate-500">Tier {i} price</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] uppercase tracking-wider text-slate-400">$/ft</div>
+                      <div className="text-sm font-bold text-slate-900 tabular-nums">${numVal.toFixed(2)}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-100/60 border border-emerald-200/60">
+                    <span className="text-[11px] font-medium text-emerald-900">Per Linear Foot</span>
+                  </div>
+                  <div>
+                    <div className="flex items-baseline justify-between mb-1.5">
+                      <Label htmlFor={settingName} className="text-xs font-medium text-slate-700">Cost</Label>
+                      <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">$/ft</span>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        id={settingName}
+                        value={value ?? ""}
+                        onChange={(e) => updateSetting(settingName, e.target.value)}
+                        disabled={isLocked}
+                        className="h-10 pl-6 bg-white border-slate-200 focus:border-slate-400 focus:ring-0 text-sm tabular-nums font-medium"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

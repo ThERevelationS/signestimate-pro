@@ -2,7 +2,6 @@ import React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Copy, Link2, GitBranch, Layers, CornerDownRight } from "lucide-react";
@@ -154,37 +153,15 @@ export default function LetterPurchaseRow({
         </div>
       </div>
 
-      {/* Raceway-tier selector (only for raceway types) + Description */}
-      <div className={`grid gap-3 ${(purchase.letter_type === "raceway" || isCombinedRaceway) ? "md:grid-cols-2" : "md:grid-cols-1"}`}>
-        {(purchase.letter_type === "raceway" || isCombinedRaceway) && (
-          <div>
-            <Label className="text-xs">Raceway Tier</Label>
-            <Select
-              value={String(purchase.raceway_index || 1)}
-              onValueChange={(v) => update({ raceway_index: parseInt(v, 10) })}
-            >
-              <SelectTrigger className="mt-1 h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">1st Raceway</SelectItem>
-                <SelectItem value="2">2nd Raceway</SelectItem>
-                <SelectItem value="3">3rd Raceway</SelectItem>
-                <SelectItem value="4">4th Raceway</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-        <div>
-          <Label className="text-xs">Description (optional)</Label>
-          <Input
-            value={purchase.description || ""}
-            onChange={(e) => update({ description: e.target.value })}
-            placeholder="e.g., Main building front sign"
-            className="mt-1 h-9"
-          />
-        </div>
+      {/* Description row — Raceway Tier dropdown removed; tier now driven by raceway QTY */}
+      <div>
+        <Label className="text-xs">Description (optional)</Label>
+        <Input
+          value={purchase.description || ""}
+          onChange={(e) => update({ description: e.target.value })}
+          placeholder="e.g., Main building front sign"
+          className="mt-1 h-9"
+        />
       </div>
 
       {/* Section header for combined raceway-mounted rows */}
@@ -195,7 +172,7 @@ export default function LetterPurchaseRow({
         </div>
       )}
 
-      {/* Numbers — for dimensional letters, only show "# of Letters" (other fields are driven by the inline builder below) */}
+      {/* Numbers — for dimensional letters: # of Letters + Per-Letter Cost (with Override) + Line Total */}
       {isDimensional ? (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <div id={tourId("qty")}>
@@ -209,9 +186,35 @@ export default function LetterPurchaseRow({
             />
           </div>
           <div>
-            <Label className="text-xs">Per-Letter Cost</Label>
-            <div className="mt-1 h-9 flex items-center px-3 bg-slate-50 rounded-md border border-slate-200 font-semibold tabular-nums text-slate-700">
-              {fmt(purchase.fab_config?.unit_total_cost)}
+            <Label className="text-xs flex items-center justify-between">
+              <span>Per-Letter Cost</span>
+              <label className="flex items-center gap-1 text-[10px] text-slate-500 font-normal cursor-pointer">
+                <Checkbox
+                  checked={!!purchase.unit_cost_override}
+                  onCheckedChange={(c) => update({
+                    unit_cost_override: !!c,
+                    unit_cost: !!c ? (parseFloat(purchase.fab_config?.unit_total_cost) || 0) : 0,
+                  })}
+                  className="h-3 w-3"
+                />
+                Override
+              </label>
+            </Label>
+            <div className="relative mt-1">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                disabled={!purchase.unit_cost_override}
+                value={
+                  purchase.unit_cost_override
+                    ? purchase.unit_cost
+                    : (parseFloat(purchase.fab_config?.unit_total_cost) || 0).toFixed(2)
+                }
+                onChange={(e) => update({ unit_cost: parseFloat(e.target.value) || 0 })}
+                className={`h-9 pl-6 ${purchase.unit_cost_override ? "" : "bg-slate-50"}`}
+              />
             </div>
           </div>
           <div>
@@ -247,9 +250,15 @@ export default function LetterPurchaseRow({
           <div>
             <Label className="text-xs flex items-center justify-between">
               <span>Unit Cost</span>
-              <label className="flex items-center gap-1 text-[10px] text-slate-500 font-normal">
+              <label
+                className={`flex items-center gap-1 text-[10px] font-normal ${
+                  purchase.letters_total_override ? "text-slate-300 cursor-not-allowed" : "text-slate-500 cursor-pointer"
+                }`}
+                title={purchase.letters_total_override ? "Disabled — Line Total is overridden" : ""}
+              >
                 <Checkbox
                   checked={!!purchase.unit_cost_override}
+                  disabled={!!purchase.letters_total_override}
                   onCheckedChange={(c) => update({ unit_cost_override: !!c, unit_cost: !!c ? effectiveUnit : 0 })}
                   className="h-3 w-3"
                 />
@@ -262,27 +271,60 @@ export default function LetterPurchaseRow({
                 type="number"
                 min="0"
                 step="0.01"
-                disabled={!purchase.unit_cost_override}
-                value={purchase.unit_cost_override ? purchase.unit_cost : autoUnitCost.toFixed(2)}
+                disabled={!purchase.unit_cost_override || !!purchase.letters_total_override}
+                value={purchase.unit_cost_override ? purchase.unit_cost : (parseFloat(purchase.unit_cost) || autoUnitCost).toFixed(2)}
                 onChange={(e) => update({ unit_cost: parseFloat(e.target.value) || 0 })}
                 className="h-9 pl-6"
               />
             </div>
           </div>
           <div>
-            <Label className="text-xs">{isCombinedRaceway ? "Letters Total" : "Line Total"}</Label>
-            <div className="mt-1 h-9 flex items-center px-3 bg-slate-50 rounded-md border border-slate-200 font-semibold tabular-nums">
-              {fmt(isCombinedRaceway ? purchase.letters_total : purchase.total_cost)}
-            </div>
+            <Label className="text-xs flex items-center justify-between">
+              <span>{isCombinedRaceway ? "Letters Total" : "Line Total"}</span>
+              <label
+                className={`flex items-center gap-1 text-[10px] font-normal ${
+                  purchase.unit_cost_override ? "text-slate-300 cursor-not-allowed" : "text-slate-500 cursor-pointer"
+                }`}
+                title={purchase.unit_cost_override ? "Disabled — Unit Cost is overridden" : ""}
+              >
+                <Checkbox
+                  checked={!!purchase.letters_total_override}
+                  disabled={!!purchase.unit_cost_override}
+                  onCheckedChange={(c) => update({
+                    letters_total_override: !!c,
+                    letters_total: !!c ? (parseFloat(purchase.letters_total) || 0) : 0,
+                  })}
+                  className="h-3 w-3"
+                />
+                Override
+              </label>
+            </Label>
+            {purchase.letters_total_override ? (
+              <div className="relative mt-1">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={purchase.letters_total}
+                  onChange={(e) => update({ letters_total: parseFloat(e.target.value) || 0 })}
+                  className="h-9 pl-6"
+                />
+              </div>
+            ) : (
+              <div className="mt-1 h-9 flex items-center px-3 bg-slate-50 rounded-md border border-slate-200 font-semibold tabular-nums">
+                {fmt(isCombinedRaceway ? purchase.letters_total : purchase.total_cost)}
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Raceway hardware section — shown only for combined raceway-mounted rows */}
+      {/* Raceway & Components section — shown only for combined raceway-mounted rows */}
       {isCombinedRaceway && (
         <>
           <div className="flex items-center gap-2 pt-2">
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-blue-700">Raceway Hardware</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-blue-700">Raceway and Components</span>
             <div className="flex-1 h-px bg-blue-100" />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -295,6 +337,7 @@ export default function LetterPurchaseRow({
                 onChange={(e) => update({ raceway_qty: parseFloat(e.target.value) || 0 })}
                 className="mt-1 h-9"
               />
+              <p className="text-[10px] text-slate-400 mt-0.5">Tier auto: 1=1st, 2=2nd, 3=3rd, 4+=4th</p>
             </div>
             <div>
               <Label className="text-xs">Raceway Length (ft)</Label>
@@ -308,22 +351,81 @@ export default function LetterPurchaseRow({
               />
             </div>
             <div>
-              <Label className="text-xs">Raceway $/ft</Label>
+              <Label className="text-xs flex items-center justify-between">
+                <span>Raceway $/ft</span>
+                <label
+                  className={`flex items-center gap-1 text-[10px] font-normal ${
+                    purchase.raceway_total_override ? "text-slate-300 cursor-not-allowed" : "text-slate-500 cursor-pointer"
+                  }`}
+                  title={purchase.raceway_total_override ? "Disabled — Raceway Total is overridden" : ""}
+                >
+                  <Checkbox
+                    checked={!!purchase.raceway_unit_cost_override}
+                    disabled={!!purchase.raceway_total_override}
+                    onCheckedChange={(c) => update({
+                      raceway_unit_cost_override: !!c,
+                      raceway_unit_cost: !!c ? (parseFloat(purchase.raceway_unit_cost) || 0) : 0,
+                    })}
+                    className="h-3 w-3"
+                  />
+                  Override
+                </label>
+              </Label>
               <div className="relative mt-1">
                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
                 <Input
                   type="number"
-                  value={(purchase.raceway_unit_cost || 0).toFixed(2)}
-                  disabled
-                  className="h-9 pl-6 bg-slate-50"
+                  min="0"
+                  step="0.01"
+                  disabled={!purchase.raceway_unit_cost_override || !!purchase.raceway_total_override}
+                  value={
+                    purchase.raceway_unit_cost_override
+                      ? purchase.raceway_unit_cost
+                      : (purchase.raceway_unit_cost || 0).toFixed(2)
+                  }
+                  onChange={(e) => update({ raceway_unit_cost: parseFloat(e.target.value) || 0 })}
+                  className={`h-9 pl-6 ${purchase.raceway_unit_cost_override ? "" : "bg-slate-50"}`}
                 />
               </div>
             </div>
             <div>
-              <Label className="text-xs">Raceway Total</Label>
-              <div className="mt-1 h-9 flex items-center px-3 bg-slate-50 rounded-md border border-slate-200 font-semibold tabular-nums">
-                {fmt(purchase.raceway_total)}
-              </div>
+              <Label className="text-xs flex items-center justify-between">
+                <span>Raceway Total</span>
+                <label
+                  className={`flex items-center gap-1 text-[10px] font-normal ${
+                    purchase.raceway_unit_cost_override ? "text-slate-300 cursor-not-allowed" : "text-slate-500 cursor-pointer"
+                  }`}
+                  title={purchase.raceway_unit_cost_override ? "Disabled — Raceway $/ft is overridden" : ""}
+                >
+                  <Checkbox
+                    checked={!!purchase.raceway_total_override}
+                    disabled={!!purchase.raceway_unit_cost_override}
+                    onCheckedChange={(c) => update({
+                      raceway_total_override: !!c,
+                      raceway_total: !!c ? (parseFloat(purchase.raceway_total) || 0) : 0,
+                    })}
+                    className="h-3 w-3"
+                  />
+                  Override
+                </label>
+              </Label>
+              {purchase.raceway_total_override ? (
+                <div className="relative mt-1">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={purchase.raceway_total}
+                    onChange={(e) => update({ raceway_total: parseFloat(e.target.value) || 0 })}
+                    className="h-9 pl-6"
+                  />
+                </div>
+              ) : (
+                <div className="mt-1 h-9 flex items-center px-3 bg-slate-50 rounded-md border border-slate-200 font-semibold tabular-nums">
+                  {fmt(purchase.raceway_total)}
+                </div>
+              )}
             </div>
           </div>
 
@@ -343,7 +445,6 @@ export default function LetterPurchaseRow({
           <DimensionalFabPanel
             purchase={purchase}
             onUpdate={(patch) => update(patch)}
-            onReset={() => update({ fab_config: null, unit_cost_override: false, unit_cost: 0 })}
           />
           {fabHighlight && !purchase.fab_config?.unit_total_cost && (
             <p className="text-xs text-red-600 font-medium text-center">
