@@ -105,6 +105,15 @@ export default function NewCNCEstimate() {
       const newItems = [...prev.items];
       let item = { ...newItems[index], [field]: value };
 
+      // For lettering items, "Number of Letters" IS the quantity — keep qty=1
+      // so the per-item math (which multiplies by quantity) doesn't double-count.
+      if (field === 'item_type' && value === 'lettering') {
+        item.quantity = 1;
+      }
+      if (item.item_type === 'lettering') {
+        item.quantity = 1;
+      }
+
       // Auto-set cut speed based on thickness for CNC
       if (field === 'material_thickness') {
         const speedSettingKey = `cnc_cut_speed_${value.replace('/', '_').replace('-', '_')}`;
@@ -1089,7 +1098,10 @@ export default function NewCNCEstimate() {
                       <div><Label>Job Type</Label><Select value={item.item_type} onValueChange={(v) => updateItem(index, 'item_type', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="panel">Panel Cut</SelectItem><SelectItem value="lettering">Lettering Cut</SelectItem><SelectItem value="3d_carving">3D Carving</SelectItem></SelectContent></Select></div>
                       <div><Label>Material Type</Label><Select value={item.material_type} onValueChange={(v) => updateItem(index, 'material_type', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{materials.map(mat => <SelectItem key={mat} value={mat}>{mat}</SelectItem>)}</SelectContent></Select></div>
                       <div><Label>Material Thickness</Label><Select value={item.material_thickness} onValueChange={(v) => updateItem(index, 'material_thickness', v)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{imperialSizes.map(size => <SelectItem key={size} value={size}>{size}"</SelectItem>)}</SelectContent></Select></div>
-                      <div><Label>Quantity</Label><Input type="number" min="1" value={item.quantity || ""} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)} /></div>
+                      {/* Quantity field — only shown for panels & carvings. For lettering, "Number of Letters" IS the quantity. */}
+                      {item.item_type !== 'lettering' && (
+                        <div><Label>Quantity</Label><Input type="number" min="1" value={item.quantity || ""} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)} /></div>
+                      )}
                       
                       {item.item_type === 'panel' && (<><div><Label>Length (in)</Label><Input type="number" min="0" value={item.length || ""} onFocus={(e) => e.target.select()} onChange={e => updateItem(index, 'length', parseFloat(e.target.value) || 0)} /></div><div><Label>Height (in)</Label><Input type="number" min="0" value={item.width || ""} onFocus={(e) => e.target.select()} onChange={e => updateItem(index, 'width', parseFloat(e.target.value) || 0)} /></div></>)}
                       

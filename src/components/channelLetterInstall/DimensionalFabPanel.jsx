@@ -64,7 +64,6 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
         const seed = { ...emptyFabConfig(), ...(purchase?.fab_config || {}) };
         // back-compat
         if (seed.cnc_cut_speed_ipm && !seed.cut_speed_ipm) seed.cut_speed_ipm = seed.cnc_cut_speed_ipm;
-        if (seed.cnc_setup_minutes != null && seed.setup_minutes == null) seed.setup_minutes = seed.cnc_setup_minutes;
         // width_override defaults to false — width is auto-calculated unless toggled on
         if (seed.width_override === undefined) seed.width_override = false;
         setFab(seed);
@@ -150,7 +149,6 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
         letter_perimeter_inches: final.letter_perimeter_inches,
         cutting_method: final.cutting_method,
         cut_speed_ipm: final.cut_speed_ipm,
-        setup_minutes: final.setup_minutes,
         cut_multiplier: final.cut_multiplier,
         paint_letters: final.paint_letters,
         paint_sides: final.paint_sides,
@@ -399,25 +397,37 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
         </p>
       </Section>
 
-      {/* Live preview */}
+      {/* Live preview — uses the EXACT same calc as the stand-alone CNC + Paint estimators */}
       <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl p-3 space-y-1.5">
         <div className="flex items-center gap-2 mb-1">
           <Calculator className="w-4 h-4" />
           <span className="font-semibold text-sm">Per-Letter Breakdown</span>
-          <Badge className="ml-auto bg-white/10 text-white border-0">qty: {qty}</Badge>
+          <Badge className="ml-auto bg-white/10 text-white border-0">{qty} letter{qty === 1 ? "" : "s"}</Badge>
         </div>
-        <PreviewRow label="Material" value={computed.unit_material_cost} subtitle={`${(computed.face_area_sqin || 0).toFixed(1)} sqin`} />
+        <PreviewRow label="Material" value={computed.unit_material_cost} subtitle={`${(computed.face_area_sqin || 0).toFixed(1)} sqin/letter`} />
         <PreviewRow
           label={CUTTING_METHOD_LABELS[fab.cutting_method] || "Cutting"}
           value={computed.unit_cut_cost}
-          subtitle={`${(computed.cut_length_inches || 0).toFixed(0)}" cut`}
+          subtitle={`${(computed.cut_length_inches || 0).toFixed(0)}" cut/letter`}
         />
         {fab.paint_letters && (
           <PreviewRow label="Paint" value={computed.unit_paint_cost} subtitle={PAINT_SIDES_LABELS[fab.paint_sides]} />
         )}
-        <div className="border-t border-white/20 pt-2 flex justify-between items-center">
-          <span className="text-sm text-slate-300">Total ({qty} letters)</span>
-          <span className="text-xl font-bold tabular-nums">{fmt(computed.unit_total_cost * qty)}</span>
+        <div className="border-t border-white/20 pt-2 space-y-1">
+          <div className="flex justify-between items-center text-[11px] text-slate-400">
+            <span>Row totals (from {isLaser ? "Laser" : "CNC"} + Paint settings)</span>
+            <span className="tabular-nums">
+              Mat ${(computed.row_total_material_cost || 0).toFixed(2)} ·
+              Cut ${(computed.row_total_cut_cost || 0).toFixed(2)}
+              {fab.paint_letters && (
+                <> · Paint ${((computed.row_total_paint_mask_cost || 0) + (computed.row_total_paint_supplies_cost || 0) + (computed.row_total_paint_labor_cost || 0)).toFixed(2)}</>
+              )}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-slate-300">Total ({qty} letter{qty === 1 ? "" : "s"})</span>
+            <span className="text-xl font-bold tabular-nums">{fmt(computed.unit_total_cost * qty)}</span>
+          </div>
         </div>
       </div>
     </div>

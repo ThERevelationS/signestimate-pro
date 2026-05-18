@@ -1,6 +1,8 @@
 // Auto-build pricing for Dimensional Letters: Material + (CNC or Laser) + Paint.
-// Pulls rates from the SAME settings used by the CNC, Laser, and Paint estimators —
-// so any change there flows through here.
+// IMPORTANT: This file mirrors the EXACT calculation logic used by the
+// stand-alone CNC, Laser, and Paint estimators, so changing settings in
+// CNCSettings / LaserSettings / PaintSettings flows through here identically.
+//
 // Pure functions — no React, no entity calls.
 
 const num = (v, fb = 0) => {
@@ -10,33 +12,31 @@ const num = (v, fb = 0) => {
 
 // Default fab config for a brand-new dimensional letter row
 export const emptyFabConfig = () => ({
-  material_id: null, // selected DimensionalLetterMaterial.id
+  material_id: null,
   material_name: "",
   material_thickness_inches: 0.5,
-  material_cost_per_sqin: 0, // resolved/cached at config time
+  material_cost_per_sqin: 0,
   sheet_yield_factor: 0.7,
 
-  // Letter geometry — used for area + cut length
+  // Letter geometry
   letter_height_inches: 0,
-  letter_width_inches: 0, // average width per letter (for area calculation)
-  letter_perimeter_inches: 0, // 0 = auto-estimate from H + W (rectangle bound)
+  letter_width_inches: 0,
+  letter_perimeter_inches: 0,
 
-  // Cutting method — drives which estimator's rates we pull from
+  // Cutting method
   cutting_method: "cnc", // "cnc" | "laser"
 
-  // Cut params — initially seeded from settings on material/method change,
-  // but the user can override.
+  // Cut params (auto-seeded from settings; overridable)
   cut_speed_ipm: 50,
-  setup_minutes: 15, // fixed setup minutes per job (split across all letters)
-
-  // Material/cut multiplier — typically resolved from material type, but stored
-  // so changes to settings are reflected next time the modal opens.
   cut_multiplier: 1.0,
 
-  // Paint params
+  // Paint params — same shape as the stand-alone Paint estimator items
   paint_letters: true,
   paint_sides: "front_and_edges", // none | front | front_and_edges | all
   num_paint_colors: 1,
+  paint_colors: [],
+  paint_mask_sqft: 0,
+  approx_coverage_factor: "1/4",
 
   // Resolved cost breakdown (filled by calculator)
   unit_material_cost: 0,
@@ -45,57 +45,75 @@ export const emptyFabConfig = () => ({
   unit_total_cost: 0,
 });
 
-// Estimate perimeter from height & width if user didn't override.
-// Uses 2*(H+W) * 1.4 to roughly account for typical letter shape complexity.
-const estimatePerimeter = (h, w, override) => {
+// ============================================================================
+// Geometry helpers
+// ============================================================================
+
+// Letter perimeter — matches the stand-alone CNC estimator:
+//   cutLength = letter_height * cnc_letter_perimeter_factor * num_letters
+// We compute per-letter here (num_letters is applied at the row level).
+const estimatePerimeterPerLetter = (h, settings, cuttingMethod, override) => {
   if (num(override) > 0) return num(override);
-  const boundingPerim = 2 * (num(h) + num(w));
-  return boundingPerim * 1.4;
+  const factorKey = cuttingMethod === "laser"
+    ? "laser_letter_perimeter_factor"
+    : "cnc_letter_perimeter_factor";
+  const factor = num(settings[factorKey], 3.5);
+  return num(h) * factor;
 };
 
-// Estimate letter face area in sq inches.
-// Letters don't fill their bounding box, so we apply a typical fill factor of 0.55.
-const estimateFaceArea = (h, w) => {
-  return num(h) * num(w) * 0.55;
+// Letter face area — matches the stand-alone Paint estimator's lettering case:
+//   faceArea = letterHeight^2 * 0.8 * numLetters / 144  (sqft)
+// We compute per-letter in sqin here so it composes with cutting math.
+const estimateFaceAreaSqinPerLetter = (h) => {
+  return Math.pow(num(h), 2) * 0.8;
 };
 
-// ===== Rate accessors — keyed off the actual setting_name strings used by =====
-// =====   pages/CNCSettings, pages/LaserSettings, and pages/PaintSettings  =====
+// ============================================================================
+// Rate accessors (mirror the stand-alone estimators exactly)
+// ============================================================================
 
 export const getCncRates = (settings) => ({
   machine_rate: num(settings.cnc_machine_rate, 75),
   labor_rate: num(settings.cnc_labor_rate, 45),
+  setup_time_percentage: num(settings.cnc_setup_time_percentage, 20),
+  min_setup_hours: num(settings.min_cnc_setup_hours, 0),
+  min_labor_hours: num(settings.min_cnc_labor_hours, 0),
   letter_perimeter_factor: num(settings.cnc_letter_perimeter_factor, 3.5),
 });
 
 export const getLaserRates = (settings) => ({
   machine_rate: num(settings.parameter_laser_machine_rate, 100),
   labor_rate: num(settings.parameter_laser_labor_rate, 45),
+  // Laser uses "handling time percentage" instead of "setup time percentage"
+  setup_time_percentage: num(settings.parameter_handling_time_percentage, 15),
+  min_setup_hours: num(settings.min_laser_setup_hours, 0),
+  min_labor_hours: num(settings.min_laser_labor_hours, 0),
   letter_perimeter_factor: num(settings.laser_letter_perimeter_factor, 3.5),
 });
 
 export const getActiveRates = (cuttingMethod, settings) =>
   cuttingMethod === "laser" ? getLaserRates(settings) : getCncRates(settings);
 
-// Compute mixed liquid paint $/sqft from the same formula PaintSettings.jsx uses.
+// Mixed liquid paint $/sqft — uses the EXACT Paint estimator formula.
 const computeLiquidPaintPerSqft = (settings) => {
-  const unitFactors = { oz: 1 / 128, pint: 1 / 8, quart: 1 / 4, liter: 1 / 3.78541, gallon: 1 };
+  const unitFactors = { oz: 128, pint: 8, quart: 4, liter: 3.78541, gallon: 1 };
   const perGallon = (cost, unit) => {
     const c = num(cost);
-    const f = unitFactors[unit] || unitFactors.gallon;
-    return f > 0 ? c / f : 0;
+    const f = unitFactors[unit] || 1;
+    return c * f;
   };
   const paintG = perGallon(settings.paint_cost_per_unit, settings.paint_unit);
   const hardG = perGallon(settings.hardener_cost_per_unit, settings.hardener_unit);
   const redG = perGallon(settings.reducer_cost_per_unit, settings.reducer_unit);
 
-  const pR = num(settings.paint_mix_ratio);
-  const hR = num(settings.hardener_mix_ratio);
-  const rR = num(settings.reducer_mix_ratio);
+  const pR = num(settings.paint_mix_ratio, 3);
+  const hR = num(settings.hardener_mix_ratio, 1);
+  const rR = num(settings.reducer_mix_ratio, 1);
   const total = pR + hR + rR;
   if (total === 0) return 0;
-  const costPerMixedGallon = (paintG * pR + hardG * hR + redG * rR) / total;
-  const coverage = num(settings.mixed_paint_coverage_sqft_per_gallon, 1);
+  const costPerMixedGallon =
+    (paintG / total) * pR + (hardG / total) * hR + (redG / total) * rR;
+  const coverage = num(settings.mixed_paint_coverage_sqft_per_gallon, 350);
   return coverage > 0 ? costPerMixedGallon / coverage : 0;
 };
 
@@ -103,68 +121,216 @@ export const getPaintRates = (settings) => ({
   labor_rate: num(settings.default_labor_rate, 60),
   supplies_per_sqft: num(settings.default_paint_supplies_per_sqft, 1.25),
   liquid_paint_per_sqft: computeLiquidPaintPerSqft(settings),
+  waste_multiplier: num(settings.paint_waste_multiplier, 1.25),
+  coverage_sqft_per_gallon: num(settings.mixed_paint_coverage_sqft_per_gallon, 350),
+  base_hours_per_sqft: num(settings.base_labor_hours_per_sqft, 0.05),
+  min_labor_hours: num(settings.min_labor_hours, 0),
+  min_paint_cost: num(settings.min_paint_cost, 0),
+  mixing_hours_per_gallon: num(settings.paint_mixing_labor_hours, 0.25),
+  setup_hours: num(settings.setup_time_labor_hours, 0.5),
+  color_change_setup_hours: num(settings.color_change_setup_hours, 0.25),
+  paint_gun_cleaning_hours: num(settings.paint_gun_cleaning_hours, 0.15),
+  // Mask rates
+  mask_material_rate: num(settings.paint_mask_rate_per_sqft, 0.75),
+  mask_machine_rate: num(settings.paint_mask_machine_cutting_rate_per_sqft, 0.1),
+  mask_application_labor_rate: num(settings.paint_mask_application_labor_rate_per_sqft, 0.25),
+  mask_cutting_labor_rate: num(settings.paint_mask_cutting_labor_rate_per_sqft, 0.15),
+  // Multipliers — letter complexity defaults to "complex" for dimensional letters
+  // since they're not rectangular panels (matches Paint estimator behavior).
+  complex_multiplier: num(settings.complex_complexity_multiplier, 1.5),
+  moderate_multiplier: num(settings.moderate_complexity_multiplier, 1.0),
+  one_side_multiplier: num(settings.one_side_paint_multiplier, 0.8),
+  both_sides_multiplier: num(settings.both_sides_paint_multiplier, 1.0),
+  additional_color_multiplier: num(settings.additional_color_multiplier, 0.3),
 });
 
-// Compute the cost of one dimensional letter using the fab config + settings
+// ============================================================================
+// Main cost calculator — matches the stand-alone estimator math
+// ============================================================================
+//
+// `qty` here = number of letters in the row (not a separate quantity multiplier).
+// Returns PER-LETTER costs for the breakdown UI, plus row-level totals so the
+// estimator can apply minimums against the whole row (just like the stand-alone
+// estimators do at the project level).
 export const calcDimensionalUnitCost = (fab, qty, settings) => {
   const safe = { ...emptyFabConfig(), ...fab };
-  const letterQty = Math.max(1, num(qty, 1));
+  const numLetters = Math.max(1, num(qty, 1));
 
   // === 1) Material cost per letter ===
-  const faceAreaSqin = estimateFaceArea(safe.letter_height_inches, safe.letter_width_inches);
-  const unit_material_cost = faceAreaSqin * num(safe.material_cost_per_sqin);
+  const facePerLetterSqin = estimateFaceAreaSqinPerLetter(safe.letter_height_inches);
+  const unit_material_cost = facePerLetterSqin * num(safe.material_cost_per_sqin);
 
-  // === 2) Cutting cost per letter (CNC or Laser) ===
+  // === 2) Cutting cost — uses stand-alone CNC/Laser math ===
   const rates = getActiveRates(safe.cutting_method, settings);
-  const cutLengthIn = estimatePerimeter(
+  const perLetterCutLengthIn = estimatePerimeterPerLetter(
     safe.letter_height_inches,
-    safe.letter_width_inches,
+    settings,
+    safe.cutting_method,
     safe.letter_perimeter_inches
   );
+  const totalCutLengthIn = perLetterCutLengthIn * numLetters;
   const cutSpeed = Math.max(1, num(safe.cut_speed_ipm, 50));
   const cutMultiplier = Math.max(0.01, num(safe.cut_multiplier, 1));
-  const cutMinutes = (cutLengthIn / cutSpeed) * cutMultiplier;
-  const setupMinutesPerLetter = num(safe.setup_minutes, 0) / letterQty;
-  const cutHours = (cutMinutes + setupMinutesPerLetter) / 60;
-  const unit_cut_cost = cutHours * (rates.machine_rate + rates.labor_rate);
 
-  // === 3) Paint cost per letter ===
+  // Same machine-time formula as NewCNCEstimate / NewLaserEstimate:
+  //   machine_time_hours = (cutLength / cutSpeed * cutMultiplier) / 60
+  // (For dimensional letters we run multiple letters; cutLength is per-row.)
+  const cutTimeMinutes = (totalCutLengthIn / cutSpeed) * cutMultiplier;
+  const machineTimeHours = cutTimeMinutes / 60;
+
+  // Setup/handling time = machineTime * (setup_time_percentage / 100)
+  // Floor it at min_setup_hours if set in settings.
+  let setupTimeHours = machineTimeHours * (rates.setup_time_percentage / 100);
+  if (rates.min_setup_hours > 0 && setupTimeHours < rates.min_setup_hours) {
+    setupTimeHours = rates.min_setup_hours;
+  }
+
+  let machineCost = machineTimeHours * rates.machine_rate;
+  let cutLaborCost = setupTimeHours * rates.labor_rate;
+
+  // Apply minimum-labor-hours floor on the cut labor only (matches CNC estimator).
+  if (rates.min_labor_hours > 0 && setupTimeHours > 0 && setupTimeHours < rates.min_labor_hours) {
+    cutLaborCost = rates.min_labor_hours * rates.labor_rate;
+  }
+
+  const totalCutCost = machineCost + cutLaborCost;
+  // Per-letter slice for the breakdown UI
+  const unit_cut_cost = totalCutCost / numLetters;
+
+  // === 3) Paint cost — uses stand-alone Paint estimator math ===
   let unit_paint_cost = 0;
+  let totalPaintMaskCost = 0;
+  let totalLiquidPaintAndSuppliesCost = 0;
+  let totalPaintLaborCost = 0;
+  let totalPaintGallons = 0;
+
   if (safe.paint_letters && safe.paint_sides !== "none") {
     const paint = getPaintRates(settings);
-    const perSqftCost = paint.supplies_per_sqft + paint.liquid_paint_per_sqft;
 
-    const faceSqft = faceAreaSqin / 144;
+    // Paintable area — match Paint estimator's lettering case:
+    //   faceArea = h^2 * 0.8 * numLetters / 144   (sqft)
+    //   edgeArea = h * perimFactor * numLetters * thickness / 144
+    //   one_side  -> face + edges
+    //   both_sides -> face*2 + edges
+    const totalFaceSqft = (facePerLetterSqin * numLetters) / 144;
     const thickness = num(safe.material_thickness_inches, 0.5);
-    const edgeSqft = (cutLengthIn * thickness) / 144;
+    const totalEdgeSqft = (totalCutLengthIn * thickness) / 144;
 
-    let paintedSqft = 0;
-    if (safe.paint_sides === "front") paintedSqft = faceSqft;
-    else if (safe.paint_sides === "front_and_edges") paintedSqft = faceSqft + edgeSqft;
-    else if (safe.paint_sides === "all") paintedSqft = faceSqft * 2 + edgeSqft;
+    let paintableSqft = 0;
+    let paintSidesKey = "one_side"; // for stand-alone multipliers map
+    if (safe.paint_sides === "front") {
+      paintableSqft = totalFaceSqft;
+      paintSidesKey = "one_side";
+    } else if (safe.paint_sides === "front_and_edges") {
+      paintableSqft = totalFaceSqft + totalEdgeSqft;
+      paintSidesKey = "one_side";
+    } else if (safe.paint_sides === "all") {
+      paintableSqft = totalFaceSqft * 2 + totalEdgeSqft;
+      paintSidesKey = "both_sides";
+    }
 
-    // Multi-color premium: each extra color adds 15% to the paint cost
-    const colorMultiplier = 1 + Math.max(0, num(safe.num_paint_colors, 1) - 1) * 0.15;
+    const colors = Array.isArray(safe.paint_colors)
+      ? safe.paint_colors.filter((c) => c && c.trim() !== "")
+      : [];
+    const numColors = Math.max(1, colors.length || num(safe.num_paint_colors, 1));
 
-    const paintMaterialsCost = paintedSqft * perSqftCost * colorMultiplier;
-    const paintLaborHours = (paintedSqft * 3) / 60; // 3 minutes per sqft baseline
-    const paintLaborCost = paintLaborHours * paint.labor_rate * colorMultiplier;
+    // -- Paint mask (multi-color only) --
+    if (numColors > 1 && num(safe.paint_mask_sqft) > 0) {
+      const maskMaterial = num(safe.paint_mask_sqft) * paint.mask_material_rate * (numColors - 1);
+      const maskMachine = num(safe.paint_mask_sqft) * paint.mask_machine_rate * (numColors - 1);
+      totalPaintMaskCost = maskMaterial + maskMachine;
+    }
 
-    unit_paint_cost = paintMaterialsCost + paintLaborCost;
+    // -- Liquid paint + application supplies --
+    const paintApplicationSupplies = paintableSqft * paint.supplies_per_sqft * numColors;
+    const liquidPaint = paintableSqft * paint.liquid_paint_per_sqft * paint.waste_multiplier * numColors;
+    totalLiquidPaintAndSuppliesCost = paintApplicationSupplies + liquidPaint;
+
+    if (paint.coverage_sqft_per_gallon > 0) {
+      totalPaintGallons =
+        (paintableSqft * paint.waste_multiplier * numColors) / paint.coverage_sqft_per_gallon;
+    }
+
+    // -- Item labor (matches Paint estimator's per-item labor) --
+    // Dimensional letters → "complex" complexity (small/extra_small map to complex
+    // in the Paint estimator; we use complex as the default for dimensional letters).
+    const complexityMult = paint.complex_multiplier;
+    const sidesMult =
+      paintSidesKey === "both_sides" ? paint.both_sides_multiplier : paint.one_side_multiplier;
+
+    let baseHours = paintableSqft * paint.base_hours_per_sqft * complexityMult * sidesMult;
+    if (numColors > 1) {
+      baseHours *= 1 + (numColors - 1) * paint.additional_color_multiplier;
+    }
+
+    // Mask application/cutting labor adds to base hours (matches Paint estimator)
+    if (numColors > 1 && num(safe.paint_mask_sqft) > 0) {
+      const maskApplyHrs =
+        (num(safe.paint_mask_sqft) * paint.mask_application_labor_rate * (numColors - 1)) /
+        paint.labor_rate;
+      const maskCutHrs =
+        (num(safe.paint_mask_sqft) * paint.mask_cutting_labor_rate * (numColors - 1)) /
+        paint.labor_rate;
+      baseHours += maskApplyHrs + maskCutHrs;
+    }
+
+    let paintLaborHours = baseHours;
+
+    // -- Fixed labor (mixing + setup + color change + gun cleaning) --
+    // Matches the Paint estimator's project-level fixed labor block.
+    const numberOfMixes = Math.max(1, Math.ceil(totalPaintGallons));
+    const mixingHrs = numberOfMixes * paint.mixing_hours_per_gallon;
+    const setupHrs = paint.setup_hours;
+
+    // Unique colors → drives color-change + gun-cleaning hours
+    const uniqueColors = new Set(
+      colors.map((c) => c.trim().toLowerCase()).filter((c) => c)
+    );
+    const uniqueColorCount = Math.max(numColors > 1 ? uniqueColors.size : 1, 1);
+    const colorChangeHrs =
+      uniqueColorCount > 1 ? (uniqueColorCount - 1) * paint.color_change_setup_hours : 0;
+    const gunCleanHrs = uniqueColorCount * paint.paint_gun_cleaning_hours;
+
+    const totalPaintLaborHrs = paintLaborHours + mixingHrs + setupHrs + colorChangeHrs + gunCleanHrs;
+
+    // Apply min_labor_hours floor (Paint estimator's behavior)
+    const effectivePaintLaborHrs =
+      paint.min_labor_hours > 0 && totalPaintLaborHrs < paint.min_labor_hours
+        ? paint.min_labor_hours
+        : totalPaintLaborHrs;
+
+    totalPaintLaborCost = effectivePaintLaborHrs * paint.labor_rate;
+
+    // Apply min_paint_cost floor (Paint estimator's behavior)
+    if (paint.min_paint_cost > 0 && totalLiquidPaintAndSuppliesCost < paint.min_paint_cost) {
+      totalLiquidPaintAndSuppliesCost = paint.min_paint_cost;
+    }
+
+    const totalPaint = totalPaintMaskCost + totalLiquidPaintAndSuppliesCost + totalPaintLaborCost;
+    unit_paint_cost = totalPaint / numLetters;
   }
 
   const unit_total_cost = unit_material_cost + unit_cut_cost + unit_paint_cost;
 
   return {
     ...safe,
-    face_area_sqin: faceAreaSqin,
-    cut_length_inches: cutLengthIn,
+    face_area_sqin: facePerLetterSqin,
+    cut_length_inches: perLetterCutLengthIn,
+    // Per-letter values (used by the on-row breakdown UI)
     unit_material_cost,
     unit_cut_cost,
-    // Back-compat alias: older code reads unit_cnc_cost
-    unit_cnc_cost: unit_cut_cost,
+    unit_cnc_cost: unit_cut_cost, // back-compat alias
     unit_paint_cost,
     unit_total_cost,
+    // Row-level totals (so caller can compare with stand-alone estimator numbers)
+    row_total_material_cost: unit_material_cost * numLetters,
+    row_total_cut_cost: totalCutCost,
+    row_total_paint_mask_cost: totalPaintMaskCost,
+    row_total_paint_supplies_cost: totalLiquidPaintAndSuppliesCost,
+    row_total_paint_labor_cost: totalPaintLaborCost,
+    row_total_paint_gallons: totalPaintGallons,
+    row_machine_time_hours: machineTimeHours,
+    row_setup_time_hours: setupTimeHours,
   };
 };
 
@@ -179,15 +345,10 @@ export const materialCostPerSqin = (material) => {
 };
 
 // Look up the per-thickness cut speed setting for the active method.
-// Thickness keys mirror what CNCSettings / LaserSettings write:
-//   CNC:   cnc_cut_speed_<thickness>   (e.g. cnc_cut_speed_1_2, cnc_cut_speed_1_1_4)
-//   Laser: cut_speed_<thickness>       (e.g. cut_speed_1_8, cut_speed_3_4)
-// Thicknesses are converted using the same replace rules:
-//   "/" -> "_", "-" -> "_"
+//   CNC:   cnc_cut_speed_<thickness>
+//   Laser: cut_speed_<thickness>
 export const lookupCutSpeed = (cuttingMethod, thicknessInches, settings) => {
   if (!thicknessInches) return null;
-  // Convert decimal thickness back to imperial-style string key.
-  // We round to the nearest 1/16 then try common fraction strings.
   const candidates = decimalToImperialKeys(thicknessInches);
   const prefix = cuttingMethod === "laser" ? "cut_speed_" : "cnc_cut_speed_";
   for (const c of candidates) {
@@ -198,8 +359,8 @@ export const lookupCutSpeed = (cuttingMethod, thicknessInches, settings) => {
 };
 
 // Lookup material cut multiplier from settings.
-// CNC: <material>_cnc_cut_multiplier (e.g. wood_cnc_cut_multiplier)
-// Laser: <material>_cut_multiplier (e.g. wood_cut_multiplier)
+//   CNC: <material>_cnc_cut_multiplier
+//   Laser: <material>_cut_multiplier
 export const lookupCutMultiplier = (cuttingMethod, materialType, settings) => {
   if (!materialType) return 1;
   const mat = materialType.toLowerCase();
@@ -209,8 +370,6 @@ export const lookupCutMultiplier = (cuttingMethod, materialType, settings) => {
 };
 
 // Map common decimal thicknesses → key strings used in settings.
-// We try a few formats since the user might have set it under "1/2" → "1_2"
-// or under fractional approximations.
 const decimalToImperialKeys = (decimal) => {
   const map = {
     0.0625: ["1_16"],
@@ -231,7 +390,6 @@ const decimalToImperialKeys = (decimal) => {
     3.5: ["3_1_2"],
     4: ["4"],
   };
-  // Snap to nearest 1/16
   const snap = Math.round(decimal * 16) / 16;
   return map[snap] || [];
 };

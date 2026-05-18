@@ -427,6 +427,15 @@ export default function NewPaintEstimate() {
       const newItems = [...prev.items];
       let item = { ...newItems[index], [field]: value };
 
+      // For lettering items, "Number of Letters" IS the quantity — keep qty=1
+      // so per-item math (which multiplies by quantity) doesn't double-count letters.
+      if (field === 'item_type' && value === 'lettering') {
+        item.quantity = 1;
+      }
+      if (item.item_type === 'lettering') {
+        item.quantity = 1;
+      }
+
       if (field === 'width' && item.item_type === 'lettering') {
         const height = value;
         if (height <= 4) item.letter_size = 'extra_small';else
@@ -1154,17 +1163,7 @@ export default function NewPaintEstimate() {
                             </> :
 
                       <>
-                              <div>
-                                <Label>Quantity</Label>
-                                <Input
-                            type="number"
-                            min="1"
-                            value={item.quantity || ""}
-                            onFocus={(e) => e.target.select()}
-                            onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
-                            className="mt-1" />
-
-                              </div>
+                              {/* Quantity field intentionally hidden for lettering — "Number of Letters" IS the quantity. */}
                               <div>
                                 <Label>Letter Height (in)</Label>
                                 <Input
