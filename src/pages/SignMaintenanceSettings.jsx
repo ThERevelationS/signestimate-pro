@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Wrench, Save, CheckCircle2, DollarSign, Ruler, Gauge, Building2, AlertTriangle } from "lucide-react";
+import { Wrench, Save, CheckCircle2, DollarSign, Ruler, Gauge, Building2, AlertTriangle, Paintbrush2 } from "lucide-react";
 import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
 import { useToast } from "@/components/ui/use-toast";
 import SectionCard, { AnimatedGrid } from "@/components/signMaintenance/SectionCard";
@@ -15,6 +15,8 @@ import RatesBySignTypeTab from "@/components/signMaintenance/RatesBySignTypeTab"
 import MinimumsTab, { minimumSettingKey } from "@/components/signMaintenance/MinimumsTab";
 import TravelTab from "@/components/signMaintenance/TravelTab";
 import SiteConditionsTab from "@/components/signMaintenance/SiteConditionsTab";
+import RepaintSettingsTab from "@/components/signMaintenance/RepaintSettingsTab";
+import { REPAINT_DEFAULTS } from "@/components/signMaintenance/repaintDefaults";
 import { maintenanceTravelDefs, maintenanceSiteConditionDefs } from "@/components/signMaintenance/maintenanceTravelSiteDefs";
 import { refreshFuelPrice } from "@/functions/refreshFuelPrice";
 
@@ -61,6 +63,14 @@ export default function SignMaintenanceSettings() {
       label: `${st.label} — Minimum Hours`,
       suffix: "hrs",
       default: String(DEFAULT_MIN_HOURS[st.id] ?? 2),
+    })),
+    // Repaint action settings — seeded with sensible defaults so the
+    // RepaintMonumentPanel calc has values to work with immediately.
+    ...Object.entries(REPAINT_DEFAULTS).map(([name, def]) => ({
+      name,
+      category: "maintenance_pricing",
+      label: name,
+      default: def,
     })),
     ...maintenanceTravelDefs,
     ...maintenanceSiteConditionDefs,
@@ -237,6 +247,7 @@ export default function SignMaintenanceSettings() {
   const TAB_META = [
     { key: "pricing",   title: "Pricing & Labor", Icon: DollarSign,    color: "emerald", activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-emerald-500 data-[state=active]:to-emerald-700" },
     { key: "rates",     title: "Action Rates",    Icon: Ruler,         color: "cyan",    activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-cyan-500 data-[state=active]:to-cyan-700" },
+    { key: "repaint",   title: "Repaint",         Icon: Paintbrush2,   color: "orange",  activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-orange-500 data-[state=active]:to-amber-600" },
     { key: "minimums",  title: "Minimum Rates",   Icon: Gauge,         color: "violet",  activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-violet-500 data-[state=active]:to-purple-700" },
     { key: "travel",    title: "Travel",          Icon: Building2,     color: "blue",    activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-blue-700" },
     { key: "site",      title: "Site Conditions", Icon: AlertTriangle, color: "amber",   activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-amber-500 data-[state=active]:to-orange-600" },
@@ -306,7 +317,7 @@ export default function SignMaintenanceSettings() {
 
         <SettingsAuthWrapper correctPassword="Cinci2467" onUnlock={() => setIsLocked(false)} user={user}>
           <Tabs defaultValue="pricing" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 mb-6 h-auto p-1.5 bg-white/70 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-sm">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 mb-6 h-auto p-1.5 bg-white/70 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-sm">
               {TAB_META.map(({ key, title, Icon, activeBg }) => (
                 <TabsTrigger
                   key={key}
@@ -341,6 +352,10 @@ export default function SignMaintenanceSettings() {
 
             <TabsContent value="rates" className="space-y-4">
               <RatesBySignTypeTab rateMap={rateMap} isLocked={isLocked} onChangeRate={onChangeRate} />
+            </TabsContent>
+
+            <TabsContent value="repaint" className="space-y-4">
+              <RepaintSettingsTab globalSettings={globalSettings} setGlobalSettings={setGlobalSettings} isLocked={isLocked} />
             </TabsContent>
 
             <TabsContent value="minimums" className="space-y-4">

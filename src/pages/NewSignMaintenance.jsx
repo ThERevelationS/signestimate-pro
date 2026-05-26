@@ -307,6 +307,7 @@ export default function NewSignMaintenance() {
                         key={idx}
                         item={it}
                         index={idx}
+                        settings={settings}
                         onUpdate={updateItem}
                         onRemove={removeItem}
                         onDuplicate={duplicateItem}

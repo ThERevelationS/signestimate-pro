@@ -3,6 +3,7 @@
 // is driven by the MaintenanceActionRate matrix (sign_type × action × size).
 
 import { sizeAxisFor } from "./constants";
+import { computeMonumentRepaint, isMonumentRepaint } from "./repaintCalculator";
 
 const MIN_TO_HR = 1 / 60;
 
@@ -47,12 +48,24 @@ export const calcServiceItem = (item, settings, rates, inventory) => {
 
   let totalMinutes = 0;
   (item.actions || []).forEach(actionId => {
+    // Monument repaint has its own specialized estimator — skip the rate-matrix
+    // contribution for that single action, we add it below.
+    if (actionId === "repaint" && isMonumentRepaint(item)) return;
     const perUnit = minutesForActionOnSize(rates, item.sign_type, actionId, item.size);
     // For cabinet axis, qty acts as # cabinets; for letter axis, qty acts as # letters.
     totalMinutes += perUnit * (axis === "cabinet" ? Math.max(qty, 1) : qty);
   });
 
-  const laborHours = totalMinutes * MIN_TO_HR;
+  let laborHours = totalMinutes * MIN_TO_HR;
+
+  // Specialized contribution: Monument Sign repaint
+  let repaintPaintCost = 0;
+  const repaint = computeMonumentRepaint(item, settings);
+  if (repaint) {
+    laborHours += repaint.labor_hours;
+    repaintPaintCost = repaint.paint_material_cost;
+  }
+
   const laborCost = laborHours * techRate;
 
   // Recompute materials based on current item state.
@@ -61,7 +74,7 @@ export const calcServiceItem = (item, settings, rates, inventory) => {
     if (!inv) return { ...m, total_cost: (parseFloat(m.unit_cost) || 0) * (parseFloat(m.quantity) || 0) };
     return materialFromInventory(inv, item);
   });
-  const materialsCost = materials.reduce((s, m) => s + (parseFloat(m.total_cost) || 0), 0);
+  const materialsCost = materials.reduce((s, m) => s + (parseFloat(m.total_cost) || 0), 0) + repaintPaintCost;
 
   return {
     ...item,
@@ -69,6 +82,7 @@ export const calcServiceItem = (item, settings, rates, inventory) => {
     labor_hours: laborHours,
     labor_cost: laborCost,
     materials_cost: materialsCost,
+    repaint_calc: repaint || undefined,
     item_total_cost: laborCost + materialsCost,
   };
 };

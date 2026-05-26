@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Trash2, Copy } from "lucide-react";
 import SignTypePicker from "./SignTypePicker";
 import ActionPicker from "./ActionPicker";
+import RepaintMonumentPanel from "./RepaintMonumentPanel";
+import { defaultMonumentRepaintConfig } from "./repaintCalculator";
 import { SIGN_TYPES_BY_ID, LETTER_SIZES, CABINET_SIZES, sizeAxisFor, ACTIONS_FOR_SIGN_TYPE } from "./constants";
 
-export default function ServiceItemRow({ item, index, onUpdate, onRemove, onDuplicate }) {
+export default function ServiceItemRow({ item, index, onUpdate, onRemove, onDuplicate, settings = {} }) {
   const update = (patch) => onUpdate(index, { ...item, ...patch });
 
   const handleSignTypeChange = (id) => {
@@ -23,8 +25,15 @@ export default function ServiceItemRow({ item, index, onUpdate, onRemove, onDupl
   const toggleAction = (actionId) => {
     const cur = item.actions || [];
     const next = cur.includes(actionId) ? cur.filter(a => a !== actionId) : [...cur, actionId];
-    update({ actions: next });
+    const patch = { actions: next };
+    // Seed default monument repaint config the first time both are selected.
+    if (actionId === "repaint" && next.includes("repaint") && item.sign_type === "monument_sign" && !item.repaint_config) {
+      patch.repaint_config = defaultMonumentRepaintConfig();
+    }
+    update(patch);
   };
+
+  const isMonumentRepaint = item.sign_type === "monument_sign" && (item.actions || []).includes("repaint");
 
   const axis = sizeAxisFor(item.sign_type);
   const sizes = axis === "cabinet" ? CABINET_SIZES : LETTER_SIZES;
@@ -53,7 +62,7 @@ export default function ServiceItemRow({ item, index, onUpdate, onRemove, onDupl
         </div>
 
         <div>
-          <Label className="text-[11px] uppercase tracking-wide text-slate-500 block mb-1.5">Installation Type</Label>
+          <Label className="text-[11px] uppercase tracking-wide text-slate-500 block mb-1.5">Sign Type</Label>
           <SignTypePicker value={item.sign_type} onChange={handleSignTypeChange} />
         </div>
 
@@ -99,6 +108,11 @@ export default function ServiceItemRow({ item, index, onUpdate, onRemove, onDupl
               onToggle={toggleAction}
             />
           </div>
+        )}
+
+        {/* Specialized estimator panels per (sign_type × action) */}
+        {isMonumentRepaint && (
+          <RepaintMonumentPanel item={item} settings={settings} onChange={update} />
         )}
       </CardContent>
     </Card>
