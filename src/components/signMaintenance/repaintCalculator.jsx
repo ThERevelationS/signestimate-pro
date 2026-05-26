@@ -10,6 +10,7 @@
 import {
   REPAINT_FEATURES, PAINT_CONDITION_LABELS,
 } from "./repaintDefaults";
+import { computeDimLetterPaint } from "./dimLetterPaintCalculator";
 
 const num = (v, d = 0) => {
   const n = parseFloat(v);
@@ -49,6 +50,14 @@ export const defaultMonumentRepaintConfig = () => ({
   retainer_width_in: 2,        // only used when returns_only
   paint_condition: 3,          // 1-10
   paint_both_sides: true,      // monument typically has 2 painted faces
+  // Dimensional-letter painting — only relevant when "dimensional_letters" feature is on
+  dim_letter_paint: {
+    enabled: false,
+    qty: 6,
+    avg_height_in: 12,
+    thickness_in: 1,
+    second_color_mask: "none", // "none" | "paint_mask"
+  },
 });
 
 // SQFT computation. Length/Height in feet, return_depth in inches.
@@ -112,17 +121,29 @@ export const computeMonumentRepaint = (item, settings) => {
 
   const featMult = featureMultiplier(cfg, settings);
   const condMult = conditionMultiplier(cfg, settings);
-  const labor_hours = (total_sqft / sqftPerHour) * featMult * condMult;
+  let labor_hours = (total_sqft / sqftPerHour) * featMult * condMult;
+
+  // Add Painted Dimensional Letters (Paint Estimator rates) when enabled
+  const featureSet = new Set(cfg.features || []);
+  const dl = (featureSet.has("dimensional_letters") && cfg.paint_mode === "entire_panel")
+    ? computeDimLetterPaint(cfg, settings)
+    : null;
+  let dimLetterCost = 0;
+  if (dl) {
+    dimLetterCost = dl.letters_total_added_cost;
+    labor_hours += (dl.letters_labor_hours || 0) + (dl.mask_labor_hours || 0);
+  }
 
   return {
     cfg,
     face_sqft, returns_sqft, total_sqft, perimeter_ft,
     coverage, pricePerGal, primerCoats, finishCoats, totalCoats,
     gallons,
-    paint_material_cost: paintMaterialCost,
+    paint_material_cost: paintMaterialCost + dimLetterCost,
     feature_multiplier: featMult,
     condition_multiplier: condMult,
     paint_condition_label: PAINT_CONDITION_LABELS[Math.min(9, Math.max(0, (cfg.paint_condition || 1) - 1))],
     labor_hours,
+    dim_letter_paint: dl,
   };
 };

@@ -20,6 +20,7 @@ import {
 import {
   defaultMonumentRepaintConfig, computeMonumentRepaint,
 } from "./repaintCalculator";
+import DimLetterPaintSubPanel from "./DimLetterPaintSubPanel";
 
 // A "slider + typed input" pair that stay in sync. Range params expected: {min,max,step}.
 function SliderWithInput({ value, onChange, range, unit, label, accent = "cyan" }) {
@@ -158,7 +159,7 @@ export default function RepaintMonumentPanel({ item, onChange, settings }) {
             </Select>
           </div>
         ) : (
-          <div className="bg-white border border-amber-200 rounded-lg p-3 space-y-2">
+          <div className="bg-white border border-amber-200 rounded-lg p-3 space-y-3">
             <Label className="text-[11px] uppercase tracking-wide text-slate-500">Face Features (affects time & paint)</Label>
             <div className="grid sm:grid-cols-2 gap-2">
               {REPAINT_FEATURES.map(f => {
@@ -176,6 +177,12 @@ export default function RepaintMonumentPanel({ item, onChange, settings }) {
                 );
               })}
             </div>
+
+            {/* When "Dimensional Letters" is a face feature, expose the
+                "paint them too?" sub-panel which uses Paint Estimator rates. */}
+            {(cfg.features || []).includes("dimensional_letters") && (
+              <DimLetterPaintSubPanel cfg={cfg} settings={settings} onChange={setCfg} />
+            )}
           </div>
         )}
 

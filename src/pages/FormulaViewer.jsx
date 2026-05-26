@@ -5,12 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Calculator, Paintbrush, Zap, Router, Wrench, Info, Anchor } from "lucide-react";
+import { Calculator, Paintbrush, Zap, Router, Wrench, Info, Anchor, ClipboardCheck } from "lucide-react";
 import CNCFormulas from "@/components/formulaViewer/CNCFormulas";
 import MetalFormulas from "@/components/formulaViewer/MetalFormulas";
 import ChannelLetterInstallFormulas from "@/components/formulaViewer/ChannelLetterInstallFormulas";
 import LaserFormulas from "@/components/formulaViewer/LaserFormulas";
 import ConcreteMasonryPolesFormulas from "@/components/formulaViewer/ConcreteMasonryPolesFormulas";
+import SignMaintenanceFormulas from "@/components/formulaViewer/SignMaintenanceFormulas";
 
 // Helper function to parse imperial fractions (e.g., "1/2", "1-3/4")
 const parseImperialFraction = (fractionString) => {
@@ -457,13 +458,14 @@ export default function FormulaViewer() {
         </div>
 
         <Tabs value={selectedModule} onValueChange={setSelectedModule} className="w-full">
-          <TabsList className="grid grid-cols-2 md:grid-cols-6 mb-4 h-auto">
+          <TabsList className="grid grid-cols-2 md:grid-cols-7 mb-4 h-auto">
             <TabsTrigger value="painting" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Paintbrush className="w-4 h-4" /> Painting</TabsTrigger>
             <TabsTrigger value="laser" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Zap className="w-4 h-4" /> Laser</TabsTrigger>
             <TabsTrigger value="cnc" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Router className="w-4 h-4" /> CNC</TabsTrigger>
             <TabsTrigger value="metal" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Wrench className="w-4 h-4" /> Metal Fab</TabsTrigger>
             <TabsTrigger value="channel_letter" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Wrench className="w-4 h-4" /> Channel & Dimensional</TabsTrigger>
             <TabsTrigger value="concrete_masonry_poles" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Anchor className="w-4 h-4" /> Concrete | Masonry | Poles</TabsTrigger>
+            <TabsTrigger value="sign_maintenance" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><ClipboardCheck className="w-4 h-4" /> Sign Maintenance</TabsTrigger>
           </TabsList>
 
           <Card className="bg-white border-0 shadow-sm">
@@ -474,6 +476,7 @@ export default function FormulaViewer() {
               <TabsContent value="metal" className="mt-0"><MetalFormulas settings={settings} /></TabsContent>
               <TabsContent value="channel_letter" className="mt-0"><ChannelLetterInstallFormulas settings={settings} /></TabsContent>
               <TabsContent value="concrete_masonry_poles" className="mt-0"><ConcreteMasonryPolesFormulas settings={settings} /></TabsContent>
+              <TabsContent value="sign_maintenance" className="mt-0"><SignMaintenanceFormulas settings={settings} /></TabsContent>
             </CardContent>
           </Card>
         </Tabs>
