@@ -1,36 +1,44 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { MaintenanceActionRate, Settings as SettingsEntity, User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Wrench, Save, CheckCircle2, DollarSign, Ruler } from "lucide-react";
+import { Wrench, Save, CheckCircle2, DollarSign, Ruler, Gauge, Building2, AlertTriangle } from "lucide-react";
 import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
 import { useToast } from "@/components/ui/use-toast";
-import { SIGN_TYPES, ACTIONS, ACTION_GROUPS, ACTIONS_FOR_SIGN_TYPE, LETTER_SIZES, CABINET_SIZES, sizeAxisFor } from "@/components/signMaintenance/constants";
+import { SIGN_TYPES, ACTIONS, ACTIONS_FOR_SIGN_TYPE, sizeAxisFor } from "@/components/signMaintenance/constants";
+import { DEFAULT_RATES, DEFAULT_MIN_HOURS, SIZE_FIELD } from "@/components/signMaintenance/defaults";
+import RatesBySignTypeTab from "@/components/signMaintenance/RatesBySignTypeTab";
+import MinimumsTab, { minimumSettingKey } from "@/components/signMaintenance/MinimumsTab";
+import TravelTab from "@/components/signMaintenance/TravelTab";
+import SiteConditionsTab from "@/components/signMaintenance/SiteConditionsTab";
+import { maintenanceTravelDefs, maintenanceSiteConditionDefs } from "@/components/signMaintenance/maintenanceTravelSiteDefs";
+import { refreshFuelPrice } from "@/functions/refreshFuelPrice";
 
-// Pricing & Labor (hourly rates) — stored in the global Settings entity, like other modules.
-const GLOBAL_SETTINGS = [
-  { name: "maintenance_crew_lead_rate", category: "maintenance_pricing", label: "Crew Lead Hourly Rate",     suffix: "$/hr", default: "75" },
-  { name: "maintenance_tech_rate",      category: "maintenance_pricing", label: "Service Tech Hourly Rate",   suffix: "$/hr", default: "65" },
-  { name: "maintenance_helper_rate",    category: "maintenance_pricing", label: "Helper Hourly Rate",         suffix: "$/hr", default: "35" },
-  { name: "maintenance_travel_labor_rate", category: "maintenance_pricing", label: "Travel Labor Rate",      suffix: "$/hr", default: "45" },
+// Pricing & Labor (hourly rates) — global settings used across the module.
+const GLOBAL_LABOR_SETTINGS = [
+  { name: "maintenance_crew_lead_rate",     category: "maintenance_pricing", label: "Crew Lead Hourly Rate",   suffix: "$/hr", default: "75" },
+  { name: "maintenance_tech_rate",          category: "maintenance_pricing", label: "Service Tech Hourly Rate", suffix: "$/hr", default: "65" },
+  { name: "maintenance_helper_rate",        category: "maintenance_pricing", label: "Helper Hourly Rate",       suffix: "$/hr", default: "35" },
 ];
 
-const sizeKeyToField = {
-  // Letter sizes
-  extra_small: "base_minutes_xs",
-  small: "base_minutes_s",
-  medium: "base_minutes_m",
-  large: "base_minutes_l",
-  extra_large: "base_minutes_xl",
-  extra_extra_large: "base_minutes_xxl",
-  // Cabinet sizes
-  cab_small: "base_minutes_cab_s",
-  cab_medium: "base_minutes_cab_m",
-  cab_large: "base_minutes_cab_l",
-  cab_extra_large: "base_minutes_cab_xl",
+// Build the prefilled value for one (sign_type × action) action rate row from defaults.
+const buildDefaultRateRow = (signTypeId, actionId) => {
+  const tableForSign = DEFAULT_RATES[signTypeId] || {};
+  const def = tableForSign[actionId];
+  const isCabinet = sizeAxisFor(signTypeId) === "cabinet";
+  const base = {
+    sign_type: signTypeId,
+    action: actionId,
+    rate_basis: isCabinet ? "per_cabinet" : "per_letter",
+    is_enabled: true,
+  };
+  if (!def) return base;
+  base.rate_basis = def.basis;
+  Object.assign(base, def.row);
+  return base;
 };
 
 export default function SignMaintenanceSettings() {
@@ -40,9 +48,24 @@ export default function SignMaintenanceSettings() {
   const [rates, setRates] = useState([]); // MaintenanceActionRate[]
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [refreshingFuel, setRefreshingFuel] = useState(false);
   const { toast } = useToast();
 
-  const load = async () => {
+  // All definitions whose defaults we want to seed into the Settings entity
+  const allGlobalDefs = useMemo(() => [
+    ...GLOBAL_LABOR_SETTINGS,
+    ...SIGN_TYPES.map(st => ({
+      name: minimumSettingKey(st.id),
+      category: "maintenance_minimums",
+      label: `${st.label} — Minimum Hours`,
+      suffix: "hrs",
+      default: String(DEFAULT_MIN_HOURS[st.id] ?? 2),
+    })),
+    ...maintenanceTravelDefs,
+    ...maintenanceSiteConditionDefs,
+  ], []);
+
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const [dbSettings, dbRates, me] = await Promise.all([
@@ -55,54 +78,92 @@ export default function SignMaintenanceSettings() {
       const settingsMap = {};
       dbSettings.forEach(s => { settingsMap[s.setting_name] = s.setting_value; });
       const next = {};
-      GLOBAL_SETTINGS.forEach(def => {
+      allGlobalDefs.forEach(def => {
         next[def.name] = settingsMap[def.name] !== undefined ? settingsMap[def.name] : def.default;
       });
       setGlobalSettings(next);
-      setRates(dbRates || []);
+
+      // Seed missing MaintenanceActionRate rows from DEFAULT_RATES so the user always
+      // sees a fully prefilled grid even on a brand new app.
+      const haveKey = new Set((dbRates || []).map(r => `${r.sign_type}|${r.action}`));
+      const seeded = [...(dbRates || [])];
+      SIGN_TYPES.forEach(st => {
+        const applicable = ACTIONS_FOR_SIGN_TYPE[st.id] || [];
+        applicable.forEach(actionId => {
+          if (!haveKey.has(`${st.id}|${actionId}`)) {
+            seeded.push(buildDefaultRateRow(st.id, actionId));
+          }
+        });
+      });
+      setRates(seeded);
     } catch (e) { console.error(e); }
     setLoading(false);
-  };
+  }, [allGlobalDefs]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
-  // Build a lookup so we can find an existing MaintenanceActionRate quickly
   const rateMap = useMemo(() => {
     const map = new Map();
     rates.forEach(r => map.set(`${r.sign_type}|${r.action}`, r));
     return map;
   }, [rates]);
 
-  const updateRateLocal = (signType, action, patch) => {
-    const key = `${signType}|${action}`;
+  const onChangeRate = (signTypeId, actionId, patch) => {
     setRates(prev => {
-      const idx = prev.findIndex(r => r.sign_type === signType && r.action === action);
+      const idx = prev.findIndex(r => r.sign_type === signTypeId && r.action === actionId);
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = { ...next[idx], ...patch };
         return next;
       }
-      return [...prev, { sign_type: signType, action, rate_basis: sizeAxisFor(signType) === "cabinet" ? "per_cabinet" : "per_letter", is_enabled: true, ...patch }];
+      return [...prev, { ...buildDefaultRateRow(signTypeId, actionId), ...patch }];
     });
+  };
+
+  const handleRefreshFuel = async () => {
+    setRefreshingFuel(true);
+    try {
+      const res = await refreshFuelPrice({});
+      const gas = res?.data?.gasoline_price_per_gallon;
+      const diesel = res?.data?.diesel_price_per_gallon;
+      if (gas && diesel) {
+        setGlobalSettings(prev => ({
+          ...prev,
+          maintenance_gasoline_price_per_gallon: gas.toFixed(3),
+          maintenance_diesel_price_per_gallon: diesel.toFixed(3),
+        }));
+        toast({ duration: 2000, description: `Fuel updated — Gas $${gas.toFixed(3)} · Diesel $${diesel.toFixed(3)}` });
+      } else {
+        toast({ variant: "destructive", description: "Could not refresh fuel prices" });
+      }
+    } catch (e) {
+      toast({ variant: "destructive", description: "Refresh failed: " + e.message });
+    } finally { setRefreshingFuel(false); }
   };
 
   const saveAll = async () => {
     if (saving) return;
     setSaving(true);
     try {
-      // 1) Global settings (hourly rates)
+      // 1) Global settings
       const dbSettings = await SettingsEntity.list();
       const existingMap = new Map(dbSettings.map(s => [s.setting_name, s]));
       const ops = [];
-      for (const def of GLOBAL_SETTINGS) {
+      for (const def of allGlobalDefs) {
         const valueToSave = String(globalSettings[def.name] ?? def.default);
         const existing = existingMap.get(def.name);
-        const data = { setting_name: def.name, setting_value: valueToSave, setting_type: "number", category: def.category, description: def.label };
+        const data = {
+          setting_name: def.name,
+          setting_value: valueToSave,
+          setting_type: def.type || "number",
+          category: def.category,
+          description: def.description || def.label,
+        };
         if (existing) {
           if (existing.setting_value !== valueToSave) ops.push(SettingsEntity.update(existing.id, data));
         } else ops.push(SettingsEntity.create(data));
       }
-      // 2) MaintenanceActionRate rows — upsert each one we touched
+      // 2) MaintenanceActionRate rows — upsert all (seeded + edited)
       for (const r of rates) {
         if (r.id) ops.push(MaintenanceActionRate.update(r.id, r));
         else ops.push(MaintenanceActionRate.create(r));
@@ -129,92 +190,103 @@ export default function SignMaintenanceSettings() {
     );
   }
 
+  const TAB_META = [
+    { key: "pricing",   title: "Pricing & Labor", Icon: DollarSign },
+    { key: "rates",     title: "Action Rates",    Icon: Ruler },
+    { key: "minimums",  title: "Minimum Rates",   Icon: Gauge },
+    { key: "travel",    title: "Travel",          Icon: Building2 },
+    { key: "site",      title: "Site Conditions", Icon: AlertTriangle },
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <div className="max-w-7xl mx-auto px-6 md:px-8 py-10 pb-32">
-        <div className="mb-8 flex items-start justify-between gap-6 flex-wrap">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-700 to-cyan-900 flex items-center justify-center shadow-lg">
-              <Wrench className="w-7 h-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Sign Maintenance Settings</h1>
-              <p className="text-sm text-slate-500 mt-1">Per (sign-type × action) minutes and global hourly rates.</p>
-            </div>
+        <div className="mb-8">
+          <div className="flex items-center gap-2 text-xs text-slate-500 mb-3">
+            <span>Sign Maintenance</span>
+            <span className="text-slate-300">/</span>
+            <span className="text-slate-700 font-medium">Settings</span>
           </div>
-          <Button onClick={saveAll} disabled={saving || isLocked} className="bg-slate-900 hover:bg-slate-800 text-white px-5 h-11 rounded-xl">
-            {saving ? "Saving…" : <><Save className="w-4 h-4 mr-2" /> Save Settings</>}
-          </Button>
+          <div className="flex items-start justify-between gap-6 flex-wrap">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-700 to-cyan-900 flex items-center justify-center shadow-lg shadow-cyan-900/10">
+                <Wrench className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Sign Maintenance Settings</h1>
+                <p className="text-sm text-slate-500 mt-1">Fine-tune action rates, minimums, multipliers, and travel costs used by the maintenance estimator.</p>
+              </div>
+            </div>
+            <Button onClick={saveAll} disabled={saving || isLocked} className="bg-slate-900 hover:bg-slate-800 text-white px-5 h-11 rounded-xl shadow-sm">
+              {saving ? "Saving…" : <><Save className="w-4 h-4 mr-2" /> Save Settings</>}
+            </Button>
+          </div>
         </div>
 
         <SettingsAuthWrapper correctPassword="Cinci2467" onUnlock={() => setIsLocked(false)} user={user}>
-          <Tabs defaultValue="rates" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6 h-auto p-1 max-w-md">
-              <TabsTrigger value="rates" className="py-2"><Ruler className="w-4 h-4 mr-2" />Action Rates</TabsTrigger>
-              <TabsTrigger value="pricing" className="py-2"><DollarSign className="w-4 h-4 mr-2" />Pricing & Labor</TabsTrigger>
+          <Tabs defaultValue="pricing" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 mb-6 h-auto p-1">
+              {TAB_META.map(({ key, title, Icon }) => (
+                <TabsTrigger key={key} value={key} className="flex items-center gap-2 py-2.5 text-xs">
+                  <Icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{title}</span>
+                </TabsTrigger>
+              ))}
             </TabsList>
-
-            <TabsContent value="rates" className="space-y-4">
-              <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl overflow-hidden">
-                <CardHeader className="pb-4 border-b border-slate-100">
-                  <CardTitle className="text-base font-semibold">Action Rates by Sign Type</CardTitle>
-                  <CardDescription className="text-xs text-slate-500">
-                    Pick a sign type. For each applicable action, set base minutes per size. The Service Items tab will use these to auto-fill labor when an action is added.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <Tabs defaultValue={SIGN_TYPES[0].id} className="w-full" orientation="vertical">
-                    <div className="grid lg:grid-cols-[220px_1fr] gap-6">
-                      <TabsList className="flex lg:flex-col h-auto bg-slate-50 p-2 gap-1 rounded-xl">
-                        {SIGN_TYPES.map(st => (
-                          <TabsTrigger key={st.id} value={st.id} className="w-full justify-start py-2 px-3 text-xs">{st.label}</TabsTrigger>
-                        ))}
-                      </TabsList>
-                      <div>
-                        {SIGN_TYPES.map(st => (
-                          <TabsContent key={st.id} value={st.id} className="m-0">
-                            <SignTypeRateGrid
-                              signType={st}
-                              rateMap={rateMap}
-                              isLocked={isLocked}
-                              onChange={updateRateLocal}
-                            />
-                          </TabsContent>
-                        ))}
-                      </div>
-                    </div>
-                  </Tabs>
-                </CardContent>
-              </Card>
-            </TabsContent>
 
             <TabsContent value="pricing" className="space-y-4">
               <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl overflow-hidden">
                 <CardHeader className="pb-4 border-b border-slate-100">
-                  <CardTitle className="text-base font-semibold">Pricing & Labor</CardTitle>
-                  <CardDescription className="text-xs text-slate-500">Hourly rates applied to all maintenance estimates.</CardDescription>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center"><DollarSign className="w-5 h-5 text-slate-700" /></div>
+                    <div>
+                      <CardTitle className="text-base font-semibold text-slate-900 tracking-tight">Pricing & Labor</CardTitle>
+                      <CardDescription className="text-xs text-slate-500 mt-0.5">Hourly rates applied to all maintenance estimates.</CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="pt-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {GLOBAL_SETTINGS.map(def => (
+                <CardContent className="pt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {GLOBAL_LABOR_SETTINGS.map(def => (
                     <div key={def.name}>
                       <div className="flex items-baseline justify-between mb-1.5">
                         <Label htmlFor={def.name} className="text-sm font-medium text-slate-800">{def.label}</Label>
                         <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">{def.suffix}</span>
                       </div>
-                      <Input
-                        id={def.name}
-                        type="number"
-                        step="0.25"
+                      <Input id={def.name} type="number" step="0.25" min="0"
                         value={globalSettings[def.name] ?? ""}
                         onChange={(e) => setGlobalSettings(prev => ({ ...prev, [def.name]: e.target.value }))}
                         disabled={isLocked}
-                        className="h-10 bg-white text-sm tabular-nums font-medium"
-                        min="0"
-                      />
+                        className="h-10 bg-white text-sm tabular-nums font-medium" />
                     </div>
                   ))}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="rates" className="space-y-4">
+              <RatesBySignTypeTab rateMap={rateMap} isLocked={isLocked} onChangeRate={onChangeRate} />
+            </TabsContent>
+
+            <TabsContent value="minimums" className="space-y-4">
+              <MinimumsTab globalSettings={globalSettings} setGlobalSettings={setGlobalSettings} isLocked={isLocked} />
+            </TabsContent>
+
+            <TabsContent value="travel" className="space-y-4">
+              <TravelTab
+                globalSettings={globalSettings}
+                setGlobalSettings={setGlobalSettings}
+                isLocked={isLocked}
+                onRefreshFuel={handleRefreshFuel}
+                refreshingFuel={refreshingFuel}
+              />
+            </TabsContent>
+
+            <TabsContent value="site" className="space-y-4">
+              <SiteConditionsTab
+                globalSettings={globalSettings}
+                setGlobalSettings={setGlobalSettings}
+                isLocked={isLocked}
+              />
             </TabsContent>
           </Tabs>
         </SettingsAuthWrapper>
@@ -223,71 +295,13 @@ export default function SignMaintenanceSettings() {
       {!isLocked && (
         <div className="fixed bottom-0 left-0 right-0 lg:left-[var(--sidebar-width,16rem)] bg-white/80 backdrop-blur-md border-t border-slate-200 px-6 py-3 z-40">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-            <div className="text-xs text-slate-500">Changes are saved manually.</div>
+            <div className="text-xs text-slate-500">Changes are saved manually — click save when you're done.</div>
             <Button onClick={saveAll} disabled={saving} className="bg-slate-900 hover:bg-slate-800 text-white h-10 px-5 rounded-xl">
               {saving ? "Saving…" : <><Save className="w-4 h-4 mr-2" /> Save Settings</>}
             </Button>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// Grid: for one sign type, render all applicable actions × all relevant sizes.
-function SignTypeRateGrid({ signType, rateMap, isLocked, onChange }) {
-  const isCabinet = sizeAxisFor(signType.id) === "cabinet";
-  const sizes = isCabinet ? CABINET_SIZES : LETTER_SIZES;
-  const applicableActionIds = ACTIONS_FOR_SIGN_TYPE[signType.id] || [];
-  const grouped = ACTION_GROUPS.map(group => ({
-    group,
-    actions: ACTIONS.filter(a => a.group === group && applicableActionIds.includes(a.id)),
-  })).filter(g => g.actions.length > 0);
-
-  return (
-    <div className="space-y-6">
-      <div className="text-xs text-slate-500 italic">
-        {signType.description}. Minutes are per {isCabinet ? "cabinet" : "letter"} unless an action says otherwise.
-      </div>
-
-      {grouped.map(g => (
-        <div key={g.group}>
-          <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">{g.group}</div>
-          <div className="space-y-2">
-            {g.actions.map(a => {
-              const rate = rateMap.get(`${signType.id}|${a.id}`) || {};
-              return (
-                <div key={a.id} className="border border-slate-200 rounded-xl p-3 bg-slate-50/40">
-                  <div className="flex items-center justify-between mb-2 gap-3">
-                    <div className="text-sm font-semibold text-slate-900">{a.label}</div>
-                    <div className="text-[10px] text-slate-500">min / {isCabinet ? "cabinet" : "letter"}</div>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-                    {sizes.map(sz => {
-                      const field = sizeKeyToField[sz.id];
-                      const val = rate[field] ?? 0;
-                      return (
-                        <div key={sz.id}>
-                          <Label className="text-[10px] text-slate-500">{sz.label}</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={val}
-                            disabled={isLocked}
-                            onChange={(e) => onChange(signType.id, a.id, { [field]: parseFloat(e.target.value) || 0 })}
-                            className="h-9 text-sm tabular-nums"
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
