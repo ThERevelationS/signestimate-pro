@@ -71,6 +71,10 @@ import NewFoundationEstimate from './pages/NewFoundationEstimate';
 import NewLaserEstimate from './pages/NewLaserEstimate';
 import NewMetalEstimate from './pages/NewMetalEstimate';
 import NewPaintEstimate from './pages/NewPaintEstimate';
+import NewSignMaintenance from './pages/NewSignMaintenance';
+import SignMaintenanceProjects from './pages/SignMaintenanceProjects';
+import SignMaintenanceSettings from './pages/SignMaintenanceSettings';
+import MaintenanceInventory from './pages/MaintenanceInventory';
 import PaintProjects from './pages/PaintProjects';
 import PaintSettings from './pages/PaintSettings';
 import UserManagement from './pages/UserManagement';
@@ -106,6 +110,10 @@ export const PAGES = {
     "NewLaserEstimate": NewLaserEstimate,
     "NewMetalEstimate": NewMetalEstimate,
     "NewPaintEstimate": NewPaintEstimate,
+    "NewSignMaintenance": NewSignMaintenance,
+    "SignMaintenanceProjects": SignMaintenanceProjects,
+    "SignMaintenanceSettings": SignMaintenanceSettings,
+    "MaintenanceInventory": MaintenanceInventory,
     "PaintProjects": PaintProjects,
     "PaintSettings": PaintSettings,
     "UserManagement": UserManagement,

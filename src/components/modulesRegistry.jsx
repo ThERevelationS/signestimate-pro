@@ -1,7 +1,7 @@
 // Single source of truth for all estimator modules.
 // Used by the Layout sidebar, the Dashboard landing page, and the
 // User Management permissions UI so names, icons, and links stay in sync.
-import { Paintbrush, Zap, Router, Wrench, Anchor } from "lucide-react";
+import { Paintbrush, Zap, Router, Wrench, Anchor, ClipboardCheck } from "lucide-react";
 
 export const MODULES = [
   {
@@ -29,6 +29,19 @@ export const MODULES = [
     projectsPage: "FoundationProjects",
     settingsPage: "FoundationSettings",
     inventoryPage: "FoundationInventory",
+  },
+  {
+    key: "sign_maintenance",
+    name: "Sign Maintenance",
+    shortName: "Sign Maintenance",
+    description: "For service calls — cleaning, repaints, LED retrofits, electrical repairs",
+    icon: ClipboardCheck,
+    color: "cyan",
+    group: "top",
+    newEstimatePage: "NewSignMaintenance",
+    projectsPage: "SignMaintenanceProjects",
+    settingsPage: "SignMaintenanceSettings",
+    inventoryPage: "MaintenanceInventory",
   },
   {
     key: "painting",

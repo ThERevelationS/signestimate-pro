@@ -1,5 +1,5 @@
 {
-  "name": "ModuleStatus",
+  "name": "DefaultModuleSettings",
   "type": "object",
   "properties": {
     "module_name": {
@@ -11,6 +11,7 @@
         "metal_fabrication",
         "channel_letter_installation",
         "foundation",
+        "brick_stone",
         "sign_maintenance"
       ],
       "description": "The unique identifier for the module."
@@ -18,10 +19,11 @@
     "is_enabled": {
       "type": "boolean",
       "default": true,
-      "description": "Whether the module is currently active."
+      "description": "The default enabled state for new users."
     }
   },
   "required": [
-    "module_name"
+    "module_name",
+    "is_enabled"
   ]
 }

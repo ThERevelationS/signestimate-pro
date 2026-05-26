@@ -30,7 +30,8 @@ import {
   FileText,
   Shield,
   Factory,
-  Boxes
+  Boxes,
+  ClipboardCheck
 } from 'lucide-react';
 
 export default function Layout({ children, currentPageName }) {
@@ -138,6 +139,18 @@ export default function Layout({ children, currentPageName }) {
       color: 'text-amber-600',
       bgColor: 'bg-amber-50',
       hoverColor: 'hover:bg-amber-100'
+    },
+    {
+      id: 'sign_maintenance',
+      name: 'Sign Maintenance',
+      icon: ClipboardCheck,
+      projectsPage: 'SignMaintenanceProjects',
+      newEstimatePage: 'NewSignMaintenance',
+      settingsPage: 'SignMaintenanceSettings',
+      inventoryPage: 'MaintenanceInventory',
+      color: 'text-cyan-600',
+      bgColor: 'bg-cyan-50',
+      hoverColor: 'hover:bg-cyan-100'
     }
   ];
 

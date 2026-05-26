@@ -10,6 +10,7 @@ module.exports = {
     "bg-orange-100", "text-orange-600",
     "bg-amber-100", "text-amber-600",
     "bg-red-100", "text-red-600",
+    "bg-cyan-100", "text-cyan-600",
   ],
   theme: {
   	extend: {
