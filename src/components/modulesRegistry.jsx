@@ -1,0 +1,87 @@
+// Single source of truth for all estimator modules.
+// Used by the Layout sidebar, the Dashboard landing page, and the
+// User Management permissions UI so names, icons, and links stay in sync.
+import { Paintbrush, Zap, Router, Wrench, Anchor } from "lucide-react";
+
+export const MODULES = [
+  {
+    key: "channel_letter_installation",
+    name: "Channel & Dimensional Letters | Lobby Signs",
+    shortName: "Channel & Dimensional Letters",
+    description: "For raceway & mounted letters, dimensional letters, and lobby signs",
+    icon: Wrench,
+    color: "purple",
+    group: "top",
+    newEstimatePage: "NewChannelLetterInstallation",
+    projectsPage: "ChannelLetterInstallationProjects",
+    settingsPage: "ChannelLetterInstallationSettings",
+    inventoryPage: "ChannelLetterInstallInventory",
+  },
+  {
+    key: "foundation",
+    name: "Concrete | Masonry | Poles",
+    shortName: "Concrete | Masonry | Poles",
+    description: "For sign foundations, concrete, masonry & poles",
+    icon: Anchor,
+    color: "amber",
+    group: "top",
+    newEstimatePage: "NewFoundationEstimate",
+    projectsPage: "FoundationProjects",
+    settingsPage: "FoundationSettings",
+    inventoryPage: "FoundationInventory",
+  },
+  {
+    key: "painting",
+    name: "Paint Estimator",
+    shortName: "Paint Estimator",
+    description: "For dimensional letters & panels",
+    icon: Paintbrush,
+    color: "blue",
+    group: "fab",
+    newEstimatePage: "NewPaintEstimate",
+    projectsPage: "PaintProjects",
+    settingsPage: "PaintSettings",
+  },
+  {
+    key: "laser",
+    name: "Laser Cutting & Engraving",
+    shortName: "Laser Cutting & Engraving",
+    description: "For cutting & engraving",
+    icon: Zap,
+    color: "red",
+    group: "fab",
+    newEstimatePage: "NewLaserEstimate",
+    projectsPage: "LaserProjects",
+    settingsPage: "LaserSettings",
+  },
+  {
+    key: "cnc",
+    name: "CNC Routing",
+    shortName: "CNC Routing",
+    description: "For routing & carving",
+    icon: Router,
+    color: "green",
+    group: "fab",
+    newEstimatePage: "NewCNCEstimate",
+    projectsPage: "CNCProjects",
+    settingsPage: "CNCSettings",
+  },
+  {
+    key: "metal_fabrication",
+    name: "Metal Fabrication",
+    shortName: "Metal Fabrication",
+    description: "For aluminum & steel signs",
+    icon: Wrench,
+    color: "orange",
+    group: "fab",
+    newEstimatePage: "NewMetalEstimate",
+    projectsPage: "MetalProjects",
+    settingsPage: "MetalSettings",
+    inventoryPage: "Inventory",
+  },
+];
+
+export const MODULES_BY_KEY = MODULES.reduce((acc, m) => {
+  acc[m.key] = m;
+  return acc;
+}, {});

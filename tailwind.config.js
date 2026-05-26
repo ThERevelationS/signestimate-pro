@@ -2,6 +2,15 @@
 module.exports = {
     darkMode: ["class"],
     content: ["./index.html", "./src/**/*.{ts,tsx,js,jsx}"],
+  safelist: [
+    // Module card colors driven by data in components/modulesRegistry.js
+    "bg-blue-100", "text-blue-600",
+    "bg-purple-100", "text-purple-600",
+    "bg-green-100", "text-green-600",
+    "bg-orange-100", "text-orange-600",
+    "bg-amber-100", "text-amber-600",
+    "bg-red-100", "text-red-600",
+  ],
   theme: {
   	extend: {
   		borderRadius: {

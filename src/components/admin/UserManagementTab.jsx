@@ -6,18 +6,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Save, Server, UserPlus, Paintbrush, Zap, Router, Wrench, Anchor } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Users, Save, Server, UserPlus, Lock, Unlock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { MODULES, MODULES_BY_KEY } from '@/components/modulesRegistry';
 
-// Keep in sync with Layout.jsx sidebar.
-const moduleDetails = {
-  channel_letter_installation: { label: "Channel & Dimensional Letters | Lobby Signs", icon: Wrench, group: "top" },
-  foundation: { label: "Concrete | Masonry | Poles", icon: Anchor, group: "top" },
-  painting: { label: "Paint Estimator", icon: Paintbrush, group: "fab" },
-  laser: { label: "Laser Cutting & Engraving", icon: Zap, group: "fab" },
-  cnc: { label: "CNC Routing", icon: Router, group: "fab" },
-  metal_fabrication: { label: "Metal Fabrication", icon: Wrench, group: "fab" },
-};
+// Keep in sync with Layout.jsx sidebar via the shared registry.
+const moduleDetails = MODULES.reduce((acc, m) => {
+  acc[m.key] = { label: m.shortName, icon: m.icon };
+  return acc;
+}, {});
 
 export default function UserManagementTab() {
   const [users, setUsers] = useState([]);
@@ -25,6 +23,9 @@ export default function UserManagementTab() {
   const [defaultStatuses, setDefaultStatuses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  // Per-user, per-module lock state. Locked overrides are immune to global cascade.
+  // Shape: { [userId]: { [moduleKey]: true } }
+  const [locks, setLocks] = useState({});
 
   useEffect(() => {
     const loadData = async () => {
@@ -64,12 +65,28 @@ export default function UserManagementTab() {
     }));
   };
 
-  const handleGlobalToggle = (id, currentStatus) => {
-    setGlobalStatuses(cur => cur.map(s => (s.id === id ? { ...s, is_enabled: !currentStatus } : s)));
+  // Global toggle cascades to every user (except those with a lock on that module).
+  const handleGlobalToggle = (moduleName, currentStatus) => {
+    const newStatus = !currentStatus;
+    setGlobalStatuses(cur => cur.map(s => (s.module_name === moduleName ? { ...s, is_enabled: newStatus } : s)));
+    setUsers(cur => cur.map(user => {
+      if (locks[user.id]?.[moduleName]) return user; // locked — don't touch
+      const currentPermissions = user.module_permissions || {};
+      return { ...user, module_permissions: { ...currentPermissions, [moduleName]: newStatus } };
+    }));
   };
 
   const handleDefaultToggle = (moduleName, currentStatus) => {
     setDefaultStatuses(cur => cur.map(s => (s.module_name === moduleName ? { ...s, is_enabled: !currentStatus } : s)));
+  };
+
+  const toggleLock = (userId, moduleName) => {
+    setLocks(cur => {
+      const userLocks = { ...(cur[userId] || {}) };
+      if (userLocks[moduleName]) delete userLocks[moduleName];
+      else userLocks[moduleName] = true;
+      return { ...cur, [userId]: userLocks };
+    });
   };
 
   const saveAllChanges = async () => {
@@ -94,16 +111,51 @@ export default function UserManagementTab() {
 
   const getRoleBadgeColor = (role) => role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800';
 
+  // Compact horizontal strip — replaces the old full-size Global Access tab.
+  const renderGlobalAccessStrip = () => (
+    <div className="border border-slate-200 rounded-lg bg-slate-50 px-3 py-2">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Server className="w-4 h-4 text-slate-600" />
+          <span className="text-sm font-semibold text-slate-800">Global Module Access</span>
+        </div>
+        <span className="text-[11px] text-slate-500">Toggling cascades to all unlocked users below.</span>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-1.5">
+        {globalStatuses.map(status => {
+          const details = moduleDetails[status.module_name];
+          if (!details) return null;
+          const Icon = details.icon;
+          return (
+            <div key={status.module_name} className="flex items-center justify-between bg-white border border-slate-200 rounded px-2 py-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Icon className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                <span className="text-[11px] font-medium text-slate-700 truncate">{details.label}</span>
+              </div>
+              <Switch
+                checked={status.is_enabled}
+                onCheckedChange={() => handleGlobalToggle(status.module_name, status.is_enabled)}
+                className="scale-75"
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   const renderUserPermissions = () => (
     <Card className="bg-white border-0 shadow-sm">
       <CardHeader>
         <CardTitle>User Roles & Permissions</CardTitle>
         <CardDescription>Assign roles and manage individual module access for each user.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4">
+        {/* Global Access strip — moved here from its own tab */}
+        {!isLoading && renderGlobalAccessStrip()}
+
         {isLoading ? <p>Loading users...</p> :
           users.map(user => {
-            const globalStatusMap = new Map(globalStatuses.map(s => [s.module_name, s.is_enabled]));
             return (
               <div key={user.id} className="p-4 border rounded-lg space-y-4">
                 <div className="flex items-center justify-between">
@@ -139,15 +191,35 @@ export default function UserManagementTab() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
                     {Object.entries(moduleDetails).map(([key, details]) => {
                       const userOverride = user.module_permissions?.[key];
-                      const isEnabled = userOverride === undefined ? globalStatusMap.get(key) ?? true : userOverride;
+                      const globalStatus = globalStatuses.find(s => s.module_name === key)?.is_enabled ?? true;
+                      const isEnabled = userOverride === undefined ? globalStatus : userOverride;
+                      const isLocked = !!locks[user.id]?.[key];
+                      const Icon = details.icon;
                       return (
-                        <div key={key} className="flex items-center justify-between p-3 bg-slate-50 rounded-md">
+                        <div key={key} className={`flex items-center justify-between p-3 rounded-md border ${isLocked ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-transparent'}`}>
                           <Label htmlFor={`${user.id}-${key}`} className="flex items-center gap-2 text-sm">
-                            <details.icon className="w-4 h-4" />
-                            {details.label.replace(' Module', '')}
+                            <Icon className="w-4 h-4" />
+                            {details.label}
                           </Label>
                           <div className="flex items-center gap-2">
                             {userOverride !== undefined && <Badge variant="outline" className="text-xs">Overridden</Badge>}
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleLock(user.id, key)}
+                                    className={`p-1 rounded transition-colors ${isLocked ? 'text-amber-600 hover:bg-amber-100' : 'text-slate-400 hover:bg-slate-200 hover:text-slate-600'}`}
+                                    aria-label={isLocked ? "Unlock — global toggles can change this" : "Lock — protect from global toggles"}
+                                  >
+                                    {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs">
+                                  {isLocked ? "Locked — Global Access toggles won't change this" : "Click to lock — protects from Global Access cascade"}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                             <Switch id={`${user.id}-${key}`} checked={isEnabled} onCheckedChange={() => handleUserPermissionToggle(user.id, key)} />
                           </div>
                         </div>
@@ -155,31 +227,6 @@ export default function UserManagementTab() {
                     })}
                   </div>
                 </div>
-              </div>
-            );
-          })
-        }
-      </CardContent>
-    </Card>
-  );
-
-  const renderGlobalAccess = () => (
-    <Card className="bg-white border-0 shadow-sm">
-      <CardHeader>
-        <CardTitle>Global Module Access</CardTitle>
-        <CardDescription>Enable or disable modules for all users. Individual user overrides still apply.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {isLoading ? <p>Loading modules...</p> :
-          globalStatuses.map(status => {
-            const details = moduleDetails[status.module_name];
-            return (
-              <div key={status.module_name} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <details.icon className="w-6 h-6 text-slate-600" />
-                  <Label className="text-lg font-medium">{details.label}</Label>
-                </div>
-                <Switch checked={status.is_enabled} onCheckedChange={() => handleGlobalToggle(status.id, status.is_enabled)} />
               </div>
             );
           })
@@ -198,10 +245,12 @@ export default function UserManagementTab() {
         {isLoading ? <p>Loading defaults...</p> :
           defaultStatuses.map(status => {
             const details = moduleDetails[status.module_name];
+            if (!details) return null;
+            const Icon = details.icon;
             return (
               <div key={status.module_name} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex items-center gap-3">
-                  <details.icon className="w-6 h-6 text-slate-600" />
+                  <Icon className="w-6 h-6 text-slate-600" />
                   <Label className="text-lg font-medium">{details.label}</Label>
                 </div>
                 <Switch checked={status.is_enabled} onCheckedChange={() => handleDefaultToggle(status.module_name, status.is_enabled)} />
@@ -221,13 +270,11 @@ export default function UserManagementTab() {
         </Button>
       </div>
       <Tabs defaultValue="permissions" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="permissions"><Users className="w-4 h-4 mr-2" />User Permissions</TabsTrigger>
-          <TabsTrigger value="global"><Server className="w-4 h-4 mr-2" />Global Access</TabsTrigger>
           <TabsTrigger value="default"><UserPlus className="w-4 h-4 mr-2" />New User Defaults</TabsTrigger>
         </TabsList>
         <TabsContent value="permissions" className="mt-6">{renderUserPermissions()}</TabsContent>
-        <TabsContent value="global" className="mt-6">{renderGlobalAccess()}</TabsContent>
         <TabsContent value="default" className="mt-6">{renderDefaultAccess()}</TabsContent>
       </Tabs>
     </div>

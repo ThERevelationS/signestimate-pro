@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Paintbrush, ArrowRight, Zap, Router, Wrench, ServerOff, Anchor, Server } from "lucide-react";
+import { ArrowRight, ServerOff } from "lucide-react";
 import { ModuleStatus, User } from "@/entities/all";
+import { MODULES } from "@/components/modulesRegistry";
 
 export default function Dashboard() {
   const [moduleStatuses, setModuleStatuses] = useState({});
@@ -42,14 +43,15 @@ export default function Dashboard() {
     return moduleStatuses[moduleName] !== undefined ? moduleStatuses[moduleName] : true;
   };
 
-  const modules = [
-    { name: "painting", title: "Painting Estimator", description: "For dimensional letters & panels", icon: Paintbrush, color: "blue", page: "NewPaintEstimate" },
-    { name: "laser", title: "Laser Cutting & Engraving", description: "For cutting & engraving", icon: Zap, color: "purple", page: "NewLaserEstimate" },
-    { name: "cnc", title: "CNC Router Estimator", description: "For routing & carving", icon: Router, color: "green", page: "NewCNCEstimate" },
-    { name: "metal_fabrication", title: "Metal Fabrication Estimator", description: "For aluminum & steel signs", icon: Wrench, color: "orange", page: "NewMetalEstimate" },
-    { name: "channel_letter_installation", title: "Channel Letter Install", description: "For raceway & mounted letters", icon: Wrench, color: "purple", page: "NewChannelLetterInstallation" },
-    { name: "foundation", title: "Concrete | Masonry | Poles", description: "For sign foundations, concrete, masonry & poles", icon: Anchor, color: "amber", page: "NewFoundationEstimate" }
-  ];
+  // Use the same module list as the sidebar (single source of truth).
+  const modules = MODULES.map(m => ({
+    name: m.key,
+    title: m.name,
+    description: m.description,
+    icon: m.icon,
+    color: m.color,
+    page: m.newEstimatePage,
+  }));
 
   const renderModuleCard = (module) => {
     const isEnabled = hasPermission(module.name);
