@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { MaintenanceActionRate, Settings as SettingsEntity, User } from "@/entities/all";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Wrench, Save, CheckCircle2, DollarSign, Ruler, Gauge, Building2, AlertTriangle } from "lucide-react";
 import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
 import { useToast } from "@/components/ui/use-toast";
+import SectionCard, { AnimatedGrid } from "@/components/signMaintenance/SectionCard";
 import { SIGN_TYPES, ACTIONS, ACTIONS_FOR_SIGN_TYPE, sizeAxisFor } from "@/components/signMaintenance/constants";
 import { DEFAULT_RATES, DEFAULT_MIN_HOURS, SIZE_FIELD } from "@/components/signMaintenance/defaults";
 import RatesBySignTypeTab from "@/components/signMaintenance/RatesBySignTypeTab";
@@ -190,18 +191,38 @@ export default function SignMaintenanceSettings() {
     );
   }
 
+  // Each tab gets a unique color so the entire page feels lively yet structured.
   const TAB_META = [
-    { key: "pricing",   title: "Pricing & Labor", Icon: DollarSign },
-    { key: "rates",     title: "Action Rates",    Icon: Ruler },
-    { key: "minimums",  title: "Minimum Rates",   Icon: Gauge },
-    { key: "travel",    title: "Travel",          Icon: Building2 },
-    { key: "site",      title: "Site Conditions", Icon: AlertTriangle },
+    { key: "pricing",   title: "Pricing & Labor", Icon: DollarSign,    color: "emerald", activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-emerald-500 data-[state=active]:to-emerald-700" },
+    { key: "rates",     title: "Action Rates",    Icon: Ruler,         color: "cyan",    activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-cyan-500 data-[state=active]:to-cyan-700" },
+    { key: "minimums",  title: "Minimum Rates",   Icon: Gauge,         color: "violet",  activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-violet-500 data-[state=active]:to-purple-700" },
+    { key: "travel",    title: "Travel",          Icon: Building2,     color: "blue",    activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-blue-700" },
+    { key: "site",      title: "Site Conditions", Icon: AlertTriangle, color: "amber",   activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-amber-500 data-[state=active]:to-orange-600" },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <div className="max-w-7xl mx-auto px-6 md:px-8 py-10 pb-32">
-        <div className="mb-8">
+    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-violet-50 relative overflow-hidden">
+      {/* Decorative animated blobs */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 rounded-full bg-cyan-300/20 blur-3xl"
+        animate={{ y: [0, 20, 0], x: [0, -10, 0] }}
+        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute top-1/3 -left-32 w-96 h-96 rounded-full bg-violet-300/20 blur-3xl"
+        animate={{ y: [0, -25, 0], x: [0, 15, 0] }}
+        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+      />
+
+      <div className="relative max-w-7xl mx-auto px-6 md:px-8 py-10 pb-32">
+        <motion.div
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="mb-8"
+        >
           <div className="flex items-center gap-2 text-xs text-slate-500 mb-3">
             <span>Sign Maintenance</span>
             <span className="text-slate-300">/</span>
@@ -209,25 +230,47 @@ export default function SignMaintenanceSettings() {
           </div>
           <div className="flex items-start justify-between gap-6 flex-wrap">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-700 to-cyan-900 flex items-center justify-center shadow-lg shadow-cyan-900/10">
-                <Wrench className="w-7 h-7 text-white" />
-              </div>
+              <motion.div
+                whileHover={{ scale: 1.05, rotate: -6 }}
+                transition={{ type: "spring", stiffness: 300, damping: 14 }}
+                className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 via-teal-500 to-violet-600 flex items-center justify-center shadow-lg shadow-cyan-500/30 ring-4 ring-white"
+              >
+                <Wrench className="w-7 h-7 text-white drop-shadow" />
+              </motion.div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Sign Maintenance Settings</h1>
-                <p className="text-sm text-slate-500 mt-1">Fine-tune action rates, minimums, multipliers, and travel costs used by the maintenance estimator.</p>
+                <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-cyan-700 via-teal-700 to-violet-700 bg-clip-text text-transparent">
+                  Sign Maintenance Settings
+                </h1>
+                <p className="text-sm text-slate-600 mt-1">Fine-tune action rates, minimums, multipliers, and travel costs used by the maintenance estimator.</p>
               </div>
             </div>
-            <Button onClick={saveAll} disabled={saving || isLocked} className="bg-slate-900 hover:bg-slate-800 text-white px-5 h-11 rounded-xl shadow-sm">
-              {saving ? "Saving…" : <><Save className="w-4 h-4 mr-2" /> Save Settings</>}
-            </Button>
+            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+              <Button
+                onClick={saveAll}
+                disabled={saving || isLocked}
+                className="bg-gradient-to-r from-cyan-600 to-violet-600 hover:from-cyan-700 hover:to-violet-700 text-white px-5 h-11 rounded-xl shadow-lg shadow-cyan-500/20 disabled:opacity-50"
+              >
+                {saving ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving…
+                  </span>
+                ) : (
+                  <><Save className="w-4 h-4 mr-2" /> Save Settings</>
+                )}
+              </Button>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
 
         <SettingsAuthWrapper correctPassword="Cinci2467" onUnlock={() => setIsLocked(false)} user={user}>
           <Tabs defaultValue="pricing" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 mb-6 h-auto p-1">
-              {TAB_META.map(({ key, title, Icon }) => (
-                <TabsTrigger key={key} value={key} className="flex items-center gap-2 py-2.5 text-xs">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 mb-6 h-auto p-1.5 bg-white/70 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-sm">
+              {TAB_META.map(({ key, title, Icon, activeBg }) => (
+                <TabsTrigger
+                  key={key}
+                  value={key}
+                  className={`flex items-center gap-2 py-2.5 text-xs rounded-xl transition-all duration-200 data-[state=active]:text-white data-[state=active]:shadow-md ${activeBg}`}
+                >
                   <Icon className="w-4 h-4" />
                   <span className="hidden sm:inline">{title}</span>
                 </TabsTrigger>
@@ -235,32 +278,23 @@ export default function SignMaintenanceSettings() {
             </TabsList>
 
             <TabsContent value="pricing" className="space-y-4">
-              <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl overflow-hidden">
-                <CardHeader className="pb-4 border-b border-slate-100">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center"><DollarSign className="w-5 h-5 text-slate-700" /></div>
-                    <div>
-                      <CardTitle className="text-base font-semibold text-slate-900 tracking-tight">Pricing & Labor</CardTitle>
-                      <CardDescription className="text-xs text-slate-500 mt-0.5">Hourly rates applied to all maintenance estimates.</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <SectionCard icon={DollarSign} theme="emerald" title="Pricing & Labor" description="Hourly rates applied to all maintenance estimates.">
+                <AnimatedGrid className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {GLOBAL_LABOR_SETTINGS.map(def => (
-                    <div key={def.name}>
+                    <div key={def.name} className="group">
                       <div className="flex items-baseline justify-between mb-1.5">
                         <Label htmlFor={def.name} className="text-sm font-medium text-slate-800">{def.label}</Label>
-                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">{def.suffix}</span>
+                        <span className="text-[10px] uppercase tracking-wider text-emerald-600 font-semibold">{def.suffix}</span>
                       </div>
                       <Input id={def.name} type="number" step="0.25" min="0"
                         value={globalSettings[def.name] ?? ""}
                         onChange={(e) => setGlobalSettings(prev => ({ ...prev, [def.name]: e.target.value }))}
                         disabled={isLocked}
-                        className="h-10 bg-white text-sm tabular-nums font-medium" />
+                        className="h-10 bg-white text-sm tabular-nums font-medium border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
                     </div>
                   ))}
-                </CardContent>
-              </Card>
+                </AnimatedGrid>
+              </SectionCard>
             </TabsContent>
 
             <TabsContent value="rates" className="space-y-4">
@@ -292,16 +326,36 @@ export default function SignMaintenanceSettings() {
         </SettingsAuthWrapper>
       </div>
 
-      {!isLocked && (
-        <div className="fixed bottom-0 left-0 right-0 lg:left-[var(--sidebar-width,16rem)] bg-white/80 backdrop-blur-md border-t border-slate-200 px-6 py-3 z-40">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-            <div className="text-xs text-slate-500">Changes are saved manually — click save when you're done.</div>
-            <Button onClick={saveAll} disabled={saving} className="bg-slate-900 hover:bg-slate-800 text-white h-10 px-5 rounded-xl">
-              {saving ? "Saving…" : <><Save className="w-4 h-4 mr-2" /> Save Settings</>}
-            </Button>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {!isLocked && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 24 }}
+            className="fixed bottom-0 left-0 right-0 lg:left-[var(--sidebar-width,16rem)] bg-white/80 backdrop-blur-md border-t border-slate-200 px-6 py-3 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.04)]"
+          >
+            <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+              <div className="text-xs text-slate-500">Changes are saved manually — click save when you're done.</div>
+              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                <Button
+                  onClick={saveAll}
+                  disabled={saving}
+                  className="bg-gradient-to-r from-cyan-600 to-violet-600 hover:from-cyan-700 hover:to-violet-700 text-white h-10 px-5 rounded-xl shadow-lg shadow-cyan-500/20"
+                >
+                  {saving ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving…
+                    </span>
+                  ) : (
+                    <><Save className="w-4 h-4 mr-2" /> Save Settings</>
+                  )}
+                </Button>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
