@@ -1,13 +1,16 @@
-// Master Inventory — Rental / Owned Equipment tab.
+// Master Inventory — Equipment tab.
+//
+// Top-level: Rental | Owned sub-tabs (ownership state).
+// Within each ownership tab: Equipment | Attachments | Sub-Attachments.
 //
 // Merges equipment from two underlying entities:
 //   - FoundationInventory rows with material_type in (excavation_equipment, attachment, sub_attachment)
 //   - ChannelLetterInstallEquipment rows
 //
-// Each row gets cross-estimator visibility toggles (Channel & Dimensional / Concrete-Masonry-Poles / Sign Maintenance).
-// Attachment + sub-attachment dependency tree is foundation-only (global tree, shared across estimators).
-//
-// ownership param: "rented" | "owned" — controls which rows are surfaced and which sub-tabs make sense.
+// Only TOP-LEVEL Equipment items get cross-estimator visibility toggles
+// (Channel & Dimensional / Concrete-Masonry-Poles / Sign Maintenance).
+// Attachments and Sub-Attachments inherit visibility from the Equipment they
+// are linked to — they are not surfaced independently to estimators.
 
 import React, { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -86,10 +89,11 @@ function normalizeRow(row, source) {
   };
 }
 
-export default function MasterEquipmentTab({ ownership = "rented", isAdmin }) {
+export default function MasterEquipmentTab({ isAdmin }) {
   const [foundationRows, setFoundationRows] = useState([]);
   const [channelRows, setChannelRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [ownership, setOwnership] = useState("rented"); // "rented" | "owned"
   const [activeKind, setActiveKind] = useState("equipment");
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);          // normalized row or { kind, _source, raw: {} } for new
@@ -179,17 +183,25 @@ export default function MasterEquipmentTab({ ownership = "rented", isAdmin }) {
 
   return (
     <Card className="bg-white border-0 shadow-sm">
-      <CardHeader className="border-b flex flex-row items-center justify-between gap-3">
+      <CardHeader className="border-b flex flex-row items-center justify-between gap-3 flex-wrap">
         <CardTitle className="flex items-center gap-2">
           <Truck className="w-5 h-5 text-cyan-600" />
-          {ownership === "owned" ? "Owned Equipment" : "Rental Equipment"}
+          Equipment
           <Badge variant="outline" className="ml-2 font-normal">{allNormalized.length} items</Badge>
         </CardTitle>
-        {isAdmin && (
-          <Button size="sm" onClick={openAdd} className="bg-blue-600 hover:bg-blue-700 text-white">
-            <Plus className="w-4 h-4 mr-1" /> Add {activeKind === "equipment" ? "Equipment" : activeKind === "attachment" ? "Attachment" : "Sub-Attachment"}
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          <Tabs value={ownership} onValueChange={setOwnership}>
+            <TabsList>
+              <TabsTrigger value="rented">Rental</TabsTrigger>
+              <TabsTrigger value="owned">Owned</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {isAdmin && (
+            <Button size="sm" onClick={openAdd} className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Plus className="w-4 h-4 mr-1" /> Add {activeKind === "equipment" ? "Equipment" : activeKind === "attachment" ? "Attachment" : "Sub-Attachment"}
+            </Button>
+          )}
+        </div>
       </CardHeader>
 
       <CardContent className="pt-4">
@@ -292,12 +304,15 @@ function EquipmentList({ rows, attachments = [], subAttachments = [], equipment 
             )}
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0 space-y-2">
-            {/* Visibility toggles */}
-            <div className="flex flex-wrap gap-4 pt-1 border-t mt-1">
-              <ToggleRow label="Channel & Dimensional" checked={row.show_in_channel_letters} onChange={(v) => onToggle(row, "show_in_channel_letters", v)} disabled={!isAdmin} />
-              <ToggleRow label="Concrete | Masonry"   checked={row.show_in_foundation}      onChange={(v) => onToggle(row, "show_in_foundation",      v)} disabled={!isAdmin} />
-              <ToggleRow label="Sign Maintenance"     checked={row.show_in_sign_maintenance} onChange={(v) => onToggle(row, "show_in_sign_maintenance", v)} disabled={!isAdmin} />
-            </div>
+            {/* Visibility toggles — only on top-level Equipment.
+                Attachments and Sub-Attachments inherit visibility from their parent Equipment. */}
+            {!isAttachment && !isSubAttachment && (
+              <div className="flex flex-wrap gap-4 pt-1 border-t mt-1">
+                <ToggleRow label="Channel & Dimensional" checked={row.show_in_channel_letters} onChange={(v) => onToggle(row, "show_in_channel_letters", v)} disabled={!isAdmin} />
+                <ToggleRow label="Concrete | Masonry"   checked={row.show_in_foundation}      onChange={(v) => onToggle(row, "show_in_foundation",      v)} disabled={!isAdmin} />
+                <ToggleRow label="Sign Maintenance"     checked={row.show_in_sign_maintenance} onChange={(v) => onToggle(row, "show_in_sign_maintenance", v)} disabled={!isAdmin} />
+              </div>
+            )}
 
             {/* Dependency display */}
             {!isAttachment && !isSubAttachment && row._source === "foundation_equipment" && (
@@ -562,13 +577,16 @@ function EquipmentForm({ normalized, ownership, allFoundationEquipment, allFound
         </Select>
       </div>
 
-      {/* Visibility toggles — appear on ALL equipment regardless of source */}
-      <div className="rounded-lg border bg-slate-50 p-3 space-y-2">
-        <p className="text-xs font-semibold text-slate-700">Show in which estimator(s)?</p>
-        <Toggle label="Channel & Dimensional Letters" checked={form.show_in_channel_letters}  onChange={(v) => set("show_in_channel_letters", v)} />
-        <Toggle label="Concrete | Masonry | Poles"    checked={form.show_in_foundation}        onChange={(v) => set("show_in_foundation", v)} />
-        <Toggle label="Sign Maintenance"               checked={form.show_in_sign_maintenance} onChange={(v) => set("show_in_sign_maintenance", v)} />
-      </div>
+      {/* Visibility toggles — only on top-level Equipment.
+          Attachments/Sub-Attachments inherit from their parent Equipment. */}
+      {kind === "equipment" && (
+        <div className="rounded-lg border bg-slate-50 p-3 space-y-2">
+          <p className="text-xs font-semibold text-slate-700">Show in which estimator(s)?</p>
+          <Toggle label="Channel & Dimensional Letters" checked={form.show_in_channel_letters}  onChange={(v) => set("show_in_channel_letters", v)} />
+          <Toggle label="Concrete | Masonry | Poles"    checked={form.show_in_foundation}        onChange={(v) => set("show_in_foundation", v)} />
+          <Toggle label="Sign Maintenance"               checked={form.show_in_sign_maintenance} onChange={(v) => set("show_in_sign_maintenance", v)} />
+        </div>
+      )}
 
       <div>
         <Label className="text-xs">Notes</Label>

@@ -26,22 +26,16 @@ import {
   Boxes,
 } from "lucide-react";
 
+// Top-level master inventory tabs. "Equipment" is a parent tab with
+// Rental / Owned as sub-tabs (handled inside MasterEquipmentTab).
 export const INVENTORY_SOURCES = [
   {
-    key: "rental_equipment",
-    label: "Rental Equipment",
+    key: "equipment",
+    label: "Equipment",
     icon: Truck,
     color: "text-cyan-700",
     bgColor: "bg-cyan-100 text-cyan-800",
-    custom: "equipment_rented", // rendered by MasterEquipmentTab
-  },
-  {
-    key: "owned_equipment",
-    label: "Owned Equipment",
-    icon: Boxes,
-    color: "text-emerald-700",
-    bgColor: "bg-emerald-100 text-emerald-800",
-    custom: "equipment_owned", // rendered by MasterEquipmentTab
+    custom: "equipment", // MasterEquipmentTab — renders rental/owned sub-tabs internally
   },
   {
     key: "substrates",
@@ -51,27 +45,28 @@ export const INVENTORY_SOURCES = [
     bgColor: "bg-pink-100 text-pink-700",
     entity: DimensionalLetterMaterial,
     nameField: "material_name",
+    // Compact labels keep the row narrow enough to avoid horizontal scroll.
     fields: [
-      { name: "material_name", label: "Substrate Name", type: "text", required: true, table: true },
+      { name: "material_name", label: "Name", type: "text", required: true, table: true },
       {
         name: "material_type",
-        label: "Material Type",
+        label: "Type",
         type: "select",
         options: ["acrylic", "pvc", "aluminum_composite", "aluminum_solid", "wood", "mdf", "hdu", "foam", "other"],
         table: true,
       },
-      { name: "thickness_inches", label: "Thickness (in)", type: "number", table: true },
+      { name: "thickness_inches", label: "Thick.", type: "number", table: true },
       { name: "sheet_length_inches", label: "Sheet Length (in)", type: "number" },
       { name: "sheet_width_inches", label: "Sheet Width (in)", type: "number" },
-      { name: "cost_per_sheet", label: "Cost / Sheet ($)", type: "number", table: true },
+      { name: "cost_per_sheet", label: "$/Sheet", type: "number", table: true },
       { name: "color", label: "Color", type: "text" },
       { name: "supplier", label: "Supplier", type: "text", table: true },
-      // Substrate visibility toggles — keep the original granular flags.
-      { name: "show_in_dimensional_letters", label: "Dimensional Letters", type: "boolean", table: true },
-      { name: "show_in_lobby_sign_backer",   label: "Lobby Sign Backer",   type: "boolean", table: true },
-      { name: "show_in_vinyl_replacement",   label: "Vinyl Replacement",   type: "boolean", table: true },
-      { name: "show_in_replace_returns",     label: "Replace Returns",     type: "boolean", table: true },
-      { name: "show_in_replace_face",        label: "Replace Face",        type: "boolean", table: true },
+      // Substrate visibility toggles — short labels for compact table layout.
+      { name: "show_in_dimensional_letters", label: "Dim. Letters",  type: "boolean", table: true },
+      { name: "show_in_lobby_sign_backer",   label: "Lobby Backer",  type: "boolean", table: true },
+      { name: "show_in_vinyl_replacement",   label: "Vinyl Repl.",   type: "boolean", table: true },
+      { name: "show_in_replace_returns",     label: "Repl. Returns", type: "boolean", table: true },
+      { name: "show_in_replace_face",        label: "Repl. Face",    type: "boolean", table: true },
       { name: "is_active", label: "Active", type: "boolean" },
       { name: "notes", label: "Notes", type: "textarea" },
     ],

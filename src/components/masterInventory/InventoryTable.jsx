@@ -45,23 +45,23 @@ export default function InventoryTable({ source, items, canEdit, onEdit, onDelet
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div className="w-full">
+      <table className="w-full text-sm table-fixed">
         <thead className="border-b bg-slate-50">
           <tr className="text-left">
             {tableFields.map((f) => (
-              <th key={f.name} className="px-4 py-3 font-medium text-slate-600 whitespace-nowrap">
+              <th key={f.name} className="px-2 py-3 font-medium text-slate-600 text-xs">
                 {f.label}
               </th>
             ))}
-            {canEdit && <th className="px-4 py-3 font-medium text-slate-600 text-right">Actions</th>}
+            {canEdit && <th className="px-2 py-3 font-medium text-slate-600 text-right text-xs w-20">Actions</th>}
           </tr>
         </thead>
         <tbody className="divide-y">
           {items.map((item) => (
             <tr key={item.id} className="hover:bg-slate-50 transition-colors">
               {tableFields.map((f, idx) => (
-                <td key={f.name} className="px-4 py-3 align-top">
+                <td key={f.name} className="px-2 py-3 align-top">
                   {idx === 0 ? (
                     <span className="font-medium text-slate-900">{formatCell(item[f.name], f)}</span>
                   ) : f.type === "boolean" ? (
@@ -83,17 +83,17 @@ export default function InventoryTable({ source, items, canEdit, onEdit, onDelet
                 </td>
               ))}
               {canEdit && (
-                <td className="px-4 py-3 text-right whitespace-nowrap">
-                  <Button variant="ghost" size="icon" onClick={() => onEdit(item)}>
-                    <Edit className="w-4 h-4" />
+                <td className="px-2 py-3 text-right whitespace-nowrap">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(item)}>
+                    <Edit className="w-3.5 h-3.5" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
                     onClick={() => onDelete(item)}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </td>
               )}

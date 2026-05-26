@@ -144,9 +144,8 @@ export default function MasterInventory() {
           {INVENTORY_SOURCES.map((s) => (
             <TabsContent key={s.key} value={s.key} className="mt-0">
               {/* Custom tabs own their own card / search / counts */}
-              {s.custom === "equipment_rented" && <MasterEquipmentTab ownership="rented" isAdmin={isAdmin} />}
-              {s.custom === "equipment_owned"  && <MasterEquipmentTab ownership="owned"  isAdmin={isAdmin} />}
-              {s.custom === "supplies"         && <MasterSuppliesTab isAdmin={isAdmin} />}
+              {s.custom === "equipment" && <MasterEquipmentTab isAdmin={isAdmin} />}
+              {s.custom === "supplies"  && <MasterSuppliesTab isAdmin={isAdmin} />}
 
               {/* Declarative tabs */}
               {!s.custom && (
