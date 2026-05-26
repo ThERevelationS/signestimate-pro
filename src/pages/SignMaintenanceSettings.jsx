@@ -142,14 +142,23 @@ export default function SignMaintenanceSettings() {
     } finally { setRefreshingFuel(false); }
   };
 
+  // Run async ops in small batches to stay under the per-second write rate limit.
+  const runChunked = async (factories, chunkSize = 6) => {
+    for (let i = 0; i < factories.length; i += chunkSize) {
+      const slice = factories.slice(i, i + chunkSize);
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.all(slice.map(fn => fn()));
+    }
+  };
+
   const saveAll = async () => {
     if (saving) return;
     setSaving(true);
     try {
-      // 1) Global settings
+      // 1) Global settings — only write rows that actually changed
       const dbSettings = await SettingsEntity.list();
       const existingMap = new Map(dbSettings.map(s => [s.setting_name, s]));
-      const ops = [];
+      const settingOps = [];
       for (const def of allGlobalDefs) {
         const valueToSave = String(globalSettings[def.name] ?? def.default);
         const existing = existingMap.get(def.name);
@@ -161,15 +170,48 @@ export default function SignMaintenanceSettings() {
           description: def.description || def.label,
         };
         if (existing) {
-          if (existing.setting_value !== valueToSave) ops.push(SettingsEntity.update(existing.id, data));
-        } else ops.push(SettingsEntity.create(data));
+          if (existing.setting_value !== valueToSave) {
+            settingOps.push(() => SettingsEntity.update(existing.id, data));
+          }
+        } else {
+          settingOps.push(() => SettingsEntity.create(data));
+        }
       }
-      // 2) MaintenanceActionRate rows — upsert all (seeded + edited)
+
+      // 2) MaintenanceActionRate rows — only write rows that are new or changed
+      const existingRateMap = new Map(
+        rates.filter(r => r.id).map(r => [r.id, r])
+      );
+      // Re-fetch latest from DB so we don't write rows that are already identical
+      const dbRates = await MaintenanceActionRate.list();
+      const dbRateById = new Map(dbRates.map(r => [r.id, r]));
+      const rateOps = [];
+      const rateFieldsToCompare = [
+        "sign_type","action","rate_basis","is_enabled",
+        "base_minutes_xs","base_minutes_s","base_minutes_m","base_minutes_l","base_minutes_xl","base_minutes_xxl",
+        "base_minutes_cab_s","base_minutes_cab_m","base_minutes_cab_l","base_minutes_cab_xl","base_minutes_flat",
+      ];
+      const isRateChanged = (local, remote) => {
+        if (!remote) return true;
+        for (const k of rateFieldsToCompare) {
+          if ((local[k] ?? 0) !== (remote[k] ?? 0)) return true;
+        }
+        return false;
+      };
       for (const r of rates) {
-        if (r.id) ops.push(MaintenanceActionRate.update(r.id, r));
-        else ops.push(MaintenanceActionRate.create(r));
+        if (r.id) {
+          const remote = dbRateById.get(r.id);
+          if (isRateChanged(r, remote)) {
+            rateOps.push(() => MaintenanceActionRate.update(r.id, r));
+          }
+        } else {
+          rateOps.push(() => MaintenanceActionRate.create(r));
+        }
       }
-      await Promise.all(ops);
+
+      await runChunked(settingOps, 6);
+      await runChunked(rateOps, 6);
+
       toast({ duration: 2000, description: (
         <div className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-green-600" /><span>Settings saved</span></div>
       )});

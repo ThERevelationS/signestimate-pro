@@ -18,9 +18,9 @@ export default function ChannelLetterInstallInventoryPage() {
           <div>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
               <Package className="w-8 h-8 text-purple-600" />
-              Channel Letter Install Inventory
+              Installation Inventory
             </h1>
-            <p className="text-slate-600">Materials & equipment for channel letter installs</p>
+            <p className="text-slate-600">Materials, equipment & substrates for channel letter installs</p>
           </div>
           <Link to={createPageUrl("NewChannelLetterInstallation")}>
             <Button variant="outline">
@@ -38,7 +38,7 @@ export default function ChannelLetterInstallInventoryPage() {
               <HardHat className="w-4 h-4" /> Equipment
             </TabsTrigger>
             <TabsTrigger value="dimensional" className="gap-2">
-              <Box className="w-4 h-4" /> Dimensional Sheets
+              <Box className="w-4 h-4" /> Substrates
             </TabsTrigger>
           </TabsList>
 

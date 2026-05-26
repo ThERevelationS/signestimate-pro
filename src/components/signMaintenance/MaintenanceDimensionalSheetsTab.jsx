@@ -9,6 +9,14 @@
 import React from "react";
 import DimensionalMaterialsTab from "@/components/channelLetterInstall/DimensionalMaterialsTab";
 
+// Sign Maintenance shows substrates flagged for any maintenance-related action
+// (vinyl replacement, returns replacement, face replacement) in Master Inventory.
+const MAINTENANCE_VISIBILITY = [
+  "show_in_vinyl_replacement",
+  "show_in_replace_returns",
+  "show_in_replace_face",
+];
+
 export default function MaintenanceDimensionalSheetsTab() {
-  return <DimensionalMaterialsTab />;
+  return <DimensionalMaterialsTab visibilityFields={MAINTENANCE_VISIBILITY} />;
 }

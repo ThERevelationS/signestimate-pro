@@ -31,7 +31,7 @@ export default function MaintenanceInventoryPage() {
 
         <Tabs defaultValue="dimensional" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-6 h-auto p-1">
-            <TabsTrigger value="dimensional" className="py-2"><Box className="w-4 h-4 mr-2" />Dimensional Sheets</TabsTrigger>
+            <TabsTrigger value="dimensional" className="py-2"><Box className="w-4 h-4 mr-2" />Substrates</TabsTrigger>
             <TabsTrigger value="materials"   className="py-2"><Wrench className="w-4 h-4 mr-2" />Maintenance Materials</TabsTrigger>
             <TabsTrigger value="equipment"   className="py-2"><Truck className="w-4 h-4 mr-2" />Equipment</TabsTrigger>
           </TabsList>

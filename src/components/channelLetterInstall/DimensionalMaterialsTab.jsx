@@ -37,7 +37,24 @@ const TYPE_COLORS = {
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 
-export default function DimensionalMaterialsTab() {
+// Filters substrates by which pages they're enabled for in Master Inventory.
+// scope = "install"     → show items with show_in_dimensional_letters OR show_in_lobby_sign_backer
+// scope = "maintenance" → show items with show_in_vinyl_replacement OR show_in_replace_returns OR show_in_replace_face
+// scope = undefined     → show all (used by Master Inventory itself)
+const matchesVisibility = (m, scope) => {
+  if (!scope) return true;
+  if (scope === "install") {
+    return m.show_in_dimensional_letters === true || m.show_in_lobby_sign_backer === true;
+  }
+  if (scope === "maintenance") {
+    return m.show_in_vinyl_replacement === true ||
+           m.show_in_replace_returns === true ||
+           m.show_in_replace_face === true;
+  }
+  return true;
+};
+
+export default function DimensionalMaterialsTab({ visibilityScope } = {}) {
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -136,6 +153,7 @@ export default function DimensionalMaterialsTab() {
   };
 
   const filtered = materials.filter(m => {
+    if (!matchesVisibility(m, visibilityScope)) return false;
     if (filter !== "all" && m.material_type !== filter) return false;
     if (search && !`${m.material_name} ${m.color || ""} ${m.supplier || ""}`.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
