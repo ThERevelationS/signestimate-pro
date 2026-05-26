@@ -160,49 +160,58 @@ export default function BoomLiftReachChart({ installationHeightFeet }) {
           <span className="font-semibold">Total Boom Height</span>.
         </div>
       ) : (
-        <>
-          {/* Quick spec strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[10px]">
-            <div className="bg-slate-50 border border-slate-200 rounded px-2 py-1">
-              <div className="text-slate-500">Horiz Reach</div>
-              <div className="font-semibold text-slate-800">{selected.horizontal_boom_reach_feet || 0} ft</div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {/* LEFT column — specs, status, explanation */}
+          <div className="space-y-2 min-w-0">
+            {/* Quick spec strip */}
+            <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+              <div className="bg-slate-50 border border-slate-200 rounded px-2 py-1">
+                <div className="text-slate-500">Horiz Reach</div>
+                <div className="font-semibold text-slate-800">{selected.horizontal_boom_reach_feet || 0} ft</div>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded px-2 py-1">
+                <div className="text-slate-500">Max Vert (w/ safety)</div>
+                <div className="font-semibold text-slate-800">{maxVerticalReach.toFixed(0)} ft</div>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded px-2 py-1">
+                <div className="text-slate-500">Truck Width</div>
+                <div className="font-semibold text-slate-800">{selected.deployed_truck_width_feet || 0} ft</div>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded px-2 py-1">
+                <div className="text-slate-500">Safety Margin</div>
+                <div className="font-semibold text-slate-800">{selected.vertical_reach_safety_margin_feet || 0} ft</div>
+              </div>
             </div>
-            <div className="bg-slate-50 border border-slate-200 rounded px-2 py-1">
-              <div className="text-slate-500">Max Vert (w/ safety)</div>
-              <div className="font-semibold text-slate-800">{maxVerticalReach.toFixed(0)} ft</div>
-            </div>
-            <div className="bg-slate-50 border border-slate-200 rounded px-2 py-1">
-              <div className="text-slate-500">Truck Width</div>
-              <div className="font-semibold text-slate-800">{selected.deployed_truck_width_feet || 0} ft</div>
-            </div>
-            <div className="bg-slate-50 border border-slate-200 rounded px-2 py-1">
-              <div className="text-slate-500">Safety Margin</div>
-              <div className="font-semibold text-slate-800">{selected.vertical_reach_safety_margin_feet || 0} ft</div>
-            </div>
+
+            {/* Status badge for current install height */}
+            {isReachable ? (
+              <div className="text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 rounded px-2.5 py-1.5 flex items-center gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  At <strong>{Number(installationHeightFeet) || 0} ft</strong> install height, this boom can park up to{" "}
+                  <strong>{targetReach.toFixed(1)} ft</strong> away from the building face.
+                </span>
+              </div>
+            ) : (
+              <div className="text-xs bg-red-50 border border-red-200 text-red-800 rounded px-2.5 py-1.5 flex items-center gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  This boom can't safely reach <strong>{Number(installationHeightFeet) || 0} ft</strong>. Choose a larger lift or
+                  check vertical safety margin.
+                </span>
+              </div>
+            )}
+
+            <p className="text-[10px] text-slate-400 leading-snug">
+              The shaded area is where the boom can position its platform to touch the building face. Below the curve = OK;
+              above = the boom physically can't get the worker that high while parked that far out. Half the truck width is
+              subtracted because the boom pivot sits in the middle of the carriage.
+            </p>
           </div>
 
-          {/* Status badge for current install height */}
-          {isReachable ? (
-            <div className="text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 rounded px-2.5 py-1.5 flex items-center gap-2">
-              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-              <span>
-                At <strong>{Number(installationHeightFeet) || 0} ft</strong> install height, this boom can park up to{" "}
-                <strong>{targetReach.toFixed(1)} ft</strong> away from the building face.
-              </span>
-            </div>
-          ) : (
-            <div className="text-xs bg-red-50 border border-red-200 text-red-800 rounded px-2.5 py-1.5 flex items-center gap-2">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-              <span>
-                This boom can't safely reach <strong>{Number(installationHeightFeet) || 0} ft</strong>. Choose a larger lift or
-                check vertical safety margin.
-              </span>
-            </div>
-          )}
-
-          {/* Chart */}
-          <div className="bg-white border border-slate-200 rounded-lg p-2">
-            <ResponsiveContainer width="100%" height={180}>
+          {/* RIGHT column — chart */}
+          <div className="bg-white border border-slate-200 rounded-lg p-2 min-w-0">
+            <ResponsiveContainer width="100%" height={220}>
               <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 36 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis
@@ -250,13 +259,7 @@ export default function BoomLiftReachChart({ installationHeightFeet }) {
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-
-          <p className="text-[10px] text-slate-400 leading-snug">
-            The shaded area is where the boom can position its platform to touch the building face. Below the curve = OK;
-            above = the boom physically can't get the worker that high while parked that far out. Half the truck width is
-            subtracted because the boom pivot sits in the middle of the carriage.
-          </p>
-        </>
+        </div>
       )}
     </div>
   );
