@@ -196,6 +196,15 @@ export default function MasterInventory() {
                       canEdit={isAdmin}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
+                      onInlineToggle={(itemId, fieldName, next) => {
+                        // Optimistic local update so the toggle reflects immediately.
+                        setItemsBySource((prev) => {
+                          const list = (prev[activeKey] || []).map((it) =>
+                            it.id === itemId ? { ...it, [fieldName]: next } : it
+                          );
+                          return { ...prev, [activeKey]: list };
+                        });
+                      }}
                     />
                   )}
                 </CardContent>

@@ -82,6 +82,9 @@ export const INVENTORY_SOURCES = [
       { name: "cost_flat", label: "Flat Cost ($)", type: "number" },
       { name: "supplier", label: "Supplier", type: "text", table: true },
       { name: "unit", label: "Unit", type: "text" },
+      // Estimator visibility toggles — controls which estimator's material picker shows this item.
+      { name: "show_in_install_materials",     label: "Install Material",     type: "boolean", table: true },
+      { name: "show_in_maintenance_materials", label: "Maintenance Material", type: "boolean", table: true },
       { name: "notes", label: "Notes", type: "textarea" },
     ],
   },
@@ -148,6 +151,12 @@ export const INVENTORY_SOURCES = [
       { name: "cost_per_sheet", label: "Cost / Sheet ($)", type: "number", table: true },
       { name: "color", label: "Color", type: "text" },
       { name: "supplier", label: "Supplier", type: "text", table: true },
+      // Estimator visibility toggles — controls which estimator + which action material pickers show this sheet.
+      { name: "show_in_dimensional_letters", label: "Dimensional Letters", type: "boolean", table: true },
+      { name: "show_in_lobby_sign_backer",   label: "Lobby Sign Backer",   type: "boolean", table: true },
+      { name: "show_in_vinyl_replacement",   label: "Vinyl Replacement",   type: "boolean", table: true },
+      { name: "show_in_replace_returns",     label: "Replace Returns",     type: "boolean", table: true },
+      { name: "show_in_replace_face",        label: "Replace Face",        type: "boolean", table: true },
       { name: "is_active", label: "Active", type: "boolean" },
       { name: "notes", label: "Notes", type: "textarea" },
     ],

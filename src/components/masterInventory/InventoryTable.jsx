@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Edit, Trash2, Package } from "lucide-react";
 
 const formatCell = (val, field) => {
@@ -17,8 +18,19 @@ const formatCell = (val, field) => {
   return String(val).replace(/_/g, " ");
 };
 
-export default function InventoryTable({ source, items, canEdit, onEdit, onDelete }) {
+export default function InventoryTable({ source, items, canEdit, onEdit, onDelete, onInlineToggle }) {
   const tableFields = source.fields.filter((f) => f.table);
+
+  const handleToggle = async (item, field, next) => {
+    if (!canEdit) return;
+    try {
+      await source.entity.update(item.id, { [field.name]: next });
+      onInlineToggle?.(item.id, field.name, next);
+    } catch (e) {
+      console.error("Toggle failed:", e);
+      alert("Failed to update toggle.");
+    }
+  };
 
   if (!items.length) {
     return (
@@ -52,6 +64,15 @@ export default function InventoryTable({ source, items, canEdit, onEdit, onDelet
                 <td key={f.name} className="px-4 py-3 align-top">
                   {idx === 0 ? (
                     <span className="font-medium text-slate-900">{formatCell(item[f.name], f)}</span>
+                  ) : f.type === "boolean" ? (
+                    canEdit ? (
+                      <Switch
+                        checked={!!item[f.name]}
+                        onCheckedChange={(next) => handleToggle(item, f, next)}
+                      />
+                    ) : (
+                      <span className="text-slate-700">{formatCell(item[f.name], f)}</span>
+                    )
                   ) : f.type === "select" ? (
                     <Badge variant="outline" className="font-normal">
                       {formatCell(item[f.name], f)}
