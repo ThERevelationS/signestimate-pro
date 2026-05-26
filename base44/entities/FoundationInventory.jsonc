@@ -310,6 +310,30 @@
     },
     "fuel_surcharge": {
       "type": "number"
+    },
+    "ownership": {
+      "type": "string",
+      "enum": [
+        "owned",
+        "rented"
+      ],
+      "default": "rented",
+      "description": "Equipment ownership. Applies to excavation_equipment / attachment / sub_attachment rows."
+    },
+    "show_in_channel_letters": {
+      "type": "boolean",
+      "default": false,
+      "description": "Show this item in the Channel & Dimensional Letters estimator's equipment / supplies pickers."
+    },
+    "show_in_foundation": {
+      "type": "boolean",
+      "default": true,
+      "description": "Show this item in the Concrete | Masonry | Poles estimator."
+    },
+    "show_in_sign_maintenance": {
+      "type": "boolean",
+      "default": false,
+      "description": "Show this item in the Sign Maintenance estimator's equipment / supplies pickers."
     }
   },
   "required": [

@@ -10,12 +10,13 @@ import { Plus, Search, Boxes, Lock } from "lucide-react";
 import { INVENTORY_SOURCES, SOURCE_BY_KEY } from "@/components/masterInventory/inventorySources";
 import InventoryFormModal from "@/components/masterInventory/InventoryFormModal";
 import InventoryTable from "@/components/masterInventory/InventoryTable";
+import MasterEquipmentTab from "@/components/masterInventory/MasterEquipmentTab";
+import MasterSuppliesTab from "@/components/masterInventory/MasterSuppliesTab";
 
 export default function MasterInventory() {
   const [user, setUser] = useState(null);
   const [activeKey, setActiveKey] = useState(INVENTORY_SOURCES[0].key);
   const [itemsBySource, setItemsBySource] = useState({});
-  const [counts, setCounts] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -23,51 +24,33 @@ export default function MasterInventory() {
 
   const activeSource = SOURCE_BY_KEY[activeKey];
   const isAdmin = user?.role === "admin";
+  const isCustomTab = !!activeSource?.custom;
 
   // Load current user once
   useEffect(() => {
     User.me().then(setUser).catch(() => setUser(null));
   }, []);
 
-  // Load items for the active source
+  // Load items for the active declarative source (skip for custom tabs)
   const loadActive = useCallback(async () => {
-    if (!activeSource) return;
+    if (!activeSource || isCustomTab) return;
     setIsLoading(true);
     try {
       const items = await activeSource.entity.list();
       setItemsBySource((prev) => ({ ...prev, [activeKey]: items }));
-      setCounts((prev) => ({ ...prev, [activeKey]: items.length }));
     } catch (err) {
       console.error("Failed to load inventory:", err);
       setItemsBySource((prev) => ({ ...prev, [activeKey]: [] }));
     }
     setIsLoading(false);
-  }, [activeKey, activeSource]);
+  }, [activeKey, activeSource, isCustomTab]);
 
   useEffect(() => {
     loadActive();
   }, [loadActive]);
 
-  // Load all counts once on mount (so tabs show numbers without lazy-loading on click)
-  useEffect(() => {
-    (async () => {
-      const results = await Promise.all(
-        INVENTORY_SOURCES.map(async (s) => {
-          try {
-            const items = await s.entity.list();
-            return [s.key, items.length];
-          } catch {
-            return [s.key, 0];
-          }
-        })
-      );
-      setCounts(Object.fromEntries(results));
-    })();
-  }, []);
-
   const items = itemsBySource[activeKey] || [];
 
-  // Search filter
   const filteredItems = useMemo(() => {
     if (!search.trim()) return items;
     const q = search.toLowerCase();
@@ -107,8 +90,6 @@ export default function MasterInventory() {
     setShowForm(false);
     setEditingItem(null);
     await loadActive();
-    // refresh count for this tab
-    setCounts((prev) => ({ ...prev, [activeKey]: (itemsBySource[activeKey]?.length || 0) }));
   };
 
   return (
@@ -122,7 +103,7 @@ export default function MasterInventory() {
               Master Inventory
             </h1>
             <p className="text-slate-600 mt-1">
-              Unified view of every inventory in the app.{" "}
+              Unified view of every inventory item.{" "}
               {isAdmin ? (
                 <span className="text-green-700 font-medium">You can add, edit, and delete items.</span>
               ) : (
@@ -132,7 +113,7 @@ export default function MasterInventory() {
               )}
             </p>
           </div>
-          {isAdmin && (
+          {isAdmin && !isCustomTab && (
             <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700">
               <Plus className="w-4 h-4 mr-2" />
               Add Item
@@ -154,9 +135,6 @@ export default function MasterInventory() {
                   >
                     <Icon className={`w-4 h-4 ${activeKey === s.key ? "text-white" : s.color}`} />
                     <span>{s.label}</span>
-                    <Badge variant="secondary" className={`ml-1 ${activeKey === s.key ? "bg-white/20 text-white" : s.bgColor}`}>
-                      {counts[s.key] ?? "…"}
-                    </Badge>
                   </TabsTrigger>
                 );
               })}
@@ -165,56 +143,63 @@ export default function MasterInventory() {
 
           {INVENTORY_SOURCES.map((s) => (
             <TabsContent key={s.key} value={s.key} className="mt-0">
-              <Card className="bg-white border-0 shadow-sm">
-                <CardHeader className="border-b">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <CardTitle className="flex items-center gap-2">
-                      <s.icon className={`w-5 h-5 ${s.color}`} />
-                      {s.label}
-                      <Badge variant="outline" className="ml-2 font-normal">
-                        {filteredItems.length} of {items.length}
-                      </Badge>
-                    </CardTitle>
-                    <div className="relative w-full sm:w-72">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input
-                        placeholder="Search items..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-9"
-                      />
+              {/* Custom tabs own their own card / search / counts */}
+              {s.custom === "equipment_rented" && <MasterEquipmentTab ownership="rented" isAdmin={isAdmin} />}
+              {s.custom === "equipment_owned"  && <MasterEquipmentTab ownership="owned"  isAdmin={isAdmin} />}
+              {s.custom === "supplies"         && <MasterSuppliesTab isAdmin={isAdmin} />}
+
+              {/* Declarative tabs */}
+              {!s.custom && (
+                <Card className="bg-white border-0 shadow-sm">
+                  <CardHeader className="border-b">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <CardTitle className="flex items-center gap-2">
+                        <s.icon className={`w-5 h-5 ${s.color}`} />
+                        {s.label}
+                        <Badge variant="outline" className="ml-2 font-normal">
+                          {filteredItems.length} of {items.length}
+                        </Badge>
+                      </CardTitle>
+                      <div className="relative w-full sm:w-72">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                          placeholder="Search items..."
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                  {isLoading ? (
-                    <div className="p-12 text-center text-slate-500">Loading…</div>
-                  ) : (
-                    <InventoryTable
-                      source={s}
-                      items={filteredItems}
-                      canEdit={isAdmin}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                      onInlineToggle={(itemId, fieldName, next) => {
-                        // Optimistic local update so the toggle reflects immediately.
-                        setItemsBySource((prev) => {
-                          const list = (prev[activeKey] || []).map((it) =>
-                            it.id === itemId ? { ...it, [fieldName]: next } : it
-                          );
-                          return { ...prev, [activeKey]: list };
-                        });
-                      }}
-                    />
-                  )}
-                </CardContent>
-              </Card>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {isLoading ? (
+                      <div className="p-12 text-center text-slate-500">Loading…</div>
+                    ) : (
+                      <InventoryTable
+                        source={s}
+                        items={filteredItems}
+                        canEdit={isAdmin}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        onInlineToggle={(itemId, fieldName, next) => {
+                          setItemsBySource((prev) => {
+                            const list = (prev[activeKey] || []).map((it) =>
+                              it.id === itemId ? { ...it, [fieldName]: next } : it
+                            );
+                            return { ...prev, [activeKey]: list };
+                          });
+                        }}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
           ))}
         </Tabs>
       </div>
 
-      {showForm && activeSource && (
+      {showForm && activeSource && !isCustomTab && (
         <InventoryFormModal
           source={activeSource}
           editingItem={editingItem}

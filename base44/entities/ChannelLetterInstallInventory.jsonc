@@ -145,6 +145,11 @@
       "type": "boolean",
       "default": false,
       "description": "Show in the Sign Maintenance \u2014 Maintenance Materials picker (Supplies / Parts / Install Materials)"
+    },
+    "show_in_foundation_materials": {
+      "type": "boolean",
+      "default": false,
+      "description": "Show in the Concrete | Masonry | Poles estimator supplies/materials pickers."
     }
   },
   "required": [
