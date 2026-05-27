@@ -24,6 +24,7 @@ import {
   Type,
   Wrench,
   Boxes,
+  Droplets,
 } from "lucide-react";
 
 // Top-level master inventory tabs. "Equipment" is a parent tab with
@@ -78,6 +79,14 @@ export const INVENTORY_SOURCES = [
     color: "text-purple-600",
     bgColor: "bg-purple-100 text-purple-700",
     custom: "supplies", // rendered by MasterSuppliesTab
+  },
+  {
+    key: "vinyl",
+    label: "Vinyl",
+    icon: Droplets,
+    color: "text-blue-600",
+    bgColor: "bg-blue-100 text-blue-700",
+    custom: "vinyl", // rendered by VinylInventoryTab (scope="master")
   },
   {
     key: "metal_inventory",

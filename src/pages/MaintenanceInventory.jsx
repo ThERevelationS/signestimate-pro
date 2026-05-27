@@ -8,9 +8,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, Boxes, Truck, Box, Trash2, Wrench } from "lucide-react";
+import { ArrowLeft, Plus, Boxes, Truck, Box, Trash2, Wrench, Droplets } from "lucide-react";
 import MaintenanceDimensionalSheetsTab from "@/components/signMaintenance/MaintenanceDimensionalSheetsTab";
 import MaintenanceMaterialsTab from "@/components/signMaintenance/MaintenanceMaterialsTab";
+import VinylInventoryTab from "@/components/vinylInventory/VinylInventoryTab";
 
 export default function MaintenanceInventoryPage() {
   return (
@@ -30,9 +31,10 @@ export default function MaintenanceInventoryPage() {
         </div>
 
         <Tabs defaultValue="dimensional" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-4 mb-6 h-auto p-1">
             <TabsTrigger value="dimensional" className="py-2"><Box className="w-4 h-4 mr-2" />Substrates</TabsTrigger>
             <TabsTrigger value="materials"   className="py-2"><Wrench className="w-4 h-4 mr-2" />Maintenance Materials</TabsTrigger>
+            <TabsTrigger value="vinyl"       className="py-2"><Droplets className="w-4 h-4 mr-2" />Vinyl</TabsTrigger>
             <TabsTrigger value="equipment"   className="py-2"><Truck className="w-4 h-4 mr-2" />Equipment</TabsTrigger>
           </TabsList>
 
@@ -41,6 +43,9 @@ export default function MaintenanceInventoryPage() {
           </TabsContent>
           <TabsContent value="materials">
             <MaintenanceMaterialsTab />
+          </TabsContent>
+          <TabsContent value="vinyl">
+            <VinylInventoryTab scope="sign_maintenance" />
           </TabsContent>
           <TabsContent value="equipment">
             <EquipmentTab />

@@ -12,6 +12,7 @@ import InventoryFormModal from "@/components/masterInventory/InventoryFormModal"
 import InventoryTable from "@/components/masterInventory/InventoryTable";
 import MasterEquipmentTab from "@/components/masterInventory/MasterEquipmentTab";
 import MasterSuppliesTab from "@/components/masterInventory/MasterSuppliesTab";
+import VinylInventoryTab from "@/components/vinylInventory/VinylInventoryTab";
 
 export default function MasterInventory() {
   const [user, setUser] = useState(null);
@@ -146,6 +147,7 @@ export default function MasterInventory() {
               {/* Custom tabs own their own card / search / counts */}
               {s.custom === "equipment" && <MasterEquipmentTab isAdmin={isAdmin} />}
               {s.custom === "supplies"  && <MasterSuppliesTab isAdmin={isAdmin} />}
+              {s.custom === "vinyl"     && <VinylInventoryTab scope="master" />}
 
               {/* Declarative tabs */}
               {!s.custom && (
