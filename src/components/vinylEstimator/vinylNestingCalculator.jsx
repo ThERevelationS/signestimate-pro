@@ -96,13 +96,16 @@ export function calculateVinylProject({
   let currentShelf = null;
 
   const placeOnNewShelf = (r) => {
-    // Try rotating if it wouldn't fit width-wise OR if rotation produces a shorter shelf.
+    // Only rotate if the user explicitly allowed it AND it's needed to fit width-wise.
     let w = r.w, h = r.h, rotated = false;
-    if (w > usableWidth && r.allow_rotation && h <= usableWidth) {
-      [w, h] = [h, w];
-      rotated = true;
+    if (w > usableWidth) {
+      if (r.allow_rotation && h <= usableWidth) {
+        [w, h] = [h, w];
+        rotated = true;
+      } else {
+        return false; // doesn't fit and can't (or isn't allowed to) rotate
+      }
     }
-    if (w > usableWidth) return false; // doesn't fit even rotated
 
     currentShelf = { y: yCursor, height: h, items: [] };
     shelves.push(currentShelf);

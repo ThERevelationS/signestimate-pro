@@ -88,6 +88,20 @@ export default function VinylEstimatorFormulas() {
         </div>
       </div>
 
+      {/* Multi-workflow + installation rollup explanation */}
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-700 space-y-1">
+        <h4 className="font-bold text-slate-900 mb-1">Project Rollup (Multi-Workflow + Install)</h4>
+        <p>A vinyl project can contain <b>multiple Workflows</b>. Each workflow has its own vinyl, laminate,
+        machine selections, parts, and its own roll layout — the math below is run independently per workflow.</p>
+        <p className="font-mono bg-white border border-slate-200 rounded px-2 py-1">
+          Project Total = Σ(workflow material + machine + labor) + Equipment + Personnel + Travel + Supplies + Markup
+        </p>
+        <p><b>Rotate toggle:</b> when off on a part, the nester will NEVER rotate it. If it doesn't fit the
+        usable roll width in its native orientation, it will be marked as "Unplaced".</p>
+        <p><b>Travel:</b> shared with the Channel Letter Install travel calculator —
+        Fuel + Travel Labor + Vehicle Overhead, floored by Min Travel Charge.</p>
+      </div>
+
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">
           <h3 className="font-semibold text-slate-900">Demo Part (Editable)</h3>
