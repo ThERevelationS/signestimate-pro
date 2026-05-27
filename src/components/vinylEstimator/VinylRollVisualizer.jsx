@@ -178,8 +178,9 @@ export default function VinylRollVisualizer({
         </div>
       </div>
 
-      <div className="bg-slate-100 rounded-lg p-3 border border-slate-200 overflow-auto" style={{ maxHeight: 700 }}>
-        <svg
+      <div className="bg-slate-100 rounded-lg border border-slate-200 overflow-hidden">
+        <div className="overflow-auto p-3" style={{ maxHeight: 600 }}>
+          <svg
           ref={svgRef}
           width={svgW} height={svgH} viewBox={viewBox}
           preserveAspectRatio="xMidYMin meet"
@@ -295,24 +296,25 @@ export default function VinylRollVisualizer({
 
           {/* Roll outline */}
           <rect x={0} y={0} width={drawWidth} height={drawHeight} fill="none" stroke="#0f172a" strokeWidth={0.1} pointerEvents="none" />
-        </svg>
-
-        {/* Feed direction tag */}
-        <div className="flex items-center justify-center gap-1 text-[10px] text-slate-500 pt-1">
-          <ArrowDown className="w-3 h-3" /> Print feed direction (top → bottom)
+          </svg>
         </div>
 
-        {/* Legend */}
-        <div className="flex flex-wrap gap-3 mt-2 text-[11px]">
-          <LegendChip color="#fde68a" label="Margin (unprintable)" />
-          <LegendChip color="#fef3c7" label="Leading/trailing edge waste" />
-          <LegendSwatchHatch label="Waste in usable area" patternId="legendHatchWaste" baseFill="#fecaca" stroke="#dc2626" />
-          <LegendSwatchHatch label="Bleed halo (waste around part)" patternId="legendHatchBleed" baseFill="#fed7aa" stroke="#ea580c" />
-          {showRegistrationMarks && <LegendChip color="#0f172a" label="Registration marks" />}
-          <LegendChip color="#ffffff" label="Usable" border />
-          {Object.entries(colorFor).map(([idx, c]) => (
-            <LegendChip key={idx} color={c} label={`Item ${parseInt(idx) + 1}`} />
-          ))}
+        {/* Pinned footer — always visible regardless of SVG scroll */}
+        <div className="border-t border-slate-300 bg-slate-50 px-3 py-2 space-y-1">
+          <div className="flex items-center justify-center gap-1 text-[10px] text-slate-500">
+            <ArrowDown className="w-3 h-3" /> Print feed direction (top → bottom)
+          </div>
+          <div className="flex flex-wrap gap-3 text-[11px]">
+            <LegendChip color="#fde68a" label="Margin (unprintable)" />
+            <LegendChip color="#fef3c7" label="Leading/trailing edge waste" />
+            <LegendSwatchHatch label="Waste in usable area" patternId="legendHatchWaste" baseFill="#fecaca" stroke="#dc2626" />
+            <LegendSwatchHatch label="Bleed halo (waste around part)" patternId="legendHatchBleed" baseFill="#fed7aa" stroke="#ea580c" />
+            {showRegistrationMarks && <LegendChip color="#0f172a" label="Registration marks" />}
+            <LegendChip color="#ffffff" label="Usable" border />
+            {Object.entries(colorFor).map(([idx, c]) => (
+              <LegendChip key={idx} color={c} label={`Item ${parseInt(idx) + 1}`} />
+            ))}
+          </div>
         </div>
       </div>
     </div>

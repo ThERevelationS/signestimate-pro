@@ -87,7 +87,7 @@ export function calculateVinylProject({
         w: w0, h: h0,            // OUTER bounding rect (with bleed halo)
         partW, partH,            // INNER part size (no bleed)
         bleed: baseBleed,        // halo thickness (each side)
-        allow_rotation: it.allow_rotation !== false,
+        allow_rotation: it.allow_rotation === true,  // explicit opt-in; user must check Rotate
         rotated: false,
       });
     }
@@ -101,19 +101,20 @@ export function calculateVinylProject({
   let yCursor = 0;
   let currentShelf = null;
 
-  const placeOnNewShelf = (r) => {
-    // Only rotate if the user explicitly allowed it AND it's needed to fit width-wise.
-    let w = r.w, h = r.h, rotated = false;
-    let pw = r.partW, ph = r.partH;
-    if (w > usableWidth) {
-      if (r.allow_rotation && h <= usableWidth) {
-        [w, h] = [h, w];
-        [pw, ph] = [ph, pw];
-        rotated = true;
-      } else {
-        return false; // doesn't fit and can't (or isn't allowed to) rotate
-      }
+  // Rotate toggle is now a FORCED orientation flag:
+  //   - allow_rotation=true  → part is laid out rotated 90° (H becomes width on roll)
+  //   - allow_rotation=false → part is laid out in its native orientation
+  // If the chosen orientation doesn't fit the usable width, the part is marked unplaced.
+  const orientedDims = (r) => {
+    if (r.allow_rotation) {
+      return { w: r.h, h: r.w, partW: r.partH, partH: r.partW, rotated: true };
     }
+    return { w: r.w, h: r.h, partW: r.partW, partH: r.partH, rotated: false };
+  };
+
+  const placeOnNewShelf = (r) => {
+    const { w, h, partW: pw, partH: ph, rotated } = orientedDims(r);
+    if (w > usableWidth) return false; // chosen orientation doesn't fit
 
     currentShelf = { y: yCursor, height: h, items: [] };
     shelves.push(currentShelf);
@@ -128,23 +129,14 @@ export function calculateVinylProject({
       continue;
     }
 
-    // Try fit in current shelf (no rotation first, then rotated if allowed)
+    const { w, h, partW: pw, partH: ph, rotated } = orientedDims(r);
     const lastItem = currentShelf.items[currentShelf.items.length - 1];
     const nextX = lastItem ? lastItem.x + lastItem.w + gutterH : 0;
 
     let placed = false;
-    // Orientation A: native
-    if (r.w <= usableWidth - nextX && r.h <= currentShelf.height) {
-      currentShelf.items.push({ ...r, x: nextX, y: currentShelf.y, w: r.w, h: r.h, partW: r.partW, partH: r.partH, rotated: false });
+    if (w <= usableWidth - nextX && h <= currentShelf.height) {
+      currentShelf.items.push({ ...r, x: nextX, y: currentShelf.y, w, h, partW: pw, partH: ph, rotated });
       placed = true;
-    }
-    // Orientation B: rotated
-    if (!placed && r.allow_rotation) {
-      const rw = r.h, rh = r.w;
-      if (rw <= usableWidth - nextX && rh <= currentShelf.height) {
-        currentShelf.items.push({ ...r, x: nextX, y: currentShelf.y, w: rw, h: rh, partW: r.partH, partH: r.partW, rotated: true });
-        placed = true;
-      }
     }
 
     if (!placed) {

@@ -96,9 +96,9 @@ export default function VinylEstimatorFormulas() {
         <p className="font-mono bg-white border border-slate-200 rounded px-2 py-1">
           Project Total = Σ(workflow material + machine + labor) + Equipment + Personnel + Travel + Supplies + Markup
         </p>
-        <p><b>Rotate toggle:</b> when ON, the nester is allowed to rotate the part 90° to fit. When OFF, the
-        nester will NEVER rotate it — if it doesn't fit the usable roll width in its native orientation, it
-        will be marked as "Unplaced".</p>
+        <p><b>Rotate toggle:</b> forces the part's orientation on the roll. OFF (default) = native (W on the
+        roll width axis). ON = rotated 90° (H becomes the width on the roll). The checkbox is automatically
+        disabled when rotation isn't geometrically possible (part height &gt; usable roll width).</p>
         <p><b>Bleed:</b> bleed does NOT change the part's printed/cut size. It reserves an empty "waste halo"
         around the part on the roll (so the placed footprint = part + 2×bleed each axis). Print area, cut
         perimeter, and ink cost are based on the inner part size, never inflated by bleed.</p>

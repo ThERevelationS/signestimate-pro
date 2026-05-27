@@ -22,7 +22,7 @@ const blankItem = () => ({
   height_inches: 12,
   quantity: 1,
   bleed_inches: 0,
-  allow_rotation: true,
+  allow_rotation: false,
 });
 
 const fmt = (n) => `$${Number(n || 0).toFixed(2)}`;
@@ -77,7 +77,17 @@ export default function VinylPartsTable({
         const partH = (parseFloat(it.height_inches) || 0) + (parseFloat(it.bleed_inches) || 0) * 2;
         const minDim = Math.min(partW, partH);
         const tooWide = isFinite(usableWidth) && minDim > usableWidth + 0.01;
-        const tooWideStrict = isFinite(usableWidth) && !it.allow_rotation && partW > usableWidth + 0.01;
+        // Rotated orientation = H becomes the width on the roll. Disable Rotate if H > usable.
+        const rotateImpossible = isFinite(usableWidth) && partH > usableWidth + 0.01;
+        // The part won't fit in its CURRENT orientation
+        const tooWideStrict = isFinite(usableWidth) && (
+          it.allow_rotation ? partH > usableWidth + 0.01 : partW > usableWidth + 0.01
+        );
+
+        // If user had rotate enabled but it's no longer geometrically possible, auto-uncheck
+        if (it.allow_rotation && rotateImpossible) {
+          setTimeout(() => update(idx, { allow_rotation: false }), 0);
+        }
 
         return (
           <div key={it.id || idx} className="space-y-1">
@@ -89,14 +99,23 @@ export default function VinylPartsTable({
               <Input type="number" step="1" min="1" value={it.quantity} onChange={(e) => update(idx, { quantity: Math.max(1, parseInt(e.target.value) || 1) })} className="h-9 text-sm tabular-nums" />
               <Input type="number" step="0.0625" value={it.bleed_inches || 0} onChange={(e) => update(idx, { bleed_inches: parseFloat(e.target.value) || 0 })} className="h-9 text-sm tabular-nums"
                 onKeyDown={(e) => handleKeyDown(e, idx, isLast)} />
-              <div className="flex items-center justify-center gap-1" title="Allow 90° rotation to fit the roll">
+              <div
+                className="flex items-center justify-center gap-1"
+                title={rotateImpossible
+                  ? `Cannot rotate — part height (${partH.toFixed(2)}″) exceeds usable roll width (${usableWidth.toFixed(2)}″)`
+                  : "Rotate the part 90° on the roll layout"}
+              >
                 <Checkbox
                   id={`rot-${idx}`}
-                  checked={it.allow_rotation !== false}
+                  checked={it.allow_rotation === true}
+                  disabled={rotateImpossible}
                   onCheckedChange={(v) => update(idx, { allow_rotation: !!v })}
                 />
-                <label htmlFor={`rot-${idx}`} className="text-[10px] text-slate-500 cursor-pointer select-none">
-                  {it.allow_rotation !== false ? "Yes" : "No"}
+                <label
+                  htmlFor={`rot-${idx}`}
+                  className={`text-[10px] cursor-pointer select-none ${rotateImpossible ? "text-slate-300" : "text-slate-500"}`}
+                >
+                  {it.allow_rotation === true ? "Yes" : "No"}
                 </label>
               </div>
               <div className="text-right text-xs tabular-nums leading-tight">
@@ -128,9 +147,11 @@ export default function VinylPartsTable({
             {(tooWide || tooWideStrict) && (
               <div className="flex items-center gap-2 text-[11px] text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1 ml-1">
                 <AlertTriangle className="w-3 h-3 flex-shrink-0" />
-                {tooWideStrict
-                  ? `Too wide for roll (${partW.toFixed(2)}″ > ${usableWidth.toFixed(2)}″). Enable Rot? or split the part.`
-                  : `Part won't fit even rotated (min ${minDim.toFixed(2)}″ > usable ${usableWidth.toFixed(2)}″).`}
+                {tooWide
+                  ? `Part won't fit even rotated (min ${minDim.toFixed(2)}″ > usable ${usableWidth.toFixed(2)}″).`
+                  : it.allow_rotation
+                    ? `Rotated, height (${partH.toFixed(2)}″) exceeds roll width (${usableWidth.toFixed(2)}″). Uncheck Rotate.`
+                    : `Too wide for roll (${partW.toFixed(2)}″ > ${usableWidth.toFixed(2)}″). Enable Rotate or split the part.`}
               </div>
             )}
 
