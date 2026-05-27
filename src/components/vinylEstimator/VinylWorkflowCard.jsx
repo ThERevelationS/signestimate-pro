@@ -14,12 +14,8 @@ import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import {
-  ChevronDown, ChevronRight, Trash2, Copy, Sliders, Bookmark, ListOrdered,
-  AlertTriangle,
-} from "lucide-react";
+import { Sliders, ListOrdered } from "lucide-react";
 
 import VinylMaterialPicker from "./VinylMaterialPicker";
 import VinylMachinePicker from "./VinylMachinePicker";
@@ -28,24 +24,18 @@ import VinylRollVisualizer from "./VinylRollVisualizer";
 import VinylPresetBar from "./VinylPresetBar";
 import VinylStockWarning from "./VinylStockWarning";
 import VinylAlternativeCompare from "./VinylAlternativeCompare";
-import VinylWorkflowMetricsBadge from "./VinylWorkflowMetricsBadge";
 import VinylWorkflowTemplatesDialog from "./VinylWorkflowTemplatesDialog";
+import VinylWorkflowCardHeader, { COLOR_SWATCHES } from "./VinylWorkflowCardHeader";
 import { calculateVinylProject } from "./vinylNestingCalculator";
 import { applyPresetToWorkflow } from "./vinylWorkflowPresets";
 import {
   computePerPartCosts, computeWorkflowMetrics, computeStockUsage,
 } from "./vinylCostHelpers";
 
-const COLOR_SWATCHES = [
-  "#3b82f6", "#10b981", "#f59e0b", "#ef4444",
-  "#8b5cf6", "#ec4899", "#14b8a6", "#0ea5e9",
-];
-
 const num = (v) => {
   const n = parseFloat(v);
   return Number.isFinite(n) ? n : 0;
 };
-const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 
 export default function VinylWorkflowCard({
   workflow, index, vinyls, machines,
@@ -110,60 +100,27 @@ export default function VinylWorkflowCard({
   const colorTag = workflow.color_tag || COLOR_SWATCHES[index % COLOR_SWATCHES.length];
 
   return (
-    <Card className="bg-white border-0 shadow-sm" style={{ borderLeft: `4px solid ${colorTag}` }}>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <button onClick={() => setOpen(!open)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
-            {open ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
-            <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: colorTag }} />
-            <CardTitle className="text-base truncate">{workflow.name || `Workflow ${index + 1}`}</CardTitle>
-            <Badge variant="outline" className="text-[10px]">{(workflow.items || []).length} part(s)</Badge>
-            {vinyl && <Badge variant="outline" className="text-[10px]">{vinyl.vinyl_name}</Badge>}
-            {calc.partsUnplaced > 0 && (
-              <Badge className="text-[10px] bg-red-100 text-red-800 border-red-200">
-                <AlertTriangle className="w-2.5 h-2.5 mr-0.5" /> {calc.partsUnplaced} unplaced
-              </Badge>
-            )}
-            <VinylWorkflowMetricsBadge metrics={metrics} />
-            <Badge variant="outline" className="text-[10px] bg-slate-900 text-white border-slate-900 ml-auto">{fmt(calc.totalCost)}</Badge>
-          </button>
-          <div className="flex items-center gap-1">
-            <Input
-              value={workflow.name || ""}
-              onChange={(e) => set({ name: e.target.value })}
-              placeholder={`Workflow ${index + 1} name`}
-              className="h-8 text-sm w-44"
-              onClick={(e) => e.stopPropagation()}
-            />
-            <Button variant="ghost" size="icon" onClick={() => { setTemplatesMode("save"); setTemplatesOpen(true); }} className="h-8 w-8" title="Save / apply template">
-              <Bookmark className="w-3.5 h-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={onDuplicate} className="h-8 w-8" title="Duplicate workflow">
-              <Copy className="w-3.5 h-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={onRemove} className="h-8 w-8 text-red-500 hover:bg-red-50" title="Delete workflow">
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
+    <Card
+      className="bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+      style={{ borderLeft: `4px solid ${colorTag}` }}
+    >
+      <VinylWorkflowCardHeader
+        workflow={workflow}
+        index={index}
+        vinyl={vinyl}
+        calc={calc}
+        metrics={metrics}
+        colorTag={colorTag}
+        open={open}
+        onToggleOpen={() => setOpen(!open)}
+        onChange={set}
+        onSaveTemplate={() => { setTemplatesMode("save"); setTemplatesOpen(true); }}
+        onDuplicate={onDuplicate}
+        onRemove={onRemove}
+      />
 
       {open && (
-        <CardContent className="space-y-4">
-          {/* Color tag picker — Feature #14 */}
-          <div className="flex items-center gap-1 text-[11px] text-slate-500">
-            <span>Color tag:</span>
-            {COLOR_SWATCHES.map(c => (
-              <button
-                key={c}
-                onClick={() => set({ color_tag: c })}
-                className={`w-4 h-4 rounded-full border-2 ${colorTag === c ? "border-slate-900" : "border-transparent"}`}
-                style={{ background: c }}
-                aria-label={`Set color ${c}`}
-              />
-            ))}
-          </div>
-
+        <CardContent className="space-y-4 pt-2 border-t border-slate-100">
           {/* Preset bar — Feature #5 */}
           <VinylPresetBar
             activePresetKey={workflow.preset_key}
