@@ -1,38 +1,69 @@
-// One vinyl workflow = one vinyl + optional laminate + chosen machines + its own parts.
-// Renders the picker rows, the editable parts table, and the visual roll layout
-// for THAT workflow. Each workflow has its own roll layout so different vinyls
-// don't get mixed onto the same physical roll.
+// One vinyl workflow card.
+// Upgrades:
+//   #1  Manual part order toggle (override NFDH height-sort)
+//   #5  Workflow preset bar
+//   #6  Stock usage warning
+//   #14 Color tag in header
+//   #16 Apply / save template button
+//   #19 Per-part cost passed into the parts table
+//   #20 + #21 Yield/margin badge in header
+//   #22 Vinyl comparison panel
+//   #33 Tab-level "issue" dot via _hasIssues
 
 import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight, Trash2, Copy, Sliders } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import {
+  ChevronDown, ChevronRight, Trash2, Copy, Sliders, Bookmark, ListOrdered,
+  AlertTriangle,
+} from "lucide-react";
 
 import VinylMaterialPicker from "./VinylMaterialPicker";
 import VinylMachinePicker from "./VinylMachinePicker";
 import VinylPartsTable from "./VinylPartsTable";
 import VinylRollVisualizer from "./VinylRollVisualizer";
+import VinylPresetBar from "./VinylPresetBar";
+import VinylStockWarning from "./VinylStockWarning";
+import VinylAlternativeCompare from "./VinylAlternativeCompare";
+import VinylWorkflowMetricsBadge from "./VinylWorkflowMetricsBadge";
+import VinylWorkflowTemplatesDialog from "./VinylWorkflowTemplatesDialog";
 import { calculateVinylProject } from "./vinylNestingCalculator";
+import { applyPresetToWorkflow } from "./vinylWorkflowPresets";
+import {
+  computePerPartCosts, computeWorkflowMetrics, computeStockUsage,
+} from "./vinylCostHelpers";
+
+const COLOR_SWATCHES = [
+  "#3b82f6", "#10b981", "#f59e0b", "#ef4444",
+  "#8b5cf6", "#ec4899", "#14b8a6", "#0ea5e9",
+];
 
 const num = (v) => {
   const n = parseFloat(v);
   return Number.isFinite(n) ? n : 0;
 };
-
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 
 export default function VinylWorkflowCard({
   workflow, index, vinyls, machines,
-  onChange, onRemove, onDuplicate,
+  onChange, onRemove, onDuplicate, onMovePartToWorkflow,
+  installEnvironment = "exterior",
   defaultOpen = true,
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [templatesMode, setTemplatesMode] = useState("apply");
+  const [recommendOnly, setRecommendOnly] = useState(false);
+  const [showCompare, setShowCompare] = useState(false);
+
+  // Respond to parent expand/collapse-all toggle
+  useEffect(() => { setOpen(defaultOpen); }, [defaultOpen]);
 
   const set = (patch) => onChange({ ...workflow, ...patch });
 
-  // Resolved entities for this workflow
   const printer   = useMemo(() => machines.find(m => m.id === workflow.printer_id)   || null, [machines, workflow.printer_id]);
   const cutter    = useMemo(() => machines.find(m => m.id === workflow.cutter_id)    || null, [machines, workflow.cutter_id]);
   const laminator = useMemo(() => machines.find(m => m.id === workflow.laminator_id) || null, [machines, workflow.laminator_id]);
@@ -51,29 +82,50 @@ export default function VinylWorkflowCard({
     applyLaminate: !!workflow.apply_laminate,
     overrideGutterH: workflow.gutter_h_override === "" || workflow.gutter_h_override == null ? undefined : num(workflow.gutter_h_override),
     overrideGutterV: workflow.gutter_v_override === "" || workflow.gutter_v_override == null ? undefined : num(workflow.gutter_v_override),
-  }), [workflow.items, workflow.apply_print, workflow.apply_cut, workflow.apply_laminate, workflow.gutter_h_override, workflow.gutter_v_override, printer, cutter, laminator, vinyl, laminate, operatorRate]);
+    manualOrder: !!workflow.manual_order,
+  }), [
+    workflow.items, workflow.apply_print, workflow.apply_cut, workflow.apply_laminate,
+    workflow.gutter_h_override, workflow.gutter_v_override, workflow.manual_order,
+    printer, cutter, laminator, vinyl, laminate, operatorRate,
+  ]);
 
-  // Surface calc back up so the project summary can sum across workflows
+  // Per-part cost rollup — Feature #19
+  const perPartCosts = useMemo(() => computePerPartCosts(calc, workflow.items || []), [calc, workflow.items]);
+  // Yield / cost metrics — Feature #20, #21
+  const metrics    = useMemo(() => computeWorkflowMetrics(calc), [calc]);
+  // Stock usage — Feature #6, #37
+  const stockUsage = useMemo(() => computeStockUsage(calc, vinyl), [calc, vinyl]);
+
+  // Surface calc back up so the project rollup can sum across workflows.
   useEffect(() => {
+    const hasIssues = calc.partsUnplaced > 0 || !workflow.vinyl_id;
     if (workflow._calc?.totalCost !== calc.totalCost
-     || workflow._calc?.materialCost !== calc.materialCost) {
-      onChange({ ...workflow, _calc: calc });
+     || workflow._calc?.materialCost !== calc.materialCost
+     || workflow._hasIssues !== hasIssues) {
+      onChange({ ...workflow, _calc: calc, _hasIssues: hasIssues });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [calc.totalCost, calc.materialCost, calc.machineCost, calc.laborCost]);
+  }, [calc.totalCost, calc.materialCost, calc.machineCost, calc.laborCost, calc.partsUnplaced, workflow.vinyl_id]);
+
+  const colorTag = workflow.color_tag || COLOR_SWATCHES[index % COLOR_SWATCHES.length];
 
   return (
-    <Card className="bg-white border-0 shadow-sm">
+    <Card className="bg-white border-0 shadow-sm" style={{ borderLeft: `4px solid ${colorTag}` }}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <button onClick={() => setOpen(!open)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
             {open ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
-            <CardTitle className="text-base truncate">
-              {workflow.name || `Workflow ${index + 1}`}
-            </CardTitle>
+            <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: colorTag }} />
+            <CardTitle className="text-base truncate">{workflow.name || `Workflow ${index + 1}`}</CardTitle>
             <Badge variant="outline" className="text-[10px]">{(workflow.items || []).length} part(s)</Badge>
             {vinyl && <Badge variant="outline" className="text-[10px]">{vinyl.vinyl_name}</Badge>}
-            <Badge variant="outline" className="text-[10px] bg-slate-900 text-white border-slate-900">{fmt(calc.totalCost)}</Badge>
+            {calc.partsUnplaced > 0 && (
+              <Badge className="text-[10px] bg-red-100 text-red-800 border-red-200">
+                <AlertTriangle className="w-2.5 h-2.5 mr-0.5" /> {calc.partsUnplaced} unplaced
+              </Badge>
+            )}
+            <VinylWorkflowMetricsBadge metrics={metrics} />
+            <Badge variant="outline" className="text-[10px] bg-slate-900 text-white border-slate-900 ml-auto">{fmt(calc.totalCost)}</Badge>
           </button>
           <div className="flex items-center gap-1">
             <Input
@@ -83,6 +135,9 @@ export default function VinylWorkflowCard({
               className="h-8 text-sm w-44"
               onClick={(e) => e.stopPropagation()}
             />
+            <Button variant="ghost" size="icon" onClick={() => { setTemplatesMode("save"); setTemplatesOpen(true); }} className="h-8 w-8" title="Save / apply template">
+              <Bookmark className="w-3.5 h-3.5" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={onDuplicate} className="h-8 w-8" title="Duplicate workflow">
               <Copy className="w-3.5 h-3.5" />
             </Button>
@@ -95,17 +150,62 @@ export default function VinylWorkflowCard({
 
       {open && (
         <CardContent className="space-y-4">
+          {/* Color tag picker — Feature #14 */}
+          <div className="flex items-center gap-1 text-[11px] text-slate-500">
+            <span>Color tag:</span>
+            {COLOR_SWATCHES.map(c => (
+              <button
+                key={c}
+                onClick={() => set({ color_tag: c })}
+                className={`w-4 h-4 rounded-full border-2 ${colorTag === c ? "border-slate-900" : "border-transparent"}`}
+                style={{ background: c }}
+                aria-label={`Set color ${c}`}
+              />
+            ))}
+          </div>
+
+          {/* Preset bar — Feature #5 */}
+          <VinylPresetBar
+            activePresetKey={workflow.preset_key}
+            onApply={(preset) => set({ ...applyPresetToWorkflow(preset) })}
+          />
+
           <VinylMaterialPicker
             vinyls={vinyls}
             vinylId={workflow.vinyl_id}
             laminateId={workflow.laminate_id}
             applyLaminate={!!workflow.apply_laminate}
-            onChange={({ vinylId, laminateId, applyLaminate }) => set({
-              vinyl_id: vinylId,
-              laminate_id: laminateId || "",
-              apply_laminate: !!applyLaminate,
-            })}
+            presetKey={workflow.preset_key}
+            installEnvironment={installEnvironment}
+            recommendOnly={recommendOnly}
+            onChange={({ vinylId, laminateId, applyLaminate, recommendOnly: ro }) => {
+              if (ro !== undefined) setRecommendOnly(ro);
+              if (vinylId !== undefined || laminateId !== undefined || applyLaminate !== undefined) {
+                set({
+                  vinyl_id: vinylId,
+                  laminate_id: laminateId || "",
+                  apply_laminate: !!applyLaminate,
+                });
+              }
+            }}
           />
+
+          {/* Stock check — Feature #6 & #37 */}
+          {stockUsage && <VinylStockWarning stockUsage={stockUsage} vinyl={vinyl} />}
+
+          {/* Compare to other vinyls — Feature #22 */}
+          {vinyl && calc.vinylCost > 0 && (
+            <div>
+              <button onClick={() => setShowCompare(s => !s)} className="text-[11px] underline text-blue-600">
+                {showCompare ? "Hide" : "Show"} cost comparison vs other vinyls
+              </button>
+              {showCompare && (
+                <div className="mt-2">
+                  <VinylAlternativeCompare calc={calc} currentVinyl={vinyl} vinyls={vinyls} />
+                </div>
+              )}
+            </div>
+          )}
 
           <VinylMachinePicker
             machines={machines}
@@ -131,10 +231,24 @@ export default function VinylWorkflowCard({
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Parts in this workflow</CardTitle>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <CardTitle className="text-sm">Parts in this workflow</CardTitle>
+                <label className="flex items-center gap-1.5 text-[11px] text-slate-600 cursor-pointer" title="Pack parts in the order listed (instead of tallest-first)">
+                  <ListOrdered className="w-3.5 h-3.5" />
+                  Manual order
+                  <Switch checked={!!workflow.manual_order} onCheckedChange={(v) => set({ manual_order: !!v })} />
+                </label>
+              </div>
             </CardHeader>
             <CardContent>
-              <VinylPartsTable items={workflow.items || []} onChange={(items) => set({ items })} />
+              <VinylPartsTable
+                items={workflow.items || []}
+                onChange={(items) => set({ items })}
+                perPartCosts={perPartCosts}
+                usableWidth={calc.usableWidth}
+                defaultBleed={workflow.apply_cut ? 0 : 0.125}
+                onMoveToWorkflow={onMovePartToWorkflow ? (partIdx) => onMovePartToWorkflow(partIdx) : null}
+              />
             </CardContent>
           </Card>
 
@@ -169,11 +283,22 @@ export default function VinylWorkflowCard({
               </div>
             </CardHeader>
             <CardContent>
-              <VinylRollVisualizer calc={calc} />
+              <VinylRollVisualizer
+                calc={calc}
+                showRegistrationMarks={workflow.apply_print && workflow.apply_cut}
+              />
             </CardContent>
           </Card>
         </CardContent>
       )}
+
+      <VinylWorkflowTemplatesDialog
+        open={templatesOpen}
+        onClose={() => setTemplatesOpen(false)}
+        mode={templatesMode}
+        currentWorkflow={workflow}
+        onApply={(patch) => set(patch)}
+      />
     </Card>
   );
 }

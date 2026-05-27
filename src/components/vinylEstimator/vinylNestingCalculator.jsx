@@ -42,6 +42,7 @@ export function calculateVinylProject({
   operatorHourlyRate = 45,
   applyPrint = true, applyCut = true, applyLaminate = false,
   overrideGutterH, overrideGutterV,
+  manualOrder = false, // Feature #1 — respect input order instead of NFDH height-sort
 } = {}) {
 
   // --- Roll geometry — driven by the leading machine (printer > cutter > laminator).
@@ -87,8 +88,10 @@ export function calculateVinylProject({
     }
   });
 
-  // --- Sort tallest first for NFDH
-  rects.sort((a, b) => b.h - a.h);
+  // --- Sort tallest first for NFDH — unless the user wants manual order.
+  if (!manualOrder) {
+    rects.sort((a, b) => b.h - a.h);
+  }
 
   // --- Pack onto shelves
   const shelves = []; // { y, height, items: [{x,y,w,h, ...rect}] }

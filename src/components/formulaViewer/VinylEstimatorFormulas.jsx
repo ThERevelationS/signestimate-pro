@@ -98,8 +98,47 @@ export default function VinylEstimatorFormulas() {
         </p>
         <p><b>Rotate toggle:</b> when off on a part, the nester will NEVER rotate it. If it doesn't fit the
         usable roll width in its native orientation, it will be marked as "Unplaced".</p>
+        <p><b>Manual Order toggle:</b> by default NFDH sorts parts tallest-first (more efficient packing). With
+        Manual Order ON, parts are packed in the exact order they appear in the table — useful when you want
+        specific parts grouped together on the roll.</p>
         <p><b>Travel:</b> shared with the Channel Letter Install travel calculator —
         Fuel + Travel Labor + Vehicle Overhead, floored by Min Travel Charge.</p>
+      </div>
+
+      {/* New per-part costing + stock + yield formulas */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900 space-y-2">
+        <h4 className="font-bold text-blue-900 mb-1">Per-Part Cost Allocation</h4>
+        <p>The workflow total is allocated down to each part by its share of total used area (and perimeter for cut cost):</p>
+        <p className="font-mono bg-white border border-blue-200 rounded px-2 py-1">
+          part_vinyl_cost = workflow_vinyl_cost × (part_sqIn / total_used_sqIn)
+        </p>
+        <p className="font-mono bg-white border border-blue-200 rounded px-2 py-1">
+          part_cut_cost = (cut_machine + blade) × (part_perimeter / total_perimeter)
+        </p>
+        <p className="font-mono bg-white border border-blue-200 rounded px-2 py-1">
+          cost_each = part_total_cost / parts_placed
+        </p>
+
+        <h4 className="font-bold text-blue-900 mt-2 mb-1">Yield Metric (per workflow)</h4>
+        <p className="font-mono bg-white border border-blue-200 rounded px-2 py-1">
+          yield % = used_sqft / total_roll_sqft_pulled × 100<br/>
+          waste % = 100 − yield %<br/>
+          cost_per_sqft = workflow_total_cost / used_sqft
+        </p>
+
+        <h4 className="font-bold text-blue-900 mt-2 mb-1">Stock / Multi-Roll Check</h4>
+        <p className="font-mono bg-white border border-blue-200 rounded px-2 py-1">
+          rolls_needed = length_consumed_in / (roll_length_yards × 36)<br/>
+          full_rolls_needed = ⌈ rolls_needed ⌉
+        </p>
+        <p>If <code>rolls_needed &gt; 1</code>, the project is flagged as a multi-roll job (each additional roll incurs its own
+        leading/trailing edge waste, accounted for via total pulled length).</p>
+
+        <h4 className="font-bold text-blue-900 mt-2 mb-1">Alternative Vinyl Comparison</h4>
+        <p>"If you used vinyl B" cost is computed by re-pricing the SAME pulled area at vinyl B's $/sqft:</p>
+        <p className="font-mono bg-white border border-blue-200 rounded px-2 py-1">
+          alt_cost = total_pulled_sqft × (alt_vinyl $/sqft) × (1 + alt_waste_factor)
+        </p>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">

@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Droplets, Loader2, FileText, Layers, HardHat, Calculator, Plus, MapPin, Settings as SettingsIcon } from "lucide-react";
+import { ArrowLeft, Droplets, Loader2, FileText, Layers, HardHat, Calculator, Plus, MapPin, Settings as SettingsIcon, ChevronsUpDown, ChevronsDownUp, BookmarkPlus, ClipboardPaste, UploadCloud, AlertTriangle } from "lucide-react";
 
 import ClientSearchInput from "@/components/ClientSearchInput";
 import AddressAutocomplete from "@/components/channelLetterInstall/AddressAutocomplete";
@@ -26,6 +26,10 @@ import TravelCostCard from "@/components/channelLetterInstall/TravelCostCard";
 
 import VinylWorkflowCard from "@/components/vinylEstimator/VinylWorkflowCard";
 import VinylProjectSummaryCard from "@/components/vinylEstimator/VinylProjectSummaryCard";
+import VinylBulkImportDialog from "@/components/vinylEstimator/VinylBulkImportDialog";
+import VinylPartsLibraryDialog from "@/components/vinylEstimator/VinylPartsLibraryDialog";
+import VinylArtworkUploadDialog from "@/components/vinylEstimator/VinylArtworkUploadDialog";
+import VinylMoveToWorkflowMenu from "@/components/vinylEstimator/VinylMoveToWorkflowMenu";
 import {
   blankVinylProject, blankWorkflow, migrateProject, rollupVinylProject,
 } from "@/components/vinylEstimator/vinylProjectHelpers";
@@ -45,6 +49,15 @@ export default function NewVinylEstimate() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("project");
+
+  // Workflow tab UI state
+  const [allOpen, setAllOpen] = useState(true);
+  const [targetWorkflowIdx, setTargetWorkflowIdx] = useState(null); // index whose toolbar opened the dialog
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [artworkOpen, setArtworkOpen] = useState(false);
+  // Move-part-to-workflow dialog
+  const [moveContext, setMoveContext] = useState(null); // { workflowIdx, partIdx }
 
   // Load everything in parallel
   useEffect(() => {
@@ -136,6 +149,39 @@ export default function NewVinylEstimate() {
   // Max install height for travel/equipment suggestion compatibility
   const totalLaborHours = rollup.laborHours;
 
+  // Feature #33 — does any workflow have validation issues?
+  const workflowsHaveIssues = useMemo(
+    () => (project.workflows || []).some(wf => wf._hasIssues),
+    [project.workflows]
+  );
+
+  // Helper: add a single part to a specific workflow (used by library + artwork dialogs)
+  const addPartToWorkflow = (workflowIdx, part) => {
+    if (workflowIdx == null || workflowIdx < 0 || workflowIdx >= project.workflows.length) return;
+    const wf = project.workflows[workflowIdx];
+    updateWorkflow(workflowIdx, { ...wf, items: [...(wf.items || []), part] });
+  };
+  // Helper: bulk import to a specific workflow
+  const importPartsToWorkflow = (workflowIdx, parts) => {
+    if (workflowIdx == null) return;
+    const wf = project.workflows[workflowIdx];
+    updateWorkflow(workflowIdx, { ...wf, items: [...(wf.items || []), ...parts] });
+  };
+  // Helper: move a part between workflows
+  const movePart = (fromIdx, partIdx, toIdx) => {
+    if (fromIdx === toIdx) return;
+    const fromWf = project.workflows[fromIdx];
+    const toWf = project.workflows[toIdx];
+    const part = fromWf.items[partIdx];
+    if (!part) return;
+    setProject(prev => {
+      const wfs = [...prev.workflows];
+      wfs[fromIdx] = { ...fromWf, items: fromWf.items.filter((_, i) => i !== partIdx) };
+      wfs[toIdx]   = { ...toWf,   items: [...(toWf.items || []), part] };
+      return { ...prev, workflows: wfs };
+    });
+  };
+
   const save = async () => {
     if (!project.project_name || !project.client_name || !project.estimate_number || !project.hyperlink) {
       alert("Please fill in Project Name, Client Name, Estimate Number, and Project Link.");
@@ -200,11 +246,14 @@ export default function NewVinylEstimate() {
     return <div className="p-12 text-center text-slate-500"><Loader2 className="w-5 h-5 animate-spin inline mr-2" /> Loading…</div>;
   }
 
-  const TabBtn = ({ value, icon: Icon, label, amount }) => (
-    <TabsTrigger value={value} className="flex items-center gap-1.5 text-xs md:text-sm py-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+  const TabBtn = ({ value, icon: Icon, label, amount, warn }) => (
+    <TabsTrigger value={value} className="flex items-center gap-1.5 text-xs md:text-sm py-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white relative">
       <Icon className="w-4 h-4" /> <span className="truncate">{label}</span>
       {amount != null && (
         <span className="ml-1 text-[10px] tabular-nums opacity-80">{fmt(amount)}</span>
+      )}
+      {warn && (
+        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" title="Workflow has issues" />
       )}
     </TabsTrigger>
   );
@@ -236,7 +285,7 @@ export default function NewVinylEstimate() {
               <div className="sticky top-[64px] z-30 -mx-2 px-2 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60">
                 <TabsList className="grid w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
                   <TabBtn value="project"   icon={FileText}   label="Project" />
-                  <TabBtn value="workflows" icon={Layers}     label="Vinyl Workflows" amount={rollup.materialCost + rollup.machineCost + rollup.laborCost} />
+                  <TabBtn value="workflows" icon={Layers}     label="Vinyl Workflows" amount={rollup.materialCost + rollup.machineCost + rollup.laborCost} warn={workflowsHaveIssues} />
                   <TabBtn value="install"   icon={HardHat}    label="Installation"    amount={rollup.equipmentCost + rollup.personnelCost} />
                   <TabBtn value="travel"    icon={MapPin}     label="Travel"          amount={rollup.travelCost} />
                   <TabBtn value="summary"   icon={Calculator} label="Summary"         amount={rollup.totalCost} />
@@ -340,14 +389,39 @@ export default function NewVinylEstimate() {
 
               {/* WORKFLOWS TAB */}
               <TabsContent value="workflows" className="mt-4 space-y-4">
-                <div className="flex items-center justify-between bg-white rounded-lg border border-slate-200 px-3 py-2 shadow-sm">
+                <div className="flex items-center justify-between bg-white rounded-lg border border-slate-200 px-3 py-2 shadow-sm flex-wrap gap-2">
                   <div className="text-sm text-slate-600">
                     Add one workflow per vinyl type. Each workflow lays out on its own roll.
                   </div>
-                  <Button size="sm" onClick={addWorkflow} className="bg-blue-600 hover:bg-blue-700 text-white">
-                    <Plus className="w-4 h-4 mr-1" /> Add Workflow
-                  </Button>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {project.workflows.length > 1 && (
+                      <Button size="sm" variant="outline" onClick={() => setAllOpen(o => !o)} className="h-8">
+                        {allOpen
+                          ? <><ChevronsDownUp className="w-3.5 h-3.5 mr-1" /> Collapse All</>
+                          : <><ChevronsUpDown className="w-3.5 h-3.5 mr-1" /> Expand All</>}
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" onClick={() => { setTargetWorkflowIdx(0); setLibraryOpen(true); }} className="h-8">
+                      <BookmarkPlus className="w-3.5 h-3.5 mr-1" /> Library
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setTargetWorkflowIdx(0); setBulkOpen(true); }} className="h-8">
+                      <ClipboardPaste className="w-3.5 h-3.5 mr-1" /> Bulk Paste
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setTargetWorkflowIdx(0); setArtworkOpen(true); }} className="h-8">
+                      <UploadCloud className="w-3.5 h-3.5 mr-1" /> Artwork
+                    </Button>
+                    <Button size="sm" onClick={addWorkflow} className="bg-blue-600 hover:bg-blue-700 text-white h-8">
+                      <Plus className="w-4 h-4 mr-1" /> Workflow
+                    </Button>
+                  </div>
                 </div>
+
+                {workflowsHaveIssues && (
+                  <div className="flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    One or more workflows have unplaced parts or missing vinyl selections — see the red badges below.
+                  </div>
+                )}
 
                 {project.workflows.map((wf, idx) => (
                   <VinylWorkflowCard
@@ -356,10 +430,14 @@ export default function NewVinylEstimate() {
                     index={idx}
                     vinyls={vinyls}
                     machines={machines}
+                    installEnvironment={project.install_environment}
                     onChange={(next) => updateWorkflow(idx, next)}
                     onRemove={() => removeWorkflow(idx)}
                     onDuplicate={() => duplicateWorkflow(idx)}
-                    defaultOpen={project.workflows.length === 1}
+                    onMovePartToWorkflow={project.workflows.length > 1
+                      ? (partIdx) => setMoveContext({ workflowIdx: idx, partIdx })
+                      : null}
+                    defaultOpen={allOpen}
                   />
                 ))}
               </TabsContent>
@@ -450,6 +528,33 @@ export default function NewVinylEstimate() {
           </div>
         </div>
       </div>
+
+      {/* Workflow-tab dialogs — Features #15, #17, #31, #34 */}
+      <VinylBulkImportDialog
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        onImport={(parts) => importPartsToWorkflow(targetWorkflowIdx, parts)}
+      />
+      <VinylPartsLibraryDialog
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        onPick={(part) => addPartToWorkflow(targetWorkflowIdx, part)}
+      />
+      <VinylArtworkUploadDialog
+        open={artworkOpen}
+        onClose={() => setArtworkOpen(false)}
+        onAdd={(part) => addPartToWorkflow(targetWorkflowIdx, part)}
+      />
+      <VinylMoveToWorkflowMenu
+        open={!!moveContext}
+        onClose={() => setMoveContext(null)}
+        workflows={project.workflows}
+        currentWorkflowIdx={moveContext?.workflowIdx ?? -1}
+        onMove={(toIdx) => {
+          movePart(moveContext.workflowIdx, moveContext.partIdx, toIdx);
+          setMoveContext(null);
+        }}
+      />
     </div>
   );
 }
