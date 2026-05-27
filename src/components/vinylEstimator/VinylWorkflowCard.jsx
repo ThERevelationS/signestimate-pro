@@ -25,6 +25,7 @@ import VinylStockWarning from "./VinylStockWarning";
 import VinylAlternativeCompare from "./VinylAlternativeCompare";
 import VinylWorkflowTemplatesDialog from "./VinylWorkflowTemplatesDialog";
 import VinylWorkflowCardHeader, { COLOR_SWATCHES } from "./VinylWorkflowCardHeader";
+import VinylCuttingExtrasCard from "./VinylCuttingExtrasCard";
 import { calculateVinylProject } from "./vinylNestingCalculator";
 import { applyPresetToWorkflow } from "./vinylWorkflowPresets";
 import {
@@ -56,25 +57,28 @@ export default function VinylWorkflowCard({
   const printer   = useMemo(() => machines.find(m => m.id === workflow.printer_id)   || null, [machines, workflow.printer_id]);
   const cutter    = useMemo(() => machines.find(m => m.id === workflow.cutter_id)    || null, [machines, workflow.cutter_id]);
   const laminator = useMemo(() => machines.find(m => m.id === workflow.laminator_id) || null, [machines, workflow.laminator_id]);
-  const vinyl     = useMemo(() => vinyls.find(v => v.id === workflow.vinyl_id)    || null, [vinyls, workflow.vinyl_id]);
-  const laminate  = useMemo(() => vinyls.find(v => v.id === workflow.laminate_id) || null, [vinyls, workflow.laminate_id]);
+  const vinyl        = useMemo(() => vinyls.find(v => v.id === workflow.vinyl_id)         || null, [vinyls, workflow.vinyl_id]);
+  const laminate     = useMemo(() => vinyls.find(v => v.id === workflow.laminate_id)      || null, [vinyls, workflow.laminate_id]);
+  const transferTape = useMemo(() => vinyls.find(v => v.id === workflow.transfer_tape_id) || null, [vinyls, workflow.transfer_tape_id]);
 
   const operatorRate = printer?.operator_hourly_rate ?? cutter?.operator_hourly_rate ?? laminator?.operator_hourly_rate ?? 45;
 
   const calc = useMemo(() => calculateVinylProject({
     items: workflow.items || [],
     printer, cutter, laminator,
-    vinyl, laminate,
+    vinyl, laminate, transferTape,
     operatorHourlyRate: operatorRate,
     applyPrint: !!workflow.apply_print,
     applyCut: !!workflow.apply_cut,
     applyLaminate: !!workflow.apply_laminate,
+    applyTransferTape: !!workflow.apply_transfer_tape,
     overrideGutterH: workflow.gutter_h_override === "" || workflow.gutter_h_override == null ? undefined : num(workflow.gutter_h_override),
     overrideGutterV: workflow.gutter_v_override === "" || workflow.gutter_v_override == null ? undefined : num(workflow.gutter_v_override),
   }), [
     workflow.items, workflow.apply_print, workflow.apply_cut, workflow.apply_laminate,
+    workflow.apply_transfer_tape, workflow.transfer_tape_id,
     workflow.gutter_h_override, workflow.gutter_v_override,
-    printer, cutter, laminator, vinyl, laminate, operatorRate,
+    printer, cutter, laminator, vinyl, laminate, transferTape, operatorRate,
   ]);
 
   // Drag-and-drop: a per-item manual x override that the calculator doesn't know about
@@ -206,6 +210,23 @@ export default function VinylWorkflowCard({
               set(patch);
             }}
           />
+
+          {/* Cutting-only extras: transfer tape + weeding difficulty */}
+          {workflow.apply_cut && (
+            <VinylCuttingExtrasCard
+              vinyls={vinyls}
+              transferTapeId={workflow.transfer_tape_id}
+              applyTransferTape={!!workflow.apply_transfer_tape}
+              weedingDifficulty={workflow.weeding_difficulty}
+              onChange={(p) => {
+                const patch = {};
+                if (p.transferTapeId   !== undefined) patch.transfer_tape_id   = p.transferTapeId;
+                if (p.applyTransferTape !== undefined) patch.apply_transfer_tape = p.applyTransferTape;
+                if (p.weedingDifficulty !== undefined) patch.weeding_difficulty = p.weedingDifficulty;
+                set(patch);
+              }}
+            />
+          )}
 
           <Card>
             <CardHeader className="pb-2">

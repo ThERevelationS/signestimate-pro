@@ -188,10 +188,33 @@ export default function VinylEstimatorFormulas() {
             <p>Laminator time = length ÷ ipm + setup = <b>{calc.laminateMinutes.toFixed(2)} min</b></p>
           </div>
 
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs space-y-1 text-amber-900">
+            <h4 className="font-bold text-amber-900 mb-1 flex items-center gap-1"><Scissors className="w-3.5 h-3.5" /> Transfer Tape (Cut Workflows Only)</h4>
+            <p>Available only when <b>Cut</b> is applied to a workflow. Pick any roll whose category
+              is <code>transfer_tape</code> or <code>application_tape</code> from Vinyl Inventory.</p>
+            <p className="font-mono bg-white border border-amber-200 rounded px-2 py-1">
+              tt_sqft = length_consumed × min(tt_roll_width, effective_roll_width) / 144<br/>
+              tt_cost = tt_sqft × tt_$/sqft × (1 + tt_waste_%)
+            </p>
+            <p>No machine time is charged for tape application — it's a hand step. Labor for taping
+              is captured by the workflow's <b>Weeding Difficulty</b> selector (job-level, not stored
+              on the vinyl).</p>
+          </div>
+
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs space-y-1 text-slate-800">
+            <h4 className="font-bold text-slate-900 mb-1">Inventory Cleanup</h4>
+            <p>Removed from vinyl inventory: <b>MOQ</b>, <b>Yield Factor</b> (now derived from
+              actual nesting), and <b>Weeding Difficulty</b> (moved to the workflow card under
+              "Cutting Extras" — same vinyl can be easy or hard to weed depending on artwork detail).</p>
+            <p>Finish &amp; Adhesive Type now display with capitalized labels (e.g. "High Tack",
+              "Carbon Fiber") via shared label maps.</p>
+          </div>
+
           <div className="bg-slate-800 text-white p-3 rounded text-xs space-y-1">
             <h4 className="font-medium mb-1">Final Totals</h4>
             <div className="flex justify-between"><span>Vinyl:</span><span>${calc.vinylCost.toFixed(2)}</span></div>
             <div className="flex justify-between"><span>Laminate:</span><span>${calc.laminateCost.toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>Transfer Tape:</span><span>${(calc.transferTapeCost || 0).toFixed(2)}</span></div>
             <div className="flex justify-between"><span>Ink + Blade:</span><span>${(calc.inkCost + calc.bladeCost).toFixed(2)}</span></div>
             <div className="flex justify-between"><span>Machine + Labor:</span><span>${(calc.machineCost + calc.laborCost).toFixed(2)}</span></div>
             <div className="flex justify-between font-bold border-t border-slate-600 pt-1 mt-1">

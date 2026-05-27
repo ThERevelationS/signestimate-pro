@@ -43,10 +43,44 @@ export const VINYL_FINISHES = [
   "transparent", "translucent", "frosted", "carbon_fiber", "brushed",
 ];
 
+// Display labels for finishes — capitalized & spaced
+export const VINYL_FINISH_LABELS = {
+  gloss: "Gloss",
+  matte: "Matte",
+  satin: "Satin",
+  metallic: "Metallic",
+  reflective: "Reflective",
+  transparent: "Transparent",
+  translucent: "Translucent",
+  frosted: "Frosted",
+  carbon_fiber: "Carbon Fiber",
+  brushed: "Brushed",
+};
+
 export const VINYL_ADHESIVES = [
   "permanent", "removable", "repositionable", "high_tack",
   "low_tack", "air_release", "controltac",
 ];
+
+// Display labels for adhesive types — capitalized & spaced
+export const VINYL_ADHESIVE_LABELS = {
+  permanent: "Permanent",
+  removable: "Removable",
+  repositionable: "Repositionable",
+  high_tack: "High Tack",
+  low_tack: "Low Tack",
+  air_release: "Air Release",
+  controltac: "Controltac",
+};
+
+// Display labels for weeding difficulty — capitalized & spaced
+export const WEEDING_DIFFICULTY_LABELS = {
+  very_easy: "Very Easy",
+  easy: "Easy",
+  moderate: "Moderate",
+  hard: "Hard",
+  very_hard: "Very Hard",
+};
 
 export const APPLICATION_SURFACES = [
   "flat", "curved", "compound_curves", "rivets", "corrugated",

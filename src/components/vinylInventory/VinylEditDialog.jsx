@@ -23,7 +23,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Droplets, Save, X, Tag, Sliders, Sun, Printer, Eye, FileText } from "lucide-react";
 import {
   VINYL_CATEGORIES, VINYL_USE_CASES, VINYL_FINISHES, VINYL_ADHESIVES,
-  APPLICATION_SURFACES, PRINTER_CHEMISTRIES, PRICING_MODES, WEEDING_DIFFICULTY,
+  VINYL_FINISH_LABELS, VINYL_ADHESIVE_LABELS,
+  APPLICATION_SURFACES, PRINTER_CHEMISTRIES, PRICING_MODES,
   vinylCostPerSqft,
 } from "./vinylConstants";
 
@@ -165,10 +166,10 @@ export default function VinylEditDialog({
                 <SelectField label="Primary Use Case" value={draft.vinyl_use_case} disabled={!isAdmin}
                   options={VINYL_USE_CASES} onChange={(v) => patch({ vinyl_use_case: v })} />
                 <SelectField label="Finish" value={draft.finish || "gloss"} disabled={!isAdmin}
-                  options={VINYL_FINISHES.map(f => ({ id: f, label: f }))}
+                  options={VINYL_FINISHES.map(f => ({ id: f, label: VINYL_FINISH_LABELS[f] || f }))}
                   onChange={(v) => patch({ finish: v })} />
                 <SelectField label="Adhesive Type" value={draft.adhesive_type || "permanent"} disabled={!isAdmin}
-                  options={VINYL_ADHESIVES.map(a => ({ id: a, label: a }))}
+                  options={VINYL_ADHESIVES.map(a => ({ id: a, label: VINYL_ADHESIVE_LABELS[a] || a }))}
                   onChange={(v) => patch({ adhesive_type: v })} />
               </SectionGrid>
             </TabsContent>
@@ -182,7 +183,7 @@ export default function VinylEditDialog({
                 <SelectField label="Pricing Mode" value={draft.pricing_mode || "per_roll"} disabled={!isAdmin}
                   options={PRICING_MODES} onChange={(v) => patch({ pricing_mode: v })} />
               </SectionGrid>
-              <SectionGrid cols={4}>
+              <SectionGrid cols={3}>
                 <NumberField label="Cost per Roll ($)" step="0.01" value={draft.cost_per_roll}
                   disabled={!isAdmin || draft.pricing_mode !== "per_roll"}
                   onChange={(v) => patch({ cost_per_roll: v })} />
@@ -192,11 +193,9 @@ export default function VinylEditDialog({
                 <NumberField label="Cost per Linear Ft ($)" step="0.01" value={draft.cost_per_linear_foot}
                   disabled={!isAdmin || draft.pricing_mode !== "per_linear_foot"}
                   onChange={(v) => patch({ cost_per_linear_foot: v })} />
-                <NumberField label="MOQ" value={draft.minimum_order_quantity} disabled={!isAdmin} onChange={(v) => patch({ minimum_order_quantity: v })} />
               </SectionGrid>
               <SectionGrid cols={2}>
                 <NumberField label="Waste %" value={draft.waste_factor_percent} disabled={!isAdmin} onChange={(v) => patch({ waste_factor_percent: v })} />
-                <NumberField label="Yield Factor (0–1)" step="0.05" value={draft.yield_factor} disabled={!isAdmin} onChange={(v) => patch({ yield_factor: v })} />
               </SectionGrid>
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 flex items-center justify-between">
                 <div className="text-xs text-emerald-900">
@@ -209,7 +208,7 @@ export default function VinylEditDialog({
 
             {/* APPLICATION */}
             <TabsContent value="application" className="mt-0 space-y-5">
-              <SectionGrid cols={4}>
+              <SectionGrid cols={3}>
                 <SelectField label="Application Method" value={draft.application_method || "either"} disabled={!isAdmin}
                   options={[{id:"dry",label:"Dry"},{id:"wet",label:"Wet"},{id:"either",label:"Either"}]}
                   onChange={(v) => patch({ application_method: v })} />
@@ -217,9 +216,6 @@ export default function VinylEditDialog({
                   options={[{id:"indoor_only",label:"Indoor Only"},{id:"outdoor",label:"Outdoor"},{id:"both",label:"Both"}]}
                   onChange={(v) => patch({ indoor_outdoor: v })} />
                 <NumberField label="Outdoor Life (yrs)" value={draft.expected_life_years_outdoor} disabled={!isAdmin} onChange={(v) => patch({ expected_life_years_outdoor: v })} />
-                <SelectField label="Weeding Difficulty" value={draft.weeding_difficulty || "moderate"} disabled={!isAdmin}
-                  options={WEEDING_DIFFICULTY.map(w => ({ id: w, label: w.replace("_", " ") }))}
-                  onChange={(v) => patch({ weeding_difficulty: v })} />
               </SectionGrid>
               <SectionGrid cols={4}>
                 <NumberField label="Min Letter Height (in)" step="0.25" value={draft.min_recommended_letter_height_inches} disabled={!isAdmin} onChange={(v) => patch({ min_recommended_letter_height_inches: v })} />

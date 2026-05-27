@@ -30,17 +30,17 @@ const computeRollSqFtCost = (vinyl) => {
  * @param {object} args
  * @param {Array}  args.items                 — [{ width_inches, height_inches, quantity, bleed_inches, allow_rotation }]
  * @param {object} args.printer | args.cutter | args.laminator
- * @param {object} args.vinyl | args.laminate
+ * @param {object} args.vinyl | args.laminate | args.transferTape
  * @param {number} args.operatorHourlyRate
- * @param {boolean} args.applyPrint | args.applyCut | args.applyLaminate
+ * @param {boolean} args.applyPrint | args.applyCut | args.applyLaminate | args.applyTransferTape
  * @param {number} args.overrideGutterH | args.overrideGutterV
  */
 export function calculateVinylProject({
   items = [],
   printer = null, cutter = null, laminator = null,
-  vinyl = null, laminate = null,
+  vinyl = null, laminate = null, transferTape = null,
   operatorHourlyRate = 45,
-  applyPrint = true, applyCut = true, applyLaminate = false,
+  applyPrint = true, applyCut = true, applyLaminate = false, applyTransferTape = false,
   overrideGutterH, overrideGutterV,
 } = {}) {
 
@@ -222,6 +222,17 @@ export function calculateVinylProject({
     ? (laminateMinutes / 60) * num(laminator.laminator_hourly_rate, 0)
     : 0;
 
+  // --- Transfer Tape — applied after cutting/weeding so the vinyl can be installed.
+  // Charged by full roll-width × length consumed, just like laminate, but no machine time.
+  let transferTapeSqFt = 0, transferTapeCost = 0;
+  if (applyTransferTape && transferTape) {
+    const ttWidth = Math.min(num(transferTape.roll_width_inches, effectiveRollWidth), effectiveRollWidth);
+    transferTapeSqFt = sqInToSqFt(lengthConsumedIn * ttWidth);
+    const ttSqFtRate = computeRollSqFtCost(transferTape);
+    const ttWasteMult = 1 + num(transferTape.waste_factor_percent, 0) / 100;
+    transferTapeCost = transferTapeSqFt * ttSqFtRate * ttWasteMult;
+  }
+
   const machineCost = printMachineCost + cutMachineCost + laminateMachineCost;
 
   // --- Labor — operator runs each machine
@@ -229,7 +240,7 @@ export function calculateVinylProject({
   const laborHours = laborMinutes / 60;
   const laborCost = laborHours * num(operatorHourlyRate, 45);
 
-  const materialCost = vinylCost + laminateCost + inkCost + bladeCost;
+  const materialCost = vinylCost + laminateCost + transferTapeCost + inkCost + bladeCost;
   const totalCost = materialCost + machineCost + laborCost;
 
   return {
@@ -240,6 +251,7 @@ export function calculateVinylProject({
     usedSqFt, totalRollSqFtPulled, wastedSqFt,
     // cost breakdown
     vinylCost, laminateCost, laminateSqFt,
+    transferTapeCost, transferTapeSqFt,
     inkCost, printMinutes, printMachineCost,
     cutDistanceIn, cutMinutes, cutMachineCost, bladeCost,
     laminateMinutes, laminateMachineCost,
