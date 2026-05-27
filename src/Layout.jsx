@@ -31,7 +31,8 @@ import {
   Shield,
   Factory,
   Boxes,
-  ClipboardCheck
+  ClipboardCheck,
+  Droplets
 } from 'lucide-react';
 
 export default function Layout({ children, currentPageName }) {
@@ -200,6 +201,17 @@ export default function Layout({ children, currentPageName }) {
       bgColor: 'bg-orange-50',
       hoverColor: 'hover:bg-orange-100',
       inventoryPage: 'Inventory'
+    },
+    {
+      id: 'vinyl_estimator',
+      name: 'Vinyl Estimator',
+      icon: Droplets,
+      projectsPage: 'VinylProjects',
+      newEstimatePage: 'NewVinylEstimate',
+      settingsPage: 'VinylSettings',
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      hoverColor: 'hover:bg-blue-100'
     }
   ];
 

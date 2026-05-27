@@ -1,7 +1,7 @@
 // Single source of truth for all estimator modules.
 // Used by the Layout sidebar, the Dashboard landing page, and the
 // User Management permissions UI so names, icons, and links stay in sync.
-import { Paintbrush, Zap, Router, Wrench, Anchor, ClipboardCheck } from "lucide-react";
+import { Paintbrush, Zap, Router, Wrench, Anchor, ClipboardCheck, Droplets } from "lucide-react";
 
 export const MODULES = [
   {
@@ -91,6 +91,18 @@ export const MODULES = [
     projectsPage: "MetalProjects",
     settingsPage: "MetalSettings",
     inventoryPage: "Inventory",
+  },
+  {
+    key: "vinyl_estimator",
+    name: "Vinyl Printing, Cutting & Lamination",
+    shortName: "Vinyl Estimator",
+    description: "For printed graphics, cut decals & laminated overlays",
+    icon: Droplets,
+    color: "blue",
+    group: "fab",
+    newEstimatePage: "NewVinylEstimate",
+    projectsPage: "VinylProjects",
+    settingsPage: "VinylSettings",
   },
 ];
 

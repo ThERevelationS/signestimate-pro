@@ -13,6 +13,7 @@ import LaserFormulas from "@/components/formulaViewer/LaserFormulas";
 import ConcreteMasonryPolesFormulas from "@/components/formulaViewer/ConcreteMasonryPolesFormulas";
 import SignMaintenanceFormulas from "@/components/formulaViewer/SignMaintenanceFormulas";
 import VinylInventoryFormulas from "@/components/formulaViewer/VinylInventoryFormulas";
+import VinylEstimatorFormulas from "@/components/formulaViewer/VinylEstimatorFormulas";
 
 // Helper function to parse imperial fractions (e.g., "1/2", "1-3/4")
 const parseImperialFraction = (fractionString) => {
@@ -459,7 +460,7 @@ export default function FormulaViewer() {
         </div>
 
         <Tabs value={selectedModule} onValueChange={setSelectedModule} className="w-full">
-          <TabsList className="grid grid-cols-2 md:grid-cols-8 mb-4 h-auto">
+          <TabsList className="grid grid-cols-2 md:grid-cols-9 mb-4 h-auto">
             <TabsTrigger value="painting" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Paintbrush className="w-4 h-4" /> Painting</TabsTrigger>
             <TabsTrigger value="laser" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Zap className="w-4 h-4" /> Laser</TabsTrigger>
             <TabsTrigger value="cnc" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Router className="w-4 h-4" /> CNC</TabsTrigger>
@@ -467,7 +468,8 @@ export default function FormulaViewer() {
             <TabsTrigger value="channel_letter" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Wrench className="w-4 h-4" /> Channel & Dimensional</TabsTrigger>
             <TabsTrigger value="concrete_masonry_poles" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Anchor className="w-4 h-4" /> Concrete | Masonry | Poles</TabsTrigger>
             <TabsTrigger value="sign_maintenance" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><ClipboardCheck className="w-4 h-4" /> Sign Maintenance</TabsTrigger>
-            <TabsTrigger value="vinyl" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Droplets className="w-4 h-4" /> Vinyl</TabsTrigger>
+            <TabsTrigger value="vinyl" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Droplets className="w-4 h-4" /> Vinyl Inv</TabsTrigger>
+            <TabsTrigger value="vinyl_estimator" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Droplets className="w-4 h-4" /> Vinyl Est</TabsTrigger>
           </TabsList>
 
           <Card className="bg-white border-0 shadow-sm">
@@ -480,6 +482,7 @@ export default function FormulaViewer() {
               <TabsContent value="concrete_masonry_poles" className="mt-0"><ConcreteMasonryPolesFormulas settings={settings} /></TabsContent>
               <TabsContent value="sign_maintenance" className="mt-0"><SignMaintenanceFormulas settings={settings} /></TabsContent>
               <TabsContent value="vinyl" className="mt-0"><VinylInventoryFormulas /></TabsContent>
+              <TabsContent value="vinyl_estimator" className="mt-0"><VinylEstimatorFormulas /></TabsContent>
             </CardContent>
           </Card>
         </Tabs>
