@@ -8,15 +8,33 @@ import SignTypePicker from "./SignTypePicker";
 import ActionPicker from "./ActionPicker";
 import RepaintMonumentPanel from "./RepaintMonumentPanel";
 import { defaultMonumentRepaintConfig } from "./repaintCalculator";
-import { SIGN_TYPES_BY_ID, LETTER_SIZES, CABINET_SIZES, sizeAxisFor, ACTIONS_FOR_SIGN_TYPE } from "./constants";
+import { SIGN_TYPES_BY_ID, LETTER_SIZES, CABINET_SIZES, sizeAxisFor, ACTIONS } from "./constants";
 
-export default function ServiceItemRow({ item, index, onUpdate, onRemove, onDuplicate, settings = {} }) {
+export default function ServiceItemRow({ item, index, onUpdate, onRemove, onDuplicate, settings = {}, rates = [] }) {
   const update = (patch) => onUpdate(index, { ...item, ...patch });
 
+  // Actions enabled for the current sign type, driven by the user's Settings
+  // toggles (MaintenanceActionRate.is_enabled). If no rate row exists yet for
+  // a (sign_type, action) pair, we treat it as enabled (default).
+  const enabledActionsForSign = React.useMemo(() => {
+    if (!item.sign_type) return [];
+    return ACTIONS
+      .map(a => a.id)
+      .filter(actionId => {
+        const r = rates.find(x => x.sign_type === item.sign_type && x.action === actionId);
+        return !r || r.is_enabled !== false;
+      });
+  }, [item.sign_type, rates]);
+
   const handleSignTypeChange = (id) => {
-    // Reset size and prune incompatible actions when sign type changes.
-    const applicable = ACTIONS_FOR_SIGN_TYPE[id] || [];
-    const filteredActions = (item.actions || []).filter(a => applicable.includes(a));
+    // Reset size and prune actions that are not enabled for this sign type.
+    const allowed = ACTIONS
+      .map(a => a.id)
+      .filter(actionId => {
+        const r = rates.find(x => x.sign_type === id && x.action === actionId);
+        return !r || r.is_enabled !== false;
+      });
+    const filteredActions = (item.actions || []).filter(a => allowed.includes(a));
     const axis = sizeAxisFor(id);
     const defaultSize = axis === "cabinet" ? "cab_medium" : "medium";
     update({ sign_type: id, actions: filteredActions, size: defaultSize });
@@ -106,6 +124,7 @@ export default function ServiceItemRow({ item, index, onUpdate, onRemove, onDupl
               signType={item.sign_type}
               selected={item.actions || []}
               onToggle={toggleAction}
+              enabledActions={enabledActionsForSign}
             />
           </div>
         )}

@@ -35,6 +35,8 @@ export const emptyServiceItem = () => ({
 const minutesForActionOnSize = (rates, signType, action, size) => {
   const rate = (rates || []).find(r => r.sign_type === signType && r.action === action);
   if (!rate) return 0;
+  // Honor the per-sign-type enable toggle. Disabled rate rows contribute 0 minutes.
+  if (rate.is_enabled === false) return 0;
   const field = SIZE_TO_FIELD[size];
   if (!field) return parseFloat(rate.base_minutes_flat) || 0;
   return parseFloat(rate[field]) || 0;

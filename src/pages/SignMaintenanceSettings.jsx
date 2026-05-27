@@ -5,17 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Wrench, Save, CheckCircle2, DollarSign, Ruler, Gauge, Building2, AlertTriangle, Paintbrush2 } from "lucide-react";
+import { Wrench, Save, CheckCircle2, DollarSign, Ruler, Gauge, Building2, AlertTriangle } from "lucide-react";
 import SettingsAuthWrapper from "@/components/SettingsAuthWrapper";
 import { useToast } from "@/components/ui/use-toast";
 import SectionCard, { AnimatedGrid } from "@/components/signMaintenance/SectionCard";
-import { SIGN_TYPES, ACTIONS, ACTIONS_FOR_SIGN_TYPE, sizeAxisFor } from "@/components/signMaintenance/constants";
-import { DEFAULT_RATES, DEFAULT_MIN_HOURS, SIZE_FIELD } from "@/components/signMaintenance/defaults";
+import { SIGN_TYPES, ACTIONS, sizeAxisFor } from "@/components/signMaintenance/constants";
+import { DEFAULT_RATES, DEFAULT_MIN_HOURS } from "@/components/signMaintenance/defaults";
 import RatesBySignTypeTab from "@/components/signMaintenance/RatesBySignTypeTab";
 import MinimumsTab, { minimumSettingKey } from "@/components/signMaintenance/MinimumsTab";
 import TravelTab from "@/components/signMaintenance/TravelTab";
 import SiteConditionsTab from "@/components/signMaintenance/SiteConditionsTab";
-import RepaintSettingsTab from "@/components/signMaintenance/RepaintSettingsTab";
 import { REPAINT_DEFAULTS } from "@/components/signMaintenance/repaintDefaults";
 import { maintenanceTravelDefs, maintenanceSiteConditionDefs } from "@/components/signMaintenance/maintenanceTravelSiteDefs";
 import { refreshFuelPrice } from "@/functions/refreshFuelPrice";
@@ -27,16 +26,32 @@ const GLOBAL_LABOR_SETTINGS = [
   { name: "maintenance_helper_rate",        category: "maintenance_pricing", label: "Helper Hourly Rate",       suffix: "$/hr", default: "35" },
 ];
 
+// Which actions were historically "applicable" for each sign type (per
+// constants/ACTIONS_FOR_SIGN_TYPE). We now expose every action for every sign
+// type, but we still default the non-historical ones to is_enabled = false so
+// the user's existing setup is preserved on first load.
+const HISTORICAL_APPLICABLE = {
+  flush_channel:       ACTIONS.map(a => a.id),
+  halo_channel:        ACTIONS.map(a => a.id),
+  raceway_channel:     ACTIONS.map(a => a.id),
+  capsule_logo:        ACTIONS.map(a => a.id).filter(id => !["replace_returns", "replace_trim_cap"].includes(id)),
+  dimensional_letters: ["clean", "repaint", "vinyl_replacement", "reseal"],
+  monument_sign:       ACTIONS.map(a => a.id).filter(id => !["replace_returns", "replace_trim_cap"].includes(id)),
+  pylon_sign:          ACTIONS.map(a => a.id).filter(id => !["replace_returns", "replace_trim_cap"].includes(id)),
+  post_and_panel:      ["clean", "repaint", "vinyl_replacement", "reseal", "replace_face"],
+};
+
 // Build the prefilled value for one (sign_type × action) action rate row from defaults.
 const buildDefaultRateRow = (signTypeId, actionId) => {
   const tableForSign = DEFAULT_RATES[signTypeId] || {};
   const def = tableForSign[actionId];
   const isCabinet = sizeAxisFor(signTypeId) === "cabinet";
+  const wasHistoricallyApplicable = (HISTORICAL_APPLICABLE[signTypeId] || []).includes(actionId);
   const base = {
     sign_type: signTypeId,
     action: actionId,
     rate_basis: isCabinet ? "per_cabinet" : "per_letter",
-    is_enabled: true,
+    is_enabled: wasHistoricallyApplicable,
   };
   if (!def) return base;
   base.rate_basis = def.basis;
@@ -94,15 +109,16 @@ export default function SignMaintenanceSettings() {
       });
       setGlobalSettings(next);
 
-      // Seed missing MaintenanceActionRate rows from DEFAULT_RATES so the user always
-      // sees a fully prefilled grid even on a brand new app.
+      // Seed missing MaintenanceActionRate rows for EVERY sign-type × action
+      // combination so the user can toggle any action on/off per sign type.
+      // is_enabled defaults to whatever was historically applicable (see
+      // HISTORICAL_APPLICABLE above) — keeps existing setups intact.
       const haveKey = new Set((dbRates || []).map(r => `${r.sign_type}|${r.action}`));
       const seeded = [...(dbRates || [])];
       SIGN_TYPES.forEach(st => {
-        const applicable = ACTIONS_FOR_SIGN_TYPE[st.id] || [];
-        applicable.forEach(actionId => {
-          if (!haveKey.has(`${st.id}|${actionId}`)) {
-            seeded.push(buildDefaultRateRow(st.id, actionId));
+        ACTIONS.forEach(a => {
+          if (!haveKey.has(`${st.id}|${a.id}`)) {
+            seeded.push(buildDefaultRateRow(st.id, a.id));
           }
         });
       });
@@ -244,10 +260,11 @@ export default function SignMaintenanceSettings() {
   }
 
   // Each tab gets a unique color so the entire page feels lively yet structured.
+  // (Repaint is no longer a standalone tab — its settings live inline under
+  // each sign type's Repaint action sub-tab in the Service Items tab.)
   const TAB_META = [
     { key: "pricing",   title: "Pricing & Labor", Icon: DollarSign,    color: "emerald", activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-emerald-500 data-[state=active]:to-emerald-700" },
-    { key: "rates",     title: "Action Rates",    Icon: Ruler,         color: "cyan",    activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-cyan-500 data-[state=active]:to-cyan-700" },
-    { key: "repaint",   title: "Repaint",         Icon: Paintbrush2,   color: "orange",  activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-orange-500 data-[state=active]:to-amber-600" },
+    { key: "rates",     title: "Service Items",   Icon: Ruler,         color: "cyan",    activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-cyan-500 data-[state=active]:to-cyan-700" },
     { key: "minimums",  title: "Minimum Rates",   Icon: Gauge,         color: "violet",  activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-violet-500 data-[state=active]:to-purple-700" },
     { key: "travel",    title: "Travel",          Icon: Building2,     color: "blue",    activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-blue-700" },
     { key: "site",      title: "Site Conditions", Icon: AlertTriangle, color: "amber",   activeBg: "data-[state=active]:bg-gradient-to-br data-[state=active]:from-amber-500 data-[state=active]:to-orange-600" },
@@ -317,7 +334,7 @@ export default function SignMaintenanceSettings() {
 
         <SettingsAuthWrapper correctPassword="Cinci2467" onUnlock={() => setIsLocked(false)} user={user}>
           <Tabs defaultValue="pricing" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 mb-6 h-auto p-1.5 bg-white/70 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-sm">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 mb-6 h-auto p-1.5 bg-white/70 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-sm">
               {TAB_META.map(({ key, title, Icon, activeBg }) => (
                 <TabsTrigger
                   key={key}
@@ -351,11 +368,13 @@ export default function SignMaintenanceSettings() {
             </TabsContent>
 
             <TabsContent value="rates" className="space-y-4">
-              <RatesBySignTypeTab rateMap={rateMap} isLocked={isLocked} onChangeRate={onChangeRate} />
-            </TabsContent>
-
-            <TabsContent value="repaint" className="space-y-4">
-              <RepaintSettingsTab globalSettings={globalSettings} setGlobalSettings={setGlobalSettings} isLocked={isLocked} />
+              <RatesBySignTypeTab
+                rateMap={rateMap}
+                isLocked={isLocked}
+                onChangeRate={onChangeRate}
+                globalSettings={globalSettings}
+                setGlobalSettings={setGlobalSettings}
+              />
             </TabsContent>
 
             <TabsContent value="minimums" className="space-y-4">

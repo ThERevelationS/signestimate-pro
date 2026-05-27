@@ -1,16 +1,26 @@
 import React from "react";
-import { ACTIONS, ACTION_GROUPS, ACTIONS_FOR_SIGN_TYPE } from "./constants";
+import { ACTIONS, ACTION_GROUPS } from "./constants";
 import { Check } from "lucide-react";
 
-export default function ActionPicker({ signType, selected, onToggle }) {
-  const applicable = ACTIONS_FOR_SIGN_TYPE[signType] || [];
-  const grouped = ACTION_GROUPS.map(group => ({
-    group,
-    actions: ACTIONS.filter(a => a.group === group && applicable.includes(a.id)),
-  })).filter(g => g.actions.length > 0);
-
+// `enabledActions` is an array of action ids that the user has enabled for this
+// sign type in Settings. When omitted, every action is shown (backward compat).
+export default function ActionPicker({ signType, selected, onToggle, enabledActions }) {
   if (!signType) {
     return <div className="text-xs text-slate-400 italic">Pick a sign type first to see applicable maintenance actions.</div>;
+  }
+
+  const allowed = enabledActions || ACTIONS.map(a => a.id);
+  const grouped = ACTION_GROUPS.map(group => ({
+    group,
+    actions: ACTIONS.filter(a => a.group === group && allowed.includes(a.id)),
+  })).filter(g => g.actions.length > 0);
+
+  if (grouped.length === 0) {
+    return (
+      <div className="text-xs text-slate-500 italic bg-amber-50 border border-amber-200 rounded-md p-2">
+        No actions are enabled for this sign type. Enable them in Sign Maintenance Settings → Service Items.
+      </div>
+    );
   }
 
   return (

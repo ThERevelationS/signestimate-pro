@@ -57,7 +57,11 @@ export default function SignMaintenanceFormulas({ settings = {} }) {
         </div>
         <div>
           <h2 className="font-bold text-slate-900">Sign Maintenance — Monument Repaint</h2>
-          <p className="text-xs text-slate-500">Repaint action + painted dimensional letters add-on (uses Paint Estimator rates).</p>
+          <p className="text-xs text-slate-500">
+            Repaint action + painted dimensional letters add-on (uses Paint Estimator rates).
+            Every action can be enabled/disabled per sign type in Settings → Service Items.
+            Disabled (sign_type × action) rate rows contribute 0 minutes to the estimate.
+          </p>
         </div>
       </div>
 
