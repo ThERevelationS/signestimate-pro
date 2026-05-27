@@ -58,13 +58,13 @@ export default function VinylPartsTable({
   return (
     <div className="space-y-2">
       {/* Sticky header — feature #28 */}
-      <div className="hidden md:grid grid-cols-[1fr_70px_70px_60px_70px_60px_90px_90px] gap-2 text-[11px] font-medium text-slate-500 px-1 sticky top-0 bg-white z-10 py-1 border-b border-slate-200">
+      <div className="hidden md:grid grid-cols-[1fr_70px_70px_60px_70px_70px_90px_90px] gap-2 text-[11px] font-medium text-slate-500 px-1 sticky top-0 bg-white z-10 py-1 border-b border-slate-200">
         <div>Description</div>
         <div>W (in)</div>
         <div>H (in)</div>
         <div>Qty</div>
-        <div>Bleed</div>
-        <div className="text-center">Rot?</div>
+        <div title="Empty waste area added around the part (does not change part size)">Bleed</div>
+        <div className="text-center" title="Allow the nester to rotate the part 90° to fit">Rotate</div>
         <div className="text-right">Cost ea / total</div>
         <div className="text-right">Actions</div>
       </div>
@@ -81,7 +81,7 @@ export default function VinylPartsTable({
 
         return (
           <div key={it.id || idx} className="space-y-1">
-            <div className="grid grid-cols-[1fr_70px_70px_60px_70px_60px_90px_90px] gap-2 items-center">
+            <div className="grid grid-cols-[1fr_70px_70px_60px_70px_70px_90px_90px] gap-2 items-center">
               <Input value={it.description || ""} onChange={(e) => update(idx, { description: e.target.value })}
                      placeholder={`Item ${idx + 1}`} className="h-9 text-sm" />
               <Input type="number" step="0.125" value={it.width_inches} onChange={(e) => update(idx, { width_inches: parseFloat(e.target.value) || 0 })} className="h-9 text-sm tabular-nums" />
@@ -89,8 +89,15 @@ export default function VinylPartsTable({
               <Input type="number" step="1" min="1" value={it.quantity} onChange={(e) => update(idx, { quantity: Math.max(1, parseInt(e.target.value) || 1) })} className="h-9 text-sm tabular-nums" />
               <Input type="number" step="0.0625" value={it.bleed_inches || 0} onChange={(e) => update(idx, { bleed_inches: parseFloat(e.target.value) || 0 })} className="h-9 text-sm tabular-nums"
                 onKeyDown={(e) => handleKeyDown(e, idx, isLast)} />
-              <div className="flex justify-center">
-                <Checkbox checked={it.allow_rotation !== false} onCheckedChange={(v) => update(idx, { allow_rotation: !!v })} />
+              <div className="flex items-center justify-center gap-1" title="Allow 90° rotation to fit the roll">
+                <Checkbox
+                  id={`rot-${idx}`}
+                  checked={it.allow_rotation !== false}
+                  onCheckedChange={(v) => update(idx, { allow_rotation: !!v })}
+                />
+                <label htmlFor={`rot-${idx}`} className="text-[10px] text-slate-500 cursor-pointer select-none">
+                  {it.allow_rotation !== false ? "Yes" : "No"}
+                </label>
               </div>
               <div className="text-right text-xs tabular-nums leading-tight">
                 {cost ? (

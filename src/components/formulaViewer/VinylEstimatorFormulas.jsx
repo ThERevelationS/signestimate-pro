@@ -96,11 +96,15 @@ export default function VinylEstimatorFormulas() {
         <p className="font-mono bg-white border border-slate-200 rounded px-2 py-1">
           Project Total = Σ(workflow material + machine + labor) + Equipment + Personnel + Travel + Supplies + Markup
         </p>
-        <p><b>Rotate toggle:</b> when off on a part, the nester will NEVER rotate it. If it doesn't fit the
-        usable roll width in its native orientation, it will be marked as "Unplaced".</p>
-        <p><b>Manual Order toggle:</b> by default NFDH sorts parts tallest-first (more efficient packing). With
-        Manual Order ON, parts are packed in the exact order they appear in the table — useful when you want
-        specific parts grouped together on the roll.</p>
+        <p><b>Rotate toggle:</b> when ON, the nester is allowed to rotate the part 90° to fit. When OFF, the
+        nester will NEVER rotate it — if it doesn't fit the usable roll width in its native orientation, it
+        will be marked as "Unplaced".</p>
+        <p><b>Bleed:</b> bleed does NOT change the part's printed/cut size. It reserves an empty "waste halo"
+        around the part on the roll (so the placed footprint = part + 2×bleed each axis). Print area, cut
+        perimeter, and ink cost are based on the inner part size, never inflated by bleed.</p>
+        <p><b>Drag & Drop on Roll Layout:</b> you can click + drag any placed part along its shelf to manually
+        reposition it. Drags are clamped to the usable column edges and respect the H gutter against neighbors.
+        Editing the parts list resets manual positions.</p>
         <p><b>Travel:</b> shared with the Channel Letter Install travel calculator —
         Fuel + Travel Labor + Vehicle Overhead, floored by Min Travel Charge.</p>
       </div>

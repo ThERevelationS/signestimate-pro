@@ -42,7 +42,6 @@ export function calculateVinylProject({
   operatorHourlyRate = 45,
   applyPrint = true, applyCut = true, applyLaminate = false,
   overrideGutterH, overrideGutterV,
-  manualOrder = false, // Feature #1 — respect input order instead of NFDH height-sort
 } = {}) {
 
   // --- Roll geometry — driven by the leading machine (printer > cutter > laminator).
@@ -66,14 +65,18 @@ export function calculateVinylProject({
   const gutterH = overrideGutterH ?? num(leadingMachine?.default_gutter_horizontal_inches, 0.25);
   const gutterV = overrideGutterV ?? num(leadingMachine?.default_gutter_vertical_inches, 0.25);
 
-  // --- Expand items into rectangles (with bleed). Tag each with source item id for visualizer.
+  // --- Expand items into rectangles. Bleed = empty waste halo around the part:
+  //     packed rect (outer) = part size + 2*bleed (reserves space on the roll for safe trimming)
+  //     part rect (inner)   = the actual printed/cut artwork (unchanged size)
   const rects = [];
   items.forEach((it, itemIdx) => {
     const baseBleed = num(it.bleed_inches, num(leadingMachine?.default_bleed_inches, 0));
-    const w0 = num(it.width_inches) + baseBleed * 2;
-    const h0 = num(it.height_inches) + baseBleed * 2;
+    const partW = num(it.width_inches);
+    const partH = num(it.height_inches);
+    const w0 = partW + baseBleed * 2;
+    const h0 = partH + baseBleed * 2;
     const qty = Math.max(1, Math.floor(num(it.quantity, 1)));
-    if (w0 <= 0 || h0 <= 0) return;
+    if (partW <= 0 || partH <= 0) return;
 
     for (let i = 0; i < qty; i++) {
       rects.push({
@@ -81,17 +84,17 @@ export function calculateVinylProject({
         itemId: it.id || `idx-${itemIdx}`,
         itemIdx,
         description: it.description || `Item ${itemIdx + 1}`,
-        w: w0, h: h0,
+        w: w0, h: h0,            // OUTER bounding rect (with bleed halo)
+        partW, partH,            // INNER part size (no bleed)
+        bleed: baseBleed,        // halo thickness (each side)
         allow_rotation: it.allow_rotation !== false,
         rotated: false,
       });
     }
   });
 
-  // --- Sort tallest first for NFDH — unless the user wants manual order.
-  if (!manualOrder) {
-    rects.sort((a, b) => b.h - a.h);
-  }
+  // --- Sort tallest first for NFDH.
+  rects.sort((a, b) => b.h - a.h);
 
   // --- Pack onto shelves
   const shelves = []; // { y, height, items: [{x,y,w,h, ...rect}] }
@@ -101,9 +104,11 @@ export function calculateVinylProject({
   const placeOnNewShelf = (r) => {
     // Only rotate if the user explicitly allowed it AND it's needed to fit width-wise.
     let w = r.w, h = r.h, rotated = false;
+    let pw = r.partW, ph = r.partH;
     if (w > usableWidth) {
       if (r.allow_rotation && h <= usableWidth) {
         [w, h] = [h, w];
+        [pw, ph] = [ph, pw];
         rotated = true;
       } else {
         return false; // doesn't fit and can't (or isn't allowed to) rotate
@@ -112,7 +117,7 @@ export function calculateVinylProject({
 
     currentShelf = { y: yCursor, height: h, items: [] };
     shelves.push(currentShelf);
-    currentShelf.items.push({ ...r, x: 0, y: yCursor, w, h, rotated });
+    currentShelf.items.push({ ...r, x: 0, y: yCursor, w, h, partW: pw, partH: ph, rotated });
     yCursor += h + gutterV;
     return true;
   };
@@ -130,14 +135,14 @@ export function calculateVinylProject({
     let placed = false;
     // Orientation A: native
     if (r.w <= usableWidth - nextX && r.h <= currentShelf.height) {
-      currentShelf.items.push({ ...r, x: nextX, y: currentShelf.y, w: r.w, h: r.h, rotated: false });
+      currentShelf.items.push({ ...r, x: nextX, y: currentShelf.y, w: r.w, h: r.h, partW: r.partW, partH: r.partH, rotated: false });
       placed = true;
     }
     // Orientation B: rotated
     if (!placed && r.allow_rotation) {
       const rw = r.h, rh = r.w;
       if (rw <= usableWidth - nextX && rh <= currentShelf.height) {
-        currentShelf.items.push({ ...r, x: nextX, y: currentShelf.y, w: rw, h: rh, rotated: true });
+        currentShelf.items.push({ ...r, x: nextX, y: currentShelf.y, w: rw, h: rh, partW: r.partH, partH: r.partW, rotated: true });
         placed = true;
       }
     }
@@ -158,8 +163,12 @@ export function calculateVinylProject({
   const lengthConsumedIn = leadingEdge + contentLengthIn + trailingEdge + cutPullOff;
   const lengthConsumedFt = lengthConsumedIn / 12;
 
-  // Used (printed/cut) area = sum of placed item rects
-  const usedSqIn = shelves.reduce((s, sh) => s + sh.items.reduce((ss, it) => ss + it.w * it.h, 0), 0);
+  // Used (printed/cut) area = sum of placed item INNER part rects (bleed is empty waste halo)
+  const usedSqIn = shelves.reduce((s, sh) => s + sh.items.reduce((ss, it) => {
+    const pw = it.partW ?? it.w;
+    const ph = it.partH ?? it.h;
+    return ss + pw * ph;
+  }, 0), 0);
   const usedSqFt = sqInToSqFt(usedSqIn);
 
   const totalRollSqFtPulled = sqInToSqFt(lengthConsumedIn * effectiveRollWidth);
@@ -201,10 +210,14 @@ export function calculateVinylProject({
     printMachineCost = (printMinutes / 60) * num(printer.machine_hourly_rate, 0);
   }
 
-  // --- Cut (Graphtec etc.) — perimeter of each placed rect
+  // --- Cut (Graphtec etc.) — perimeter of each placed part (INNER size, not bleed halo)
   let cutDistanceIn = 0, cutMinutes = 0, cutMachineCost = 0, bladeCost = 0;
   if (applyCut && cutter) {
-    cutDistanceIn = shelves.reduce((s, sh) => s + sh.items.reduce((ss, it) => ss + 2 * (it.w + it.h), 0), 0);
+    cutDistanceIn = shelves.reduce((s, sh) => s + sh.items.reduce((ss, it) => {
+      const pw = it.partW ?? it.w;
+      const ph = it.partH ?? it.h;
+      return ss + 2 * (pw + ph);
+    }, 0), 0);
     const ips = Math.max(0.1, num(cutter.cut_speed_inches_per_second, 30));
     cutMinutes = (cutDistanceIn / ips) / 60 + num(cutter.cut_setup_minutes_per_job, 0);
     cutMachineCost = (cutMinutes / 60) * num(cutter.machine_hourly_rate, 0);

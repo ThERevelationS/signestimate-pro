@@ -14,8 +14,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Sliders, ListOrdered } from "lucide-react";
+import { Sliders } from "lucide-react";
 
 import VinylMaterialPicker from "./VinylMaterialPicker";
 import VinylMachinePicker from "./VinylMachinePicker";
@@ -72,12 +71,34 @@ export default function VinylWorkflowCard({
     applyLaminate: !!workflow.apply_laminate,
     overrideGutterH: workflow.gutter_h_override === "" || workflow.gutter_h_override == null ? undefined : num(workflow.gutter_h_override),
     overrideGutterV: workflow.gutter_v_override === "" || workflow.gutter_v_override == null ? undefined : num(workflow.gutter_v_override),
-    manualOrder: !!workflow.manual_order,
   }), [
     workflow.items, workflow.apply_print, workflow.apply_cut, workflow.apply_laminate,
-    workflow.gutter_h_override, workflow.gutter_v_override, workflow.manual_order,
+    workflow.gutter_h_override, workflow.gutter_v_override,
     printer, cutter, laminator, vinyl, laminate, operatorRate,
   ]);
+
+  // Drag-and-drop: a per-item manual x override that the calculator doesn't know about
+  // but we apply on the placed shelves directly for visual rendering. Stored in a
+  // workflow.items[].manual_layout = { x } map.
+  const calcWithManualPositions = useMemo(() => {
+    if (!workflow.manual_positions) return calc;
+    const shelves = calc.shelves.map((sh, sIdx) => ({
+      ...sh,
+      items: sh.items.map((it, iIdx) => {
+        const key = `${sIdx}-${iIdx}`;
+        const override = workflow.manual_positions[key];
+        return override !== undefined ? { ...it, x: override } : it;
+      }),
+    }));
+    return { ...calc, shelves };
+  }, [calc, workflow.manual_positions]);
+
+  const handleItemMove = ({ shelfIdx, itemIdx, x }) => {
+    const key = `${shelfIdx}-${itemIdx}`;
+    set({
+      manual_positions: { ...(workflow.manual_positions || {}), [key]: x },
+    });
+  };
 
   // Per-part cost rollup — Feature #19
   const perPartCosts = useMemo(() => computePerPartCosts(calc, workflow.items || []), [calc, workflow.items]);
@@ -188,19 +209,12 @@ export default function VinylWorkflowCard({
 
           <Card>
             <CardHeader className="pb-2">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <CardTitle className="text-sm">Parts in this workflow</CardTitle>
-                <label className="flex items-center gap-1.5 text-[11px] text-slate-600 cursor-pointer" title="Pack parts in the order listed (instead of tallest-first)">
-                  <ListOrdered className="w-3.5 h-3.5" />
-                  Manual order
-                  <Switch checked={!!workflow.manual_order} onCheckedChange={(v) => set({ manual_order: !!v })} />
-                </label>
-              </div>
+              <CardTitle className="text-sm">Parts in this workflow</CardTitle>
             </CardHeader>
             <CardContent>
               <VinylPartsTable
                 items={workflow.items || []}
-                onChange={(items) => set({ items })}
+                onChange={(items) => set({ items, manual_positions: {} })}
                 perPartCosts={perPartCosts}
                 usableWidth={calc.usableWidth}
                 defaultBleed={workflow.apply_cut ? 0 : 0.125}
@@ -231,8 +245,8 @@ export default function VinylWorkflowCard({
                     onChange={(e) => set({ gutter_v_override: e.target.value })}
                     className="h-7 w-16 text-xs tabular-nums"
                   />
-                  {(workflow.gutter_h_override || workflow.gutter_v_override) && (
-                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => set({ gutter_h_override: "", gutter_v_override: "" })}>
+                  {(workflow.gutter_h_override || workflow.gutter_v_override || workflow.manual_positions) && (
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => set({ gutter_h_override: "", gutter_v_override: "", manual_positions: {} })}>
                       Reset
                     </Button>
                   )}
@@ -241,8 +255,9 @@ export default function VinylWorkflowCard({
             </CardHeader>
             <CardContent>
               <VinylRollVisualizer
-                calc={calc}
+                calc={calcWithManualPositions}
                 showRegistrationMarks={workflow.apply_print && workflow.apply_cut}
+                onItemMove={handleItemMove}
               />
             </CardContent>
           </Card>
