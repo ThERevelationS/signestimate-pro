@@ -7,7 +7,7 @@ import { ArrowLeft, Package, HardHat, Box, Droplets } from "lucide-react";
 import MaterialsInventoryTab from "../components/channelLetterInstall/MaterialsInventoryTab";
 import EquipmentInventoryTab from "../components/channelLetterInstall/EquipmentInventoryTab";
 import DimensionalMaterialsTab from "../components/channelLetterInstall/DimensionalMaterialsTab";
-import VinylInventoryTab from "@/components/vinylInventory/VinylInventoryTab.jsx";
+import VinylInventoryTab from "@/components/vinylInventory/VinylInventoryTab";
 
 export default function ChannelLetterInstallInventoryPage() {
   const [tab, setTab] = useState("materials");

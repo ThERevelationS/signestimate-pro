@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Droplets } from "lucide-react";
 import { createPageUrl } from "@/utils";
-import VinylInventoryTab from "@/components/vinylInventory/VinylInventoryTab.jsx";
+import VinylInventoryTab from "@/components/vinylInventory/VinylInventoryTab";
 
 export default function VinylInventoryPage() {
   return (
