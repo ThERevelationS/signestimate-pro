@@ -209,6 +209,7 @@ export default function Layout({ children, currentPageName }) {
       projectsPage: 'VinylProjects',
       newEstimatePage: 'NewVinylEstimate',
       settingsPage: 'VinylSettings',
+      inventoryPage: 'VinylInventory',
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
       hoverColor: 'hover:bg-blue-100'

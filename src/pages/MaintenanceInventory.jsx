@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Plus, Boxes, Truck, Box, Trash2, Wrench, Droplets } from "lucide-react";
 import MaintenanceDimensionalSheetsTab from "@/components/signMaintenance/MaintenanceDimensionalSheetsTab";
 import MaintenanceMaterialsTab from "@/components/signMaintenance/MaintenanceMaterialsTab";
-import VinylInventoryTab from "@/components/vinylInventory/VinylInventoryTab";
+import VinylInventoryTab from "@/components/vinylInventory/VinylInventoryTab.jsx";
 
 export default function MaintenanceInventoryPage() {
   return (

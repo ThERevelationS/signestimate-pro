@@ -14,6 +14,7 @@ import Report from './pages/Report';
 import NewVinylEstimate from './pages/NewVinylEstimate';
 import VinylProjects from './pages/VinylProjects';
 import VinylSettings from './pages/VinylSettings';
+import VinylInventoryPage from './pages/VinylInventory';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -60,6 +61,7 @@ const AuthenticatedApp = () => {
         <Route path="/NewVinylEstimate" element={<NewVinylEstimate />} />
         <Route path="/VinylProjects" element={<VinylProjects />} />
         <Route path="/VinylSettings" element={<VinylSettings />} />
+        <Route path="/VinylInventory" element={<VinylInventoryPage />} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </LayoutWrapper>
