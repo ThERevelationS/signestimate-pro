@@ -26,6 +26,8 @@ import VinylAlternativeCompare from "./VinylAlternativeCompare";
 import VinylWorkflowTemplatesDialog from "./VinylWorkflowTemplatesDialog";
 import VinylWorkflowCardHeader, { COLOR_SWATCHES } from "./VinylWorkflowCardHeader";
 import VinylCuttingExtrasCard from "./VinylCuttingExtrasCard";
+import VinylWorkflowPersonnel from "./VinylWorkflowPersonnel";
+import VinylRollWidthRecommender from "./VinylRollWidthRecommender";
 import { calculateVinylProject } from "./vinylNestingCalculator";
 import { applyPresetToWorkflow } from "./vinylWorkflowPresets";
 import {
@@ -74,10 +76,20 @@ export default function VinylWorkflowCard({
     applyTransferTape: !!workflow.apply_transfer_tape,
     overrideGutterH: workflow.gutter_h_override === "" || workflow.gutter_h_override == null ? undefined : num(workflow.gutter_h_override),
     overrideGutterV: workflow.gutter_v_override === "" || workflow.gutter_v_override == null ? undefined : num(workflow.gutter_v_override),
+    printQuality: workflow.print_quality || printer?.default_print_quality || "high_quality",
+    weedingDifficulty: workflow.weeding_difficulty || "moderate",
+    weedingMinutesPerPartOverride: workflow.weeding_minutes_per_part_override,
+    installMinutesPerPart: workflow.install_minutes_per_part,
+    personnel: workflow.personnel || [],
+    spoilageBufferPercent: num(workflow.spoilage_buffer_percent),
+    setupFeeFloor: num(workflow.setup_fee_floor),
   }), [
     workflow.items, workflow.apply_print, workflow.apply_cut, workflow.apply_laminate,
     workflow.apply_transfer_tape, workflow.transfer_tape_id,
     workflow.gutter_h_override, workflow.gutter_v_override,
+    workflow.print_quality, workflow.weeding_difficulty,
+    workflow.weeding_minutes_per_part_override, workflow.install_minutes_per_part,
+    workflow.personnel, workflow.spoilage_buffer_percent, workflow.setup_fee_floor,
     printer, cutter, laminator, vinyl, laminate, transferTape, operatorRate,
   ]);
 
@@ -189,6 +201,21 @@ export default function VinylWorkflowCard({
             </div>
           )}
 
+          {/* Roll-width recommender (#10) */}
+          <VinylRollWidthRecommender
+            workflow={workflow}
+            vinyl={vinyl}
+            vinyls={vinyls}
+            printer={printer}
+            cutter={cutter}
+            laminator={laminator}
+            laminate={laminate}
+            transferTape={transferTape}
+            operatorRate={operatorRate}
+            currentCalc={calc}
+            onPick={(id) => set({ vinyl_id: id })}
+          />
+
           <VinylMachinePicker
             machines={machines}
             value={{
@@ -198,6 +225,7 @@ export default function VinylWorkflowCard({
               applyPrint:    !!workflow.apply_print,
               applyCut:      !!workflow.apply_cut,
               applyLaminate: !!workflow.apply_laminate,
+              printQuality:  workflow.print_quality || printer?.default_print_quality || "high_quality",
             }}
             onChange={(v) => {
               const patch = {};
@@ -207,26 +235,74 @@ export default function VinylWorkflowCard({
               if (v.applyPrint    !== undefined) patch.apply_print    = v.applyPrint;
               if (v.applyCut      !== undefined) patch.apply_cut      = v.applyCut;
               if (v.applyLaminate !== undefined) patch.apply_laminate = v.applyLaminate;
+              if (v.printQuality  !== undefined) patch.print_quality  = v.printQuality;
               set(patch);
             }}
           />
 
-          {/* Cutting-only extras: transfer tape + weeding difficulty */}
+          {/* Workflow-level cost knobs: spoilage buffer + setup fee floor */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Workflow Cost Controls</CardTitle>
+            </CardHeader>
+            <CardContent className="grid md:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-slate-500">Spoilage / Reprint Buffer (%)</label>
+                <Input
+                  type="number" step="1" min="0"
+                  value={workflow.spoilage_buffer_percent ?? ""}
+                  placeholder="0"
+                  onChange={(e) => set({ spoilage_buffer_percent: e.target.value })}
+                  className="h-8 tabular-nums"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">Adds N% extra qty to every part before nesting.</p>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-slate-500">Setup-Fee Floor ($)</label>
+                <Input
+                  type="number" step="1" min="0"
+                  value={workflow.setup_fee_floor ?? ""}
+                  placeholder="0"
+                  onChange={(e) => set({ setup_fee_floor: e.target.value })}
+                  className="h-8 tabular-nums"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  {calc.setupFeeApplied > 0
+                    ? <span className="text-amber-700 font-medium">Floor adding ${calc.setupFeeApplied.toFixed(2)} to this workflow.</span>
+                    : "Workflow minimum charge."}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Cutting-only extras: transfer tape + weeding difficulty + install labor */}
           {workflow.apply_cut && (
             <VinylCuttingExtrasCard
               vinyls={vinyls}
               transferTapeId={workflow.transfer_tape_id}
               applyTransferTape={!!workflow.apply_transfer_tape}
               weedingDifficulty={workflow.weeding_difficulty}
+              weedingMinutesPerPartOverride={workflow.weeding_minutes_per_part_override}
+              installMinutesPerPart={workflow.install_minutes_per_part}
+              partsPlaced={calc.partsPlaced}
               onChange={(p) => {
                 const patch = {};
                 if (p.transferTapeId   !== undefined) patch.transfer_tape_id   = p.transferTapeId;
                 if (p.applyTransferTape !== undefined) patch.apply_transfer_tape = p.applyTransferTape;
                 if (p.weedingDifficulty !== undefined) patch.weeding_difficulty = p.weedingDifficulty;
+                if (p.weedingMinutesPerPartOverride !== undefined) patch.weeding_minutes_per_part_override = p.weedingMinutesPerPartOverride;
+                if (p.installMinutesPerPart !== undefined) patch.install_minutes_per_part = p.installMinutesPerPart;
                 set(patch);
               }}
             />
           )}
+
+          {/* Per-personnel labor rates */}
+          <VinylWorkflowPersonnel
+            personnel={workflow.personnel || []}
+            onChange={(personnel) => set({ personnel })}
+            suggestedHours={(calc.machineRunMinutes + calc.weedingMinutes + calc.installMinutes) / 60}
+          />
 
           <Card>
             <CardHeader className="pb-2">

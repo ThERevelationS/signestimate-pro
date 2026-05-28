@@ -1,27 +1,26 @@
 {
   "name": "VinylInventory",
   "type": "object",
-  "description": "Master catalog of vinyl rolls and sheets used across Channel & Dimensional Letters, Lobby Signs, and Sign Maintenance estimates. Captures everything an estimator needs: roll dimensions, costs, application/finish characteristics, expected life, weeding difficulty, layering rules, and per-estimator visibility.",
+  "description": "Master catalog of vinyl rolls and sheets used across Channel & Dimensional Letters, Lobby Signs, Sign Maintenance, and the Vinyl Estimator. Captures everything an estimator needs: roll dimensions, costs, application/finish characteristics, expected life, layering rules, and per-estimator visibility. Multiple records can share a `product_group_key` to represent the SAME vinyl in different roll widths.",
   "properties": {
     "vinyl_name": {
-      "type": "string",
-      "description": "Friendly display name (e.g. '3M IJ180Cv3 \u2014 White 48\"')"
+      "type": "string"
     },
     "manufacturer": {
-      "type": "string",
-      "description": "Manufacturer brand, e.g. 3M, Avery, Oracal, Arlon."
+      "type": "string"
     },
     "product_series": {
+      "type": "string"
+    },
+    "product_group_key": {
       "type": "string",
-      "description": "Product series / SKU line, e.g. 'IJ180Cv3', '5650', '8500'."
+      "description": "Optional stable key shared by inventory rows that represent the SAME vinyl product in different roll widths. Lets the estimator suggest the cheapest viable roll width for a given workflow."
     },
     "color_name": {
-      "type": "string",
-      "description": "Friendly color name, e.g. 'White Gloss', 'Bright Red'."
+      "type": "string"
     },
     "color_hex": {
-      "type": "string",
-      "description": "Hex code for color preview (e.g. #ff0000)."
+      "type": "string"
     },
     "vinyl_category": {
       "type": "string",
@@ -45,8 +44,7 @@
         "application_tape",
         "specialty"
       ],
-      "default": "calendered",
-      "description": "What kind of vinyl this is at a high level."
+      "default": "calendered"
     },
     "vinyl_use_case": {
       "type": "string",
@@ -64,8 +62,7 @@
         "monument_panel",
         "general_signage"
       ],
-      "default": "cut_graphics",
-      "description": "Primary use-case the estimator should treat this vinyl as."
+      "default": "cut_graphics"
     },
     "finish": {
       "type": "string",
@@ -85,18 +82,15 @@
     },
     "roll_width_inches": {
       "type": "number",
-      "default": 24,
-      "description": "Standard roll width in inches (e.g. 15, 24, 30, 48, 54, 60)."
+      "default": 24
     },
     "roll_length_yards": {
       "type": "number",
-      "default": 50,
-      "description": "Standard roll length in yards (rolls are usually sold in 10/25/50 yd)."
+      "default": 50
     },
     "thickness_mil": {
       "type": "number",
-      "default": 2,
-      "description": "Vinyl thickness in mils (1 mil = 0.001\"). Typical 2\u20134 mil for cut, 3.4 for wrap, 0.5\u20131 for transfer tape."
+      "default": 2
     },
     "pricing_mode": {
       "type": "string",
@@ -105,56 +99,52 @@
         "per_sqft",
         "per_linear_foot"
       ],
-      "default": "per_roll",
-      "description": "How the cost field below should be interpreted."
+      "default": "per_roll"
     },
     "cost_per_roll": {
       "type": "number",
-      "default": 0,
-      "description": "Cost for one full roll at the listed width \u00d7 length."
+      "default": 0
     },
     "cost_per_sqft": {
       "type": "number",
-      "default": 0,
-      "description": "Direct cost per square foot (if you don't price by full roll)."
+      "default": 0
     },
     "cost_per_linear_foot": {
       "type": "number",
-      "default": 0,
-      "description": "Direct cost per linear foot of the roll (at the roll's width)."
+      "default": 0
     },
     "minimum_order_quantity": {
       "type": "number",
-      "default": 1,
-      "description": "Minimum rolls (or sqft / lin-ft, per pricing_mode) that must be ordered at once."
+      "default": 1
     },
     "waste_factor_percent": {
       "type": "number",
-      "default": 15,
-      "description": "Expected nesting / scrap waste added to the calculated usage (% on top)."
+      "default": 15
     },
     "yield_factor": {
       "type": "number",
-      "default": 0.85,
-      "description": "Useful yield after nesting and weeding (0.85 = 85% of the roll is usable on jobs)."
+      "default": 0.85
+    },
+    "is_laminate": {
+      "type": "boolean",
+      "default": false
     },
     "requires_lamination": {
       "type": "boolean",
-      "default": false,
-      "description": "True if this vinyl typically needs a clear over-laminate for outdoor durability."
+      "default": false
+    },
+    "default_laminate_id": {
+      "type": "string"
     },
     "preferred_laminate_id": {
-      "type": "string",
-      "description": "Optional VinylInventory.id pointing at the recommended laminate to pair with this vinyl."
+      "type": "string"
     },
     "requires_transfer_tape": {
       "type": "boolean",
-      "default": true,
-      "description": "True if this vinyl needs application/transfer tape for installation."
+      "default": true
     },
     "preferred_transfer_tape_id": {
-      "type": "string",
-      "description": "Optional VinylInventory.id pointing at the recommended transfer tape."
+      "type": "string"
     },
     "application_method": {
       "type": "string",
@@ -163,12 +153,10 @@
         "wet",
         "either"
       ],
-      "default": "either",
-      "description": "Whether this vinyl is typically installed dry, wet, or either."
+      "default": "either"
     },
     "application_surface": {
       "type": "array",
-      "description": "Surfaces this vinyl is rated for.",
       "items": {
         "type": "string",
         "enum": [
@@ -198,13 +186,11 @@
     },
     "expected_life_years_outdoor": {
       "type": "number",
-      "default": 5,
-      "description": "Manufacturer's expected outdoor life in years (vertical exposure)."
+      "default": 5
     },
     "removable": {
       "type": "boolean",
-      "default": false,
-      "description": "True if this vinyl is a removable/repositionable adhesive."
+      "default": false
     },
     "adhesive_type": {
       "type": "string",
@@ -228,22 +214,18 @@
         "hard",
         "very_hard"
       ],
-      "default": "moderate",
-      "description": "How hard it is to weed small detail out of this vinyl \u2014 drives labor on cut graphics."
+      "default": "moderate"
     },
     "min_recommended_letter_height_inches": {
       "type": "number",
-      "default": 1,
-      "description": "Smallest letter height this vinyl will cut cleanly (drives validation in estimators)."
+      "default": 1
     },
     "supports_printing": {
       "type": "boolean",
-      "default": false,
-      "description": "True if this is a printable media (solvent / latex / UV / eco-sol)."
+      "default": false
     },
     "printer_compatibility": {
       "type": "array",
-      "description": "Printer chemistries this print media is compatible with.",
       "items": {
         "type": "string",
         "enum": [
@@ -277,18 +259,19 @@
     },
     "show_in_channel_letters": {
       "type": "boolean",
-      "default": true,
-      "description": "Show in the Channel & Dimensional Letters / Lobby Signs estimator vinyl pickers."
+      "default": true
     },
     "show_in_sign_maintenance": {
       "type": "boolean",
-      "default": true,
-      "description": "Show in the Sign Maintenance estimator vinyl pickers (e.g. Vinyl Replacement action)."
+      "default": true
+    },
+    "show_in_vinyl_estimator": {
+      "type": "boolean",
+      "default": true
     },
     "show_in_master_only": {
       "type": "boolean",
-      "default": false,
-      "description": "Set true to keep this vinyl visible ONLY in the Master Vinyl Inventory (hidden from per-module pickers)."
+      "default": false
     }
   },
   "required": [

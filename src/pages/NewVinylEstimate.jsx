@@ -16,7 +16,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Droplets, Loader2, FileText, Layers, HardHat, Calculator, Plus, MapPin, Settings as SettingsIcon, ChevronsUpDown, ChevronsDownUp, BookmarkPlus, ClipboardPaste, UploadCloud, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Droplets, Loader2, FileText, Layers, HardHat, Calculator, Plus, MapPin, Settings as SettingsIcon, ChevronsUpDown, ChevronsDownUp, BookmarkPlus, ClipboardPaste, UploadCloud, AlertTriangle, TrendingUp } from "lucide-react";
+import CustomerPricingTab from "@/components/markup/CustomerPricingTab";
+import { categorizeVinylProject } from "@/components/markup/projectCategorizer";
 
 import ClientSearchInput from "@/components/ClientSearchInput";
 import AddressAutocomplete from "@/components/channelLetterInstall/AddressAutocomplete";
@@ -219,6 +221,7 @@ export default function NewVinylEstimate() {
         total_machine_cost: rollup.machineCost,
         total_personnel_cost: rollup.personnelCost,
         total_supplies_cost: rollup.supplies,
+        total_equipment_cost: rollup.equipmentCost,
         base_supplies_cost: rollup.baseSupplies,
         labor_hours: rollup.laborHours,
         labor_cost: rollup.laborCost,
@@ -283,12 +286,13 @@ export default function NewVinylEstimate() {
           <div className="lg:col-span-2">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <div className="sticky top-[64px] z-30 -mx-2 px-2 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60">
-                <TabsList className="grid w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
+                <TabsList className="grid w-full bg-white shadow-md border border-slate-200 h-auto p-1 gap-1" style={{ gridTemplateColumns: "repeat(6, minmax(0, 1fr))" }}>
                   <TabBtn value="project"   icon={FileText}   label="Project" />
                   <TabBtn value="workflows" icon={Layers}     label="Vinyl Workflows" amount={rollup.materialCost + rollup.machineCost + rollup.laborCost} warn={workflowsHaveIssues} />
                   <TabBtn value="install"   icon={HardHat}    label="Installation"    amount={rollup.equipmentCost + rollup.personnelCost} />
                   <TabBtn value="travel"    icon={MapPin}     label="Travel"          amount={rollup.travelCost} />
                   <TabBtn value="summary"   icon={Calculator} label="Summary"         amount={rollup.totalCost} />
+                  <TabBtn value="pricing"   icon={TrendingUp} label="Customer Pricing" />
                 </TabsList>
               </div>
 
@@ -512,6 +516,28 @@ export default function NewVinylEstimate() {
                     <BreakdownTable rollup={rollup} project={project} />
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              {/* CUSTOMER PRICING TAB */}
+              <TabsContent value="pricing" className="mt-4 space-y-3">
+                <CustomerPricingTab
+                  project={{
+                    ...project,
+                    // Feed live rollup totals so categorizer sees current numbers
+                    total_vinyl_cost:    rollup.vinylCost,
+                    total_laminate_cost: rollup.laminateCost,
+                    total_ink_cost:      rollup.inkCost,
+                    total_blade_cost:    rollup.bladeCost,
+                    total_machine_cost:  rollup.machineCost,
+                    total_supplies_cost: rollup.supplies,
+                    labor_cost:          rollup.laborCost,
+                    total_personnel_cost: rollup.personnelCost,
+                    total_equipment_cost: rollup.equipmentCost,
+                    total_travel_cost:    rollup.travelCost,
+                  }}
+                  categorize={categorizeVinylProject}
+                  accentColor="blue"
+                />
               </TabsContent>
             </Tabs>
           </div>

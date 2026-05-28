@@ -6,12 +6,21 @@ export const blankWorkflow = (index = 0) => ({
   name: `Workflow ${index + 1}`,
   vinyl_id: "",
   laminate_id: "",
+  transfer_tape_id: "",
   printer_id: "",
   cutter_id: "",
   laminator_id: "",
   apply_print: true,
   apply_cut: true,
   apply_laminate: false,
+  apply_transfer_tape: false,
+  print_quality: "high_quality",      // #2 — default high quality
+  weeding_difficulty: "moderate",     // #5 — "Normal" default
+  weeding_minutes_per_part_override: "",
+  install_minutes_per_part: "",       // #6
+  personnel: [],                      // #7
+  spoilage_buffer_percent: "",        // #4
+  setup_fee_floor: "",                // #3
   items: [],
   gutter_h_override: "",
   gutter_v_override: "",
@@ -92,12 +101,16 @@ export const rollupVinylProject = (project) => {
   const markupAmount  = subtotal * (num(project.markup_percent) / 100);
   const totalCost     = subtotal + markupAmount;
 
+  // Add per-workflow setup-fee adjustment for transparency
+  const setupFeeApplied = sumWorkflowField(wfs, "setupFeeApplied");
+
   return {
     materialCost, machineCost, laborCost, laborHours,
     vinylCost, laminateCost, inkCost, bladeCost,
     usedSqFt, totalRollSqFt, laminateSqFt,
     equipmentCost, personnelCost, travelCost,
     baseSupplies, supplies,
+    setupFeeApplied,
     subtotal, markupAmount, totalCost,
   };
 };

@@ -20,7 +20,12 @@ const demoPrinter = {
   leading_edge_inches: 4, trailing_edge_inches: 2,
   default_gutter_horizontal_inches: 0.25, default_gutter_vertical_inches: 0.25,
   default_bleed_inches: 0.125,
-  print_cost_per_sqin: 0.02, print_speed_sqft_per_hour: 110,
+  // Tiered ink rates — DEFAULT is high_quality
+  print_cost_per_sqin_draft: 0.012,
+  print_cost_per_sqin_production: 0.018,
+  print_cost_per_sqin_high_quality: 0.025,
+  default_print_quality: "high_quality",
+  print_speed_sqft_per_hour: 110,
   warmup_minutes: 5, media_load_minutes: 4, calibration_minutes_per_job: 3,
   machine_hourly_rate: 35,
 };
@@ -71,6 +76,11 @@ export default function VinylEstimatorFormulas() {
     vinyl: demoVinyl, laminate: demoLaminate,
     operatorHourlyRate: 45,
     applyPrint: true, applyCut: true, applyLaminate: true,
+    printQuality: "high_quality",     // default
+    weedingDifficulty: "moderate",    // default (a.k.a. Normal)
+    installMinutesPerPart: 0,
+    spoilageBufferPercent: 0,
+    setupFeeFloor: 0,
   });
 
   return (
@@ -201,22 +211,105 @@ export default function VinylEstimatorFormulas() {
               on the vinyl).</p>
           </div>
 
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-xs space-y-2 text-indigo-900">
+            <h4 className="font-bold text-indigo-900 mb-1 flex items-center gap-1"><Printer className="w-3.5 h-3.5" /> Print Quality Tiers (NEW)</h4>
+            <p>Each printer carries 3 ink rates. The workflow picks one, defaulting to
+              <b> High Quality</b>:</p>
+            <p className="font-mono bg-white border border-indigo-200 rounded px-2 py-1">
+              Draft        $/sqin → fast indoor proofs<br/>
+              Production   $/sqin → standard outdoor<br/>
+              High Quality $/sqin → premium / long-life (DEFAULT)
+            </p>
+            <p>ink_cost = used_sqIn × $/sqin_for_selected_quality</p>
+          </div>
+
+          <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-xs space-y-2 text-rose-900">
+            <h4 className="font-bold text-rose-900 mb-1">Weeding Labor by Difficulty (NEW)</h4>
+            <p>"Moderate" is the default (Normal). Each difficulty tier adds labor minutes
+              <b> per placed part</b> when Cut is applied:</p>
+            <p className="font-mono bg-white border border-rose-200 rounded px-2 py-1">
+              very_easy 0.1 · easy 0.3 · moderate 0.6 · hard 1.2 · very_hard 2.5  (min/part)<br/>
+              weeding_minutes = mins/part × parts_placed<br/>
+              Can be overridden per workflow.
+            </p>
+          </div>
+
+          <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 text-xs space-y-2 text-cyan-900">
+            <h4 className="font-bold text-cyan-900 mb-1">Application / Install Labor (NEW)</h4>
+            <p className="font-mono bg-white border border-cyan-200 rounded px-2 py-1">
+              install_minutes = install_minutes_per_part × parts_placed
+            </p>
+            <p>Captures on-site application time (squeegeeing decals, wraps, etc.) separate
+              from machine-run time.</p>
+          </div>
+
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-xs space-y-2 text-indigo-900">
+            <h4 className="font-bold text-indigo-900 mb-1">Per-Personnel Rates (NEW)</h4>
+            <p>If the workflow has any personnel rows (Designer / Printer Op / Installer / …),
+              labor cost uses those rows INSTEAD of operator-rate × minutes:</p>
+            <p className="font-mono bg-white border border-indigo-200 rounded px-2 py-1">
+              labor_cost = Σ(role.hourly_rate × role.hours)<br/>
+              labor_hours = Σ(role.hours)
+            </p>
+            <p>Otherwise we fall back to: <code>operator_rate × (machine_run + weeding + install) min ÷ 60</code></p>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs space-y-2 text-amber-900">
+            <h4 className="font-bold text-amber-900 mb-1">Spoilage Buffer + Setup-Fee Floor (NEW)</h4>
+            <p className="font-mono bg-white border border-amber-200 rounded px-2 py-1">
+              effective_qty = ⌈ part_qty × (1 + spoilage_buffer_% / 100) ⌉  (pre-nesting)<br/>
+              setup_fee_applied = max(0, setup_fee_floor − preFloorTotal)<br/>
+              workflow_total = preFloorTotal + setup_fee_applied
+            </p>
+            <p>Spoilage inflates qty BEFORE nesting so the buffer parts get real roll real estate.
+              The floor guarantees every workflow charges at least the minimum.</p>
+          </div>
+
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs space-y-2 text-emerald-900">
+            <h4 className="font-bold text-emerald-900 mb-1">Roll-Width Recommender (NEW)</h4>
+            <p>Vinyls sharing a <code>product_group_key</code> are siblings — the same product in
+              different widths. The estimator re-runs nesting for each candidate width and
+              flags the cheapest viable option (one-click swap).</p>
+            <p className="font-mono bg-white border border-emerald-200 rounded px-2 py-1">
+              For each sibling: re-pack parts, compute total_cost.<br/>
+              Pick min(total_cost) among siblings with partsUnplaced == 0.<br/>
+              Suggest swap if (current − best) {">"} max($1, 2% of current).
+            </p>
+            <p>Auto-generated when you click "Duplicate" on an inventory row.</p>
+          </div>
+
+          <div className="bg-violet-50 border border-violet-200 rounded-lg p-3 text-xs space-y-2 text-violet-900">
+            <h4 className="font-bold text-violet-900 mb-1">Customer Pricing Tab (NEW)</h4>
+            <p>Identical model to the Channel Letter and Concrete estimators — uses the shared
+              MarkupTier × MarkupCategory engine. Vinyl line items are categorized as:</p>
+            <p className="font-mono bg-white border border-violet-200 rounded px-2 py-1">
+              Vinyl + Laminate + Tape + Ink + Blade + Supplies → substrates<br/>
+              Printer + Cutter + Laminator machine time      → machine_time<br/>
+              Operator + Designer + Installer labor          → inhouse_labor<br/>
+              Install equipment rental                       → outsourced_services<br/>
+              Travel                                         → outsourced_services
+            </p>
+            <p>customer_price = Σ(line.cost × tier_markup[category]) − volume_discount</p>
+          </div>
+
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs space-y-1 text-slate-800">
-            <h4 className="font-bold text-slate-900 mb-1">Inventory Cleanup</h4>
-            <p>Removed from vinyl inventory: <b>MOQ</b>, <b>Yield Factor</b> (now derived from
-              actual nesting), and <b>Weeding Difficulty</b> (moved to the workflow card under
-              "Cutting Extras" — same vinyl can be easy or hard to weed depending on artwork detail).</p>
-            <p>Finish &amp; Adhesive Type now display with capitalized labels (e.g. "High Tack",
-              "Carbon Fiber") via shared label maps.</p>
+            <h4 className="font-bold text-slate-900 mb-1">Artwork → Dimensions (Hybrid)</h4>
+            <p>Upload SVG / PDF / AI / image. We try free metadata first (SVG viewBox, PDF
+              MediaBox, image px+DPI). If none of those work, the "Use AI to detect dimensions"
+              button runs vision via InvokeLLM and uses integration credits.</p>
           </div>
 
           <div className="bg-slate-800 text-white p-3 rounded text-xs space-y-1">
-            <h4 className="font-medium mb-1">Final Totals</h4>
+            <h4 className="font-medium mb-1">Final Totals — Demo</h4>
             <div className="flex justify-between"><span>Vinyl:</span><span>${calc.vinylCost.toFixed(2)}</span></div>
             <div className="flex justify-between"><span>Laminate:</span><span>${calc.laminateCost.toFixed(2)}</span></div>
             <div className="flex justify-between"><span>Transfer Tape:</span><span>${(calc.transferTapeCost || 0).toFixed(2)}</span></div>
-            <div className="flex justify-between"><span>Ink + Blade:</span><span>${(calc.inkCost + calc.bladeCost).toFixed(2)}</span></div>
-            <div className="flex justify-between"><span>Machine + Labor:</span><span>${(calc.machineCost + calc.laborCost).toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>Ink ({calc.printQuality}) + Blade:</span><span>${(calc.inkCost + calc.bladeCost).toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>Machine:</span><span>${calc.machineCost.toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>Labor (machine + weeding + install):</span><span>${calc.laborCost.toFixed(2)}</span></div>
+            {calc.setupFeeApplied > 0 && (
+              <div className="flex justify-between"><span>Setup-Fee Floor:</span><span>+${calc.setupFeeApplied.toFixed(2)}</span></div>
+            )}
             <div className="flex justify-between font-bold border-t border-slate-600 pt-1 mt-1">
               <span>Total:</span><span>${calc.totalCost.toFixed(2)}</span>
             </div>

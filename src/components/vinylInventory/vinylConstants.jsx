@@ -98,6 +98,37 @@ export const PRICING_MODES = [
 
 export const WEEDING_DIFFICULTY = ["very_easy", "easy", "moderate", "hard", "very_hard"];
 
+// Default extra labor minutes PER PART by weeding difficulty. "moderate" is the
+// default selection (a.k.a. "Normal"). These are tweakable from the workflow UI.
+export const WEEDING_LABOR_MINUTES_PER_PART = {
+  very_easy: 0.1,
+  easy:      0.3,
+  moderate:  0.6,
+  hard:      1.2,
+  very_hard: 2.5,
+};
+
+// Print-quality tiers. High Quality is the DEFAULT.
+export const PRINT_QUALITY_TIERS = [
+  { id: "draft",         label: "Draft" },
+  { id: "production",    label: "Production" },
+  { id: "high_quality",  label: "High Quality" },
+];
+
+// Pick the right $/sqin for a printer + quality. Falls back to legacy
+// `print_cost_per_sqin` if the tiered fields aren't populated.
+export const inkCostPerSqIn = (printer, quality = "high_quality") => {
+  if (!printer) return 0;
+  const map = {
+    draft:        parseFloat(printer.print_cost_per_sqin_draft),
+    production:   parseFloat(printer.print_cost_per_sqin_production),
+    high_quality: parseFloat(printer.print_cost_per_sqin_high_quality),
+  };
+  const tiered = map[quality];
+  if (Number.isFinite(tiered) && tiered > 0) return tiered;
+  return parseFloat(printer.print_cost_per_sqin) || 0;
+};
+
 // Compute the unit cost the estimator should use, in $/sqft, regardless of
 // how the vinyl is priced.
 export const vinylCostPerSqft = (v) => {

@@ -128,6 +128,35 @@ export default function VinylInventoryTab({ scope = "master" }) {
     }
   };
 
+  // #13 Quick-duplicate. Auto-links rows into a product group so the roll-width
+  // recommender can find them. If the source has no product_group_key, we
+  // generate one and stamp it on both rows.
+  const handleDuplicate = async (source) => {
+    if (!isAdmin || !source) return;
+    try {
+      // eslint-disable-next-line no-unused-vars
+      const { id, created_date, updated_date, created_by_id, ...rest } = source;
+      let groupKey = source.product_group_key;
+      if (!groupKey) {
+        groupKey = `grp-${id || Math.random().toString(36).slice(2, 9)}`;
+        await VinylInventory.update(id, { product_group_key: groupKey });
+      }
+      const copy = {
+        ...rest,
+        product_group_key: groupKey,
+        vinyl_name: `${source.vinyl_name || "Vinyl"} (copy)`,
+        sort_order: (source.sort_order || 0) + 0.1,
+      };
+      const created = await VinylInventory.create(copy);
+      setItems(prev => prev.map(v => v.id === id ? { ...v, product_group_key: groupKey } : v));
+      setItems(prev => [created, ...prev]);
+      setEditingVinyl(created);
+    } catch (e) {
+      console.error(e);
+      alert("Duplicate failed: " + e.message);
+    }
+  };
+
   return (
     <Card className="bg-white border-0 shadow-sm">
       <CardHeader className="pb-3">
@@ -191,8 +220,10 @@ export default function VinylInventoryTab({ scope = "master" }) {
                 key={v.id}
                 vinyl={v}
                 isAdmin={isAdmin}
+                groupSiblings={items.filter(x => x.id !== v.id && v.product_group_key && x.product_group_key === v.product_group_key)}
                 onEdit={() => setEditingVinyl(v)}
                 onDelete={() => handleDelete(v.id)}
+                onDuplicate={() => handleDuplicate(v)}
               />
             ))}
           </div>

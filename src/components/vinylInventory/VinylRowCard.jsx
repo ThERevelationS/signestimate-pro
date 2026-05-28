@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Pencil, Droplets, Image as ImageIcon } from "lucide-react";
+import { Trash2, Pencil, Droplets, Image as ImageIcon, Copy, Layers } from "lucide-react";
 import { VINYL_CATEGORIES, vinylCostPerSqft } from "./vinylConstants";
 
 const num = (v, fb = 0) => {
@@ -15,7 +15,7 @@ const num = (v, fb = 0) => {
   return Number.isFinite(n) ? n : fb;
 };
 
-export default function VinylRowCard({ vinyl, isAdmin, onEdit, onDelete }) {
+export default function VinylRowCard({ vinyl, isAdmin, groupSiblings = [], onEdit, onDelete, onDuplicate }) {
   const dollarPerSqft = vinylCostPerSqft(vinyl);
   const categoryLabel = VINYL_CATEGORIES.find(c => c.id === vinyl.vinyl_category)?.label || vinyl.vinyl_category || "—";
 
@@ -69,10 +69,20 @@ export default function VinylRowCard({ vinyl, isAdmin, onEdit, onDelete }) {
 
         <div className="md:col-span-3 flex items-center justify-end gap-2">
           <Badge variant="outline" className="text-[10px]">{categoryLabel}</Badge>
+          {groupSiblings.length > 0 && (
+            <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 inline-flex items-center gap-1" title={`Group: ${groupSiblings.map(s => `${s.roll_width_inches}"`).join(", ")}`}>
+              <Layers className="w-3 h-3" /> {groupSiblings.length + 1} widths
+            </Badge>
+          )}
           <Button size="sm" variant="outline" onClick={onEdit}>
             <Pencil className="w-3.5 h-3.5 mr-1" />
             {isAdmin ? "Edit" : "View"}
           </Button>
+          {isAdmin && onDuplicate && (
+            <Button size="sm" variant="outline" onClick={onDuplicate} title="Duplicate (links to same product group)">
+              <Copy className="w-3.5 h-3.5" />
+            </Button>
+          )}
           {isAdmin && (
             <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50" onClick={onDelete}>
               <Trash2 className="w-3.5 h-3.5" />

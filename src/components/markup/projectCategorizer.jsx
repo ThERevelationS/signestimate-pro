@@ -150,6 +150,36 @@ export function categorizeMetalProject(p) {
   return lines;
 }
 
+// Vinyl Estimator:
+//   Vinyl + Laminate + Transfer Tape rolls + Ink + Blade → substrates
+//   Machine time (printer / cutter / laminator amortized $/hr) → machine_time
+//   Operator + Designer + Installer labor → inhouse_labor
+//   Install equipment rental (lifts) → outsourced_services
+//   Travel → outsourced_services
+export function categorizeVinylProject(p) {
+  if (!p) return [];
+  const lines = [];
+  const materials =
+    num(p.total_vinyl_cost) + num(p.total_laminate_cost) +
+    num(p.total_ink_cost) + num(p.total_blade_cost) +
+    num(p.total_supplies_cost);
+  if (materials > 0) lines.push({ module: 'vinyl', label: 'Vinyl, Laminate, Tape, Ink & Supplies', cost: materials, category_key: 'substrates' });
+
+  const machine = num(p.total_machine_cost);
+  if (machine > 0) lines.push({ module: 'vinyl', label: 'Printer / Cutter / Laminator Time', cost: machine, category_key: 'machine_time' });
+
+  const labor = num(p.labor_cost) + num(p.total_personnel_cost);
+  if (labor > 0) lines.push({ module: 'vinyl', label: 'Production & Install Labor', cost: labor, category_key: 'inhouse_labor' });
+
+  const equip = num(p.total_equipment_cost);
+  if (equip > 0) lines.push({ module: 'vinyl', label: 'Install Equipment', cost: equip, category_key: 'outsourced_services' });
+
+  const travel = num(p.total_travel_cost);
+  if (travel > 0) lines.push({ module: 'vinyl', label: 'Travel', cost: travel, category_key: 'outsourced_services' });
+
+  return lines;
+}
+
 export const MODULE_CATEGORIZERS = {
   channel_letter_installation: categorizeChannelLetterProject,
   foundation: categorizeFoundationProject,
@@ -157,4 +187,5 @@ export const MODULE_CATEGORIZERS = {
   laser: categorizeLaserProject,
   cnc: categorizeCNCProject,
   metal_fabrication: categorizeMetalProject,
+  vinyl_estimator: categorizeVinylProject,
 };

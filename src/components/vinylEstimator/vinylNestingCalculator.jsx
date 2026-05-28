@@ -2,11 +2,17 @@
 //
 // Algorithm: Next Fit Decreasing Height (NFDH).
 //   1. Expand items into rectangles (one per qty), add bleed all around.
+//      A project-level `spoilageBufferPercent` inflates qty BEFORE expansion.
 //   2. Sort by height descending.
 //   3. Greedily pack across shelves (rows) inside roll usable width.
 //      Try rotated orientation if it fits and reduces shelf height.
 //   4. Compute roll length consumed (incl. leading/trailing edges + cut pull-off).
-//   5. Derive: vinyl cost, laminate cost, ink cost, machine time, blade wear, labor.
+//   5. Derive: vinyl, laminate, transfer-tape, ink, machine time, blade wear,
+//      operator labor, weeding labor (per-part), install labor (per-part),
+//      and per-personnel labor (designer/printer-op/installer).
+//   6. Apply a per-workflow `setupFeeFloor` minimum.
+
+import { WEEDING_LABOR_MINUTES_PER_PART, inkCostPerSqIn } from "@/components/vinylInventory/vinylConstants";
 
 const num = (v, d = 0) => {
   const n = parseFloat(v);
@@ -28,12 +34,19 @@ const computeRollSqFtCost = (vinyl) => {
 
 /**
  * @param {object} args
- * @param {Array}  args.items                 — [{ width_inches, height_inches, quantity, bleed_inches, allow_rotation }]
+ * @param {Array}  args.items
  * @param {object} args.printer | args.cutter | args.laminator
  * @param {object} args.vinyl | args.laminate | args.transferTape
  * @param {number} args.operatorHourlyRate
  * @param {boolean} args.applyPrint | args.applyCut | args.applyLaminate | args.applyTransferTape
  * @param {number} args.overrideGutterH | args.overrideGutterV
+ * @param {string} args.printQuality       — "draft" | "production" | "high_quality" (default)
+ * @param {string} args.weedingDifficulty  — drives per-part weeding minutes
+ * @param {number} args.weedingMinutesPerPartOverride
+ * @param {number} args.installMinutesPerPart — application/install minutes per part
+ * @param {Array}  args.personnel          — [{ role, hourly_rate, hours }]
+ * @param {number} args.spoilageBufferPercent — N% extra qty for reprint waste (pre-nesting)
+ * @param {number} args.setupFeeFloor      — workflow minimum charge
  */
 export function calculateVinylProject({
   items = [],
@@ -42,6 +55,13 @@ export function calculateVinylProject({
   operatorHourlyRate = 45,
   applyPrint = true, applyCut = true, applyLaminate = false, applyTransferTape = false,
   overrideGutterH, overrideGutterV,
+  printQuality = "high_quality",
+  weedingDifficulty = "moderate",
+  weedingMinutesPerPartOverride,
+  installMinutesPerPart = 0,
+  personnel = [],
+  spoilageBufferPercent = 0,
+  setupFeeFloor = 0,
 } = {}) {
 
   // --- Roll geometry — driven by the leading machine (printer > cutter > laminator).
@@ -53,7 +73,6 @@ export function calculateVinylProject({
   const leadingEdge  = num(leadingMachine?.leading_edge_inches, 4);
   const trailingEdge = num(leadingMachine?.trailing_edge_inches, 2);
 
-  // Machine cap (e.g. printer max 64") vs roll (e.g. 54") — usable width is the smaller.
   const machineWidthCap = Math.min(
     applyPrint && printer ? num(printer.max_media_width_inches, 999) : 999,
     applyCut && cutter ? num(cutter.max_media_width_inches, 999) : 999,
@@ -65,9 +84,10 @@ export function calculateVinylProject({
   const gutterH = overrideGutterH ?? num(leadingMachine?.default_gutter_horizontal_inches, 0.25);
   const gutterV = overrideGutterV ?? num(leadingMachine?.default_gutter_vertical_inches, 0.25);
 
-  // --- Expand items into rectangles. Bleed = empty waste halo around the part:
-  //     packed rect (outer) = part size + 2*bleed (reserves space on the roll for safe trimming)
-  //     part rect (inner)   = the actual printed/cut artwork (unchanged size)
+  // --- Spoilage buffer (#4): inflate qty by N% (rounded up) before expansion.
+  const spoilMult = 1 + Math.max(0, num(spoilageBufferPercent, 0)) / 100;
+
+  // --- Expand items into rectangles.
   const rects = [];
   items.forEach((it, itemIdx) => {
     const baseBleed = num(it.bleed_inches, num(leadingMachine?.default_bleed_inches, 0));
@@ -75,7 +95,8 @@ export function calculateVinylProject({
     const partH = num(it.height_inches);
     const w0 = partW + baseBleed * 2;
     const h0 = partH + baseBleed * 2;
-    const qty = Math.max(1, Math.floor(num(it.quantity, 1)));
+    const rawQty = Math.max(1, Math.floor(num(it.quantity, 1)));
+    const qty = Math.max(rawQty, Math.ceil(rawQty * spoilMult));
     if (partW <= 0 || partH <= 0) return;
 
     for (let i = 0; i < qty; i++) {
@@ -84,38 +105,29 @@ export function calculateVinylProject({
         itemId: it.id || `idx-${itemIdx}`,
         itemIdx,
         description: it.description || `Item ${itemIdx + 1}`,
-        w: w0, h: h0,            // OUTER bounding rect (with bleed halo)
-        partW, partH,            // INNER part size (no bleed)
-        bleed: baseBleed,        // halo thickness (each side)
-        allow_rotation: it.allow_rotation === true,  // explicit opt-in; user must check Rotate
+        w: w0, h: h0,
+        partW, partH,
+        bleed: baseBleed,
+        allow_rotation: it.allow_rotation === true,
         rotated: false,
       });
     }
   });
 
-  // --- Sort tallest first for NFDH.
   rects.sort((a, b) => b.h - a.h);
 
-  // --- Pack onto shelves
-  const shelves = []; // { y, height, items: [{x,y,w,h, ...rect}] }
+  const shelves = [];
   let yCursor = 0;
   let currentShelf = null;
 
-  // Rotate toggle is now a FORCED orientation flag:
-  //   - allow_rotation=true  → part is laid out rotated 90° (H becomes width on roll)
-  //   - allow_rotation=false → part is laid out in its native orientation
-  // If the chosen orientation doesn't fit the usable width, the part is marked unplaced.
   const orientedDims = (r) => {
-    if (r.allow_rotation) {
-      return { w: r.h, h: r.w, partW: r.partH, partH: r.partW, rotated: true };
-    }
+    if (r.allow_rotation) return { w: r.h, h: r.w, partW: r.partH, partH: r.partW, rotated: true };
     return { w: r.w, h: r.h, partW: r.partW, partH: r.partH, rotated: false };
   };
 
   const placeOnNewShelf = (r) => {
     const { w, h, partW: pw, partH: ph, rotated } = orientedDims(r);
-    if (w > usableWidth) return false; // chosen orientation doesn't fit
-
+    if (w > usableWidth) return false;
     currentShelf = { y: yCursor, height: h, items: [] };
     shelves.push(currentShelf);
     currentShelf.items.push({ ...r, x: 0, y: yCursor, w, h, partW: pw, partH: ph, rotated });
@@ -128,21 +140,15 @@ export function calculateVinylProject({
       if (!placeOnNewShelf(r)) continue;
       continue;
     }
-
     const { w, h, partW: pw, partH: ph, rotated } = orientedDims(r);
     const lastItem = currentShelf.items[currentShelf.items.length - 1];
     const nextX = lastItem ? lastItem.x + lastItem.w + gutterH : 0;
-
     let placed = false;
     if (w <= usableWidth - nextX && h <= currentShelf.height) {
       currentShelf.items.push({ ...r, x: nextX, y: currentShelf.y, w, h, partW: pw, partH: ph, rotated });
       placed = true;
     }
-
-    if (!placed) {
-      // Couldn't fit on current shelf → open a new one
-      placeOnNewShelf(r);
-    }
+    if (!placed) placeOnNewShelf(r);
   }
 
   // --- Layout metrics
@@ -155,7 +161,6 @@ export function calculateVinylProject({
   const lengthConsumedIn = leadingEdge + contentLengthIn + trailingEdge + cutPullOff;
   const lengthConsumedFt = lengthConsumedIn / 12;
 
-  // Used (printed/cut) area = sum of placed item INNER part rects (bleed is empty waste halo)
   const usedSqIn = shelves.reduce((s, sh) => s + sh.items.reduce((ss, it) => {
     const pw = it.partW ?? it.w;
     const ph = it.partH ?? it.h;
@@ -170,12 +175,12 @@ export function calculateVinylProject({
   const partsRequested = rects.length;
   const partsUnplaced = partsRequested - partsPlaced;
 
-  // --- Vinyl cost — pulled length + waste factor
+  // --- Vinyl cost
   const vinylSqFtRate = computeRollSqFtCost(vinyl);
   const vinylWasteMult = 1 + num(vinyl?.waste_factor_percent, 0) / 100;
   const vinylCost = totalRollSqFtPulled * vinylSqFtRate * vinylWasteMult;
 
-  // --- Laminate (full roll-width × length consumed, separate roll)
+  // --- Laminate
   let laminateSqFt = 0, laminateCost = 0, laminateMinutes = 0;
   if (applyLaminate && laminate) {
     const lamWidth = Math.min(num(laminate.roll_width_inches, effectiveRollWidth), effectiveRollWidth);
@@ -189,10 +194,11 @@ export function calculateVinylProject({
     laminateMinutes = (lamLengthIn / ipm) + num(laminator?.laminator_setup_minutes_per_job, 0);
   }
 
-  // --- Print (HP Latex 360 etc.)
+  // --- Print: ink uses TIERED $/sqin by print quality.
   let inkCost = 0, printMinutes = 0, printMachineCost = 0;
+  const inkRatePerSqIn = applyPrint && printer ? inkCostPerSqIn(printer, printQuality) : 0;
   if (applyPrint && printer) {
-    inkCost = (usedSqFt * 144) * num(printer.print_cost_per_sqin, 0);
+    inkCost = (usedSqFt * 144) * inkRatePerSqIn;
     const sph = Math.max(1, num(printer.print_speed_sqft_per_hour, 100));
     printMinutes =
       (usedSqFt / sph) * 60 +
@@ -202,7 +208,7 @@ export function calculateVinylProject({
     printMachineCost = (printMinutes / 60) * num(printer.machine_hourly_rate, 0);
   }
 
-  // --- Cut (Graphtec etc.) — perimeter of each placed part (INNER size, not bleed halo)
+  // --- Cut
   let cutDistanceIn = 0, cutMinutes = 0, cutMachineCost = 0, bladeCost = 0;
   if (applyCut && cutter) {
     cutDistanceIn = shelves.reduce((s, sh) => s + sh.items.reduce((ss, it) => {
@@ -217,13 +223,11 @@ export function calculateVinylProject({
     bladeCost = (cutMinutes / bladeLife) * num(cutter.cut_blade_cost, 0);
   }
 
-  // --- Laminator machine cost
   const laminateMachineCost = applyLaminate && laminator
     ? (laminateMinutes / 60) * num(laminator.laminator_hourly_rate, 0)
     : 0;
 
-  // --- Transfer Tape — applied after cutting/weeding so the vinyl can be installed.
-  // Charged by full roll-width × length consumed, just like laminate, but no machine time.
+  // --- Transfer Tape
   let transferTapeSqFt = 0, transferTapeCost = 0;
   if (applyTransferTape && transferTape) {
     const ttWidth = Math.min(num(transferTape.roll_width_inches, effectiveRollWidth), effectiveRollWidth);
@@ -235,13 +239,47 @@ export function calculateVinylProject({
 
   const machineCost = printMachineCost + cutMachineCost + laminateMachineCost;
 
-  // --- Labor — operator runs each machine
-  const laborMinutes = (applyPrint ? printMinutes : 0) + (applyCut ? cutMinutes : 0) + (applyLaminate ? laminateMinutes : 0);
-  const laborHours = laborMinutes / 60;
-  const laborCost = laborHours * num(operatorHourlyRate, 45);
+  // --- Machine-operator labor (running the printer/cutter/laminator)
+  const machineRunMinutes = (applyPrint ? printMinutes : 0) + (applyCut ? cutMinutes : 0) + (applyLaminate ? laminateMinutes : 0);
+
+  // --- Weeding labor (per placed part) — only meaningful when cutting
+  const weedMinPerPart = Number.isFinite(parseFloat(weedingMinutesPerPartOverride))
+    ? parseFloat(weedingMinutesPerPartOverride)
+    : (WEEDING_LABOR_MINUTES_PER_PART[weedingDifficulty] ?? WEEDING_LABOR_MINUTES_PER_PART.moderate);
+  const weedingMinutes = applyCut ? weedMinPerPart * partsPlaced : 0;
+
+  // --- Install/application labor (per placed part)
+  const installMinPerPart = Math.max(0, num(installMinutesPerPart, 0));
+  const installMinutes = installMinPerPart * partsPlaced;
+
+  // --- Per-personnel labor (designer / printer op / installer / ...)
+  // If personnel rows are given, those drive the labor cost. Otherwise we fall
+  // back to the operator rate × (machine + weeding + install) minutes.
+  let perPersonnelCost = 0;
+  let perPersonnelMinutes = 0;
+  (personnel || []).forEach((p) => {
+    const hrs = num(p?.hours, 0);
+    const rate = num(p?.hourly_rate, 0);
+    if (hrs > 0 && rate > 0) {
+      perPersonnelCost += hrs * rate;
+      perPersonnelMinutes += hrs * 60;
+    }
+  });
+
+  const fallbackLaborMinutes = machineRunMinutes + weedingMinutes + installMinutes;
+  const fallbackLaborCost    = (fallbackLaborMinutes / 60) * num(operatorHourlyRate, 45);
+
+  const laborMinutes = perPersonnelMinutes > 0 ? perPersonnelMinutes : fallbackLaborMinutes;
+  const laborHours   = laborMinutes / 60;
+  const laborCost    = perPersonnelCost > 0 ? perPersonnelCost : fallbackLaborCost;
 
   const materialCost = vinylCost + laminateCost + transferTapeCost + inkCost + bladeCost;
-  const totalCost = materialCost + machineCost + laborCost;
+  const preFloorTotal = materialCost + machineCost + laborCost;
+
+  // --- Setup-fee floor (#3): workflow minimum
+  const floor = Math.max(0, num(setupFeeFloor, 0));
+  const setupFeeApplied = preFloorTotal < floor ? (floor - preFloorTotal) : 0;
+  const totalCost = preFloorTotal + setupFeeApplied;
 
   return {
     // geometry
@@ -252,10 +290,18 @@ export function calculateVinylProject({
     // cost breakdown
     vinylCost, laminateCost, laminateSqFt,
     transferTapeCost, transferTapeSqFt,
-    inkCost, printMinutes, printMachineCost,
+    inkCost, inkRatePerSqIn, printQuality,
+    printMinutes, printMachineCost,
     cutDistanceIn, cutMinutes, cutMachineCost, bladeCost,
     laminateMinutes, laminateMachineCost,
-    machineCost, laborMinutes, laborHours, laborCost,
+    machineCost,
+    // labor split
+    machineRunMinutes, weedingMinutes, installMinutes,
+    weedMinPerPart, installMinPerPart,
+    perPersonnelCost, perPersonnelMinutes,
+    laborMinutes, laborHours, laborCost,
+    // floor
+    preFloorTotal, setupFeeApplied,
     materialCost, totalCost,
   };
 }
