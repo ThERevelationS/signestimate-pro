@@ -388,6 +388,34 @@ export default function ChannelLetterInstallFormulas({ settings }) {
           <FormulaLine label="Install Total" result={`$${installTotalCost.toFixed(2)}`} highlight />
         </FormulaSection>
 
+        <div className="bg-amber-50 border border-amber-200 rounded p-3 text-xs space-y-1 text-amber-900">
+          <h4 className="font-bold mb-1">Equipment Fuel Costs (NEW)</h4>
+          <p>Equipment marked as a fuel-consuming type (Boom Lift, Boom Truck, Scissor Lift,
+            Truck, Car, Van, Flatbed) now carries fuel data on the inventory record itself,
+            regardless of Owned vs Rented:</p>
+          <p className="font-mono bg-white border border-amber-200 rounded px-2 py-1">
+            driving_fuel_cost = (route_miles ÷ mpg) × $/gal_by_fuel_type<br/>
+            idle_fuel_cost    = idle_hours × idle_running_cost_per_hour
+          </p>
+          <p>These two add ON TOP of any rental rate (per day/week/month) or the owned flat
+            rate. The unified Equipment form (Master Inventory) now collects MPG, Fuel Type,
+            and Idle Cost on a single panel — used by both Channel Letter and Foundation
+            estimators.</p>
+        </div>
+
+        <div className="bg-slate-50 border border-slate-200 rounded p-3 text-xs space-y-1 text-slate-800">
+          <h4 className="font-bold mb-1">Master Equipment Form (NEW)</h4>
+          <p>Equipment is now created/edited from <b>Master Inventory → Equipment</b>. The form:</p>
+          <ul className="list-disc list-inside space-y-0.5">
+            <li>Replaces the old "Storage" dropdown with a <b>"Supports Attachments?"</b> toggle.</li>
+            <li>Shows <b>Ownership</b> right under Name (Rented vs Owned).</li>
+            <li>Hides the Pricing Mode selector for Owned items, and always exposes Per Day / Per Week / Per Month for Rented items.</li>
+            <li>Hides the Rental Company field on Owned items.</li>
+            <li>Capitalizes all equipment-type labels.</li>
+            <li>Adds the Fuel Costs panel above for vehicle / boom types.</li>
+          </ul>
+        </div>
+
         <div className="bg-slate-800 text-white p-3 rounded">
           <h4 className="font-medium mb-2">Final Total (Letters + Install)</h4>
           <div className="flex justify-between text-sm"><span>Letters Total:</span><span>${lettersTotal.toFixed(2)}</span></div>

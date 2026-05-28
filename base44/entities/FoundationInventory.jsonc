@@ -145,16 +145,13 @@
       ]
     },
     "cap_stock_length_inches": {
-      "type": "number",
-      "description": "Stock length of one wall cap piece in inches"
+      "type": "number"
     },
     "cap_width_inches": {
-      "type": "number",
-      "description": "Cap width (perpendicular to wall direction) in inches"
+      "type": "number"
     },
     "cap_height_inches": {
-      "type": "number",
-      "description": "Cap thickness/height (vertical) in inches"
+      "type": "number"
     },
     "cap_profile": {
       "type": "string",
@@ -164,23 +161,40 @@
         "rounded",
         "peaked",
         "stepped"
-      ],
-      "description": "Top profile of the wall cap"
+      ]
     },
     "cap_color": {
-      "type": "string",
-      "description": "Hex color for 3D rendering"
+      "type": "string"
     },
     "cap_stock_price": {
-      "type": "number",
-      "description": "Price per full stock piece (charged in full per cut)"
+      "type": "number"
     },
     "is_cuttable": {
-      "type": "boolean",
-      "description": "True if the item can be cut to length on-site (e.g. wall caps, rebar)"
+      "type": "boolean"
     },
     "equipment_type": {
-      "type": "string"
+      "type": "string",
+      "enum": [
+        "ladder",
+        "scissor_lift",
+        "boom_lift",
+        "boom_truck",
+        "scaffold",
+        "truck",
+        "car",
+        "van",
+        "flatbed",
+        "hand_tool",
+        "power_tool",
+        "safety",
+        "other"
+      ],
+      "description": "Equipment sub-type for excavation_equipment / attachment rows. Drives icon + fuel-cost fields."
+    },
+    "supports_attachments": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this top-level equipment exposes the attachment / sub-attachment tree."
     },
     "compatible_equipment_ids": {
       "type": "array",
@@ -319,6 +333,26 @@
       ],
       "default": "rented",
       "description": "Equipment ownership. Applies to excavation_equipment / attachment / sub_attachment rows."
+    },
+    "mpg": {
+      "type": "number",
+      "default": 0,
+      "description": "Vehicle / boom fuel economy in miles per gallon (used for driving fuel cost on trips)."
+    },
+    "fuel_type": {
+      "type": "string",
+      "enum": [
+        "na",
+        "gasoline",
+        "diesel"
+      ],
+      "default": "na",
+      "description": "Fuel type \u2014 drives which fuel-price secret is used for driving + idle cost."
+    },
+    "idle_running_cost_per_hour": {
+      "type": "number",
+      "default": 0,
+      "description": "Fuel + wear cost per hour while running idle on-site (e.g. boom lift hold position)."
     },
     "show_in_channel_letters": {
       "type": "boolean",

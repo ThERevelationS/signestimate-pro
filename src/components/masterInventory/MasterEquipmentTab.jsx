@@ -385,11 +385,17 @@ function EquipmentForm({ normalized, ownership, allFoundationEquipment, allFound
     return {
       material_name: r.material_name || "",
       material_type: r.material_type || (kind === "attachment" ? "attachment" : kind === "sub_attachment" ? "sub_attachment" : "excavation_equipment"),
+      equipment_type: r.equipment_type || "",
+      supports_attachments: r.supports_attachments ?? true,
       ownership: r.ownership || ownership,
       cost_per_day: r.cost_per_day || 0,
       cost_per_week: r.cost_per_week || 0,
       cost_per_month: r.cost_per_month || 0,
       pickup_delivery_cost: r.pickup_delivery_cost || 0,
+      rental_company: r.rental_company || "",
+      mpg: r.mpg || 0,
+      fuel_type: r.fuel_type || "na",
+      idle_running_cost_per_hour: r.idle_running_cost_per_hour || 0,
       compatible_attachment_ids: r.compatible_attachment_ids || [],
       compatible_sub_attachment_ids: r.compatible_sub_attachment_ids || [],
       allow_multiple: !!r.allow_multiple,
@@ -419,8 +425,20 @@ function EquipmentForm({ normalized, ownership, allFoundationEquipment, allFound
 
   const handleSave = async () => {
     let savedId = normalized.id;
+    // When Owned, blank out rental-only fields so we don't carry stale values.
+    const cleanForOwnership = (p) => {
+      if ((p.ownership || ownership) === "owned") {
+        p.rental_company = "";
+        // Owned items don't have a rental pricing mode — force flat.
+        if ("pricing_mode" in p) p.pricing_mode = "owned_flat";
+      } else if ("pricing_mode" in p) {
+        // Rented items default to per_day if not already a per_* mode.
+        if (!/^per_(day|week|month)$/.test(p.pricing_mode || "")) p.pricing_mode = "per_day";
+      }
+      return p;
+    };
     if (source === "channel_letter_equipment") {
-      const payload = { ...form };
+      const payload = cleanForOwnership({ ...form });
       if (isNew) {
         const saved = await ChannelLetterInstallEquipmentEntity.create(payload);
         savedId = saved.id;
@@ -428,7 +446,7 @@ function EquipmentForm({ normalized, ownership, allFoundationEquipment, allFound
         await ChannelLetterInstallEquipmentEntity.update(normalized.id, payload);
       }
     } else {
-      const payload = { ...form };
+      const payload = cleanForOwnership({ ...form });
       if (isNew) {
         const saved = await FoundationInventoryEntity.create(payload);
         savedId = saved.id;
@@ -458,86 +476,214 @@ function EquipmentForm({ normalized, ownership, allFoundationEquipment, allFound
     onSaved?.();
   };
 
+  // === Derived state =========================================================
+  const currentOwnership = form.ownership || ownership;
+  const isRented = currentOwnership === "rented";
+  const isOwned  = currentOwnership === "owned";
+
+  // Equipment type list — uniform across both storage entities. Labels are
+  // shown in Title Case but the stored value remains snake_case.
+  const EQUIPMENT_TYPES = [
+    "ladder", "scissor_lift", "boom_lift", "boom_truck", "scaffold",
+    "truck", "car", "van", "flatbed",
+    "hand_tool", "power_tool", "safety", "other",
+  ];
+  const titleCase = (s) =>
+    String(s || "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+  // Equipment types that consume fuel — these get MPG + idle-running-cost fields
+  // regardless of ownership. Boom lifts/trucks and vehicles burn fuel while
+  // driving AND while idling on-site.
+  const FUEL_TYPES = new Set([
+    "scissor_lift", "boom_lift", "boom_truck",
+    "truck", "car", "van", "flatbed",
+  ]);
+  const equipmentType =
+    source === "channel_letter_equipment" ? form.equipment_type : form.equipment_type;
+  const hasFuel = FUEL_TYPES.has(equipmentType);
+
+  // "Supports Attachments?" toggle — replaces the old Storage dropdown.
+  // YES → foundation_equipment (so the attachment tree is available).
+  // NO  → channel_letter_equipment (lighter row, no attachment tree).
+  // Only meaningful for NEW top-level equipment.
+  const supportsAttachments = source === "foundation_equipment";
+  const switchSupportsAttachments = (yes) => {
+    const next = yes ? "foundation_equipment" : "channel_letter_equipment";
+    if (next === source) return;
+    normalized._source = next;
+    // Preserve common values across the swap
+    const carry = {
+      ownership: form.ownership || ownership,
+      cost_per_day: form.cost_per_day || 0,
+      cost_per_week: form.cost_per_week || 0,
+      cost_per_month: form.cost_per_month || 0,
+      notes: form.notes || "",
+      mpg: form.mpg || 0,
+      fuel_type: form.fuel_type || "na",
+      idle_running_cost_per_hour: form.idle_running_cost_per_hour || 0,
+      show_in_channel_letters: form.show_in_channel_letters,
+      show_in_foundation: form.show_in_foundation,
+      show_in_sign_maintenance: form.show_in_sign_maintenance,
+    };
+    const name = form[nameField] || "";
+    setForm(
+      next === "channel_letter_equipment"
+        ? {
+            equipment_name: name,
+            equipment_type: equipmentType || "boom_lift",
+            pricing_mode: "per_day",
+            cost_flat: 0,
+            delivery_pickup_cost: form.pickup_delivery_cost || 0,
+            max_height_feet: 0,
+            rental_company: "",
+            ...carry,
+          }
+        : {
+            material_name: name,
+            material_type: "excavation_equipment",
+            equipment_type: equipmentType || "boom_lift",
+            supports_attachments: true,
+            pickup_delivery_cost: form.delivery_pickup_cost || 0,
+            compatible_attachment_ids: [],
+            compatible_sub_attachment_ids: [],
+            allow_multiple: false,
+            is_pillar_excavation: false,
+            is_spread_foot_excavation: false,
+            is_non_excavation_equipment: false,
+            is_miscellaneous_attachment: false,
+            ...carry,
+          }
+    );
+  };
+
   return (
     <div className="space-y-4">
-      {/* Source picker (new items, equipment only) — lets builder choose where to store new top-level equipment */}
-      {isNew && kind === "equipment" && (
-        <div>
-          <Label className="text-xs">Storage</Label>
-          <Select
-            value={source}
-            onValueChange={(v) => {
-              // Switch source — wipe form
-              const next = v === "channel_letter_equipment" ? "channel_letter_equipment" : "foundation_equipment";
-              normalized._source = next;
-              setForm(
-                next === "channel_letter_equipment"
-                  ? { equipment_name: "", equipment_type: "boom_lift", pricing_mode: "per_day", ownership, cost_per_day: 0, cost_per_week: 0, cost_per_month: 0, cost_flat: 0, delivery_pickup_cost: 0, max_height_feet: 0, rental_company: "", notes: "", show_in_channel_letters: true, show_in_foundation: false, show_in_sign_maintenance: false }
-                  : { material_name: "", material_type: "excavation_equipment", ownership, cost_per_day: 0, cost_per_week: 0, cost_per_month: 0, pickup_delivery_cost: 0, compatible_attachment_ids: [], compatible_sub_attachment_ids: [], allow_multiple: false, is_pillar_excavation: false, is_spread_foot_excavation: false, is_non_excavation_equipment: false, is_miscellaneous_attachment: false, notes: "", show_in_channel_letters: false, show_in_foundation: true, show_in_sign_maintenance: false }
-              );
-            }}
-          >
-            <SelectTrigger className="h-8 mt-1"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="foundation_equipment">Foundation (supports attachment tree)</SelectItem>
-              <SelectItem value="channel_letter_equipment">Channel Letter Equipment (boom-lift detailed fields)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
+      {/* 1. Name */}
       <div>
         <Label className="text-xs">Name *</Label>
         <Input className="h-8" value={form[nameField] || ""} onChange={(e) => set(nameField, e.target.value)} />
       </div>
 
-      {/* Pricing */}
-      <div className="grid grid-cols-3 gap-3">
-        <div><Label className="text-xs">Cost/Day</Label><Input type="number" className="h-8" value={form.cost_per_day} onChange={(e) => set("cost_per_day", parseFloat(e.target.value) || 0)} /></div>
-        <div><Label className="text-xs">Cost/Week</Label><Input type="number" className="h-8" value={form.cost_per_week} onChange={(e) => set("cost_per_week", parseFloat(e.target.value) || 0)} /></div>
-        <div><Label className="text-xs">Cost/Month</Label><Input type="number" className="h-8" value={form.cost_per_month} onChange={(e) => set("cost_per_month", parseFloat(e.target.value) || 0)} /></div>
+      {/* 2. Ownership — right below Name */}
+      <div>
+        <Label className="text-xs">Ownership</Label>
+        <Select value={currentOwnership} onValueChange={(v) => set("ownership", v)}>
+          <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="rented">Rented</SelectItem>
+            <SelectItem value="owned">Owned</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Channel letter specific fields */}
-      {source === "channel_letter_equipment" && (
-        <div className="grid grid-cols-2 gap-3">
+      {/* 3. "Supports Attachments?" — replaces the old Storage dropdown.
+              Only shown for NEW top-level equipment; existing items can't switch storage. */}
+      {isNew && kind === "equipment" && (
+        <div className="flex items-center justify-between rounded-md border p-2.5 bg-slate-50">
           <div>
-            <Label className="text-xs">Equipment Type</Label>
-            <Select value={form.equipment_type} onValueChange={(v) => set("equipment_type", v)}>
-              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {["ladder", "scissor_lift", "boom_lift", "boom_truck", "scaffold", "truck", "car", "van", "flatbed", "hand_tool", "power_tool", "safety", "other"].map((t) =>
-                  <SelectItem key={t} value={t}>{t.replace(/_/g, " ")}</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            <Label className="text-xs font-semibold">Supports Attachments?</Label>
+            <p className="text-[11px] text-slate-500">Turn on for equipment that uses attachments / sub-attachments (e.g. excavators, augers).</p>
           </div>
-          <div>
-            <Label className="text-xs">Pricing Mode</Label>
-            <Select value={form.pricing_mode} onValueChange={(v) => set("pricing_mode", v)}>
-              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {["owned_flat", "per_hour", "per_day", "per_week", "per_month", "per_project_flat"].map((t) =>
-                  <SelectItem key={t} value={t}>{t.replace(/_/g, " ")}</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          <div><Label className="text-xs">Max Height (ft)</Label><Input type="number" className="h-8" value={form.max_height_feet} onChange={(e) => set("max_height_feet", parseFloat(e.target.value) || 0)} /></div>
-          <div><Label className="text-xs">Flat Cost ($)</Label><Input type="number" className="h-8" value={form.cost_flat || 0} onChange={(e) => set("cost_flat", parseFloat(e.target.value) || 0)} /></div>
-          <div><Label className="text-xs">Delivery/Pickup ($)</Label><Input type="number" className="h-8" value={form.delivery_pickup_cost} onChange={(e) => set("delivery_pickup_cost", parseFloat(e.target.value) || 0)} /></div>
-          <div><Label className="text-xs">Rental Company</Label><Input className="h-8" value={form.rental_company || ""} onChange={(e) => set("rental_company", e.target.value)} /></div>
+          <Switch checked={supportsAttachments} onCheckedChange={switchSupportsAttachments} />
         </div>
       )}
 
-      {/* Foundation-specific extras */}
+      {/* 4. Equipment Type (uniform list, Title-Case labels) */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label className="text-xs">Equipment Type</Label>
+          <Select
+            value={equipmentType || ""}
+            onValueChange={(v) => set("equipment_type", v)}
+          >
+            <SelectTrigger className="h-8"><SelectValue placeholder="Select type" /></SelectTrigger>
+            <SelectContent>
+              {EQUIPMENT_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>{titleCase(t)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {source === "channel_letter_equipment" && (
+          <div>
+            <Label className="text-xs">Max Height (ft)</Label>
+            <Input type="number" className="h-8" value={form.max_height_feet || 0} onChange={(e) => set("max_height_feet", parseFloat(e.target.value) || 0)} />
+          </div>
+        )}
+      </div>
+
+      {/* 5. Pricing Mode — only for RENTED. Always Per Day / Week / Month. */}
+      {isRented && (
+        <div className="rounded-lg border bg-slate-50 p-3 space-y-3">
+          <p className="text-xs font-semibold text-slate-700">Rental Pricing (per day / week / month)</p>
+          <div className="grid grid-cols-3 gap-3">
+            <div><Label className="text-xs">Cost/Day</Label><Input type="number" className="h-8" value={form.cost_per_day} onChange={(e) => set("cost_per_day", parseFloat(e.target.value) || 0)} /></div>
+            <div><Label className="text-xs">Cost/Week</Label><Input type="number" className="h-8" value={form.cost_per_week} onChange={(e) => set("cost_per_week", parseFloat(e.target.value) || 0)} /></div>
+            <div><Label className="text-xs">Cost/Month</Label><Input type="number" className="h-8" value={form.cost_per_month} onChange={(e) => set("cost_per_month", parseFloat(e.target.value) || 0)} /></div>
+          </div>
+          <div>
+            <Label className="text-xs">Rental Company</Label>
+            <Input
+              className="h-8"
+              value={source === "channel_letter_equipment" ? (form.rental_company || "") : (form.rental_company || "")}
+              onChange={(e) => set("rental_company", e.target.value)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Delivery / Pickup applies to both — keep visible always */}
+      <div>
+        <Label className="text-xs">Delivery / Pickup ($)</Label>
+        <Input
+          type="number"
+          className="h-8"
+          value={source === "channel_letter_equipment" ? (form.delivery_pickup_cost || 0) : (form.pickup_delivery_cost || 0)}
+          onChange={(e) => {
+            const v = parseFloat(e.target.value) || 0;
+            if (source === "channel_letter_equipment") set("delivery_pickup_cost", v);
+            else set("pickup_delivery_cost", v);
+          }}
+        />
+      </div>
+
+      {/* 6. Fuel costs — for boom lifts / trucks / vehicles, regardless of ownership. */}
+      {hasFuel && (
+        <div className="rounded-lg border bg-amber-50/60 border-amber-200 p-3 space-y-3">
+          <p className="text-xs font-semibold text-amber-900">Fuel Costs</p>
+          <p className="text-[11px] text-amber-800">
+            Driving fuel cost uses MPG × route miles × $/gal. Idle cost charges per hour the
+            unit is running on-site (e.g. boom holding position).
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <Label className="text-xs">MPG (driving)</Label>
+              <Input type="number" className="h-8" value={form.mpg || 0} onChange={(e) => set("mpg", parseFloat(e.target.value) || 0)} />
+            </div>
+            <div>
+              <Label className="text-xs">Fuel Type</Label>
+              <Select value={form.fuel_type || "na"} onValueChange={(v) => set("fuel_type", v)}>
+                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="na">N/A</SelectItem>
+                  <SelectItem value="gasoline">Gasoline</SelectItem>
+                  <SelectItem value="diesel">Diesel</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Idle Cost ($/hr)</Label>
+              <Input type="number" className="h-8" value={form.idle_running_cost_per_hour || 0} onChange={(e) => set("idle_running_cost_per_hour", parseFloat(e.target.value) || 0)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Foundation-specific attachment-tree controls (only when supports_attachments) */}
       {source === "foundation_equipment" && (
         <>
           {kind === "equipment" && (
             <>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label className="text-xs">Delivery/Pickup ($)</Label><Input type="number" className="h-8" value={form.pickup_delivery_cost} onChange={(e) => set("pickup_delivery_cost", parseFloat(e.target.value) || 0)} /></div>
-              </div>
               <div className="space-y-2 pt-1">
                 <Toggle label="Used for Pillar Excavation" checked={form.is_pillar_excavation} onChange={(v) => set("is_pillar_excavation", v)} />
                 <Toggle label="Used for Spread Foot Excavation" checked={form.is_spread_foot_excavation} onChange={(v) => set("is_spread_foot_excavation", v)} />
@@ -564,18 +710,6 @@ function EquipmentForm({ normalized, ownership, allFoundationEquipment, allFound
           )}
         </>
       )}
-
-      {/* Ownership */}
-      <div>
-        <Label className="text-xs">Ownership</Label>
-        <Select value={form.ownership || ownership} onValueChange={(v) => set("ownership", v)}>
-          <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="rented">Rented</SelectItem>
-            <SelectItem value="owned">Owned</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
       {/* Visibility toggles — only on top-level Equipment.
           Attachments/Sub-Attachments inherit from their parent Equipment. */}
