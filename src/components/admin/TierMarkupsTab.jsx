@@ -33,7 +33,7 @@ export default function TierMarkupsTab() {
   const [settings, setSettings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [viewMode, setViewMode] = useState('table');
+  const [viewMode, setViewMode] = useState('cards');
   const [discountsOpen, setDiscountsOpen] = useState(false);
   const { toast } = useToast();
 
