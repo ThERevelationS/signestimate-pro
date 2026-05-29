@@ -63,7 +63,7 @@
           },
           "edge_complexity_multiplier": {
             "type": "number",
-            "default": 1,
+            "default": 1.0,
             "description": "Multiplier for complex shapes edge painting"
           },
           "paint_sides": {

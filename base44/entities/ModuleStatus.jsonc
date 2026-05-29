@@ -11,7 +11,8 @@
         "metal_fabrication",
         "channel_letter_installation",
         "foundation",
-        "sign_maintenance"
+        "sign_maintenance",
+        "vinyl_estimator"
       ],
       "description": "The unique identifier for the module."
     },
@@ -23,5 +24,23 @@
   },
   "required": [
     "module_name"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {},
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }
