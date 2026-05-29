@@ -56,10 +56,12 @@ const matchCategoryKey = (label, categories) => {
 const toMult = (v) => {
   const n = Number(v);
   if (!isFinite(n) || n <= 0) return null;
-  // Mark-up values in this workbook are multipliers ABOVE 1 (e.g. 1.75 = 75% markup,
-  // 3.0 = 200% markup, 0.91 = -9% which would be a loss — still treat as literal).
-  // If someone enters a percent like "75" we assume %.
-  return n > 5 ? 1 + n / 100 : n;
+  // Mark-up values in this workbook are DIRECT price multipliers (sale_price ÷ cost).
+  //   3.0   → sell at 3× cost (shown in spreadsheet as "Mark-up: 300.0%")
+  //   1.75  → sell at 1.75× cost (shown as "175.0%")
+  //   0.91  → sell BELOW cost (shown as "91.2%" — net loss vs cost)
+  // If a row arrives as a percent (e.g. 300 instead of 3.0), divide by 100.
+  return n > 10 ? n / 100 : n;
 };
 
 // Parse the "Markups and GMs" sheet — finds every "Tier X" cell and grabs the

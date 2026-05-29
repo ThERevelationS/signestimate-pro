@@ -194,7 +194,7 @@ export default function CustomerPricingTab({ project, categorize, accentColor = 
                       <td className="px-4 py-2">{l.label}</td>
                       <td className="px-4 py-2 text-right tabular-nums text-slate-500">{fmt(l.cost)}</td>
                       <td className="px-4 py-2 text-right tabular-nums">
-                        {((l.markup_multiplier - 1) * 100).toFixed(1)}%
+                        {(l.markup_multiplier * 100).toFixed(1)}%
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums">
                         {l.volume_discount_applied > 0 ? `${l.volume_discount_applied}%` : "—"}

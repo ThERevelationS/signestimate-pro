@@ -9,21 +9,28 @@ import { Save, Trash2, Plus, Info, LayoutGrid, Table as TableIcon, TrendingUp, C
 import TierExcelUploader from '@/components/markup/TierExcelUploader';
 import TierBadge, { getTierTheme } from '@/components/markup/TierBadge';
 
+// IMPORTANT: The stored `markups[category_key]` value is the price multiplier
+// applied directly to cost (sale_price = cost × multiplier). For example, a stored
+// value of 3.0 means "sell at 3× cost" and is shown in the spreadsheet as
+// "Mark-up: 300.0%". A stored value of 1.0 means "sell at cost" → 100.0%.
+// (Do not confuse with "+50% over cost" notation — that's not what this app uses.)
 const formatPct = (mult) => {
   if (!mult && mult !== 0) return '';
-  return ((mult - 1) * 100).toFixed(1);
+  return (mult * 100).toFixed(1);
 };
 const parsePctToMult = (pctStr) => {
   const n = parseFloat(pctStr);
   if (!isFinite(n)) return 1;
-  return 1 + n / 100;
+  return n / 100;
 };
 
+// Color-code based on the displayed % (which is multiplier × 100).
+// 200%+ (≥2× cost) = highest tier of markup, 100% = at cost, <100% = below cost.
 const pctColor = (pct) => {
-  if (pct >= 100) return 'text-rose-600 font-semibold';
-  if (pct >= 50) return 'text-amber-600 font-semibold';
-  if (pct >= 25) return 'text-blue-600 font-medium';
-  if (pct > 0) return 'text-emerald-600 font-medium';
+  if (pct >= 200) return 'text-rose-600 font-semibold';
+  if (pct >= 150) return 'text-amber-600 font-semibold';
+  if (pct >= 100) return 'text-blue-600 font-medium';
+  if (pct > 0)    return 'text-emerald-600 font-medium';
   return 'text-slate-400';
 };
 
@@ -115,7 +122,7 @@ export default function TierMarkupsTab() {
     let highest = 0, lowest = Infinity;
     sortedTiers.forEach(t => {
       Object.values(t.markups || {}).forEach(m => {
-        const pct = (m - 1) * 100;
+        const pct = m * 100; // multiplier × 100 (e.g. 3.0 → 300%)
         if (pct > highest) highest = pct;
         if (pct < lowest) lowest = pct;
       });
@@ -132,7 +139,7 @@ export default function TierMarkupsTab() {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-slate-600">
-          Tier 1 = highest markup (general public) → higher tiers = preferred pricing. Values are markup % (e.g. <code className="px-1.5 py-0.5 bg-slate-100 rounded text-xs">50</code> = 1.5× cost).
+          Tier 1 = highest markup (general public) → higher tiers = preferred pricing. Values are the <strong>"Mark-up to put in Corebridge"</strong> column from the pricing spreadsheet — i.e. <em>sale price ÷ cost</em> × 100 (e.g. <code className="px-1.5 py-0.5 bg-slate-100 rounded text-xs">300</code> = sell at 3× cost).
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <TierExcelUploader categories={sortedCats} onImport={handleExcelImport} />
@@ -242,7 +249,7 @@ function TableView({ tiers, sortedCats, onUpdateField, onUpdateMarkup, onDelete 
                   </td>
                   {sortedCats.map(c => {
                     const mult = t.markups?.[c.category_key];
-                    const pct = mult ? (mult - 1) * 100 : 0;
+                    const pct = mult ? mult * 100 : 0;
                     return (
                       <td key={c.category_key} className="px-2 py-2 border-r border-slate-100 last:border-r-0">
                         <div className="relative">
@@ -289,7 +296,7 @@ function CardView({ tiers, sortedCats, onUpdateField, onUpdateMarkup, onDelete }
             <CardContent className="p-3 space-y-1.5">
               {sortedCats.map(c => {
                 const mult = t.markups?.[c.category_key];
-                const pct = mult ? (mult - 1) * 100 : 0;
+                const pct = mult ? mult * 100 : 0;
                 return (
                   <div key={c.category_key} className="flex items-center gap-2 group hover:bg-slate-50 rounded-md px-2 py-1 transition-colors">
                     <div className="flex-1 min-w-0">
