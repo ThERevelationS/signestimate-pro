@@ -150,28 +150,51 @@ export default function ExcelImporterDialog({ onClose, onComplete }) {
     setProgress({ done: 0, total: rows.length });
     const res = { created: 0, updated: 0, skipped: 0, errors: [] };
 
-    // Use small concurrency to be gentle on the backend
-    const CHUNK = 5;
-    for (let i = 0; i < rows.length; i += CHUNK) {
-      const slice = rows.slice(i, i + CHUNK);
-      await Promise.all(
-        slice.map(async (r) => {
-          try {
-            const conf = TARGETS[r.target_key];
-            if (r.action === "update") {
-              await conf.entity.update(r.existingId, r.payload);
-              res.updated += 1;
-            } else {
-              await conf.entity.create(r.payload);
-              res.created += 1;
-            }
-          } catch (err) {
-            console.error(`Import error for "${r.name}":`, err);
-            res.errors.push({ name: r.name, message: err?.message || "Failed" });
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const isRateLimit = (err) => {
+      const msg = String(err?.message || "").toLowerCase();
+      const status = err?.response?.status || err?.status;
+      return status === 429 || msg.includes("rate limit") || msg.includes("too many requests");
+    };
+
+    // Process one row at a time with a small delay between requests, and
+    // retry rate-limit failures with exponential backoff. This is the
+    // most reliable way to stay under the backend's per-second cap.
+    const PER_REQUEST_DELAY_MS = 120;   // ~8 req/sec steady-state
+    const MAX_RETRIES = 5;
+
+    const writeOne = async (r) => {
+      const conf = TARGETS[r.target_key];
+      let attempt = 0;
+      while (true) {
+        try {
+          if (r.action === "update") {
+            await conf.entity.update(r.existingId, r.payload);
+            res.updated += 1;
+          } else {
+            await conf.entity.create(r.payload);
+            res.created += 1;
           }
-        })
-      );
-      setProgress({ done: Math.min(i + CHUNK, rows.length), total: rows.length });
+          return;
+        } catch (err) {
+          if (isRateLimit(err) && attempt < MAX_RETRIES) {
+            // Exponential backoff: 500ms, 1s, 2s, 4s, 8s + jitter
+            const backoff = 500 * Math.pow(2, attempt) + Math.random() * 250;
+            await sleep(backoff);
+            attempt += 1;
+            continue;
+          }
+          console.error(`Import error for "${r.name}":`, err);
+          res.errors.push({ name: r.name, message: err?.message || "Failed" });
+          return;
+        }
+      }
+    };
+
+    for (let i = 0; i < rows.length; i++) {
+      await writeOne(rows[i]);
+      setProgress({ done: i + 1, total: rows.length });
+      if (i < rows.length - 1) await sleep(PER_REQUEST_DELAY_MS);
     }
 
     setResult(res);
@@ -360,6 +383,22 @@ export default function ExcelImporterDialog({ onClose, onComplete }) {
               )}
 
               <div className="flex justify-end gap-2 pt-2 border-t">
+                {result.errors.length > 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      // Keep only failed rows and re-run with the slow throttled path
+                      const failedNames = new Set(result.errors.map((e) => e.name));
+                      const failedRows = rows.filter((r) => failedNames.has(r.name));
+                      setRows(failedRows);
+                      setResult(null);
+                    }}
+                    className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Retry {result.errors.length} Failed
+                  </Button>
+                )}
                 <Button onClick={onClose} className="bg-emerald-600 hover:bg-emerald-700">
                   Done
                 </Button>
