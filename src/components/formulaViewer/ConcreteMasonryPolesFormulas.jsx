@@ -28,8 +28,19 @@ import { FormulaSection, FormulaLine } from './FormulaSection';
 //     fuel surcharge, and below-minimum $/CY rate.
 //   • Bagged concrete, rebar, forming material, wall materials, wall fill,
 //     and wall caps → Master Inventory → Concrete & Stone tab.
-//   • Sign poles AND raw extruded metal stock → Master Inventory → Extruded
-//     Metals & Poles tab (replaces the old "Metal (Legacy)" tab).
+//   • Sign poles AND raw extruded metal stock (Angle, Channel, Tube, Flat Bar,
+//     Round Bar, I-Beam, H-Beam, Pipe) → Master Inventory → Extruded Metals
+//     & Poles tab. Single flat list — no sub-tabs. Pole rows still persist in
+//     FoundationInventory (material_type="pole") so the pole geometry +
+//     paint-rate fields the estimator depends on remain intact.
+//   • Sheet metal, plate stock, and plastic sheet → Master Inventory →
+//     Substrates tab (NOT Extruded Metals). The Excel importer enforces this
+//     routing automatically — any "aluminum/steel/stainless/galvanized
+//     sheet|plate" or "plastic sheet|plate" row is sent to
+//     DimensionalLetterMaterial.
+//   • Sign lighting, hardware, fees / permits / labor, and parts | supplies
+//     each have their own dedicated Master Inventory tab + entity, and the
+//     Excel importer routes them automatically (see importMappers.js).
 //   • Excavation rates / forming labor rates / pouring + finishing labor
 //     rates live on the Foundation Settings page.
 

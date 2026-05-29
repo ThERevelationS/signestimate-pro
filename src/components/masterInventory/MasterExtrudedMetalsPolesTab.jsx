@@ -1,14 +1,22 @@
 // Master Inventory — Extruded Metals & Poles tab.
 //
-// Combines two data sources into a single tab:
-//   1. Inventory entity (legacy extruded metals — Aluminum / Steel angle,
-//      channel, tube, flat bar, etc.) — these were previously surfaced under
-//      "Metal (Legacy)".
-//   2. FoundationInventory rows with material_type = "pole" — previously
-//      managed on the Foundation Inventory page.
+// Single flat list combining two data sources:
+//   1. Inventory entity — extruded stock (Angle / Channel / Tube / Flat Bar /
+//      Round Bar / I-Beam / H-Beam / Pipe, plus any Sheet/Plate rows still
+//      living here from legacy imports).
+//   2. FoundationInventory rows with material_type = "pole" — sign poles.
 //
-// Two sub-tabs let admins manage each list independently with the right
-// schema for each.
+// We do NOT migrate poles into the Inventory entity — the Concrete | Masonry
+// | Poles estimator reads pole_* fields from FoundationInventory (pole_shape,
+// pole_width_inches, pole_stock_length_ft, pole_pricing_mode, pole_stock_price,
+// paint_rate_per_linear_ft) and changing that would break saved estimates.
+// Instead we show both sources in one combined table and route Add/Edit/Delete
+// to the correct entity based on each row's `_kind`.
+//
+// IMPORTANT: Sheet metal / Plate / Plastic SHEET stock does NOT belong here —
+// the Excel importer routes those to the Substrates tab (DimensionalLetterMaterial).
+// Sign lighting, fees, labor, hardware, and parts/supplies all route to their
+// own dedicated entities. See components/masterInventory/importMappers.js.
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Inventory, FoundationInventory } from "@/entities/all";
@@ -16,23 +24,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Search, Plus, Package, Anchor } from "lucide-react";
 import InventoryTable from "./InventoryTable";
 import InventoryFormModal from "./InventoryFormModal";
 
-// ── Schema for the EXTRUDED METALS sub-tab (Inventory entity) ──────────────
+// ── Form schema for an EXTRUDED METAL row (Inventory entity) ───────────────
 const EXTRUDED_METALS_SOURCE = {
   key: "extruded_metals",
-  label: "Extruded Metals",
+  label: "Extruded Metal",
   entity: Inventory,
   nameField: "size",
   fields: [
     { name: "material_type", label: "Material", type: "select",
       options: ["Aluminum", "Steel", "Stainless_Steel", "Galvanized_Steel", "Brass", "Copper", "Plastic", "Other"],
       required: true, table: true },
+    // Note: "Sheet" and "Plate" intentionally omitted — sheet/plate stock
+    // belongs in the Substrates tab (DimensionalLetterMaterial).
     { name: "product_type", label: "Product", type: "select",
-      options: ["Angle", "Channel", "Tube_Square", "Tube_Round", "Flat_Bar", "Round_Bar", "Sheet", "Plate", "I_Beam", "H_Beam", "Pipe", "Other"],
+      options: ["Angle", "Channel", "Tube_Square", "Tube_Round", "Flat_Bar", "Round_Bar", "I_Beam", "H_Beam", "Pipe", "Other"],
       required: true, table: true },
     { name: "size", label: "Size", type: "text", required: true, table: true },
     { name: "thickness_gauge", label: "Thick. / Gauge", type: "text", table: true },
@@ -45,10 +54,10 @@ const EXTRUDED_METALS_SOURCE = {
   ],
 };
 
-// ── Schema for the POLES sub-tab (FoundationInventory entity, material_type=pole) ──
+// ── Form schema for a POLE row (FoundationInventory entity, material_type=pole) ──
 const POLES_SOURCE = {
   key: "poles",
-  label: "Poles",
+  label: "Pole",
   entity: FoundationInventory,
   nameField: "material_name",
   defaults: { material_type: "pole" },
@@ -70,14 +79,57 @@ const POLES_SOURCE = {
   ],
 };
 
+// ── Combined-view schema used to render the single flat table ──────────────
+// Columns work for BOTH extruded rows (read material_type/product_type/size)
+// AND pole rows (we project pole fields onto matching column names).
+const COMBINED_TABLE_SOURCE = {
+  key: "extruded_metals_poles",
+  label: "Item",
+  nameField: "_displayName",
+  fields: [
+    { name: "_kind", label: "Kind", type: "text", table: true },
+    { name: "material_type", label: "Material", type: "text", table: true },
+    { name: "product_type", label: "Product", type: "text", table: true },
+    { name: "size", label: "Size", type: "text", table: true },
+    { name: "thickness_gauge", label: "Thick. / Gauge", type: "text", table: true },
+    { name: "cost_per_unit", label: "Cost", type: "number", table: true },
+    { name: "unit_type", label: "Unit", type: "text", table: true },
+    { name: "supplier", label: "Supplier", type: "text", table: true },
+  ],
+};
+
+// Project a FoundationInventory pole row onto the combined-table columns.
+const polesToRow = (p) => ({
+  ...p,
+  _kind: "Pole",
+  _displayName: p.material_name,
+  material_type: "Pole",
+  product_type: p.pole_shape ? `${p.pole_shape} pole` : "pole",
+  size: [p.pole_width_inches, p.pole_depth_inches].filter(Boolean).join(" × ") +
+        (p.pole_width_inches ? '"' : ""),
+  thickness_gauge: p.pole_wall_thickness_inches ? `${p.pole_wall_thickness_inches}"` : "",
+  cost_per_unit: p.pole_pricing_mode === "stock_price" ? p.pole_stock_price : p.cost_per_unit,
+  unit_type: p.pole_pricing_mode === "stock_price"
+    ? `per ${p.pole_stock_length_ft || "?"}ft stock`
+    : "per_foot",
+});
+
+const metalsToRow = (m) => ({
+  ...m,
+  _kind: "Extruded",
+  _displayName: `${m.material_type || ""} ${m.product_type || ""} ${m.size || ""}`.trim(),
+});
+
 export default function MasterExtrudedMetalsPolesTab({ isAdmin }) {
-  const [activeSub, setActiveSub] = useState("extruded_metals");
   const [metalsItems, setMetalsItems] = useState([]);
   const [polesItems, setPolesItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  // Which entity the form should operate against. Determined by either the
+  // row the user clicked (edit) or which "+ Add" button they pressed.
+  const [formSource, setFormSource] = useState(EXTRUDED_METALS_SOURCE);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -96,28 +148,47 @@ export default function MasterExtrudedMetalsPolesTab({ isAdmin }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const activeSource = activeSub === "extruded_metals" ? EXTRUDED_METALS_SOURCE : POLES_SOURCE;
-  const allItems = activeSub === "extruded_metals" ? metalsItems : polesItems;
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return allItems;
+  // Build the combined, search-filtered list.
+  const combined = useMemo(() => {
+    const rows = [
+      ...metalsItems.map(metalsToRow),
+      ...polesItems.map(polesToRow),
+    ];
+    if (!search.trim()) return rows;
     const q = search.toLowerCase();
-    return allItems.filter((it) =>
+    return rows.filter((it) =>
       Object.values(it).some((v) => v && String(v).toLowerCase().includes(q))
     );
-  }, [allItems, search]);
+  }, [metalsItems, polesItems, search]);
 
-  const handleAdd = () => {
+  const handleAddMetal = () => {
     setEditingItem(null);
+    setFormSource(EXTRUDED_METALS_SOURCE);
     setShowForm(true);
   };
-  const handleEdit = (item) => { setEditingItem(item); setShowForm(true); };
+  const handleAddPole = () => {
+    setEditingItem(null);
+    setFormSource(POLES_SOURCE);
+    setShowForm(true);
+  };
+
+  const handleEdit = (item) => {
+    // Route edit to the correct entity based on the row's _kind.
+    const src = item._kind === "Pole" ? POLES_SOURCE : EXTRUDED_METALS_SOURCE;
+    setFormSource(src);
+    setEditingItem(item);
+    setShowForm(true);
+  };
+
   const handleDelete = async (item) => {
-    if (!window.confirm(`Delete "${item[activeSource.nameField]}"?`)) return;
-    await activeSource.entity.delete(item.id);
+    const src = item._kind === "Pole" ? POLES_SOURCE : EXTRUDED_METALS_SOURCE;
+    const name = item._displayName || item[src.nameField];
+    if (!window.confirm(`Delete "${name}"?`)) return;
+    await src.entity.delete(item.id);
     load();
   };
-  const handleSaved = async () => {
+
+  const handleSaved = () => {
     setShowForm(false);
     setEditingItem(null);
     load();
@@ -130,7 +201,9 @@ export default function MasterExtrudedMetalsPolesTab({ isAdmin }) {
           <CardTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-slate-700" />
             Extruded Metals & Poles
-            <Badge variant="outline" className="ml-2 font-normal">{filtered.length} of {allItems.length}</Badge>
+            <Badge variant="outline" className="ml-2 font-normal">
+              {combined.length} of {metalsItems.length + polesItems.length}
+            </Badge>
           </CardTitle>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="relative w-full sm:w-64">
@@ -143,46 +216,39 @@ export default function MasterExtrudedMetalsPolesTab({ isAdmin }) {
               />
             </div>
             {isAdmin && (
-              <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700 text-white h-9">
-                <Plus className="w-4 h-4 mr-1" />
-                Add {activeSub === "extruded_metals" ? "Metal" : "Pole"}
-              </Button>
+              <>
+                <Button onClick={handleAddMetal} className="bg-blue-600 hover:bg-blue-700 text-white h-9">
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Metal
+                </Button>
+                <Button onClick={handleAddPole} variant="outline" className="h-9">
+                  <Anchor className="w-4 h-4 mr-1" />
+                  Add Pole
+                </Button>
+              </>
             )}
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="pt-4">
-        <Tabs value={activeSub} onValueChange={(v) => { setActiveSub(v); setSearch(""); }}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="extruded_metals" className="gap-2">
-              <Package className="w-3.5 h-3.5" /> Extruded Metals ({metalsItems.length})
-            </TabsTrigger>
-            <TabsTrigger value="poles" className="gap-2">
-              <Anchor className="w-3.5 h-3.5" /> Poles ({polesItems.length})
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value={activeSub} className="mt-0">
-            {loading ? (
-              <div className="p-12 text-center text-slate-500">Loading…</div>
-            ) : (
-              <InventoryTable
-                source={activeSource}
-                items={filtered}
-                canEdit={isAdmin}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onInlineToggle={() => {}}
-              />
-            )}
-          </TabsContent>
-        </Tabs>
+        {loading ? (
+          <div className="p-12 text-center text-slate-500">Loading…</div>
+        ) : (
+          <InventoryTable
+            source={COMBINED_TABLE_SOURCE}
+            items={combined}
+            canEdit={isAdmin}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onInlineToggle={() => {}}
+          />
+        )}
       </CardContent>
 
       {showForm && (
         <InventoryFormModal
-          source={activeSource}
+          source={formSource}
           editingItem={editingItem}
           onCancel={() => { setShowForm(false); setEditingItem(null); }}
           onSaved={handleSaved}

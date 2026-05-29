@@ -99,10 +99,17 @@ const PART_GROUP_MAP = {
   "styrene": "substrate",
   "aluminum sheet": "substrate",
   "aluminum sheets": "substrate",
+  "aluminum plate": "substrate",
   "steel sheet": "substrate",
+  "steel plate": "substrate",
   "sheet metal": "substrate",
   "stainless sheet": "substrate",
+  "stainless plate": "substrate",
   "galvanized sheet": "substrate",
+  "galvanized plate": "substrate",
+  "plastic": "substrate",
+  "plastic sheet": "substrate",
+  "plastic plate": "substrate",
 
   // ---- Sign Lighting ----
   "led": "sign_lighting",
@@ -202,12 +209,21 @@ const PART_GROUP_MAP = {
 
 // Keyword fallbacks when Part Group is empty or unmapped.
 // Order matters — first match wins.
+//
+// NOTE: ANY sheet/plate row (metal OR plastic) is routed to Substrates. The
+// legacy Inventory entity (extruded angle / channel / tube / pipe / etc.) is
+// only used for true extrusions and poles — never for sheet/plate or plastic
+// sheet stock. This matches the Master Inventory UI:
+//   • Extruded Metals & Poles tab → Inventory (extrusions) + FoundationInventory (poles)
+//   • Substrates tab → DimensionalLetterMaterial (incl. all sheet stock)
 const KEYWORD_RULES = [
   { rx: /\b(vinyl|wrap|laminate|transfer tape|banner|window film|perforated|reflective|3m\s*ij|oracal|avery|polypropylene|photobase|multitex|polyester)\b/i, target: "vinyl" },
   { rx: /\b(led|neon|power supply|transformer|ballast|fluorescent|photocell|timer|driver)\b/i, target: "sign_lighting" },
   { rx: /\b(standoff|anchor|screw|bolt|nut|washer|rivet|threaded rod|bracket|z[-\s]?clip|french cleat|toggle|wedge)\b/i, target: "sign_hardware" },
-  { rx: /\b(permit|engineering|design fee|art fee|freight|delivery|subcontractor|crane|inspection|consulting|labor rate)\b/i, target: "labor_service" },
-  { rx: /\b(acrylic|sintra|pvc|acm|dibond|alumalite|mdf|hdu|coroplast|corrugated plastic|gatorboard|polycarbonate|lexan|styrene|foam|sheet metal|aluminum sheet|steel sheet|stainless sheet|galvanized sheet)\b/i, target: "substrate" },
+  { rx: /\b(permit|engineering|design fee|art fee|freight|delivery|subcontractor|crane|inspection|consulting|labor rate|fee)\b/i, target: "labor_service" },
+  // Substrates — explicit sheet/plate keywords for every supported material,
+  // including bare "plastic sheet" and metal "plate" stock.
+  { rx: /\b(acrylic|sintra|pvc|acm|dibond|alumalite|mdf|hdu|coroplast|corrugated plastic|gatorboard|polycarbonate|lexan|styrene|foam|sheet metal|aluminum sheet|steel sheet|stainless sheet|galvanized sheet|aluminum plate|steel plate|stainless plate|plastic sheet|plastic plate)\b/i, target: "substrate" },
   { rx: /\b(trim cap|retainer|j[-\s]?bar|raceway cover|edge trim|paint|primer|sealant|tape|abrasive|cleaner|solvent|ppe|gloves)\b/i, target: "sign_parts_supplies" },
 ];
 
