@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Save, Trash2, Plus, Info, LayoutGrid, Table as TableIcon, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
 import TierExcelUploader from '@/components/markup/TierExcelUploader';
 import TierBadge, { getTierTheme } from '@/components/markup/TierBadge';
+import MarkupPctInput from '@/components/admin/MarkupPctInput';
 
 // IMPORTANT: The stored `markups[category_key]` value is the price multiplier
 // applied directly to cost (sale_price = cost × multiplier). For example, a stored
@@ -253,7 +254,11 @@ function TableView({ tiers, sortedCats, onUpdateField, onUpdateMarkup, onDelete 
                     return (
                       <td key={c.category_key} className="px-2 py-2 border-r border-slate-100 last:border-r-0">
                         <div className="relative">
-                          <Input type="number" step="0.1" value={formatPct(mult)} onChange={(e) => onUpdateMarkup(t.id, c.category_key, e.target.value)} className={`h-9 text-sm pr-7 text-right tabular-nums ${pctColor(pct)}`} placeholder="0" />
+                          <MarkupPctInput
+                            value={mult}
+                            onCommit={(pctStr) => onUpdateMarkup(t.id, c.category_key, pctStr)}
+                            className={`h-9 text-sm pr-7 text-right tabular-nums ${pctColor(pct)}`}
+                          />
                           <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">%</span>
                         </div>
                       </td>
@@ -303,7 +308,11 @@ function CardView({ tiers, sortedCats, onUpdateField, onUpdateMarkup, onDelete }
                       <div className="text-xs font-medium text-slate-700 truncate">{c.category_name}</div>
                     </div>
                     <div className="relative flex-shrink-0">
-                      <Input type="number" step="0.1" value={formatPct(mult)} onChange={(e) => onUpdateMarkup(t.id, c.category_key, e.target.value)} className={`h-8 w-24 text-sm pr-7 text-right tabular-nums ${pctColor(pct)}`} placeholder="0" />
+                      <MarkupPctInput
+                        value={mult}
+                        onCommit={(pctStr) => onUpdateMarkup(t.id, c.category_key, pctStr)}
+                        className={`h-8 w-24 text-sm pr-7 text-right tabular-nums ${pctColor(pct)}`}
+                      />
                       <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">%</span>
                     </div>
                   </div>
