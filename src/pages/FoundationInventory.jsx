@@ -41,21 +41,20 @@ const PRESET_COLORS = [
 ];
 
 // ─── Tab configs ──────────────────────────────────────────────────────────
+// NOTE: Concrete SUPPLIERS (ready-mix services like Citywide / Ernst) live in
+// Master Inventory → Labor & Services with service_category = "concrete_service".
+// Only BAGGED concrete is still managed here (it's a physical product, not a service).
 const TAB_CONFIGS = {
   concrete: {
-    label: 'Concrete',
-    types: ['concrete_service', 'bagged_concrete'],
-    defaultType: 'concrete_service',
+    label: 'Bagged Concrete',
+    types: ['bagged_concrete'],
+    defaultType: 'bagged_concrete',
     fields: [
       { key: 'material_name', label: 'Material Name *', type: 'text', required: true },
       { key: 'material_description', label: 'Description', type: 'text' },
-      { key: 'material_type', label: 'Type', type: 'select', options: [{ value: 'concrete_service', label: 'Concrete Service (ready-mix)' }, { value: 'bagged_concrete', label: 'Bagged Concrete' }] },
       { key: 'supplier', label: 'Supplier', type: 'text' },
-      { key: 'unit', label: 'Unit', type: 'select', options: [{ value: 'cy', label: 'Cubic Yard (CY)' }, { value: 'bag', label: 'Bag' }, { value: 'each', label: 'Each' }] },
+      { key: 'unit', label: 'Unit', type: 'select', options: [{ value: 'bag', label: 'Bag' }, { value: 'each', label: 'Each' }] },
       { key: 'cost_per_unit', label: 'Cost Per Unit ($)', type: 'number' },
-      { key: 'minimum_order_yards', label: 'Min Order (CY)', type: 'number' },
-      { key: 'below_minimum_cost_per_cy', label: 'Below-Min Cost/CY ($)', type: 'number' },
-      { key: 'minimum_cost', label: 'Minimum Charge ($)', type: 'number' },
       { key: 'notes', label: 'Notes', type: 'text' },
     ],
   },

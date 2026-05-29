@@ -19,6 +19,15 @@ import { FormulaSection, FormulaLine } from './FormulaSection';
 //   • Optional fill material
 //
 // All toggles are ON by default so the viewer shows every line of math.
+//
+// NOTE on Concrete Suppliers:
+//   Concrete ready-mix suppliers (Citywide, Ernst, etc.) are stored in
+//   LaborServiceInventory with service_category = "concrete_service". Each
+//   supplier row carries its full pricing matrix: 5 mix prices (3500/4000/4500/
+//   5000/Fast Set), 5 admixture add-ons, 5 small-load fee brackets, fuel
+//   surcharge, and below-minimum $/CY rate. The Concrete estimator merges
+//   these into its concrete dropdown alongside any legacy FoundationInventory
+//   concrete_service rows. Bagged concrete remains in FoundationInventory.
 
 const num = (v, fb = 0) => {
   const n = parseFloat(v);
