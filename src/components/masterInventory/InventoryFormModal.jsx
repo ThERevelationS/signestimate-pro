@@ -9,6 +9,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Save, X } from "lucide-react";
+import {
+  LABOR_SERVICE_CATEGORY_FIELDS,
+  LABOR_SERVICE_CATEGORY_FIELD_NAMES,
+} from "./laborServiceCategorySchema";
 
 /**
  * Generic inventory add/edit modal driven by a `source` config object.
@@ -17,12 +21,27 @@ export default function InventoryFormModal({ source, editingItem, onCancel, onSa
   const [formData, setFormData] = useState({});
   const [saving, setSaving] = useState(false);
 
+  // Is this the Labor & Services source? If so we drive category-specific
+  // fields from the per-category schema below.
+  const isLaborServices = source?.key === "labor_services";
+  const currentCategory = formData.service_category || "";
+  const categorySchema = isLaborServices ? LABOR_SERVICE_CATEGORY_FIELDS[currentCategory] : null;
+
   // Initialize form whenever the modal opens / source changes
   useEffect(() => {
     const initial = {};
     source.fields.forEach((f) => {
       initial[f.name] = editingItem?.[f.name] ?? (f.type === "boolean" ? false : "");
     });
+    // Pre-fill category-specific fields too (so editing an existing row shows
+    // its saved values for every category-owned field).
+    if (source?.key === "labor_services") {
+      LABOR_SERVICE_CATEGORY_FIELD_NAMES.forEach((name) => {
+        if (initial[name] === undefined) {
+          initial[name] = editingItem?.[name] ?? "";
+        }
+      });
+    }
     setFormData(initial);
   }, [source, editingItem]);
 
@@ -44,18 +63,26 @@ export default function InventoryFormModal({ source, editingItem, onCancel, onSa
       }
     }
 
-    // Coerce types
+    // Coerce types — for the base fields AND (if Labor & Services) the
+    // category-specific fields for the SELECTED category only. Fields owned by
+    // other categories are left untouched so switching categories doesn't wipe
+    // historical data, but we don't write empty values for them either.
     const payload = {};
-    source.fields.forEach((f) => {
-      const v = formData[f.name];
+    const coerce = (f, v) => {
       if (f.type === "number") {
-        payload[f.name] = v === "" || v === null || v === undefined ? null : parseFloat(v);
-      } else if (f.type === "boolean") {
-        payload[f.name] = !!v;
-      } else {
-        payload[f.name] = v ?? "";
+        return v === "" || v === null || v === undefined ? null : parseFloat(v);
       }
-    });
+      if (f.type === "boolean") return !!v;
+      return v ?? "";
+    };
+
+    source.fields.forEach((f) => { payload[f.name] = coerce(f, formData[f.name]); });
+
+    if (isLaborServices && categorySchema) {
+      categorySchema.fields.forEach((f) => {
+        payload[f.name] = coerce(f, formData[f.name]);
+      });
+    }
 
     setSaving(true);
     try {
@@ -120,7 +147,9 @@ export default function InventoryFormModal({ source, editingItem, onCancel, onSa
                         <SelectContent>
                           {f.options.map((o) => (
                             <SelectItem key={o} value={o}>
-                              {String(o).replace(/_/g, " ")}
+                              {String(o)
+                                .replace(/_/g, " ")
+                                .replace(/\b\w/g, (c) => c.toUpperCase())}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -157,6 +186,69 @@ export default function InventoryFormModal({ source, editingItem, onCancel, onSa
                 );
               })}
             </div>
+
+            {/* Category-specific section (Labor & Services only) */}
+            {isLaborServices && categorySchema && (
+              <div className="border-t pt-4 mt-2">
+                <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                  <span className="inline-block w-1 h-4 bg-emerald-500 rounded-full" />
+                  {categorySchema.label}
+                </h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {categorySchema.fields.map((f) => (
+                    <div key={f.name} className={f.type === "boolean" ? "md:col-span-2 flex items-center gap-3 pt-2" : ""}>
+                      {f.type !== "boolean" && (
+                        <Label className="text-slate-700">{f.label}</Label>
+                      )}
+                      {f.type === "select" && (
+                        <Select
+                          value={formData[f.name] || ""}
+                          onValueChange={(v) => update(f.name, v)}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Select..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {f.options.map((o) => (
+                              <SelectItem key={o} value={o}>
+                                {String(o)
+                                  .replace(/_/g, " ")
+                                  .replace(/\b\w/g, (c) => c.toUpperCase())}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {f.type === "text" && (
+                        <Input
+                          value={formData[f.name] || ""}
+                          onChange={(e) => update(f.name, e.target.value)}
+                          className="mt-1"
+                        />
+                      )}
+                      {f.type === "number" && (
+                        <Input
+                          type="number"
+                          step="any"
+                          value={formData[f.name] ?? ""}
+                          onChange={(e) => update(f.name, e.target.value)}
+                          className="mt-1"
+                        />
+                      )}
+                      {f.type === "boolean" && (
+                        <>
+                          <Switch
+                            checked={!!formData[f.name]}
+                            onCheckedChange={(v) => update(f.name, v)}
+                          />
+                          <Label className="text-slate-700">{f.label}</Label>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Full-width textareas */}
             {source.fields.filter((f) => f.type === "textarea").map((f) => (

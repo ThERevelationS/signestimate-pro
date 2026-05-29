@@ -215,7 +215,7 @@ export const INVENTORY_SOURCES = [
         name: "pricing_mode",
         label: "Pricing",
         type: "select",
-        options: ["per_hour", "per_day", "per_job", "per_unit", "per_sqft", "per_mile", "per_cy"],
+        options: ["per_hour", "per_day", "per_week", "per_month", "per_job", "per_unit", "per_sqft", "per_mile", "per_cy", "per_lb", "per_pallet", "flat"],
         table: true,
       },
       { name: "default_rate", label: "Rate", type: "number", required: true, table: true },
@@ -226,25 +226,9 @@ export const INVENTORY_SOURCES = [
       { name: "vendor_phone", label: "Phone", type: "text" },
       { name: "description", label: "Description", type: "text" },
 
-      // ── Concrete supplier pricing matrix (shown ONLY when category='concrete_service') ──
-      { name: "minimum_order_yards",            label: "Min Order (CY)",        type: "number", showIfCategory: "concrete_service" },
-      { name: "below_minimum_cost_per_cy",      label: "Below-Min $/CY",        type: "number", showIfCategory: "concrete_service" },
-      { name: "mix_3500_price",                 label: "Mix 3500 AE ($/CY)",    type: "number", showIfCategory: "concrete_service" },
-      { name: "mix_4000_price",                 label: "Mix 4000 AE ($/CY)",    type: "number", showIfCategory: "concrete_service" },
-      { name: "mix_4500_price",                 label: "Mix 4500 AE ($/CY)",    type: "number", showIfCategory: "concrete_service" },
-      { name: "mix_5000_price",                 label: "Mix 5000 AE ($/CY)",    type: "number", showIfCategory: "concrete_service" },
-      { name: "mix_fast_set_price",             label: "Mix Fast Set ($/CY)",   type: "number", showIfCategory: "concrete_service" },
-      { name: "admix_calcium_chloride_price",   label: "Admix: Calcium Chl.",   type: "number", showIfCategory: "concrete_service" },
-      { name: "admix_set_retarding_price",      label: "Admix: Set Retarding",  type: "number", showIfCategory: "concrete_service" },
-      { name: "admix_water_reducing_price",     label: "Admix: Water Reducing", type: "number", showIfCategory: "concrete_service" },
-      { name: "admix_fibers_price",             label: "Admix: Fibers",         type: "number", showIfCategory: "concrete_service" },
-      { name: "admix_winter_service_price",     label: "Admix: Winter Service", type: "number", showIfCategory: "concrete_service" },
-      { name: "small_load_fee_1_1_75",          label: "Small Load 1–1.75 CY",  type: "number", showIfCategory: "concrete_service" },
-      { name: "small_load_fee_2_2_75",          label: "Small Load 2–2.75 CY",  type: "number", showIfCategory: "concrete_service" },
-      { name: "small_load_fee_3_3_75",          label: "Small Load 3–3.75 CY",  type: "number", showIfCategory: "concrete_service" },
-      { name: "small_load_fee_4_4_25",          label: "Small Load 4–4.25 CY",  type: "number", showIfCategory: "concrete_service" },
-      { name: "small_load_fee_4_5_4_75",        label: "Small Load 4.5–4.75 CY",type: "number", showIfCategory: "concrete_service" },
-      { name: "fuel_surcharge",                 label: "Fuel Surcharge ($)",    type: "number", showIfCategory: "concrete_service" },
+      // Category-specific fields are injected automatically by InventoryFormModal
+      // using LABOR_SERVICE_CATEGORY_FIELDS in laborServiceCategorySchema.js.
+      // See that file to edit per-category fields.
 
       { name: "show_in_channel_letters", label: "Ch. Letters", type: "boolean", table: true },
       { name: "show_in_sign_maintenance", label: "Maint.", type: "boolean", table: true },
