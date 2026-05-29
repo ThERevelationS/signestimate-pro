@@ -168,8 +168,9 @@ export default function MasterInventory() {
           <div className="text-sm text-slate-700">
             <p className="font-semibold text-slate-900 mb-0.5">Bulk import from your external inventory system</p>
             <p className="text-xs text-slate-600">
-              Drop in a Part Details Export — items are auto-routed to Vinyl, Substrates, or Metal, and existing
-              items are updated by name (no duplicates).
+              Drop in a Part Details Export — items are auto-routed to Vinyl, Substrates (incl. sheet metal),
+              Sign Lighting, Hardware, Labor &amp; Services, or Sign Parts | Supplies. Existing items are
+              updated by name (no duplicates).
             </p>
           </div>
         </div>
