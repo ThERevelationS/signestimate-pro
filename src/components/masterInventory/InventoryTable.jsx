@@ -24,7 +24,14 @@ export default function InventoryTable({ source, items, canEdit, onEdit, onDelet
   const handleToggle = async (item, field, next) => {
     if (!canEdit) return;
     try {
-      await source.entity.update(item.id, { [field.name]: next });
+      // Per-row entity routing for combined-view tabs (e.g. Extruded Metals & Poles).
+      // The row may carry an explicit `_entity` reference; otherwise fall back to source.entity.
+      const entity = item._entity || source.entity;
+      if (!entity) {
+        console.warn("No entity available for inline toggle on", item);
+        return;
+      }
+      await entity.update(item.id, { [field.name]: next });
       onInlineToggle?.(item.id, field.name, next);
     } catch (e) {
       console.error("Toggle failed:", e);

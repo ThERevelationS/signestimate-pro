@@ -33,6 +33,26 @@ import { FormulaSection, FormulaLine } from './FormulaSection';
 //     & Poles tab. Single flat list — no sub-tabs. Pole rows still persist in
 //     FoundationInventory (material_type="pole") so the pole geometry +
 //     paint-rate fields the estimator depends on remain intact.
+//   • EXTRUDED METAL AS POLE: Each Inventory extrusion row carries an
+//     `is_pole` toggle. When ON, that row is also exposed to the Concrete |
+//     Masonry | Poles estimator as a usable pole. Geometry is auto-derived:
+//       - pole_shape:  Tube_Square → square; Tube_Round / Pipe / Round_Bar → round; else square
+//       - pole_width:  first numeric token of `size` (e.g. "4x4" → 4")
+//       - pole_depth:  second numeric token (e.g. "4x6" → 6")
+//       - wall thick:  parsed from `thickness_gauge` ("1/8" → 0.125)
+//       - $/ft:        cost_per_unit (forced to per_foot pricing)
+//       - paint rate:  falls back to Foundation Setting
+//                      pole_paint_cost_per_lf + pole_paint_labor_per_lf × size multiplier
+//     The synthesized pole keeps the original Inventory row id, so saved
+//     estimates referencing it stay stable.
+//   • LEGACY ROW CLEANUP: Old imports wrote permits, labor, trim cap, and
+//     sheet/plate stock into the Inventory entity. The Extruded Metals &
+//     Poles tab HIDES rows with invalid material_type/product_type and shows
+//     a "Clean Up N Legacy Rows" button (admin only) that migrates them:
+//       - permits / labor / fees    → LaborServiceInventory
+//       - trim cap / parts / paint  → SignPartsSuppliesInventory
+//       - sheet / plate / plastic   → DimensionalLetterMaterial (Substrates)
+//     Originals are deleted from Inventory after a successful copy.
 //   • Sheet metal, plate stock, and plastic sheet → Master Inventory →
 //     Substrates tab (NOT Extruded Metals). The Excel importer enforces this
 //     routing automatically — any "aluminum/steel/stainless/galvanized

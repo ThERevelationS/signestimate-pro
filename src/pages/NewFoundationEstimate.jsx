@@ -37,10 +37,12 @@ import { formatDistanceToNow } from 'date-fns';
 import TabBadgeTrigger from '@/components/channelLetterInstall/TabBadgeTrigger';
 import CustomerPricingTab from '@/components/markup/CustomerPricingTab';
 import { categorizeFoundationProject } from '@/components/markup/projectCategorizer';
+import { extractInventoryPoles } from '@/components/foundation/extrudedPoleAdapter';
 
 const FoundationProjectEntity = base44.entities.FoundationProject;
 const FoundationInventoryEntity = base44.entities.FoundationInventory;
 const LaborServiceInventoryEntity = base44.entities.LaborServiceInventory;
+const InventoryEntity = base44.entities.Inventory;
 const SettingsEntity = base44.entities.Settings;
 
 // Normalize a LaborServiceInventory concrete supplier into the shape the Foundation
@@ -398,9 +400,10 @@ export default function NewFoundationEstimate() {
 
   const loadData = async () => {
     setLoading(true);
-    const [invRaw, laborRaw, rawSettings] = await Promise.all([
+    const [invRaw, laborRaw, extrudedRaw, rawSettings] = await Promise.all([
       FoundationInventoryEntity.list('-created_date', 200),
       LaborServiceInventoryEntity.filter({ service_category: 'concrete_service' }, '-created_date', 100),
+      InventoryEntity.list('-created_date', 500),
       SettingsEntity.filter({ category: ['foundation_pricing', 'foundation_labor', 'foundation_calc'] }),
     ]);
     // Merge concrete suppliers from Labor & Services into the inventory list so the
@@ -408,7 +411,10 @@ export default function NewFoundationEstimate() {
     const concreteFromLabor = (laborRaw || [])
       .filter(r => r.is_active !== false && r.show_in_foundation !== false)
       .map(normalizeConcreteSupplier);
-    const inv = [...invRaw, ...concreteFromLabor];
+    // Inventory extrusions flagged is_pole=true become synthetic poles available
+    // to this estimator alongside the dedicated FoundationInventory poles.
+    const extrudedPoles = extractInventoryPoles(extrudedRaw);
+    const inv = [...invRaw, ...concreteFromLabor, ...extrudedPoles];
     setInventory(inv);
     setWallMaterials(inv.filter(i => i.material_type === 'wall_material'));
     const sMap = {};
