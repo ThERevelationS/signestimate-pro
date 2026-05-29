@@ -91,6 +91,17 @@ export default function InventoryFormModal({ source, editingItem, onCancel, onSa
             <div className="grid md:grid-cols-2 gap-4">
               {source.fields.map((f) => {
                 if (f.type === "textarea") return null; // render full-width below
+
+                // Conditional visibility based on another field's value (e.g. service_category)
+                if (f.showIfCategory) {
+                  const cat = formData.service_category || formData.category || "";
+                  if (cat !== f.showIfCategory) return null;
+                }
+                if (f.showIfNotCategory) {
+                  const cat = formData.service_category || formData.category || "";
+                  if (cat === f.showIfNotCategory) return null;
+                }
+
                 return (
                   <div key={f.name} className={f.type === "boolean" ? "md:col-span-2 flex items-center gap-3 pt-2" : ""}>
                     {f.type !== "boolean" && (

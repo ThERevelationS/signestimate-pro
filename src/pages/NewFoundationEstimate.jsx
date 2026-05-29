@@ -40,7 +40,41 @@ import { categorizeFoundationProject } from '@/components/markup/projectCategori
 
 const FoundationProjectEntity = base44.entities.FoundationProject;
 const FoundationInventoryEntity = base44.entities.FoundationInventory;
+const LaborServiceInventoryEntity = base44.entities.LaborServiceInventory;
 const SettingsEntity = base44.entities.Settings;
+
+// Normalize a LaborServiceInventory concrete supplier into the shape the Foundation
+// estimator expects (it was built around FoundationInventory rows). Keep the original
+// id so dropdown selection / saved estimates remain stable.
+const normalizeConcreteSupplier = (row) => ({
+  id: row.id,
+  material_name: row.service_name,
+  material_description: row.description || "",
+  material_type: "concrete_service",
+  supplier: row.vendor_name || row.service_name,
+  cost_per_unit: row.default_rate || 0,
+  unit: "cy",
+  minimum_order_yards: row.minimum_order_yards || 0,
+  below_minimum_cost_per_cy: row.below_minimum_cost_per_cy || 0,
+  minimum_cost: row.minimum_charge || 0,
+  mix_3500_price: row.mix_3500_price || 0,
+  mix_4000_price: row.mix_4000_price || 0,
+  mix_4500_price: row.mix_4500_price || 0,
+  mix_5000_price: row.mix_5000_price || 0,
+  mix_fast_set_price: row.mix_fast_set_price || 0,
+  admix_calcium_chloride_price: row.admix_calcium_chloride_price || 0,
+  admix_set_retarding_price: row.admix_set_retarding_price || 0,
+  admix_water_reducing_price: row.admix_water_reducing_price || 0,
+  admix_fibers_price: row.admix_fibers_price || 0,
+  admix_winter_service_price: row.admix_winter_service_price || 0,
+  small_load_fee_1_1_75: row.small_load_fee_1_1_75 || 0,
+  small_load_fee_2_2_75: row.small_load_fee_2_2_75 || 0,
+  small_load_fee_3_3_75: row.small_load_fee_3_3_75 || 0,
+  small_load_fee_4_4_25: row.small_load_fee_4_4_25 || 0,
+  small_load_fee_4_5_4_75: row.small_load_fee_4_5_4_75 || 0,
+  fuel_surcharge: row.fuel_surcharge || 0,
+  _source: "labor_services",
+});
 
 export const getConcreteMixes = (invItem) => [
   { id: '3500_ae', name: '3500 AIR ENTRAINED (AE)', price: invItem?.mix_3500_price ?? 195.40, desc: 'Often used for driveways, slabs, and moderate-load footings.' },
@@ -364,10 +398,17 @@ export default function NewFoundationEstimate() {
 
   const loadData = async () => {
     setLoading(true);
-    const [inv, rawSettings] = await Promise.all([
+    const [invRaw, laborRaw, rawSettings] = await Promise.all([
       FoundationInventoryEntity.list('-created_date', 200),
+      LaborServiceInventoryEntity.filter({ service_category: 'concrete_service' }, '-created_date', 100),
       SettingsEntity.filter({ category: ['foundation_pricing', 'foundation_labor', 'foundation_calc'] }),
     ]);
+    // Merge concrete suppliers from Labor & Services into the inventory list so the
+    // estimator can keep treating them uniformly (selected_concrete_id lookups, etc).
+    const concreteFromLabor = (laborRaw || [])
+      .filter(r => r.is_active !== false && r.show_in_foundation !== false)
+      .map(normalizeConcreteSupplier);
+    const inv = [...invRaw, ...concreteFromLabor];
     setInventory(inv);
     setWallMaterials(inv.filter(i => i.material_type === 'wall_material'));
     const sMap = {};

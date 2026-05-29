@@ -1,7 +1,7 @@
 {
   "name": "LaborServiceInventory",
   "type": "object",
-  "description": "Catalog of outsourced services and labor line items: permitting, engineering stamps, design/art fees, freight/delivery, equipment rental services, subcontractor crews, electrical hookup, crane/lift services, etc. These are billed as services rather than physical inventory.",
+  "description": "Catalog of outsourced services and labor line items: permitting, engineering stamps, design/art fees, freight/delivery, equipment rental services, subcontractor crews, electrical hookup, crane/lift services, concrete suppliers, etc. These are billed as services rather than physical inventory. When service_category='concrete_service', the row also carries the full concrete supplier pricing matrix (mix prices, admixtures, small-load fees, fuel surcharge) read by the Concrete | Masonry | Poles estimator.",
   "properties": {
     "service_name": {
       "type": "string"
@@ -21,6 +21,7 @@
         "consulting",
         "shop_labor",
         "field_labor",
+        "concrete_service",
         "other"
       ],
       "default": "subcontractor_labor"
@@ -33,14 +34,15 @@
         "per_job",
         "per_unit",
         "per_sqft",
-        "per_mile"
+        "per_mile",
+        "per_cy"
       ],
       "default": "per_hour"
     },
     "default_rate": {
       "type": "number",
       "default": 0,
-      "description": "Default unit price for this service."
+      "description": "Default unit price for this service. For concrete suppliers this represents the default $/CY (overridden per mix in the matrix below)."
     },
     "minimum_charge": {
       "type": "number",
@@ -61,6 +63,100 @@
     },
     "notes": {
       "type": "string"
+    },
+    "description": {
+      "type": "string",
+      "description": "Free-form description / internal notes shown next to the service name."
+    },
+    "minimum_order_yards": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: minimum order size in cubic yards before below-minimum pricing kicks in."
+    },
+    "below_minimum_cost_per_cy": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: $/CY rate applied when ordering below minimum_order_yards."
+    },
+    "mix_3500_price": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: $/CY for 3500 PSI Air-Entrained mix."
+    },
+    "mix_4000_price": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: $/CY for 4000 PSI Air-Entrained mix (standard)."
+    },
+    "mix_4500_price": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: $/CY for 4500 PSI Air-Entrained mix."
+    },
+    "mix_5000_price": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: $/CY for 5000 PSI Air-Entrained mix."
+    },
+    "mix_fast_set_price": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: $/CY for Fast Set mix."
+    },
+    "admix_calcium_chloride_price": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: $/CY add-on for Calcium Chloride admixture."
+    },
+    "admix_set_retarding_price": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: $/CY add-on for Set-Retarding admixture (Type D)."
+    },
+    "admix_water_reducing_price": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: $/CY add-on for Water-Reducing admixture (Type A)."
+    },
+    "admix_fibers_price": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: $/CY add-on for fiber reinforcement."
+    },
+    "admix_winter_service_price": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: $/CY add-on for winter (hot water) service."
+    },
+    "small_load_fee_1_1_75": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: flat fee for orders 1.00\u20131.75 CY."
+    },
+    "small_load_fee_2_2_75": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: flat fee for orders 2.00\u20132.75 CY."
+    },
+    "small_load_fee_3_3_75": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: flat fee for orders 3.00\u20133.75 CY."
+    },
+    "small_load_fee_4_4_25": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: flat fee for orders 4.00\u20134.25 CY."
+    },
+    "small_load_fee_4_5_4_75": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: flat fee for orders 4.50\u20134.75 CY."
+    },
+    "fuel_surcharge": {
+      "type": "number",
+      "default": 0,
+      "description": "Concrete supplier: per-truck fuel & delivery surcharge."
     },
     "is_active": {
       "type": "boolean",
