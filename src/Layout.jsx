@@ -136,7 +136,10 @@ export default function Layout({ children, currentPageName }) {
       projectsPage: 'FoundationProjects',
       newEstimatePage: 'NewFoundationEstimate',
       settingsPage: 'FoundationSettings',
-      inventoryPage: 'FoundationInventory',
+      // Inventory now lives in Master Inventory under "Concrete & Stone" +
+      // "Extruded Metals & Poles" tabs. The standalone FoundationInventory
+      // page is deprecated.
+      inventoryPage: 'MasterInventory',
       color: 'text-amber-600',
       bgColor: 'bg-amber-50',
       hoverColor: 'hover:bg-amber-100'

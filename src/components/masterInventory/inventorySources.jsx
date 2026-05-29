@@ -17,7 +17,6 @@
 // sheet) belong in SUBSTRATES — not in Sign Parts | Supplies.
 
 import {
-  Inventory,
   DimensionalLetterMaterial,
   SignLightingInventory,
   SignHardwareInventory,
@@ -34,6 +33,8 @@ import {
   Lightbulb,
   Hammer,
   Briefcase,
+  Anchor,
+  Building2,
 } from "lucide-react";
 
 export const INVENTORY_SOURCES = [
@@ -276,33 +277,27 @@ export const INVENTORY_SOURCES = [
       { name: "notes", label: "Notes", type: "textarea" },
     ],
   },
-  // Legacy Metal Inventory — kept so historical data isn't orphaned.
-  // New imports will NOT land here; use Substrates (for sheet metal) or
-  // Sign Parts | Supplies (for trim/returns/retainers/etc).
+  // Extruded Metals & Poles — replaces the old "Metal (Legacy)" tab. Combines
+  // raw extruded metal stock (angle/channel/tube/etc. from the Inventory entity)
+  // with sign poles (FoundationInventory rows where material_type='pole').
   {
-    key: "metal_inventory_legacy",
-    label: "Metal (Legacy)",
+    key: "extruded_metals_poles",
+    label: "Extruded Metals & Poles",
     icon: Package,
-    color: "text-slate-500",
-    bgColor: "bg-slate-100 text-slate-600",
-    entity: Inventory,
-    nameField: "size",
-    fields: [
-      { name: "material_type", label: "Material Type", type: "text", required: true, table: true },
-      { name: "product_type", label: "Product Type", type: "text", required: true, table: true },
-      { name: "size", label: "Size", type: "text", required: true, table: true },
-      { name: "thickness_gauge", label: "Thickness / Gauge", type: "text", table: true },
-      { name: "standard_length", label: "Standard Length (ft)", type: "number" },
-      { name: "cost_per_unit", label: "Cost Per Unit ($)", type: "number", required: true, table: true },
-      {
-        name: "unit_type",
-        label: "Unit Type",
-        type: "select",
-        options: ["per_foot", "per_piece", "per_pound", "per_sqft"],
-      },
-      { name: "supplier", label: "Supplier", type: "text", table: true },
-      { name: "notes", label: "Notes", type: "textarea" },
-    ],
+    color: "text-slate-700",
+    bgColor: "bg-slate-100 text-slate-800",
+    custom: "extruded_metals_poles",
+  },
+  // Concrete & Stone — replaces the standalone Foundation Inventory page.
+  // Wraps wall materials, wall fill, wall caps, bagged concrete, rebar, and
+  // forming material under one tab.
+  {
+    key: "concrete_stone",
+    label: "Concrete & Stone",
+    icon: Building2,
+    color: "text-amber-700",
+    bgColor: "bg-amber-100 text-amber-800",
+    custom: "concrete_stone",
   },
 ];
 

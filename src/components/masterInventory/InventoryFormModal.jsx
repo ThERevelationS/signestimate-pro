@@ -31,7 +31,9 @@ export default function InventoryFormModal({ source, editingItem, onCancel, onSa
   useEffect(() => {
     const initial = {};
     source.fields.forEach((f) => {
-      initial[f.name] = editingItem?.[f.name] ?? (f.type === "boolean" ? false : "");
+      // Priority: existing row value → source.defaults → boolean false / blank.
+      const fromDefaults = source.defaults?.[f.name];
+      initial[f.name] = editingItem?.[f.name] ?? fromDefaults ?? (f.type === "boolean" ? false : "");
     });
     // Pre-fill category-specific fields too (so editing an existing row shows
     // its saved values for every category-owned field).
@@ -84,9 +86,20 @@ export default function InventoryFormModal({ source, editingItem, onCancel, onSa
       });
     }
 
+    // Apply source-level defaults for fields not in the form schema (e.g.
+    // `material_type: "pole"` for the Poles sub-tab — needed for entity
+    // categorization but not user-editable).
+    if (source.defaults) {
+      Object.entries(source.defaults).forEach(([k, v]) => {
+        if (payload[k] === undefined || payload[k] === "" || payload[k] === null) {
+          payload[k] = v;
+        }
+      });
+    }
+
     setSaving(true);
     try {
-      if (editingItem) {
+      if (editingItem?.id) {
         await source.entity.update(editingItem.id, payload);
       } else {
         await source.entity.create(payload);
@@ -105,8 +118,8 @@ export default function InventoryFormModal({ source, editingItem, onCancel, onSa
         <CardHeader className="border-b sticky top-0 bg-white z-10">
           <div className="flex justify-between items-center">
             <CardTitle className="flex items-center gap-2">
-              <source.icon className={`w-5 h-5 ${source.color}`} />
-              {editingItem ? "Edit" : "Add"} {source.label}
+              {source.icon && <source.icon className={`w-5 h-5 ${source.color}`} />}
+              {editingItem?.id ? "Edit" : "Add"} {source.label}
             </CardTitle>
             <Button variant="ghost" size="icon" onClick={onCancel}>
               <X className="w-4 h-4" />

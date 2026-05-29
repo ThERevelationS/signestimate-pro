@@ -12,6 +12,8 @@ import InventoryFormModal from "@/components/masterInventory/InventoryFormModal"
 import InventoryTable from "@/components/masterInventory/InventoryTable";
 import MasterEquipmentTab from "@/components/masterInventory/MasterEquipmentTab";
 import MasterSuppliesTab from "@/components/masterInventory/MasterSuppliesTab";
+import MasterExtrudedMetalsPolesTab from "@/components/masterInventory/MasterExtrudedMetalsPolesTab";
+import MasterConcreteStoneTab from "@/components/masterInventory/MasterConcreteStoneTab";
 import VinylInventoryTab from "@/components/vinylInventory/VinylInventoryTab";
 import ExcelImporterDialog from "@/components/masterInventory/ExcelImporterDialog";
 
@@ -201,6 +203,8 @@ export default function MasterInventory() {
               {s.custom === "equipment" && <MasterEquipmentTab isAdmin={isAdmin} />}
               {s.custom === "supplies"  && <MasterSuppliesTab isAdmin={isAdmin} />}
               {s.custom === "vinyl"     && <VinylInventoryTab scope="master" />}
+              {s.custom === "extruded_metals_poles" && <MasterExtrudedMetalsPolesTab isAdmin={isAdmin} />}
+              {s.custom === "concrete_stone" && <MasterConcreteStoneTab />}
 
               {/* Declarative tabs */}
               {!s.custom && (
@@ -214,14 +218,25 @@ export default function MasterInventory() {
                           {filteredItems.length} of {items.length}
                         </Badge>
                       </CardTitle>
-                      <div className="relative w-full sm:w-72">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <Input
-                          placeholder="Search items..."
-                          value={search}
-                          onChange={(e) => setSearch(e.target.value)}
-                          className="pl-9"
-                        />
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="relative w-full sm:w-64">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <Input
+                            placeholder="Search items..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9"
+                          />
+                        </div>
+                        {isAdmin && (
+                          <Button
+                            onClick={handleAdd}
+                            className="bg-blue-600 hover:bg-blue-700 text-white h-9 whitespace-nowrap"
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            Add {s.label.replace(/\s*\|.*$/, "")}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardHeader>

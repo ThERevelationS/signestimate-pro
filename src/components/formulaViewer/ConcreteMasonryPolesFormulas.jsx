@@ -20,14 +20,18 @@ import { FormulaSection, FormulaLine } from './FormulaSection';
 //
 // All toggles are ON by default so the viewer shows every line of math.
 //
-// NOTE on Concrete Suppliers:
-//   Concrete ready-mix suppliers (Citywide, Ernst, etc.) are stored in
-//   LaborServiceInventory with service_category = "concrete_service". Each
-//   supplier row carries its full pricing matrix: 5 mix prices (3500/4000/4500/
-//   5000/Fast Set), 5 admixture add-ons, 5 small-load fee brackets, fuel
-//   surcharge, and below-minimum $/CY rate. The Concrete estimator merges
-//   these into its concrete dropdown alongside any legacy FoundationInventory
-//   concrete_service rows. Bagged concrete remains in FoundationInventory.
+// NOTE on inventory locations (post-Master-Inventory consolidation):
+//   • Concrete ready-mix suppliers (Citywide, Ernst, etc.) → Master Inventory
+//     → Labor & Services with service_category = "concrete_service". Each
+//     supplier row carries its full pricing matrix: 5 mix prices (3500/4000/
+//     4500/5000/Fast Set), 5 admixture add-ons, 5 small-load fee brackets,
+//     fuel surcharge, and below-minimum $/CY rate.
+//   • Bagged concrete, rebar, forming material, wall materials, wall fill,
+//     and wall caps → Master Inventory → Concrete & Stone tab.
+//   • Sign poles AND raw extruded metal stock → Master Inventory → Extruded
+//     Metals & Poles tab (replaces the old "Metal (Legacy)" tab).
+//   • Excavation rates / forming labor rates / pouring + finishing labor
+//     rates live on the Foundation Settings page.
 
 const num = (v, fb = 0) => {
   const n = parseFloat(v);

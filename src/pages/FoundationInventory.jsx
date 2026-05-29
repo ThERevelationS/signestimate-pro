@@ -339,7 +339,10 @@ function GenericTab({ tabKey, items, onEdit, onDelete, onAdd, isAdmin }) {
 }
 
 // ─── Main Page ─────────────────────────────────────────────────────────────
-export default function FoundationInventoryPage() {
+// `embedded` mode = rendered inside the Master Inventory "Concrete & Stone"
+// tab. In that mode we strip the outer page chrome (header/subtitle/padding)
+// so it fits inside the surrounding Card.
+export default function FoundationInventoryPage({ embedded = false }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('wall_material');
@@ -400,11 +403,18 @@ export default function FoundationInventoryPage() {
   const fillMaterials = byType(['fill_material']);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Concrete | Masonry | Poles Inventory</h1>
-        <p className="text-slate-500 text-sm">Manage material costs for use in concrete, masonry & pole estimates</p>
-      </div>
+    <div className={embedded ? "space-y-4" : "p-6 max-w-7xl mx-auto space-y-6"}>
+      {!embedded && (
+        <>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Concrete | Masonry | Poles Inventory</h1>
+            <p className="text-slate-500 text-sm">Manage material costs for use in concrete, masonry & pole estimates</p>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900">
+            <strong>Heads up:</strong> This page has moved into <a href="/MasterInventory" className="underline font-semibold">Master Inventory → Concrete &amp; Stone</a>. Poles now live under <a href="/MasterInventory" className="underline font-semibold">Master Inventory → Extruded Metals &amp; Poles</a>.
+          </div>
+        </>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap h-auto gap-1 bg-slate-100/80 p-1.5 border border-slate-200 rounded-xl shadow-sm">
@@ -412,8 +422,8 @@ export default function FoundationInventoryPage() {
           <TabsTrigger value="concrete">Concrete</TabsTrigger>
           <TabsTrigger value="rebar">Rebar</TabsTrigger>
           <TabsTrigger value="forming">Forming</TabsTrigger>
-          <TabsTrigger value="equipment" className="flex items-center gap-1"><Wrench className="w-3 h-3" /> Equipment</TabsTrigger>
-          <TabsTrigger value="poles">Poles</TabsTrigger>
+          {!embedded && <TabsTrigger value="equipment" className="flex items-center gap-1"><Wrench className="w-3 h-3" /> Equipment</TabsTrigger>}
+          {!embedded && <TabsTrigger value="poles">Poles</TabsTrigger>}
           <TabsTrigger value="fill_material"><Layers className="w-3 h-3 mr-1" />Wall Fill</TabsTrigger>
           <TabsTrigger value="wall_cap" className="flex items-center gap-1"><Square className="w-3 h-3" /> Wall Caps</TabsTrigger>
         </TabsList>
