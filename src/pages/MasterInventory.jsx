@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Search, Boxes, Lock } from "lucide-react";
+import { Plus, Search, Boxes, Lock, Upload, ShieldAlert } from "lucide-react";
 
 import { INVENTORY_SOURCES, SOURCE_BY_KEY } from "@/components/masterInventory/inventorySources";
 import InventoryFormModal from "@/components/masterInventory/InventoryFormModal";
@@ -13,6 +13,7 @@ import InventoryTable from "@/components/masterInventory/InventoryTable";
 import MasterEquipmentTab from "@/components/masterInventory/MasterEquipmentTab";
 import MasterSuppliesTab from "@/components/masterInventory/MasterSuppliesTab";
 import VinylInventoryTab from "@/components/vinylInventory/VinylInventoryTab";
+import ExcelImporterDialog from "@/components/masterInventory/ExcelImporterDialog";
 
 export default function MasterInventory() {
   const [user, setUser] = useState(null);
@@ -22,6 +23,8 @@ export default function MasterInventory() {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [showImporter, setShowImporter] = useState(false);
+  const [userLoaded, setUserLoaded] = useState(false);
 
   const activeSource = SOURCE_BY_KEY[activeKey];
   const isAdmin = user?.role === "admin";
@@ -29,7 +32,15 @@ export default function MasterInventory() {
 
   // Load current user once
   useEffect(() => {
-    User.me().then(setUser).catch(() => setUser(null));
+    User.me()
+      .then((u) => {
+        setUser(u);
+        setUserLoaded(true);
+      })
+      .catch(() => {
+        setUser(null);
+        setUserLoaded(true);
+      });
   }, []);
 
   // Load items for the active declarative source (skip for custom tabs)
@@ -93,11 +104,36 @@ export default function MasterInventory() {
     await loadActive();
   };
 
+  // Admin-only gate — non-admins (and unauthenticated users) cannot view this page.
+  if (!userLoaded) {
+    return (
+      <div className="p-12 text-center text-slate-500">Loading…</div>
+    );
+  }
+  if (!isAdmin) {
+    return (
+      <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
+        <div className="max-w-2xl mx-auto mt-20">
+          <Card className="bg-white border-amber-200 shadow-sm">
+            <CardContent className="p-8 text-center space-y-3">
+              <ShieldAlert className="w-12 h-12 text-amber-500 mx-auto" />
+              <h2 className="text-xl font-semibold text-slate-900">Admin Access Required</h2>
+              <p className="text-sm text-slate-600">
+                The Master Inventory page is restricted to administrators. Please contact your admin
+                if you need access.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
               <Boxes className="w-8 h-8 text-slate-700" />
@@ -105,21 +141,37 @@ export default function MasterInventory() {
             </h1>
             <p className="text-slate-600 mt-1">
               Unified view of every inventory item.{" "}
-              {isAdmin ? (
-                <span className="text-green-700 font-medium">You can add, edit, and delete items.</span>
-              ) : (
-                <span className="text-slate-500 inline-flex items-center gap-1">
-                  <Lock className="w-3.5 h-3.5" /> View only — only admins can make changes.
-                </span>
-              )}
+              <span className="text-green-700 font-medium">You can add, edit, and delete items.</span>
             </p>
           </div>
-          {isAdmin && !isCustomTab && (
-            <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Item
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={() => setShowImporter(true)}
+              variant="outline"
+              className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Import from Excel
             </Button>
-          )}
+            {!isCustomTab && (
+              <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Item
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Importer banner */}
+        <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+          <Upload className="w-5 h-5 text-emerald-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-slate-700">
+            <p className="font-semibold text-slate-900 mb-0.5">Bulk import from your external inventory system</p>
+            <p className="text-xs text-slate-600">
+              Drop in a Part Details Export — items are auto-routed to Vinyl, Substrates, or Metal, and existing
+              items are updated by name (no duplicates).
+            </p>
+          </div>
         </div>
 
         {/* Source tabs */}
@@ -209,6 +261,16 @@ export default function MasterInventory() {
             setEditingItem(null);
           }}
           onSaved={handleSaved}
+        />
+      )}
+
+      {showImporter && (
+        <ExcelImporterDialog
+          onClose={() => setShowImporter(false)}
+          onComplete={() => {
+            // Refresh current tab so newly imported items appear
+            loadActive();
+          }}
         />
       )}
     </div>
