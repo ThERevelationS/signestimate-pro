@@ -1,55 +1,73 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { CNCProject } from "@/entities/all";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Plus, Search, Eye, Router, Edit } from "lucide-react";
+import { Plus, Eye, Edit } from "lucide-react";
 import { format } from "date-fns";
+import useDebouncedValue from "@/hooks/useDebouncedValue";
+import { fmtCurrency } from "@/lib/formatters";
+
+const PAGE_SIZE = 200;
 
 export default function CNCProjects() {
   const [projects, setProjects] = useState([]);
-  const [filtered, setFiltered] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selected, setSelected] = useState(null);
+  const debouncedSearch = useDebouncedValue(searchTerm, 200);
+  const [selectedId, setSelectedId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  useEffect(() => {
-    loadProjects();
+  const loadProjects = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await CNCProject.list('-created_date', PAGE_SIZE);
+      setProjects(data || []);
+      setHasMore((data || []).length >= PAGE_SIZE);
+    } catch (error) {
+      console.error('Error loading projects:', error);
+    }
+    setIsLoading(false);
   }, []);
 
-  useEffect(() => {
-    let f = projects.filter(p =>
-      p.project_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.client_name.toLowerCase().includes(searchTerm.toLowerCase())
+  useEffect(() => { loadProjects(); }, [loadProjects]);
+
+  const filtered = useMemo(() => {
+    const term = debouncedSearch.trim().toLowerCase();
+    if (!term) return projects;
+    return projects.filter(p =>
+      p.project_name?.toLowerCase().includes(term) ||
+      p.client_name?.toLowerCase().includes(term)
     );
-    setFiltered(f);
-    
-    // Handle selection logic
-    if (f.length > 0) {
-      if (!selected || !f.some(item => item.id === selected.id)) {
-        setSelected(f[0]);
-      }
-    } else {
-      setSelected(null);
+  }, [projects, debouncedSearch]);
+
+  useEffect(() => {
+    if (filtered.length === 0) { setSelectedId(null); return; }
+    if (!selectedId || !filtered.some(p => p.id === selectedId)) {
+      setSelectedId(filtered[0].id);
     }
-  }, [projects, searchTerm, selected?.id]); // Use selected.id instead of full selected object
+  }, [filtered, selectedId]);
 
-  const loadProjects = async () => {
-    setIsLoading(true);
-    const data = await CNCProject.list('-created_date');
-    setProjects(data);
-    if (data.length > 0) setSelected(data[0]);
-    setIsLoading(false);
+  const selected = useMemo(
+    () => filtered.find(p => p.id === selectedId) || null,
+    [filtered, selectedId]
+  );
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const next = projects.length + PAGE_SIZE;
+      const data = await CNCProject.list('-created_date', next);
+      setProjects(data || []);
+      setHasMore((data || []).length >= next);
+    } catch (error) {
+      console.error('Error loading more projects:', error);
+    }
+    setLoadingMore(false);
   };
-
-  const getStatusColor = (status) => ({
-    draft: 'bg-amber-100 text-amber-800',
-    calculated: 'bg-green-100 text-green-800',
-    archived: 'bg-slate-100 text-slate-800',
-  }[status] || 'bg-slate-100 text-slate-800');
 
   if (isLoading) return <div className="p-8">Loading projects...</div>;
 
@@ -72,7 +90,7 @@ export default function CNCProjects() {
                 {filtered.length === 0 ? <div className="p-12 text-center text-slate-500">No projects found.</div> :
                   <div>
                     {filtered.map((p) => (
-                      <div key={p.id} className={`p-6 border-b hover:bg-slate-25 cursor-pointer ${selected?.id === p.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`} onClick={() => setSelected(p)}>
+                      <div key={p.id} className={`p-6 border-b hover:bg-slate-25 cursor-pointer ${selectedId === p.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`} onClick={() => setSelectedId(p.id)}>
                         <div className="flex justify-between mb-2">
                           <div>
                             <h3 className="font-semibold">{p.project_name}</h3>
@@ -82,6 +100,13 @@ export default function CNCProjects() {
                         <div className="flex gap-4 text-sm text-slate-500"><span>{format(new Date(p.created_date), 'MMM d, yyyy')}</span><span>{p.items?.length || 0} items</span></div>
                       </div>
                     ))}
+                    {hasMore && !debouncedSearch && (
+                      <div className="p-4 flex justify-center">
+                        <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+                          {loadingMore ? "Loading…" : "Load more projects"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 }
               </CardContent>
@@ -106,18 +131,11 @@ export default function CNCProjects() {
                     <h3 className="font-semibold mb-2">{selected.project_name}</h3>
                     <div className="space-y-2 text-sm">
                       <p>Client: {selected.client_name}</p>
-                      {selected.estimate_number && (
-                        <p>Estimate #: {selected.estimate_number}</p>
-                      )}
+                      {selected.estimate_number && (<p>Estimate #: {selected.estimate_number}</p>)}
                       {selected.hyperlink && (
                         <div className="flex items-center gap-2">
                           <span>Link:</span>
-                          <a 
-                            href={selected.hyperlink} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 underline truncate max-w-48"
-                          >
+                          <a href={selected.hyperlink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline truncate max-w-48">
                             {selected.hyperlink}
                           </a>
                         </div>
@@ -128,12 +146,12 @@ export default function CNCProjects() {
                   <div>
                     <h4 className="font-medium mb-3">Items</h4>
                     <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                      {selected.items?.map((item, i) => <div key={i} className="p-3 bg-slate-50 rounded-lg text-sm"><p className="font-medium">{item.description || `Item ${i + 1}`}</p><p className="capitalize">{item.material_type} - {item.material_thickness}"</p><p className="capitalize text-slate-500">{item.item_type.replace('_', ' ')}</p></div>)}
+                      {selected.items?.map((item, i) => <div key={i} className="p-3 bg-slate-50 rounded-lg text-sm"><p className="font-medium">{item.description || `Item ${i + 1}`}</p><p className="capitalize">{item.material_type} - {item.material_thickness}"</p><p className="capitalize text-slate-500">{item.item_type?.replace('_', ' ')}</p></div>)}
                     </div>
                   </div>
                   <div className="border-t pt-4 space-y-2 text-sm">
-                    <div className="flex justify-between"><span>Total Machine Cost:</span><span className="font-medium">${(selected.total_machine_cost || 0).toFixed(2)}</span></div>
-                    <div className="flex justify-between"><span>Total Labor Cost:</span><span className="font-medium">${(selected.total_labor_cost || 0).toFixed(2)}</span></div>
+                    <div className="flex justify-between"><span>Total Machine Cost:</span><span className="font-medium">{fmtCurrency(selected.total_machine_cost)}</span></div>
+                    <div className="flex justify-between"><span>Total Labor Cost:</span><span className="font-medium">{fmtCurrency(selected.total_labor_cost)}</span></div>
                   </div>
                   {selected.notes && (
                     <div className="border-t pt-4">

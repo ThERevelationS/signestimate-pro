@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Plus, FileText, Trash2, ChevronDown, ChevronRight, ExternalLink, Search, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import useDebouncedValue from '@/hooks/useDebouncedValue';
+
+// Cap initial load; "Load more" raises the limit when needed.
+const PAGE_SIZE = 200;
 
 // Map a module key to a friendly label and the page used to edit that estimate.
 // Each module's "edit" page reads either ?edit= or ?id= depending on the route —
@@ -53,17 +57,34 @@ export default function CustomerSummaries() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({});
   const [query, setQuery] = useState('');
+  const debouncedQuery = useDebouncedValue(query, 200);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const navigate = useNavigate();
 
   const load = async () => {
     setLoading(true);
     try {
-      const data = await base44.entities.CustomerSummary.list('-updated_date');
+      const data = await base44.entities.CustomerSummary.list('-updated_date', PAGE_SIZE);
       setList(data || []);
+      setHasMore((data || []).length >= PAGE_SIZE);
     } catch {
       setList([]);
     }
     setLoading(false);
+  };
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const next = list.length + PAGE_SIZE;
+      const data = await base44.entities.CustomerSummary.list('-updated_date', next);
+      setList(data || []);
+      setHasMore((data || []).length >= next);
+    } catch {
+      // no-op
+    }
+    setLoadingMore(false);
   };
 
   useEffect(() => { load(); }, []);
@@ -75,15 +96,15 @@ export default function CustomerSummaries() {
     load();
   };
 
-  const filtered = list.filter((s) => {
-    if (!query) return true;
-    const q = query.toLowerCase();
-    return (
+  const filtered = useMemo(() => {
+    if (!debouncedQuery) return list;
+    const q = debouncedQuery.toLowerCase();
+    return list.filter((s) =>
       (s.client_name || '').toLowerCase().includes(q) ||
       (s.summary_name || '').toLowerCase().includes(q) ||
       (s.estimate_number || '').toLowerCase().includes(q)
     );
-  });
+  }, [list, debouncedQuery]);
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-4">
@@ -217,6 +238,13 @@ export default function CustomerSummaries() {
               </Card>
             );
           })}
+          {hasMore && !debouncedQuery && (
+            <div className="flex justify-center pt-2">
+              <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? "Loading…" : "Load more"}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

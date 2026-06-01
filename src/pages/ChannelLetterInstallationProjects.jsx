@@ -1,76 +1,98 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { ChannelLetterInstallation, User } from "@/entities/all";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { ChannelLetterInstallation } from "@/entities/all";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Plus, Search, Edit, Trash2, Wrench, Eye } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye } from "lucide-react";
 import { format } from "date-fns";
+import { useAuth } from "@/lib/AuthContext";
+import useDebouncedValue from "@/hooks/useDebouncedValue";
+import { fmtCurrency } from "@/lib/formatters";
+
+// Cap initial fetch so first paint isn't blocked downloading every historical
+// project. The "Load more" button raises the limit when the user asks.
+const PAGE_SIZE = 200;
 
 export default function ChannelLetterInstallationProjects() {
+  // Pull the current user from AuthContext (already fetched once on bootstrap)
+  // instead of issuing another User.me() round-trip on this page.
+  const { user } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [filteredProjects, setFilteredProjects] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedProject, setSelectedProject] = useState(null);
+  const debouncedSearch = useDebouncedValue(searchTerm, 200);
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const navigate = useNavigate();
 
   const loadProjects = useCallback(async () => {
+    if (!user?.email) return;
     setIsLoading(true);
     try {
-      let user;
-      try {
-        user = await User.me();
-        setCurrentUser(user);
-      } catch (error) {
-        console.error('Error getting current user:', error);
-        setCurrentUser(null);
-        setIsLoading(false);
-        return;
-      }
-
-      const projectsData = await ChannelLetterInstallation.filter({ created_by: user.email }, '-created_date');
-      setProjects(projectsData);
-      
-      if (projectsData.length > 0) {
-        if (!selectedProject || !projectsData.some(p => p.id === selectedProject.id)) {
-          setSelectedProject(projectsData[0]);
-        }
-      } else {
-        setSelectedProject(null);
-      }
+      const projectsData = await ChannelLetterInstallation.filter(
+        { created_by: user.email },
+        '-created_date',
+        PAGE_SIZE
+      );
+      setProjects(projectsData || []);
+      setHasMore((projectsData || []).length >= PAGE_SIZE);
     } catch (error) {
       console.error('Error loading projects:', error);
     }
     setIsLoading(false);
-  }, [selectedProject]);
+  }, [user?.email]);
 
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
 
+  const filteredProjects = useMemo(() => {
+    const term = debouncedSearch.trim().toLowerCase();
+    if (!term) return projects;
+    return projects.filter(project =>
+      project.project_name?.toLowerCase().includes(term) ||
+      project.client_name?.toLowerCase().includes(term)
+    );
+  }, [projects, debouncedSearch]);
+
+  // Keep selection valid as the filtered list changes (without putting the
+  // selected project in deps and re-running on every selection change).
   useEffect(() => {
-    let filtered = [...projects];
-    if (searchTerm) {
-      filtered = filtered.filter(project =>
-        project.project_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.client_name.toLowerCase().includes(searchTerm.toLowerCase())
+    if (filteredProjects.length === 0) {
+      setSelectedProjectId(null);
+      return;
+    }
+    if (!selectedProjectId || !filteredProjects.some(p => p.id === selectedProjectId)) {
+      setSelectedProjectId(filteredProjects[0].id);
+    }
+  }, [filteredProjects, selectedProjectId]);
+
+  const selectedProject = useMemo(
+    () => filteredProjects.find(p => p.id === selectedProjectId) || null,
+    [filteredProjects, selectedProjectId]
+  );
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const next = projects.length + PAGE_SIZE;
+      const more = await ChannelLetterInstallation.filter(
+        { created_by: user.email },
+        '-created_date',
+        next
       );
+      setProjects(more || []);
+      setHasMore((more || []).length >= next);
+    } catch (error) {
+      console.error('Error loading more projects:', error);
     }
-    setFilteredProjects(filtered);
-    if(filtered.length > 0 && !selectedProject) {
-      setSelectedProject(filtered[0]);
-    } else if (filtered.length === 0) {
-      setSelectedProject(null);
-    }
-    if (selectedProject && !filtered.find(p => p.id === selectedProject.id)) {
-      setSelectedProject(filtered.length > 0 ? filtered[0] : null);
-    }
-  }, [projects, searchTerm, selectedProject?.id]);
+    setLoadingMore(false);
+  };
 
   const deleteProject = async (projectId, projectName) => {
     if (confirm(`Are you sure you want to delete "${projectName}"? This action cannot be undone.`)) {
@@ -140,7 +162,7 @@ export default function ChannelLetterInstallationProjects() {
                     {filteredProjects.map((project) => (
                       <div
                         key={project.id}
-                        className={`p-6 border-b border-slate-50 last:border-b-0 hover:bg-blue-50 transition-colors cursor-pointer ${selectedProject?.id === project.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`}
+                        className={`p-6 border-b border-slate-50 last:border-b-0 hover:bg-blue-50 transition-colors cursor-pointer ${selectedProjectId === project.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`}
                         onClick={() => navigateToEdit(project)}
                       >
                         <div className="flex items-start justify-between mb-2">
@@ -166,10 +188,17 @@ export default function ChannelLetterInstallationProjects() {
                         <div className="flex items-center gap-4 text-sm text-slate-500">
                           <span>{format(new Date(project.created_date), 'MMM d, yyyy')}</span>
                           <span className="capitalize">{project.installation_type?.replace('_', ' ')}</span>
-                          <span className="font-medium">${(project.total_cost || 0).toFixed(2)}</span>
+                          <span className="font-medium">{fmtCurrency(project.total_cost)}</span>
                         </div>
                       </div>
                     ))}
+                    {hasMore && !debouncedSearch && (
+                      <div className="p-4 flex justify-center">
+                        <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+                          {loadingMore ? "Loading…" : "Load more projects"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -249,11 +278,11 @@ export default function ChannelLetterInstallationProjects() {
                   <div className="border-t pt-4">
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between"><span className="text-slate-600">Labor Hours:</span><span className="font-medium">{(selectedProject.labor_hours || 0).toFixed(2)} hrs</span></div>
-                      <div className="flex justify-between"><span className="text-slate-600">Labor Cost:</span><span className="font-medium">${(selectedProject.labor_cost || 0).toFixed(2)}</span></div>
-                      <div className="flex justify-between"><span className="text-slate-600">Supplies:</span><span className="font-medium">${(selectedProject.total_supplies_cost || 0).toFixed(2)}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-600">Labor Cost:</span><span className="font-medium">{fmtCurrency(selectedProject.labor_cost)}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-600">Supplies:</span><span className="font-medium">{fmtCurrency(selectedProject.total_supplies_cost)}</span></div>
                       <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
                         <span>Total:</span>
-                        <span>${(selectedProject.total_cost || 0).toFixed(2)}</span>
+                        <span>{fmtCurrency(selectedProject.total_cost)}</span>
                       </div>
                     </div>
                   </div>

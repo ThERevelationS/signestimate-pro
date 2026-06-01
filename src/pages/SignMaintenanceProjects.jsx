@@ -6,23 +6,42 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, ClipboardList, Wrench, Trash2, Edit3, Package, Settings } from "lucide-react";
+import { fmtCurrency } from "@/lib/formatters";
 
-const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
+// Match the cap used by the other project list pages so the first paint
+// isn't blocked downloading every historical maintenance estimate.
+const PAGE_SIZE = 200;
 
 export default function SignMaintenanceProjects() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const navigate = useNavigate();
 
   const load = async () => {
     setLoading(true);
     try {
-      const list = await MaintenanceProject.list("-created_date");
+      const list = await MaintenanceProject.list("-created_date", PAGE_SIZE);
       setProjects(list || []);
+      setHasMore((list || []).length >= PAGE_SIZE);
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
+  };
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const next = projects.length + PAGE_SIZE;
+      const list = await MaintenanceProject.list("-created_date", next);
+      setProjects(list || []);
+      setHasMore((list || []).length >= next);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoadingMore(false);
   };
 
   useEffect(() => { load(); }, []);
@@ -70,34 +89,43 @@ export default function SignMaintenanceProjects() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map(p => (
-              <Card key={p.id} className="bg-white border-0 shadow-sm hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-base">{p.project_name || "Untitled"}</CardTitle>
-                    <Badge variant="outline" className="text-[10px]">{p.status || "draft"}</Badge>
-                  </div>
-                  <div className="text-xs text-slate-500">{p.client_name || "—"} · {p.estimate_number || "—"}</div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="text-xs text-slate-500 truncate">{p.site_address || "No address"}</div>
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-xs text-slate-500">Total</span>
-                    <span className="text-lg font-bold text-slate-900 tabular-nums">{fmt(p.total_cost)}</span>
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => navigate(createPageUrl("NewSignMaintenance") + `?edit=${p.id}`)}>
-                      <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
-                    </Button>
-                    <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50" onClick={() => handleDelete(p.id)}>
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {projects.map(p => (
+                <Card key={p.id} className="bg-white border-0 shadow-sm hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-base">{p.project_name || "Untitled"}</CardTitle>
+                      <Badge variant="outline" className="text-[10px]">{p.status || "draft"}</Badge>
+                    </div>
+                    <div className="text-xs text-slate-500">{p.client_name || "—"} · {p.estimate_number || "—"}</div>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="text-xs text-slate-500 truncate">{p.site_address || "No address"}</div>
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-xs text-slate-500">Total</span>
+                      <span className="text-lg font-bold text-slate-900 tabular-nums">{fmtCurrency(p.total_cost)}</span>
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <Button size="sm" variant="outline" className="flex-1" onClick={() => navigate(createPageUrl("NewSignMaintenance") + `?edit=${p.id}`)}>
+                        <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
+                      </Button>
+                      <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50" onClick={() => handleDelete(p.id)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            {hasMore && (
+              <div className="flex justify-center mt-6">
+                <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+                  {loadingMore ? "Loading…" : "Load more projects"}
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

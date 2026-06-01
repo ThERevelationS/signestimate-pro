@@ -1,80 +1,79 @@
-
-import React, { useState, useEffect } from "react";
-import { LaserProject, User } from "@/entities/all";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { LaserProject } from "@/entities/all";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Plus, Search, Eye, Zap, Edit } from "lucide-react";
+import { Plus, Eye, Edit } from "lucide-react";
 import { format } from "date-fns";
+import { useAuth } from "@/lib/AuthContext";
+import useDebouncedValue from "@/hooks/useDebouncedValue";
+import { fmtCurrency } from "@/lib/formatters";
+
+const PAGE_SIZE = 200;
 
 export default function LaserProjects() {
+  // Use the shared auth context — avoids a second User.me() round-trip.
+  const { user } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [filtered, setFiltered] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selected, setSelected] = useState(null);
+  const debouncedSearch = useDebouncedValue(searchTerm, 200);
+  const [selectedId, setSelectedId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const loadProjects = useCallback(async () => {
+    if (!user?.email) return;
+    setIsLoading(true);
+    try {
+      const data = await LaserProject.filter({ created_by: user.email }, '-created_date', PAGE_SIZE);
+      setProjects(data || []);
+      setHasMore((data || []).length >= PAGE_SIZE);
+    } catch (error) {
+      console.error('Error loading projects:', error);
+      setProjects([]);
+    }
+    setIsLoading(false);
+  }, [user?.email]);
 
   useEffect(() => {
     loadProjects();
-  }, []);
+  }, [loadProjects]);
+
+  const filtered = useMemo(() => {
+    const term = debouncedSearch.trim().toLowerCase();
+    if (!term) return projects;
+    return projects.filter(p =>
+      p.project_name?.toLowerCase().includes(term) ||
+      p.client_name?.toLowerCase().includes(term)
+    );
+  }, [projects, debouncedSearch]);
 
   useEffect(() => {
-    let f = projects.filter(p =>
-      p.project_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.client_name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFiltered(f);
-    if(f.length > 0 && (!selected || !f.some(p => p.id === selected.id))) setSelected(f[0]); // Select first item if no item is selected or selected item is filtered out
-    else if (f.length === 0) setSelected(null); // Clear selection if no projects found
-  }, [projects, searchTerm, selected]); // Added 'selected' to dependencies to re-evaluate when selected changes
-
-  const loadProjects = async () => {
-    setIsLoading(true);
-    try {
-      // Get current user first
-      let user;
-      try {
-        user = await User.me();
-        setCurrentUser(user);
-      } catch (error) {
-        console.error('Error getting current user:', error);
-        // If user cannot be fetched, clear projects and stop loading
-        setProjects([]);
-        setFiltered([]);
-        setSelected(null);
-        setIsLoading(false);
-        return;
-      }
-
-      // Filter projects by current user's email
-      const data = await LaserProject.filter({ created_by: user.email }, '-created_date');
-      setProjects(data);
-      if (data.length > 0) setSelected(data[0]);
-      else setSelected(null); // Clear selection if no projects for the user
-    } catch (error) {
-      console.error('Error loading projects:', error);
-      // On error, clear projects and selection
-      setProjects([]);
-      setFiltered([]);
-      setSelected(null);
+    if (filtered.length === 0) { setSelectedId(null); return; }
+    if (!selectedId || !filtered.some(p => p.id === selectedId)) {
+      setSelectedId(filtered[0].id);
     }
-    setIsLoading(false);
-  };
+  }, [filtered, selectedId]);
 
-  const getStatusColor = (status) => ({
-    draft: 'bg-amber-100 text-amber-800',
-    calculated: 'bg-green-100 text-green-800',
-    archived: 'bg-slate-100 text-slate-800',
-  }[status] || 'bg-slate-100 text-slate-800');
+  const selected = useMemo(
+    () => filtered.find(p => p.id === selectedId) || null,
+    [filtered, selectedId]
+  );
 
-  const updateStatus = async (id, status) => {
-    await LaserProject.update(id, { status });
-    await loadProjects();
-    setSelected(p => ({...p, status}));
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const next = projects.length + PAGE_SIZE;
+      const data = await LaserProject.filter({ created_by: user.email }, '-created_date', next);
+      setProjects(data || []);
+      setHasMore((data || []).length >= next);
+    } catch (error) {
+      console.error('Error loading more projects:', error);
+    }
+    setLoadingMore(false);
   };
 
   if (isLoading) return <div className="p-8">Loading projects...</div>;
@@ -100,7 +99,7 @@ export default function LaserProjects() {
                 {filtered.length === 0 ? <div className="p-12 text-center text-slate-500">No projects found.</div> :
                   <div>
                     {filtered.map((p) => (
-                      <div key={p.id} className={`p-6 border-b hover:bg-slate-25 cursor-pointer ${selected?.id === p.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`} onClick={() => setSelected(p)}>
+                      <div key={p.id} className={`p-6 border-b hover:bg-slate-25 cursor-pointer ${selectedId === p.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`} onClick={() => setSelectedId(p.id)}>
                         <div className="flex justify-between mb-2">
                           <div>
                             <h3 className="font-semibold">{p.project_name}</h3>
@@ -110,6 +109,13 @@ export default function LaserProjects() {
                         <div className="flex gap-4 text-sm text-slate-500"><span>{format(new Date(p.created_date), 'MMM d, yyyy')}</span><span>{p.items?.length || 0} items</span></div>
                       </div>
                     ))}
+                    {hasMore && !debouncedSearch && (
+                      <div className="p-4 flex justify-center">
+                        <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+                          {loadingMore ? "Loading…" : "Load more projects"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 }
               </CardContent>
@@ -134,18 +140,11 @@ export default function LaserProjects() {
                     <h3 className="font-semibold mb-2">{selected.project_name}</h3>
                     <div className="space-y-2 text-sm">
                       <p>Client: {selected.client_name}</p>
-                      {selected.estimate_number && (
-                        <p>Estimate #: {selected.estimate_number}</p>
-                      )}
+                      {selected.estimate_number && (<p>Estimate #: {selected.estimate_number}</p>)}
                       {selected.hyperlink && (
                         <div className="flex items-center gap-2">
                           <span>Link:</span>
-                          <a 
-                            href={selected.hyperlink} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 underline truncate max-w-48"
-                          >
+                          <a href={selected.hyperlink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline truncate max-w-48">
                             {selected.hyperlink}
                           </a>
                         </div>
@@ -160,8 +159,8 @@ export default function LaserProjects() {
                     </div>
                   </div>
                   <div className="border-t pt-4 space-y-2 text-sm">
-                    <div className="flex justify-between"><span>Total Machine Cost:</span><span className="font-medium">${(selected.total_machine_cost || 0).toFixed(2)}</span></div>
-                    <div className="flex justify-between"><span>Total Labor Cost:</span><span className="font-medium">${(selected.total_labor_cost || 0).toFixed(2)}</span></div>
+                    <div className="flex justify-between"><span>Total Machine Cost:</span><span className="font-medium">{fmtCurrency(selected.total_machine_cost)}</span></div>
+                    <div className="flex justify-between"><span>Total Labor Cost:</span><span className="font-medium">{fmtCurrency(selected.total_labor_cost)}</span></div>
                   </div>
                   {selected.notes && (
                     <div className="border-t pt-4">
