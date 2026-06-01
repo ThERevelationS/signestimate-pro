@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { Settings } from "@/entities/all";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,15 +6,24 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Calculator, Paintbrush, Zap, Router, Wrench, Info, Anchor, ClipboardCheck, Droplets, FileSpreadsheet } from "lucide-react";
-import CNCFormulas from "@/components/formulaViewer/CNCFormulas";
-import MetalFormulas from "@/components/formulaViewer/MetalFormulas";
-import ChannelLetterInstallFormulas from "@/components/formulaViewer/ChannelLetterInstallFormulas";
-import LaserFormulas from "@/components/formulaViewer/LaserFormulas";
-import ConcreteMasonryPolesFormulas from "@/components/formulaViewer/ConcreteMasonryPolesFormulas";
-import SignMaintenanceFormulas from "@/components/formulaViewer/SignMaintenanceFormulas";
-import VinylInventoryFormulas from "@/components/formulaViewer/VinylInventoryFormulas";
-import VinylEstimatorFormulas from "@/components/formulaViewer/VinylEstimatorFormulas";
-import MasterInventoryImporterFormulas from "@/components/formulaViewer/MasterInventoryImporterFormulas";
+
+// Lazy-load each formula module — the Formula Viewer used to mount all 9
+// heavy calculator components on first render (one per tab) even though only
+// one is ever visible. Splitting them keeps the initial bundle small and
+// only pulls in the code for the tab the user actually clicks.
+const CNCFormulas = lazy(() => import("@/components/formulaViewer/CNCFormulas"));
+const MetalFormulas = lazy(() => import("@/components/formulaViewer/MetalFormulas"));
+const ChannelLetterInstallFormulas = lazy(() => import("@/components/formulaViewer/ChannelLetterInstallFormulas"));
+const LaserFormulas = lazy(() => import("@/components/formulaViewer/LaserFormulas"));
+const ConcreteMasonryPolesFormulas = lazy(() => import("@/components/formulaViewer/ConcreteMasonryPolesFormulas"));
+const SignMaintenanceFormulas = lazy(() => import("@/components/formulaViewer/SignMaintenanceFormulas"));
+const VinylInventoryFormulas = lazy(() => import("@/components/formulaViewer/VinylInventoryFormulas"));
+const VinylEstimatorFormulas = lazy(() => import("@/components/formulaViewer/VinylEstimatorFormulas"));
+const MasterInventoryImporterFormulas = lazy(() => import("@/components/formulaViewer/MasterInventoryImporterFormulas"));
+
+const TabFallback = () => (
+  <div className="py-10 text-center text-sm text-slate-400">Loading formulas…</div>
+);
 
 // Helper function to parse imperial fractions (e.g., "1/2", "1-3/4")
 const parseImperialFraction = (fractionString) => {
@@ -476,16 +485,45 @@ export default function FormulaViewer() {
 
           <Card className="bg-white border-0 shadow-sm">
             <CardContent className="pt-6">
-              <TabsContent value="painting" className="mt-0">{renderPaintingFormulas()}</TabsContent>
-              <TabsContent value="laser" className="mt-0"><LaserFormulas settings={settings} /></TabsContent>
-              <TabsContent value="cnc" className="mt-0"><CNCFormulas settings={settings} /></TabsContent>
-              <TabsContent value="metal" className="mt-0"><MetalFormulas settings={settings} /></TabsContent>
-              <TabsContent value="channel_letter" className="mt-0"><ChannelLetterInstallFormulas settings={settings} /></TabsContent>
-              <TabsContent value="concrete_masonry_poles" className="mt-0"><ConcreteMasonryPolesFormulas settings={settings} /></TabsContent>
-              <TabsContent value="sign_maintenance" className="mt-0"><SignMaintenanceFormulas settings={settings} /></TabsContent>
-              <TabsContent value="vinyl" className="mt-0"><VinylInventoryFormulas /></TabsContent>
-              <TabsContent value="vinyl_estimator" className="mt-0"><VinylEstimatorFormulas /></TabsContent>
-              <TabsContent value="importer" className="mt-0"><MasterInventoryImporterFormulas /></TabsContent>
+              {/*
+                Only mount the body of the currently-selected tab. Radix
+                <TabsContent> normally renders for every value (even hidden
+                ones with `hidden`), which forced every formula component to
+                execute on first paint. Gating by `selectedModule` means the
+                tab the user actually clicked is the only one that runs.
+              */}
+              <Suspense fallback={<TabFallback />}>
+                {selectedModule === "painting" && (
+                  <TabsContent value="painting" className="mt-0" forceMount>{renderPaintingFormulas()}</TabsContent>
+                )}
+                {selectedModule === "laser" && (
+                  <TabsContent value="laser" className="mt-0" forceMount><LaserFormulas settings={settings} /></TabsContent>
+                )}
+                {selectedModule === "cnc" && (
+                  <TabsContent value="cnc" className="mt-0" forceMount><CNCFormulas settings={settings} /></TabsContent>
+                )}
+                {selectedModule === "metal" && (
+                  <TabsContent value="metal" className="mt-0" forceMount><MetalFormulas settings={settings} /></TabsContent>
+                )}
+                {selectedModule === "channel_letter" && (
+                  <TabsContent value="channel_letter" className="mt-0" forceMount><ChannelLetterInstallFormulas settings={settings} /></TabsContent>
+                )}
+                {selectedModule === "concrete_masonry_poles" && (
+                  <TabsContent value="concrete_masonry_poles" className="mt-0" forceMount><ConcreteMasonryPolesFormulas settings={settings} /></TabsContent>
+                )}
+                {selectedModule === "sign_maintenance" && (
+                  <TabsContent value="sign_maintenance" className="mt-0" forceMount><SignMaintenanceFormulas settings={settings} /></TabsContent>
+                )}
+                {selectedModule === "vinyl" && (
+                  <TabsContent value="vinyl" className="mt-0" forceMount><VinylInventoryFormulas /></TabsContent>
+                )}
+                {selectedModule === "vinyl_estimator" && (
+                  <TabsContent value="vinyl_estimator" className="mt-0" forceMount><VinylEstimatorFormulas /></TabsContent>
+                )}
+                {selectedModule === "importer" && (
+                  <TabsContent value="importer" className="mt-0" forceMount><MasterInventoryImporterFormulas /></TabsContent>
+                )}
+              </Suspense>
             </CardContent>
           </Card>
         </Tabs>

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { FoundationProject, User } from "@/entities/all";
+import React, { useState, useEffect, useMemo } from "react";
+import { FoundationProject } from "@/entities/all";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,47 +10,71 @@ import { Plus, Search, ExternalLink, Edit2, Trash2, Anchor, Users } from "lucide
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
+import { useAuth } from "@/lib/AuthContext";
+import useDebouncedValue from "@/hooks/useDebouncedValue";
+
+// Cap the initial page-load fetch so we never download thousands of historical
+// projects up front. Users still get a "Load more" affordance when they hit it.
+const PAGE_SIZE = 200;
 
 export default function FoundationProjects() {
+  // Pull the current user from AuthContext (already fetched on app bootstrap)
+  // instead of issuing another User.me() round-trip.
+  const { user } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [filteredProjects, setFilteredProjects] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebouncedValue(searchTerm, 200);
   const [isLoading, setIsLoading] = useState(true);
   const [showAllUsers, setShowAllUsers] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     loadProjects();
-  }, [showAllUsers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAllUsers, user?.email]);
 
   const loadProjects = async () => {
+    if (!user?.email && !showAllUsers) return; // wait for auth
     setIsLoading(true);
     try {
-      const user = await User.me();
-      let projectsData;
-      if (showAllUsers) {
-        projectsData = await FoundationProject.list('-created_date');
-      } else {
-        projectsData = await FoundationProject.filter({ created_by: user.email }, '-created_date');
-      }
-      setProjects(projectsData);
+      const projectsData = showAllUsers
+        ? await FoundationProject.list('-created_date', PAGE_SIZE)
+        : await FoundationProject.filter({ created_by: user.email }, '-created_date', PAGE_SIZE);
+      setProjects(projectsData || []);
+      setHasMore((projectsData || []).length >= PAGE_SIZE);
     } catch (error) {
       console.error('Error loading projects:', error);
     }
     setIsLoading(false);
   };
 
-  useEffect(() => {
-    if (searchTerm) {
-      const filtered = projects.filter(project =>
-        project.project_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (project.estimate_number && project.estimate_number.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-      setFilteredProjects(filtered);
-    } else {
-      setFilteredProjects(projects);
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      // Bumping the limit is simpler than offset pagination here — the
+      // backend's `list/filter` second-arg accepts a higher cap.
+      const next = projects.length + PAGE_SIZE;
+      const more = showAllUsers
+        ? await FoundationProject.list('-created_date', next)
+        : await FoundationProject.filter({ created_by: user.email }, '-created_date', next);
+      setProjects(more || []);
+      setHasMore((more || []).length >= next);
+    } catch (error) {
+      console.error('Error loading more projects:', error);
     }
-  }, [projects, searchTerm]);
+    setLoadingMore(false);
+  };
+
+  const filteredProjects = useMemo(() => {
+    const term = debouncedSearch.trim().toLowerCase();
+    if (!term) return projects;
+    return projects.filter(project =>
+      project.project_name?.toLowerCase().includes(term) ||
+      project.client_name?.toLowerCase().includes(term) ||
+      (project.estimate_number && project.estimate_number.toLowerCase().includes(term))
+    );
+  }, [projects, debouncedSearch]);
 
   const handleDelete = async (projectId, projectName) => {
     if (confirm(`Are you sure you want to delete "${projectName}"? This action cannot be undone.`)) {
@@ -126,6 +150,7 @@ export default function FoundationProjects() {
                 <p>No projects found.</p>
               </div>
             ) : (
+              <>
               <div className="grid gap-6 p-6">
                 {filteredProjects.map((project) => (
                   <Card key={project.id} className="border border-slate-200 hover:border-blue-300 transition-all hover:shadow-md">
@@ -229,6 +254,18 @@ export default function FoundationProjects() {
                   </Card>
                 ))}
               </div>
+              {hasMore && !debouncedSearch && (
+                <div className="px-6 pb-6 flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={loadMore}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? "Loading…" : "Load more projects"}
+                  </Button>
+                </div>
+              )}
+              </>
             )}
           </CardContent>
         </Card>
