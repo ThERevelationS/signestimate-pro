@@ -1,4 +1,5 @@
 import './App.css'
+import { Suspense } from 'react'
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -10,15 +11,11 @@ import { setupIframeMessaging } from './lib/iframe-messaging';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import Report from './pages/Report';
-import NewVinylEstimate from './pages/NewVinylEstimate';
-import VinylProjects from './pages/VinylProjects';
-import VinylSettings from './pages/VinylSettings';
-import VinylInventoryPage from './pages/VinylInventory';
+import RouteSkeleton from '@/components/RouteSkeleton';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
-const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
+const MainPage = mainPageKey ? Pages[mainPageKey] : (() => null);
 
 setupIframeMessaging();
 
@@ -27,7 +24,7 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   : <>{children}</>;
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
@@ -49,21 +46,19 @@ const AuthenticatedApp = () => {
     }
   }
 
-  // Render the main app
+  // Render the main app. The Layout stays mounted around the Suspense boundary
+  // so the sidebar / header don't unmount while a lazy chunk is downloading.
   return (
     <LayoutWrapper currentPageName={mainPageKey}>
-      <Routes>
-        <Route path="/" element={<MainPage />} />
-        {Object.entries(Pages).map(([path, Page]) => (
-          <Route key={path} path={`/${path}`} element={<Page />} />
-        ))}
-        <Route path="/Report" element={<Report />} />
-        <Route path="/NewVinylEstimate" element={<NewVinylEstimate />} />
-        <Route path="/VinylProjects" element={<VinylProjects />} />
-        <Route path="/VinylSettings" element={<VinylSettings />} />
-        <Route path="/VinylInventory" element={<VinylInventoryPage />} />
-        <Route path="*" element={<PageNotFound />} />
-      </Routes>
+      <Suspense fallback={<RouteSkeleton />}>
+        <Routes>
+          <Route path="/" element={<MainPage />} />
+          {Object.entries(Pages).map(([path, Page]) => (
+            <Route key={path} path={`/${path}`} element={<Page />} />
+          ))}
+          <Route path="*" element={<PageNotFound />} />
+        </Routes>
+      </Suspense>
     </LayoutWrapper>
   );
 };

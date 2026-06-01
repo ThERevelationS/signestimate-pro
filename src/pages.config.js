@@ -1,89 +1,59 @@
 /**
- * pages.config.js - Page routing configuration
- * 
- * This file is AUTO-GENERATED. Do not add imports or modify PAGES manually.
- * Pages are auto-registered when you create files in the ./pages/ folder.
- * 
- * THE ONLY EDITABLE VALUE: mainPage
- * This controls which page is the landing page (shown when users visit the app).
- * 
- * Example file structure:
- * 
- *   import HomePage from './pages/HomePage';
- *   import Dashboard from './pages/Dashboard';
- *   import Settings from './pages/Settings';
- *   
- *   export const PAGES = {
- *       "HomePage": HomePage,
- *       "Dashboard": Dashboard,
- *       "Settings": Settings,
- *   }
- *   
- *   export const pagesConfig = {
- *       mainPage: "HomePage",
- *       Pages: PAGES,
- *   };
- * 
- * Example with Layout (wraps all pages):
+ * pages.config.js — Page routing configuration.
  *
- *   import Home from './pages/Home';
- *   import Settings from './pages/Settings';
- *   import __Layout from './Layout.jsx';
+ * Every page is loaded LAZILY via React.lazy so the initial JS bundle for the
+ * Dashboard does not include the code for every other page in the app.
+ * App.jsx wraps the route tree in a <Suspense> boundary with a skeleton
+ * fallback so the Layout chrome stays visible during chunk download.
  *
- *   export const PAGES = {
- *       "Home": Home,
- *       "Settings": Settings,
- *   }
+ * The Layout component itself is eagerly imported — it's needed on every page.
  *
- *   export const pagesConfig = {
- *       mainPage: "Home",
- *       Pages: PAGES,
- *       Layout: __Layout,
- *   };
- *
- * To change the main page from HomePage to Dashboard, use find_replace:
- *   Old: mainPage: "HomePage",
- *   New: mainPage: "Dashboard",
- *
- * The mainPage value must match a key in the PAGES object exactly.
+ * To change the landing page, update the `mainPage` value below to a key that
+ * exists in the PAGES object.
  */
-import CNCProjects from './pages/CNCProjects';
-import CNCSettings from './pages/CNCSettings';
-import ChannelLetterInstallationProjects from './pages/ChannelLetterInstallationProjects';
-import ChannelLetterInstallationSettings from './pages/ChannelLetterInstallationSettings';
-import ChannelLetterInstallInventory from './pages/ChannelLetterInstallInventory';
-import Dashboard from './pages/Dashboard';
-import FormulaViewer from './pages/FormulaViewer';
-import FoundationInventory from './pages/FoundationInventory';
-import FoundationProjects from './pages/FoundationProjects';
-import FoundationSettings from './pages/FoundationSettings';
-import Home from './pages/Home';
-import Inventory from './pages/Inventory';
-import MasterInventory from './pages/MasterInventory';
-import LaserProjects from './pages/LaserProjects';
-import LaserSettings from './pages/LaserSettings';
-import MetalProjects from './pages/MetalProjects';
-import MetalSettings from './pages/MetalSettings';
-import MyProfile from './pages/MyProfile';
-import NewCNCEstimate from './pages/NewCNCEstimate';
-import NewChannelLetterInstallation from './pages/NewChannelLetterInstallation';
-import NewFoundationEstimate from './pages/NewFoundationEstimate';
-import NewLaserEstimate from './pages/NewLaserEstimate';
-import NewMetalEstimate from './pages/NewMetalEstimate';
-import NewPaintEstimate from './pages/NewPaintEstimate';
-import NewSignMaintenance from './pages/NewSignMaintenance';
-import SignMaintenanceProjects from './pages/SignMaintenanceProjects';
-import SignMaintenanceSettings from './pages/SignMaintenanceSettings';
-import MaintenanceInventory from './pages/MaintenanceInventory';
-import PaintProjects from './pages/PaintProjects';
-import PaintSettings from './pages/PaintSettings';
-import UserManagement from './pages/UserManagement';
-import TierMarkups from './pages/TierMarkups';
-import Admin from './pages/Admin';
-import CustomerSummary from './pages/CustomerSummary';
-import CustomerSummaries from './pages/CustomerSummaries';
+import { lazy } from 'react';
 import __Layout from './Layout.jsx';
 
+const CNCProjects = lazy(() => import('./pages/CNCProjects'));
+const CNCSettings = lazy(() => import('./pages/CNCSettings'));
+const ChannelLetterInstallationProjects = lazy(() => import('./pages/ChannelLetterInstallationProjects'));
+const ChannelLetterInstallationSettings = lazy(() => import('./pages/ChannelLetterInstallationSettings'));
+const ChannelLetterInstallInventory = lazy(() => import('./pages/ChannelLetterInstallInventory'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const FormulaViewer = lazy(() => import('./pages/FormulaViewer'));
+const FoundationInventory = lazy(() => import('./pages/FoundationInventory'));
+const FoundationProjects = lazy(() => import('./pages/FoundationProjects'));
+const FoundationSettings = lazy(() => import('./pages/FoundationSettings'));
+const Home = lazy(() => import('./pages/Home'));
+const Inventory = lazy(() => import('./pages/Inventory'));
+const MasterInventory = lazy(() => import('./pages/MasterInventory'));
+const LaserProjects = lazy(() => import('./pages/LaserProjects'));
+const LaserSettings = lazy(() => import('./pages/LaserSettings'));
+const MetalProjects = lazy(() => import('./pages/MetalProjects'));
+const MetalSettings = lazy(() => import('./pages/MetalSettings'));
+const MyProfile = lazy(() => import('./pages/MyProfile'));
+const NewCNCEstimate = lazy(() => import('./pages/NewCNCEstimate'));
+const NewChannelLetterInstallation = lazy(() => import('./pages/NewChannelLetterInstallation'));
+const NewFoundationEstimate = lazy(() => import('./pages/NewFoundationEstimate'));
+const NewLaserEstimate = lazy(() => import('./pages/NewLaserEstimate'));
+const NewMetalEstimate = lazy(() => import('./pages/NewMetalEstimate'));
+const NewPaintEstimate = lazy(() => import('./pages/NewPaintEstimate'));
+const NewSignMaintenance = lazy(() => import('./pages/NewSignMaintenance'));
+const SignMaintenanceProjects = lazy(() => import('./pages/SignMaintenanceProjects'));
+const SignMaintenanceSettings = lazy(() => import('./pages/SignMaintenanceSettings'));
+const MaintenanceInventory = lazy(() => import('./pages/MaintenanceInventory'));
+const PaintProjects = lazy(() => import('./pages/PaintProjects'));
+const PaintSettings = lazy(() => import('./pages/PaintSettings'));
+const UserManagement = lazy(() => import('./pages/UserManagement'));
+const TierMarkups = lazy(() => import('./pages/TierMarkups'));
+const Admin = lazy(() => import('./pages/Admin'));
+const CustomerSummary = lazy(() => import('./pages/CustomerSummary'));
+const CustomerSummaries = lazy(() => import('./pages/CustomerSummaries'));
+const Report = lazy(() => import('./pages/Report'));
+const NewVinylEstimate = lazy(() => import('./pages/NewVinylEstimate'));
+const VinylProjects = lazy(() => import('./pages/VinylProjects'));
+const VinylSettings = lazy(() => import('./pages/VinylSettings'));
+const VinylInventory = lazy(() => import('./pages/VinylInventory'));
 
 export const PAGES = {
     "CNCProjects": CNCProjects,
@@ -121,7 +91,12 @@ export const PAGES = {
     "Admin": Admin,
     "CustomerSummary": CustomerSummary,
     "CustomerSummaries": CustomerSummaries,
-}
+    "Report": Report,
+    "NewVinylEstimate": NewVinylEstimate,
+    "VinylProjects": VinylProjects,
+    "VinylSettings": VinylSettings,
+    "VinylInventory": VinylInventory,
+};
 
 export const pagesConfig = {
     mainPage: "Dashboard",

@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { UnsavedChangesContext } from './components/UnsavedChangesContext';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/lib/AuthContext';
 
 import { createPageUrl } from '@/utils';
-import { ModuleStatus, User } from '@/entities/all';
 import {
   Sidebar,
   SidebarContent,
@@ -37,9 +37,10 @@ import {
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
-  const [currentUser, setCurrentUser] = useState(null);
-  const [moduleStatuses, setModuleStatuses] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
+  // Pull auth + module-status from the shared context (fetched once on app
+  // bootstrap) instead of re-fetching them in this component.
+  const { user: currentUser, moduleStatusesLoaded, hasModulePermission } = useAuth();
+  const isLoading = !moduleStatusesLoaded;
   // Track each open module independently so a parent dropdown (e.g. "Single
   // Point Fabrication") can stay open while a child module is also open.
   const [expandedModules, setExpandedModules] = useState({});
@@ -73,47 +74,8 @@ export default function Layout({ children, currentPageName }) {
     setExpandedModules(prev => ({ ...prev, [moduleId]: !prev[moduleId] }));
   };
 
-
-
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-        const [user, statuses] = await Promise.all([
-          User.me(),
-          ModuleStatus.list()
-        ]);
-        setCurrentUser(user);
-        
-        const statusObj = {};
-        statuses.forEach(status => {
-          statusObj[status.module_name] = status.is_enabled;
-        });
-        setModuleStatuses(statusObj);
-
-      } catch (error) {
-        console.error('Error loading layout prerequisites:', error);
-        setCurrentUser(null);
-        setModuleStatuses({
-          painting: true, laser: true, cnc: true, metal_fabrication: true, channel_letter_installation: true, foundation: true
-        });
-      }
-      setIsLoading(false);
-    };
-    loadData();
-  }, []);
-
-  const hasPermission = (moduleName) => {
-    const globalStatus = moduleStatuses[moduleName];
-    
-    // User-specific override takes precedence over global status
-    if (currentUser?.module_permissions && currentUser.module_permissions[moduleName] !== undefined) {
-      return currentUser.module_permissions[moduleName];
-    }
-    
-    // Otherwise fall back to global status
-    return globalStatus !== undefined ? globalStatus : true;
-  };
+  // Permission check is delegated to AuthContext (single source of truth).
+  const hasPermission = hasModulePermission;
 
   // Top-level module dropdowns (always shown in this order)
   const topLevelModules = [

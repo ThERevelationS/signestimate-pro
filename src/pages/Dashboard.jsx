@@ -1,50 +1,20 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { ArrowRight, ServerOff } from "lucide-react";
-import { ModuleStatus, User } from "@/entities/all";
 import { MODULES } from "@/components/modulesRegistry";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Dashboard() {
-  const [moduleStatuses, setModuleStatuses] = useState({});
-  const [currentUser, setCurrentUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchStatuses = async () => {
-      try {
-        const [statuses, user] = await Promise.all([
-          ModuleStatus.list(),
-          User.me()
-        ]);
-        
-        const statusMap = statuses.reduce((acc, curr) => {
-          acc[curr.module_name] = curr.is_enabled;
-          return acc;
-        }, {});
-        setModuleStatuses(statusMap);
-        setCurrentUser(user);
-      } catch (error) {
-        console.error("Failed to load module statuses:", error);
-        setCurrentUser(null);
-      }
-      setIsLoading(false);
-    };
-    fetchStatuses();
-  }, []);
-
-  const hasPermission = (moduleName) => {
-    // User-specific override takes precedence over global status
-    if (currentUser?.module_permissions && currentUser.module_permissions[moduleName] !== undefined) {
-      return currentUser.module_permissions[moduleName];
-    }
-    return moduleStatuses[moduleName] !== undefined ? moduleStatuses[moduleName] : true;
-  };
+  // Auth + module statuses are loaded once by AuthProvider during app bootstrap;
+  // this page no longer issues its own User.me() / ModuleStatus.list() calls.
+  const { moduleStatusesLoaded, hasModulePermission } = useAuth();
+  const isLoading = !moduleStatusesLoaded;
 
   // Use the same module list as the sidebar (single source of truth).
-  const modules = MODULES.map(m => ({
+  const modules = MODULES.map((m) => ({
     name: m.key,
     title: m.name,
     description: m.description,
@@ -54,7 +24,7 @@ export default function Dashboard() {
   }));
 
   const renderModuleCard = (module) => {
-    const isEnabled = hasPermission(module.name);
+    const isEnabled = hasModulePermission(module.name);
     const Icon = module.icon;
 
     if (isLoading) {
@@ -65,14 +35,14 @@ export default function Dashboard() {
         </Card>
       );
     }
-    
+
     if (!isEnabled) {
       return null; // Don't render disabled modules
     }
 
     return (
       <Link key={module.name} to={createPageUrl(module.page)}>
-        <Card className={`bg-white border-0 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group`}>
+        <Card className="bg-white border-0 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
           <CardHeader>
             <div className="flex items-center gap-4">
               <div className={`p-4 bg-${module.color}-100 rounded-xl`}>
@@ -95,7 +65,7 @@ export default function Dashboard() {
     );
   };
 
-  const visibleModules = modules.filter(m => hasPermission(m.name));
+  const visibleModules = modules.filter((m) => hasModulePermission(m.name));
 
   return (
     <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
@@ -106,7 +76,7 @@ export default function Dashboard() {
         </div>
         {visibleModules.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {modules.map(module => renderModuleCard(module))}
+            {modules.map((module) => renderModuleCard(module))}
           </div>
         ) : (
           <Card className="bg-white border-0 shadow-sm">
