@@ -24,7 +24,6 @@ const FormulaViewer = lazy(() => import('./pages/FormulaViewer'));
 const FoundationInventory = lazy(() => import('./pages/FoundationInventory'));
 const FoundationProjects = lazy(() => import('./pages/FoundationProjects'));
 const FoundationSettings = lazy(() => import('./pages/FoundationSettings'));
-const Home = lazy(() => import('./pages/Home'));
 const Inventory = lazy(() => import('./pages/Inventory'));
 const MasterInventory = lazy(() => import('./pages/MasterInventory'));
 const LaserProjects = lazy(() => import('./pages/LaserProjects'));
@@ -66,7 +65,6 @@ export const PAGES = {
     "FoundationInventory": FoundationInventory,
     "FoundationProjects": FoundationProjects,
     "FoundationSettings": FoundationSettings,
-    "Home": Home,
     "Inventory": Inventory,
     "MasterInventory": MasterInventory,
     "LaserProjects": LaserProjects,
