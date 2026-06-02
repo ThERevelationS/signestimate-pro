@@ -3,14 +3,14 @@
 //   #25 Use-case filter (auto-recommend cast for wraps, etc.)
 //   #27 Lifetime / indoor-only warning (bundled with #25 since it's cheap)
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Layers, AlertTriangle } from "lucide-react";
+import { Layers, AlertTriangle, ChevronDown } from "lucide-react";
 import { computeLifetimeWarning } from "./vinylCostHelpers";
+import VinylSearchPickerDialog from "./VinylSearchPickerDialog";
 
 // Map preset key → preferred vinyl categories (used to filter the base vinyl dropdown).
 const PRESET_CATEGORY_HINT = {
@@ -40,7 +40,11 @@ export default function VinylMaterialPicker({
     [vinyls]
   );
   const selectedVinyl = vinyls.find(v => v.id === vinylId) || null;
+  const selectedLaminate = vinyls.find(v => v.id === laminateId) || null;
   const lifetimeWarning = computeLifetimeWarning(selectedVinyl, installEnvironment);
+
+  const [vinylPickerOpen, setVinylPickerOpen] = useState(false);
+  const [lamPickerOpen, setLamPickerOpen] = useState(false);
 
   const handleVinylChange = (newId) => {
     const v = vinyls.find(x => x.id === newId);
@@ -67,16 +71,26 @@ export default function VinylMaterialPicker({
       <CardContent className="grid md:grid-cols-2 gap-4">
         <div>
           <Label className="text-xs">Base Vinyl</Label>
-          <Select value={vinylId || ""} onValueChange={handleVinylChange}>
-            <SelectTrigger className="h-9 mt-1"><SelectValue placeholder="Choose vinyl…" /></SelectTrigger>
-            <SelectContent>
-              {baseOptions.map(v => (
-                <SelectItem key={v.id} value={v.id}>
-                  {v.vinyl_name}{v.roll_width_inches ? ` · ${v.roll_width_inches}″` : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <button
+            type="button"
+            onClick={() => setVinylPickerOpen(true)}
+            className="h-9 mt-1 w-full flex items-center justify-between rounded-md border border-input bg-transparent px-3 text-sm shadow-sm hover:bg-slate-50 transition-colors"
+          >
+            <span className={`truncate ${selectedVinyl ? "text-slate-900" : "text-muted-foreground"}`}>
+              {selectedVinyl
+                ? `${selectedVinyl.vinyl_name}${selectedVinyl.roll_width_inches ? ` · ${selectedVinyl.roll_width_inches}″` : ""}`
+                : "Choose vinyl…"}
+            </span>
+            <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0 ml-2" />
+          </button>
+          <VinylSearchPickerDialog
+            open={vinylPickerOpen}
+            onOpenChange={setVinylPickerOpen}
+            options={baseOptions}
+            selectedId={vinylId || ""}
+            onSelect={handleVinylChange}
+            title="Select Base Vinyl"
+          />
           {selectedVinyl && (
             <div className="mt-2 flex flex-wrap gap-1">
               {selectedVinyl.vinyl_category && <Badge variant="outline" className="text-[10px]">{selectedVinyl.vinyl_category}</Badge>}
@@ -104,19 +118,26 @@ export default function VinylMaterialPicker({
               <Switch checked={!!applyLaminate} onCheckedChange={(v) => onChange({ vinylId, laminateId, applyLaminate: !!v })} />
             </div>
           </div>
-          <Select
-            value={laminateId || "__none__"}
-            onValueChange={(id) => onChange({ vinylId, laminateId: id === "__none__" ? "" : id, applyLaminate: !!applyLaminate })}
+          <button
+            type="button"
             disabled={!applyLaminate}
+            onClick={() => setLamPickerOpen(true)}
+            className="h-9 mt-1 w-full flex items-center justify-between rounded-md border border-input bg-transparent px-3 text-sm shadow-sm hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
           >
-            <SelectTrigger className="h-9 mt-1"><SelectValue placeholder="Choose laminate…" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">None</SelectItem>
-              {lamOptions.map(v => (
-                <SelectItem key={v.id} value={v.id}>{v.vinyl_name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <span className={`truncate ${selectedLaminate ? "text-slate-900" : "text-muted-foreground"}`}>
+              {selectedLaminate ? selectedLaminate.vinyl_name : "None"}
+            </span>
+            <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0 ml-2" />
+          </button>
+          <VinylSearchPickerDialog
+            open={lamPickerOpen}
+            onOpenChange={setLamPickerOpen}
+            options={lamOptions}
+            selectedId={laminateId || ""}
+            onSelect={(id) => onChange({ vinylId, laminateId: id, applyLaminate: !!applyLaminate })}
+            title="Select Laminate"
+            allowNone
+          />
           {applyLaminate && lamOptions.length === 0 && (
             <p className="text-[11px] text-amber-600 mt-1">No laminate rolls tagged yet. Tag one in Master Inventory → Vinyl.</p>
           )}
