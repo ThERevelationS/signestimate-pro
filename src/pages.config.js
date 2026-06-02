@@ -43,8 +43,6 @@ const SignMaintenanceSettings = lazy(() => import('./pages/SignMaintenanceSettin
 const MaintenanceInventory = lazy(() => import('./pages/MaintenanceInventory'));
 const PaintProjects = lazy(() => import('./pages/PaintProjects'));
 const PaintSettings = lazy(() => import('./pages/PaintSettings'));
-const UserManagement = lazy(() => import('./pages/UserManagement'));
-const TierMarkups = lazy(() => import('./pages/TierMarkups'));
 const Admin = lazy(() => import('./pages/Admin'));
 const CustomerSummary = lazy(() => import('./pages/CustomerSummary'));
 const CustomerSummaries = lazy(() => import('./pages/CustomerSummaries'));
@@ -84,8 +82,6 @@ export const PAGES = {
     "MaintenanceInventory": MaintenanceInventory,
     "PaintProjects": PaintProjects,
     "PaintSettings": PaintSettings,
-    "UserManagement": UserManagement,
-    "TierMarkups": TierMarkups,
     "Admin": Admin,
     "CustomerSummary": CustomerSummary,
     "CustomerSummaries": CustomerSummaries,
