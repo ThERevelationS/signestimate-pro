@@ -244,14 +244,29 @@ export default function VinylEstimatorFormulas() {
           </div>
 
           <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-xs space-y-2 text-indigo-900">
-            <h4 className="font-bold text-indigo-900 mb-1">Per-Personnel Rates (NEW)</h4>
-            <p>If the workflow has any personnel rows (Designer / Printer Op / Installer / …),
-              labor cost uses those rows INSTEAD of operator-rate × minutes:</p>
+            <h4 className="font-bold text-indigo-900 mb-1">Workflow Personnel — Inventory-Sourced Roles (NEW)</h4>
+            <p>Role names + $/hr come from the <b>Labor Inventory</b> (Master Inventory → Labor & Services,
+              <code> shop_labor</code> rows). Available roles (no Installer, no abbreviations):</p>
+            <p className="font-mono bg-white border border-indigo-200 rounded px-2 py-1">
+              Designer · Pre-Press · Printer Operator · Cutter Operator ·<br/>
+              Laminator Operator · Weeder · Application Technician · Helper
+            </p>
+            <p>If the workflow has any personnel rows, labor cost uses those rows INSTEAD of
+              operator-rate × minutes:</p>
             <p className="font-mono bg-white border border-indigo-200 rounded px-2 py-1">
               labor_cost = Σ(role.hourly_rate × role.hours)<br/>
               labor_hours = Σ(role.hours)
             </p>
             <p>Otherwise we fall back to: <code>operator_rate × (machine_run + weeding + install) min ÷ 60</code></p>
+
+            <h4 className="font-bold text-indigo-900 mt-2 mb-1">Auto-Selected Operators (NEW)</h4>
+            <p>Applying a machine auto-adds its operator role(s), with <b>hours auto-filled from the
+              calculator</b> (until you edit them):</p>
+            <p className="font-mono bg-white border border-indigo-200 rounded px-2 py-1">
+              + Printer    → Printer Operator  (hours = print_minutes ÷ 60)<br/>
+              + Laminator  → Laminator Operator (hours = laminate_minutes ÷ 60)<br/>
+              + Cutter     → Printer Operator + Weeder (Weeder hours = weeding_minutes ÷ 60)
+            </p>
           </div>
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs space-y-2 text-amber-900">
@@ -285,7 +300,7 @@ export default function VinylEstimatorFormulas() {
             <p className="font-mono bg-white border border-violet-200 rounded px-2 py-1">
               Vinyl + Laminate + Tape + Ink + Blade + Supplies → substrates<br/>
               Printer + Cutter + Laminator machine time      → machine_time<br/>
-              Operator + Designer + Installer labor          → inhouse_labor<br/>
+              Operator + Designer + Application labor         → inhouse_labor<br/>
               Install equipment rental                       → outsourced_services<br/>
               Travel                                         → outsourced_services
             </p>

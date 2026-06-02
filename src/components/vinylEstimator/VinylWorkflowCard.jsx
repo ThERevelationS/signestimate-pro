@@ -33,6 +33,7 @@ import { applyPresetToWorkflow } from "./vinylWorkflowPresets";
 import {
   computePerPartCosts, computeWorkflowMetrics, computeStockUsage,
 } from "./vinylCostHelpers";
+import { loadVinylLaborRoles, MACHINE_AUTO_ROLES, suggestedHoursForRole } from "./vinylLaborRoles";
 
 const num = (v) => {
   const n = parseFloat(v);
@@ -50,9 +51,13 @@ export default function VinylWorkflowCard({
   const [templatesMode, setTemplatesMode] = useState("apply");
   const [recommendOnly, setRecommendOnly] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
+  const [roleOptions, setRoleOptions] = useState([]);
 
   // Respond to parent expand/collapse-all toggle
   useEffect(() => { setOpen(defaultOpen); }, [defaultOpen]);
+
+  // Load vinyl labor roles (rates) from the Labor Inventory once.
+  useEffect(() => { loadVinylLaborRoles().then(setRoleOptions); }, []);
 
   const set = (patch) => onChange({ ...workflow, ...patch });
 
@@ -133,6 +138,43 @@ export default function VinylWorkflowCard({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calc.totalCost, calc.materialCost, calc.machineCost, calc.laborCost, calc.partsUnplaced, workflow.vinyl_id]);
+
+  // Auto-select operator roles when machines are applied. Adds any missing role
+  // for the active machines and auto-fills its hours from the calculator. Runs
+  // after roles are loaded and recomputes hours as the calc changes.
+  useEffect(() => {
+    if (roleOptions.length === 0) return;
+    const wanted = new Set();
+    if (workflow.apply_print && workflow.printer_id)      MACHINE_AUTO_ROLES.printer.forEach(r => wanted.add(r));
+    if (workflow.apply_cut && workflow.cutter_id)         MACHINE_AUTO_ROLES.cutter.forEach(r => wanted.add(r));
+    if (workflow.apply_laminate && workflow.laminator_id) MACHINE_AUTO_ROLES.laminator.forEach(r => wanted.add(r));
+    if (wanted.size === 0) return;
+
+    const current = workflow.personnel || [];
+    let changed = false;
+    const next = [...current];
+    wanted.forEach((role) => {
+      const opt = roleOptions.find(r => r.role === role);
+      if (!opt) return;
+      const existing = next.find(p => p.role === role);
+      const hrs = suggestedHoursForRole(role, calc);
+      if (!existing) {
+        next.push({ role, hourly_rate: opt.hourly_rate, hours: hrs, total_cost: opt.hourly_rate * hrs, _auto: true });
+        changed = true;
+      } else if (existing._auto && Math.abs(num(existing.hours) - hrs) > 0.001) {
+        // Keep auto-added rows in sync with the calculator until the user edits.
+        existing.hours = hrs;
+        existing.total_cost = num(existing.hourly_rate) * hrs;
+        changed = true;
+      }
+    });
+    if (changed) set({ personnel: next });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    roleOptions, workflow.apply_print, workflow.apply_cut, workflow.apply_laminate,
+    workflow.printer_id, workflow.cutter_id, workflow.laminator_id,
+    calc.printMinutes, calc.cutMinutes, calc.laminateMinutes, calc.weedingMinutes, calc.installMinutes,
+  ]);
 
   const colorTag = workflow.color_tag || COLOR_SWATCHES[index % COLOR_SWATCHES.length];
 
@@ -300,6 +342,7 @@ export default function VinylWorkflowCard({
           {/* Per-personnel labor rates */}
           <VinylWorkflowPersonnel
             personnel={workflow.personnel || []}
+            roleOptions={roleOptions}
             onChange={(personnel) => set({ personnel })}
             suggestedHours={(calc.machineRunMinutes + calc.weedingMinutes + calc.installMinutes) / 60}
           />
