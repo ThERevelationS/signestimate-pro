@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   Box, Paintbrush, Calculator, AlertCircle,
-  Link as LinkIcon, RefreshCw, Router, Zap, Trash2,
+  Link as LinkIcon, RefreshCw, Router, Zap, Trash2, Search,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -26,6 +26,7 @@ import {
 import CuttingMethodSlider from "./CuttingMethodSlider";
 import PaintCoverageHelper from "./PaintCoverageHelper";
 import { estimateAverageLetterWidth } from "./letterWidthCalculator";
+import DimensionalMaterialPickerDialog from "./DimensionalMaterialPickerDialog";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 
@@ -42,6 +43,7 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
   const [settings, setSettings] = useState({});
   const [fab, setFab] = useState(() => ({ ...emptyFabConfig(), ...(purchase?.fab_config || {}) }));
   const [loading, setLoading] = useState(true);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const loadSettings = useCallback(async () => {
     const list = await SettingsEntity.list();
@@ -213,6 +215,13 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
 
   return (
     <div className="space-y-3">
+      <DimensionalMaterialPickerDialog
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        materials={materials}
+        selectedId={fab.material_id}
+        onSelect={selectMaterial}
+      />
       {/* 1. Material — sheet, height, width all on ONE row */}
       <Section icon={Box} title="1. Material" color="bg-blue-50 text-blue-700">
         {materials.length === 0 ? (
@@ -230,18 +239,19 @@ export default function DimensionalFabPanel({ purchase, onUpdate, onReset }) {
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
               <div className="md:col-span-6">
                 <Label className="text-xs">Sheet Material</Label>
-                <Select value={fab.material_id || ""} onValueChange={selectMaterial}>
-                  <SelectTrigger className="h-9 mt-1 bg-white">
-                    <SelectValue placeholder="Select material..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {materials.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.material_name} — {m.thickness_inches}"
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setPickerOpen(true)}
+                  className="h-9 mt-1 w-full justify-between bg-white font-normal"
+                >
+                  <span className="truncate">
+                    {fab.material_id
+                      ? `${fab.material_name} — ${fab.material_thickness_inches}"`
+                      : <span className="text-slate-400">Select material...</span>}
+                  </span>
+                  <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                </Button>
               </div>
               <div className="md:col-span-3">
                 <Label className="text-xs">Letter Height (in)</Label>
