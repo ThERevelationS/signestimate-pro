@@ -53,9 +53,11 @@ const isOwned = (item) => {
   return item.pricing_mode === "owned_flat" || item.pricing_mode === "per_project_flat";
 };
 
-const emptyItem = (mode = "owned") => ({
+const emptyItem = (mode = "owned", scope = "construction") => ({
   equipment_name: "",
-  equipment_type: mode === "owned" ? "truck" : "scissor_lift",
+  equipment_type: scope === "boom"
+    ? "boom_lift"
+    : (mode === "owned" ? "truck" : "scissor_lift"),
   ownership: mode,
   max_height_feet: 0,
   total_boom_height_feet: 0,
@@ -81,7 +83,12 @@ const emptyItem = (mode = "owned") => ({
   sort_order: 0,
 });
 
-export default function EquipmentInventoryTab() {
+// Which equipment types belong to the "Boom Lifts" tab vs "Construction Equipment".
+const isBoomItem = (it) => BOOM_TYPES.includes(it.equipment_type);
+
+export default function EquipmentInventoryTab({ scope = "construction" }) {
+  // scope="construction" → everything that is NOT a boom lift/truck
+  // scope="boom"         → only boom lifts / boom trucks
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -96,8 +103,14 @@ export default function EquipmentInventoryTab() {
 
   useEffect(() => { load(); }, []);
 
-  const ownedItems = useMemo(() => items.filter(isOwned), [items]);
-  const rentedItems = useMemo(() => items.filter((it) => !isOwned(it)), [items]);
+  // Restrict the records shown in this instance to the current scope.
+  const scopedItems = useMemo(
+    () => items.filter((it) => (scope === "boom" ? isBoomItem(it) : !isBoomItem(it))),
+    [items, scope]
+  );
+
+  const ownedItems = useMemo(() => scopedItems.filter(isOwned), [scopedItems]);
+  const rentedItems = useMemo(() => scopedItems.filter((it) => !isOwned(it)), [scopedItems]);
 
   const update = (origIndex, patch) => {
     const next = [...items];
@@ -106,7 +119,7 @@ export default function EquipmentInventoryTab() {
   };
 
   const addItem = (mode) => {
-    setItems([...items, { ...emptyItem(mode), _new: true }]);
+    setItems([...items, { ...emptyItem(mode, scope), _new: true }]);
     setActiveTab(mode);
   };
 
@@ -154,6 +167,11 @@ export default function EquipmentInventoryTab() {
     }
   };
 
+  // In the Boom Lifts tab only boom types are selectable; otherwise hide booms.
+  const typeOptions = scope === "boom"
+    ? EQUIPMENT_TYPES.filter((t) => BOOM_TYPES.includes(t.value))
+    : EQUIPMENT_TYPES.filter((t) => !BOOM_TYPES.includes(t.value));
+
   const renderRow = (it, origIndex, mode) => {
     const isVehicle = VEHICLE_TYPES.includes(it.equipment_type);
     const showFuel = mode === "owned" && isVehicle;
@@ -173,7 +191,7 @@ export default function EquipmentInventoryTab() {
             <Select value={it.equipment_type} onValueChange={(v) => update(origIndex, { equipment_type: v })}>
               <SelectTrigger className="h-8 mt-0.5"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {EQUIPMENT_TYPES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                {typeOptions.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -374,9 +392,13 @@ export default function EquipmentInventoryTab() {
     <Card className="bg-white border-0 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Equipment ({items.length})</CardTitle>
+          <CardTitle>
+            {scope === "boom" ? "Boom Lifts" : "Construction Equipment"} ({scopedItems.length})
+          </CardTitle>
           <CardDescription className="mt-1">
-            Owned equipment uses flat rates. Rented equipment uses daily/weekly/monthly. Trucks (owned) can have an MPG for travel fuel calculations.
+            {scope === "boom"
+              ? "Boom lifts & boom trucks. Reach specs feed the install height reach chart. Owned items use flat rates; rented use daily/weekly/monthly."
+              : "Owned equipment uses flat rates. Rented equipment uses daily/weekly/monthly. Trucks (owned) can have an MPG for travel fuel calculations."}
           </CardDescription>
         </div>
         <Button onClick={saveAll} disabled={saving} className="bg-purple-600 hover:bg-purple-700 text-white">

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Package, HardHat, Box, Droplets } from "lucide-react";
+import { ArrowLeft, Package, HardHat, Box, Droplets, ArrowUpFromLine } from "lucide-react";
 import MaterialsInventoryTab from "../components/channelLetterInstall/MaterialsInventoryTab";
 import EquipmentInventoryTab from "../components/channelLetterInstall/EquipmentInventoryTab";
 import DimensionalMaterialsTab from "../components/channelLetterInstall/DimensionalMaterialsTab";
@@ -31,12 +31,15 @@ export default function ChannelLetterInstallInventoryPage() {
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="grid grid-cols-4 w-full max-w-3xl mb-4">
+          <TabsList className="grid grid-cols-5 w-full max-w-4xl mb-4">
             <TabsTrigger value="materials" className="gap-2">
               <Package className="w-4 h-4" /> Install Materials
             </TabsTrigger>
             <TabsTrigger value="equipment" className="gap-2">
-              <HardHat className="w-4 h-4" /> Equipment
+              <HardHat className="w-4 h-4" /> Construction Equipment
+            </TabsTrigger>
+            <TabsTrigger value="booms" className="gap-2">
+              <ArrowUpFromLine className="w-4 h-4" /> Boom Lifts
             </TabsTrigger>
             <TabsTrigger value="dimensional" className="gap-2">
               <Box className="w-4 h-4" /> Substrates
@@ -50,7 +53,10 @@ export default function ChannelLetterInstallInventoryPage() {
             <MaterialsInventoryTab />
           </TabsContent>
           <TabsContent value="equipment">
-            <EquipmentInventoryTab />
+            <EquipmentInventoryTab scope="construction" />
+          </TabsContent>
+          <TabsContent value="booms">
+            <EquipmentInventoryTab scope="boom" />
           </TabsContent>
           <TabsContent value="dimensional">
             <DimensionalMaterialsTab />
