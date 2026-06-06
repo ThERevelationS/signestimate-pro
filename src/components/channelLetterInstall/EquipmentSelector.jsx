@@ -14,6 +14,7 @@ import {
   selectedEquipmentFromInventory,
   recalcEquipmentRow,
   durationUnitLabel,
+  isOwnedEquipment,
 } from "./equipmentSuggester";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
@@ -137,13 +138,17 @@ export default function EquipmentSelector({
               At least one piece of equipment is required.
             </p>
           </div>
-          {addableInventory.length > 0 && (
-            <Select onValueChange={(val) => {
-              const inv = activeInventory.find((e) => e.id === val);
-              if (inv) handleAdd(inv);
-            }}>
-              <SelectTrigger className="w-56 h-9 text-sm">
-                <SelectValue placeholder="+ Add equipment..." />
+          {addableInventory.length > 0 ? (
+            <Select
+              key={selectedEquipment.length}
+              onValueChange={(val) => {
+                const inv = activeInventory.find((e) => e.id === val);
+                if (inv) handleAdd(inv);
+              }}
+            >
+              <SelectTrigger className="w-60 h-9 text-sm bg-purple-50 border-purple-300 text-purple-800 font-semibold hover:bg-purple-100">
+                <Plus className="w-4 h-4 mr-1" />
+                <SelectValue placeholder="Add another piece of equipment..." />
               </SelectTrigger>
               <SelectContent>
                 {addableInventory.map((e) => (
@@ -154,6 +159,10 @@ export default function EquipmentSelector({
                 ))}
               </SelectContent>
             </Select>
+          ) : (
+            <span className="text-xs text-slate-400 italic">
+              All inventory equipment has been added
+            </span>
           )}
         </CardHeader>
         <CardContent>
@@ -216,13 +225,19 @@ export default function EquipmentSelector({
                       />
                     </div>
                     <div className="md:col-span-3">
-                      <label className="flex items-center gap-1.5 cursor-pointer text-xs mb-1">
-                        <Checkbox
-                          checked={!!row.include_delivery}
-                          onCheckedChange={(c) => handleUpdate(idx, { include_delivery: !!c })}
-                        />
-                        <span>Delivery/Pickup ({fmt(row.delivery_pickup_cost)})</span>
-                      </label>
+                      {isOwnedEquipment(row) ? (
+                        <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1 inline-block">
+                          Owned — no delivery fee
+                        </span>
+                      ) : (
+                        <label className="flex items-center gap-1.5 cursor-pointer text-xs mb-1">
+                          <Checkbox
+                            checked={!!row.include_delivery}
+                            onCheckedChange={(c) => handleUpdate(idx, { include_delivery: !!c })}
+                          />
+                          <span>Delivery/Pickup ({fmt(row.delivery_pickup_cost)})</span>
+                        </label>
+                      )}
                     </div>
                     <div className="md:col-span-1 flex items-end justify-end">
                       <Button

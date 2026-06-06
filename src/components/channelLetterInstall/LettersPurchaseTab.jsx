@@ -35,6 +35,10 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject,
   // True when at least one dimensional letters row is on this project
   const hasDimensional = purchases.some(p => p.letter_type === "dimensional_letters");
 
+  // Delivery / Shipping does NOT apply to dimensional lettering (fabricated in-house).
+  // Hide the fee + rollup row when every letter product on the project is dimensional.
+  const onlyDimensional = purchases.length > 0 && purchases.every(p => p.letter_type === "dimensional_letters");
+
   // Enable a backer on the first dimensional row that doesn't already have one
   const addBackerToFirstDimensional = () => {
     const idx = purchases.findIndex(p => p.letter_type === "dimensional_letters" && !p.backer_enabled);
@@ -345,13 +349,23 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject,
                 Override them here for this estimate only.
               </p>
             </div>
+            {onlyDimensional && (
+              <div className="mb-3 flex items-start gap-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <Info className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-emerald-900">
+                  Delivery / Shipping doesn't apply to dimensional lettering (fabricated in-house), so it's hidden for this estimate.
+                </p>
+              </div>
+            )}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <FeeInput
-                icon={Truck}
-                label="Delivery / Shipping"
-                value={project.letters_delivery_fee}
-                onChange={(v) => onUpdateProject({ letters_delivery_fee: v })}
-              />
+              {!onlyDimensional && (
+                <FeeInput
+                  icon={Truck}
+                  label="Delivery / Shipping"
+                  value={project.letters_delivery_fee}
+                  onChange={(v) => onUpdateProject({ letters_delivery_fee: v })}
+                />
+              )}
               <FeeInput
                 icon={Receipt}
                 label="Other"
@@ -393,7 +407,7 @@ export default function LettersPurchaseTab({ project, settings, onUpdateProject,
             <span className="text-slate-300">Letters Subtotal</span>
             <span className="tabular-nums font-medium">{fmt(purchasesTotal)}</span>
           </div>
-          {(parseFloat(project.letters_delivery_fee) || 0) > 0 && (
+          {!onlyDimensional && (parseFloat(project.letters_delivery_fee) || 0) > 0 && (
             <RollupRow label="Delivery / Shipping" value={project.letters_delivery_fee} />
           )}
           {(parseFloat(project.letters_other_fee) || 0) > 0 && (

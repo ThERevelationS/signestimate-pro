@@ -8,6 +8,12 @@ const BOOM_TYPES = ["boom_lift", "boom_truck"];
 // Vehicles needed to transport crew & gear to the site
 const VEHICLE_TYPES = ["truck", "van", "flatbed", "boom_truck"];
 
+// Owned equipment never carries a delivery / pickup fee (it's your own gear).
+export function isOwnedEquipment(invOrRow = {}) {
+  if (invOrRow.ownership) return invOrRow.ownership === "owned";
+  return invOrRow.pricing_mode === "owned_flat" || invOrRow.pricing_mode === "per_project_flat";
+}
+
 /**
  * Given a list of line items and the equipment inventory, suggest which
  * pieces of equipment should be selected. Returns inventory items.
@@ -117,14 +123,18 @@ export function selectedEquipmentFromInventory(inv, projectLaborHours = 0) {
   // Default idle to labor hours rounded up — most installs run the boom continuously
   const idleHours = isBoom && idleRate > 0 ? Math.max(0, Math.ceil(laborHours)) : 0;
 
+  // Owned equipment never has a delivery / pickup fee.
+  const owned = isOwnedEquipment(inv);
+
   return {
     equipment_id: inv.id,
     equipment_name: inv.equipment_name,
     equipment_type: inv.equipment_type,
     pricing_mode: inv.pricing_mode,
+    ownership: owned ? "owned" : (inv.ownership || "rented"),
     duration,
     include_delivery: false,
-    delivery_pickup_cost: parseFloat(inv.delivery_pickup_cost) || 0,
+    delivery_pickup_cost: owned ? 0 : (parseFloat(inv.delivery_pickup_cost) || 0),
     unit_cost: unitCost,
     idle_running_cost_per_hour: idleRate,
     idle_hours: idleHours,
@@ -140,7 +150,10 @@ export function selectedEquipmentFromInventory(inv, projectLaborHours = 0) {
 export function recalcEquipmentRow(row) {
   const duration = parseFloat(row.duration) || 0;
   const unitCost = parseFloat(row.unit_cost) || 0;
-  const delivery = row.include_delivery ? parseFloat(row.delivery_pickup_cost) || 0 : 0;
+  // Owned equipment never bills a delivery / pickup fee.
+  const delivery = (!isOwnedEquipment(row) && row.include_delivery)
+    ? parseFloat(row.delivery_pickup_cost) || 0
+    : 0;
   const idleHours = parseFloat(row.idle_hours) || 0;
   const idleRate = parseFloat(row.idle_running_cost_per_hour) || 0;
   const idle_cost = idleHours * idleRate;
