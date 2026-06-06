@@ -24,13 +24,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Edit, Plus, Wrench, Link2, Settings2, Truck } from "lucide-react";
+import { Trash2, Edit, Plus, Wrench, Link2, Settings2, Truck, ArrowUpFromLine } from "lucide-react";
 
 const FoundationInventoryEntity = base44.entities.FoundationInventory;
 const ChannelLetterInstallEquipmentEntity = base44.entities.ChannelLetterInstallEquipment;
 
 // ── small helpers ──────────────────────────────────────────────────────────
 const FOUNDATION_EQUIPMENT_TYPES = ["excavation_equipment", "attachment", "sub_attachment"];
+// Equipment types that belong to the dedicated "Boom Lifts" tab.
+const BOOM_EQUIPMENT_TYPES = ["boom_lift", "boom_truck"];
 
 function MultiSelectDropdown({ label, options, selectedIds, onChange }) {
   const toggle = (id) =>
@@ -59,6 +61,7 @@ function normalizeRow(row, source) {
       id: row.id,
       name: row.equipment_name,
       kind: "equipment",              // top-level equipment (no attachment tree on this entity)
+      equipment_type: row.equipment_type || "",
       ownership: row.ownership || "rented",
       cost_per_day: row.cost_per_day || 0,
       cost_per_week: row.cost_per_week || 0,
@@ -78,6 +81,7 @@ function normalizeRow(row, source) {
     id: row.id,
     name: row.material_name,
     kind,
+    equipment_type: row.equipment_type || "",
     ownership: row.ownership || "rented",
     cost_per_day: row.cost_per_day || 0,
     cost_per_week: row.cost_per_week || 0,
@@ -120,7 +124,10 @@ export default function MasterEquipmentTab({ isAdmin }) {
     return [...a, ...b].filter((r) => (r.ownership || "rented") === ownership);
   }, [foundationRows, channelRows, ownership]);
 
-  const equipmentRows  = allNormalized.filter((r) => r.kind === "equipment");
+  const isBoom = (r) => BOOM_EQUIPMENT_TYPES.includes(r.equipment_type);
+  // "Construction Equipment" = top-level equipment that is NOT a boom lift/truck.
+  const equipmentRows  = allNormalized.filter((r) => r.kind === "equipment" && !isBoom(r));
+  const boomRows       = allNormalized.filter((r) => r.kind === "equipment" && isBoom(r));
   const attachmentRows = allNormalized.filter((r) => r.kind === "attachment");
   const subAttachRows  = allNormalized.filter((r) => r.kind === "sub_attachment");
 
@@ -153,6 +160,26 @@ export default function MasterEquipmentTab({ isAdmin }) {
   };
 
   const openAdd = () => {
+    // Boom Lifts tab → create a ChannelLetterInstallEquipment boom_lift (no attachment tree).
+    if (activeKind === "boom_lift") {
+      setNewSource("channel_letter_equipment");
+      setEditItem({
+        _new: true,
+        kind: "equipment",
+        _source: "channel_letter_equipment",
+        equipment_type: "boom_lift",
+        raw: {
+          equipment_name: "",
+          equipment_type: "boom_lift",
+          pricing_mode: "per_day",
+          ownership,
+          cost_per_day: 0, cost_per_week: 0, cost_per_month: 0, delivery_pickup_cost: 0,
+          show_in_channel_letters: true, show_in_foundation: false, show_in_sign_maintenance: false,
+        },
+      });
+      setShowForm(true);
+      return;
+    }
     // New rows default to FoundationInventory so attachment-tree linking is available.
     // The form lets the user pick the entity for top-level Equipment.
     setNewSource("foundation_equipment");
@@ -198,7 +225,7 @@ export default function MasterEquipmentTab({ isAdmin }) {
           </Tabs>
           {isAdmin && (
             <Button size="sm" onClick={openAdd} className="bg-blue-600 hover:bg-blue-700 text-white">
-              <Plus className="w-4 h-4 mr-1" /> Add {activeKind === "equipment" ? "Equipment" : activeKind === "attachment" ? "Attachment" : "Sub-Attachment"}
+              <Plus className="w-4 h-4 mr-1" /> Add {activeKind === "equipment" ? "Construction Equipment" : activeKind === "boom_lift" ? "Boom Lift" : activeKind === "attachment" ? "Attachment" : "Sub-Attachment"}
             </Button>
           )}
         </div>
@@ -207,7 +234,8 @@ export default function MasterEquipmentTab({ isAdmin }) {
       <CardContent className="pt-4">
         <Tabs value={activeKind} onValueChange={setActiveKind}>
           <TabsList className="mb-4">
-            <TabsTrigger value="equipment"><Wrench className="w-3.5 h-3.5 mr-1" /> Equipment ({equipmentRows.length})</TabsTrigger>
+            <TabsTrigger value="equipment"><Wrench className="w-3.5 h-3.5 mr-1" /> Construction Equipment ({equipmentRows.length})</TabsTrigger>
+            <TabsTrigger value="boom_lift"><ArrowUpFromLine className="w-3.5 h-3.5 mr-1" /> Boom Lifts ({boomRows.length})</TabsTrigger>
             <TabsTrigger value="attachment"><Link2 className="w-3.5 h-3.5 mr-1" /> Attachments ({attachmentRows.length})</TabsTrigger>
             <TabsTrigger value="sub_attachment"><Settings2 className="w-3.5 h-3.5 mr-1" /> Sub-Attachments ({subAttachRows.length})</TabsTrigger>
           </TabsList>
@@ -215,6 +243,18 @@ export default function MasterEquipmentTab({ isAdmin }) {
           <TabsContent value="equipment">
             <EquipmentList
               rows={equipmentRows}
+              attachments={allFoundationAttachments}
+              equipment={allFoundationEquipment}
+              loading={loading}
+              isAdmin={isAdmin}
+              onEdit={openEdit}
+              onDelete={deleteItem}
+              onToggle={toggleVisibility}
+            />
+          </TabsContent>
+          <TabsContent value="boom_lift">
+            <EquipmentList
+              rows={boomRows}
               attachments={allFoundationAttachments}
               equipment={allFoundationEquipment}
               loading={loading}
@@ -255,7 +295,7 @@ export default function MasterEquipmentTab({ isAdmin }) {
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editItem?._new ? "Add" : "Edit"} {activeKind === "equipment" ? "Equipment" : activeKind === "attachment" ? "Attachment" : "Sub-Attachment"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editItem?._new ? "Add" : "Edit"} {activeKind === "equipment" ? "Construction Equipment" : activeKind === "boom_lift" ? "Boom Lift" : activeKind === "attachment" ? "Attachment" : "Sub-Attachment"}</DialogTitle></DialogHeader>
           {editItem && (
             <EquipmentForm
               normalized={editItem}
