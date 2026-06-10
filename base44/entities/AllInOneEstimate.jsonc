@@ -1,0 +1,109 @@
+{
+  "name": "AllInOneEstimate",
+  "type": "object",
+  "description": "A combined estimate that links sub-estimates from any of the individual estimator modules. module_key values match components/allInOne/estimatorRegistry.js.",
+  "properties": {
+    "project_name": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "estimate_number": {
+      "type": "string"
+    },
+    "hyperlink": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "calculated",
+        "archived"
+      ],
+      "default": "draft"
+    },
+    "line_items": {
+      "type": "array",
+      "description": "Linked sub-estimates. Totals are refreshed from the source projects whenever the estimate is opened.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "module_key": {
+            "type": "string",
+            "description": "Key from the estimator registry (e.g. 'painting', 'foundation')."
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "project_name": {
+            "type": "string"
+          },
+          "client_name": {
+            "type": "string"
+          },
+          "total_snapshot": {
+            "type": "number",
+            "default": 0,
+            "description": "Last-known total of the linked sub-estimate."
+          },
+          "linked_date": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "total_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Grand total = sum of all linked sub-estimate totals."
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_name",
+    "client_name"
+  ],
+  "rls": {
+    "create": {},
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

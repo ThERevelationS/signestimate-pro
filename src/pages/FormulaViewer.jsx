@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Calculator, Paintbrush, Zap, Router, Wrench, Info, Anchor, ClipboardCheck, Droplets, FileSpreadsheet } from "lucide-react";
+import { Calculator, Paintbrush, Zap, Router, Wrench, Info, Anchor, ClipboardCheck, Droplets, FileSpreadsheet, Layers } from "lucide-react";
 
 // Lazy-load each formula module — the Formula Viewer used to mount all 9
 // heavy calculator components on first render (one per tab) even though only
@@ -20,6 +20,7 @@ const SignMaintenanceFormulas = lazy(() => import("@/components/formulaViewer/Si
 const VinylInventoryFormulas = lazy(() => import("@/components/formulaViewer/VinylInventoryFormulas"));
 const VinylEstimatorFormulas = lazy(() => import("@/components/formulaViewer/VinylEstimatorFormulas"));
 const MasterInventoryImporterFormulas = lazy(() => import("@/components/formulaViewer/MasterInventoryImporterFormulas"));
+const AllInOneFormulas = lazy(() => import("@/components/formulaViewer/AllInOneFormulas"));
 
 const TabFallback = () => (
   <div className="py-10 text-center text-sm text-slate-400">Loading formulas…</div>
@@ -470,7 +471,7 @@ export default function FormulaViewer() {
         </div>
 
         <Tabs value={selectedModule} onValueChange={setSelectedModule} className="w-full">
-          <TabsList className="grid grid-cols-2 md:grid-cols-10 mb-4 h-auto">
+          <TabsList className="grid grid-cols-2 md:grid-cols-11 mb-4 h-auto">
             <TabsTrigger value="painting" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Paintbrush className="w-4 h-4" /> Painting</TabsTrigger>
             <TabsTrigger value="laser" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Zap className="w-4 h-4" /> Laser</TabsTrigger>
             <TabsTrigger value="cnc" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Router className="w-4 h-4" /> CNC</TabsTrigger>
@@ -481,6 +482,7 @@ export default function FormulaViewer() {
             <TabsTrigger value="vinyl" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Droplets className="w-4 h-4" /> Vinyl Inv</TabsTrigger>
             <TabsTrigger value="vinyl_estimator" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Droplets className="w-4 h-4" /> Vinyl Est</TabsTrigger>
             <TabsTrigger value="importer" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><FileSpreadsheet className="w-4 h-4" /> Importer</TabsTrigger>
+            <TabsTrigger value="all_in_one" className="flex items-center gap-1.5 text-xs md:text-sm py-2"><Layers className="w-4 h-4" /> All-In-One</TabsTrigger>
           </TabsList>
 
           <Card className="bg-white border-0 shadow-sm">
@@ -522,6 +524,9 @@ export default function FormulaViewer() {
                 )}
                 {selectedModule === "importer" && (
                   <TabsContent value="importer" className="mt-0" forceMount><MasterInventoryImporterFormulas /></TabsContent>
+                )}
+                {selectedModule === "all_in_one" && (
+                  <TabsContent value="all_in_one" className="mt-0" forceMount><AllInOneFormulas /></TabsContent>
                 )}
               </Suspense>
             </CardContent>

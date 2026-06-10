@@ -32,7 +32,8 @@ import {
   Factory,
   Boxes,
   ClipboardCheck,
-  Droplets
+  Droplets,
+  Layers
 } from 'lucide-react';
 
 export default function Layout({ children, currentPageName }) {
@@ -296,6 +297,55 @@ export default function Layout({ children, currentPageName }) {
 
                 return (
                   <>
+                    {/* All-In-One Estimator — combines estimates from every module */}
+                    <SidebarMenuItem key="all_in_one">
+                      <div
+                        className="bg-indigo-50 hover:bg-indigo-100 rounded-xl p-3 transition-all duration-200 cursor-pointer"
+                        onClick={() => handleToggle('all_in_one')}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Layers className="w-5 h-5 text-indigo-600" />
+                            <span className="font-semibold text-slate-900 text-sm">All-In-One Estimator</span>
+                          </div>
+                          <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${expandedModules['all_in_one'] ? 'rotate-180' : ''}`} />
+                        </div>
+                        <div
+                          className="space-y-1 transition-all duration-300 ease-in-out"
+                          style={{
+                            maxHeight: expandedModules['all_in_one'] ? '500px' : '0px',
+                            opacity: expandedModules['all_in_one'] ? 1 : 0,
+                            overflow: 'hidden',
+                            pointerEvents: expandedModules['all_in_one'] ? 'auto' : 'none'
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Link
+                            to={createPageUrl("AllInOneProjects")}
+                            onClick={(e) => handleNavClick(e, createPageUrl("AllInOneProjects"))}
+                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
+                              location.pathname === createPageUrl("AllInOneProjects")
+                                ? 'bg-white text-slate-900 font-medium shadow-sm'
+                                : 'text-slate-700 hover:bg-white/60'
+                            }`}
+                          >
+                            View Projects
+                          </Link>
+                          <Link
+                            to={createPageUrl("NewAllInOneEstimate")}
+                            onClick={(e) => handleNavClick(e, createPageUrl("NewAllInOneEstimate"))}
+                            className={`text-xs px-2 py-1.5 rounded-lg transition-colors flex items-center w-full ${
+                              location.pathname === createPageUrl("NewAllInOneEstimate")
+                                ? 'bg-white text-slate-900 font-medium shadow-sm'
+                                : 'text-slate-700 hover:bg-white/60'
+                            }`}
+                          >
+                            New Estimate
+                          </Link>
+                        </div>
+                      </div>
+                    </SidebarMenuItem>
+
                     {/* Top-level: Channel & Dimensional Letters, Concrete | Masonry | Poles */}
                     {topLevelModules.map(renderModule)}
 

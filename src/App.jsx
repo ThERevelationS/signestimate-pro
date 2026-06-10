@@ -1,5 +1,5 @@
 import './App.css'
-import { Suspense } from 'react'
+import { Suspense, lazy } from 'react'
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -12,6 +12,11 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import RouteSkeleton from '@/components/RouteSkeleton';
+
+// Pages created after pages.config.js stopped being auto-generated need
+// explicit routes (the pagesConfig loop below only knows about older pages).
+const AllInOneProjects = lazy(() => import('@/pages/AllInOneProjects'));
+const NewAllInOneEstimate = lazy(() => import('@/pages/NewAllInOneEstimate'));
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -53,6 +58,8 @@ const AuthenticatedApp = () => {
       <Suspense fallback={<RouteSkeleton />}>
         <Routes>
           <Route path="/" element={<MainPage />} />
+          <Route path="/AllInOneProjects" element={<AllInOneProjects />} />
+          <Route path="/NewAllInOneEstimate" element={<NewAllInOneEstimate />} />
           {Object.entries(Pages).map(([path, Page]) => (
             <Route key={path} path={`/${path}`} element={<Page />} />
           ))}
