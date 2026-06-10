@@ -13,17 +13,18 @@ export default function AllInOneFormulas() {
           <Layers className="w-5 h-5" /> All-In-One Estimator
         </h3>
         <p className="text-sm text-indigo-800">
-          The All-In-One Estimator does not introduce new pricing formulas. It links saved
-          estimates from the individual estimator modules and rolls them up into one combined total.
-          Each linked estimate keeps its own module's calculations — refreshing totals re-reads the
-          saved sub-estimate.
+          The All-In-One Estimator builds a multi-trade estimate from <b>sections</b>. Adding a
+          section creates a full sub-estimate in that module's own entity and opens the module's
+          real estimator — every formula, inventory, and setting of that module applies unchanged.
+          The combined total is the sum of all section totals. Any change to a module's formulas
+          automatically applies to All-In-One sections, because sections ARE that module's estimates.
         </p>
       </div>
 
       <div className="bg-slate-800 text-white p-4 rounded-lg">
         <h4 className="font-medium mb-2">Grand Total Formula</h4>
         <p className="font-mono text-sm">
-          Grand Total = Σ (linked sub-estimate totals across all modules)
+          Grand Total = Σ (section sub-estimate totals across all modules)
         </p>
       </div>
 
@@ -63,10 +64,12 @@ export default function AllInOneFormulas() {
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 flex gap-2">
         <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
         <p>
-          Totals are snapshots refreshed from the source estimates when an All-In-One estimate is
-          opened or when "Refresh Totals" is clicked. Editing a sub-estimate in its own module and
-          refreshing here keeps the combined total in sync. New estimator modules added to{" "}
-          <span className="font-mono">estimatorRegistry.js</span> appear in this table automatically.
+          Totals sync three ways: (1) refreshed from the source estimates whenever an All-In-One
+          estimate is opened, (2) updated <b>live</b> via real-time subscriptions whenever a section
+          is saved anywhere in the app, and (3) on demand via "Refresh Totals". Removing an owned
+          section also deletes its underlying sub-estimate. New estimator modules added to{" "}
+          <span className="font-mono">estimatorRegistry.js</span> appear in this table and in the
+          Build Sections grid automatically.
         </p>
       </div>
     </div>

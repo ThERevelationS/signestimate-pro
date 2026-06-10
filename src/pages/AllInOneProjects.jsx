@@ -10,7 +10,7 @@ import { Plus, Search, Edit2, Trash2, Layers } from "lucide-react";
 import { format } from "date-fns";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
 import { fmtCurrency } from "@/lib/formatters";
-import { ESTIMATOR_MODULES_BY_KEY } from "@/components/allInOne/estimatorRegistry";
+import { ESTIMATOR_MODULES_BY_KEY, getModuleEntity } from "@/components/allInOne/estimatorRegistry";
 
 const PAGE_SIZE = 200;
 
@@ -42,11 +42,24 @@ export default function AllInOneProjects() {
     );
   }, [projects, debouncedSearch]);
 
-  const handleDelete = async (id, name) => {
-    if (confirm(`Are you sure you want to delete "${name}"? This will not delete the linked sub-estimates.`)) {
-      await base44.entities.AllInOneEstimate.delete(id);
-      await loadProjects();
+  const handleDelete = async (project) => {
+    const owned = (project.line_items || []).filter((li) => li.owned);
+    const msg = owned.length > 0
+      ? `Delete "${project.project_name}"? This will also delete its ${owned.length} built-in section estimate${owned.length === 1 ? "" : "s"}.`
+      : `Are you sure you want to delete "${project.project_name}"?`;
+    if (!confirm(msg)) return;
+    // Owned sections were created by this estimate — clean them up too
+    for (const li of owned) {
+      const mod = ESTIMATOR_MODULES_BY_KEY[li.module_key];
+      if (!mod) continue;
+      try {
+        await getModuleEntity(mod).delete(li.project_id);
+      } catch {
+        // Sub-estimate already deleted — continue
+      }
     }
+    await base44.entities.AllInOneEstimate.delete(project.id);
+    await loadProjects();
   };
 
   const getStatusColor = (status) => {
@@ -122,7 +135,7 @@ export default function AllInOneProjects() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(project.id, project.project_name)}
+                          onClick={() => handleDelete(project)}
                           className="text-red-500 hover:text-red-700 hover:bg-red-50"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -132,7 +145,7 @@ export default function AllInOneProjects() {
                     <div className="flex items-center gap-4 text-sm text-slate-500 flex-wrap">
                       <span>{format(new Date(project.created_date), "MMM d, yyyy")}</span>
                       {project.estimate_number && <span>#{project.estimate_number}</span>}
-                      <span>{project.line_items?.length || 0} linked estimate{(project.line_items?.length || 0) === 1 ? "" : "s"}</span>
+                      <span>{project.line_items?.length || 0} section{(project.line_items?.length || 0) === 1 ? "" : "s"}</span>
                       <span className="font-semibold text-slate-900">{fmtCurrency(project.total_cost)}</span>
                     </div>
                     {(project.line_items?.length || 0) > 0 && (

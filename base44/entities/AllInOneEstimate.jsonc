@@ -1,7 +1,7 @@
 {
   "name": "AllInOneEstimate",
   "type": "object",
-  "description": "A combined estimate that links sub-estimates from any of the individual estimator modules. module_key values match components/allInOne/estimatorRegistry.js.",
+  "description": "A multifaceted estimate BUILT from sections. Each section is a dedicated sub-estimate created by (and owned by) this estimate in its module's own entity, edited with that module's full estimator. Totals live-sync from the source projects via real-time subscriptions and refresh-on-open. module_key values match components/allInOne/estimatorRegistry.js.",
   "properties": {
     "project_name": {
       "type": "string"
@@ -26,7 +26,7 @@
     },
     "line_items": {
       "type": "array",
-      "description": "Linked sub-estimates. Totals are refreshed from the source projects whenever the estimate is opened.",
+      "description": "Estimate sections. Totals are refreshed from the source projects whenever the estimate is opened, and in real time while it is open.",
       "items": {
         "type": "object",
         "properties": {
@@ -46,7 +46,12 @@
           "total_snapshot": {
             "type": "number",
             "default": 0,
-            "description": "Last-known total of the linked sub-estimate."
+            "description": "Last-known total of the sub-estimate."
+          },
+          "owned": {
+            "type": "boolean",
+            "default": false,
+            "description": "True when this sub-estimate was created BY this All-In-One estimate (a built-in section). Owned sections are deleted together with the section / estimate."
           },
           "linked_date": {
             "type": "string"
@@ -57,7 +62,7 @@
     "total_cost": {
       "type": "number",
       "default": 0,
-      "description": "Grand total = sum of all linked sub-estimate totals."
+      "description": "Grand total = sum of all section totals."
     },
     "notes": {
       "type": "string"

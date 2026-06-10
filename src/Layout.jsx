@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { UnsavedChangesContext } from './components/UnsavedChangesContext';
+import AllInOneContextBar from './components/allInOne/AllInOneContextBar';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -484,6 +485,7 @@ export default function Layout({ children, currentPageName }) {
           </header>
           
           <main className="flex-1">
+            <AllInOneContextBar />
             {children}
           </main>
         </div>

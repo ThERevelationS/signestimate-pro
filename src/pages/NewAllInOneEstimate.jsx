@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createPageUrl } from "@/utils";
-import { Layers, Plus, ExternalLink, Save } from "lucide-react";
+import { Layers, Plus, Save, Loader2, Info } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import {
   ESTIMATOR_MODULES,
@@ -14,7 +14,6 @@ import {
   getModuleEntity,
   getModuleTotal,
 } from "@/components/allInOne/estimatorRegistry";
-import EstimatePickerDialog from "@/components/allInOne/EstimatePickerDialog";
 import LinkedEstimateRow from "@/components/allInOne/LinkedEstimateRow";
 import AllInOneSummaryCard from "@/components/allInOne/AllInOneSummaryCard";
 
@@ -28,16 +27,42 @@ const EMPTY_PROJECT = {
   notes: "",
 };
 
+// Strip transient UI fields + built-in record fields before persisting
+const cleanItems = (items) => items.map(({ missing, ...li }) => li);
+const stripBuiltins = ({ id, created_date, updated_date, created_by_id, created_by, ...rest }) => rest;
+const sumItems = (items) => items.reduce((s, li) => s + (Number(li.total_snapshot) || 0), 0);
+
 export default function NewAllInOneEstimate() {
   const { toast } = useToast();
   const [project, setProject] = useState(EMPTY_PROJECT);
   const [editId, setEditId] = useState(null);
-  const [pickerModule, setPickerModule] = useState(null);
+  const editIdRef = useRef(null);
   const [refreshing, setRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [addingKey, setAddingKey] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Re-fetch every linked sub-estimate and sync names + totals from the source.
+  // Persist the estimate (create on first save) and return its id.
+  const persist = useCallback(async (proj) => {
+    const payload = {
+      ...stripBuiltins(proj),
+      line_items: cleanItems(proj.line_items || []),
+      total_cost: sumItems(proj.line_items || []),
+      status: (proj.line_items || []).length > 0 ? "calculated" : proj.status,
+    };
+    if (editIdRef.current) {
+      await base44.entities.AllInOneEstimate.update(editIdRef.current, payload);
+      return editIdRef.current;
+    }
+    const created = await base44.entities.AllInOneEstimate.create(payload);
+    editIdRef.current = created.id;
+    setEditId(created.id);
+    window.history.replaceState({}, "", `${createPageUrl("NewAllInOneEstimate")}?edit=${created.id}`);
+    return created.id;
+  }, []);
+
+  // Re-fetch every section from its source entity and sync names + totals.
+  // Silently persists the refreshed totals so the projects list stays current.
   const refreshTotals = useCallback(async (items) => {
     if (!items || items.length === 0) return;
     setRefreshing(true);
@@ -56,13 +81,17 @@ export default function NewAllInOneEstimate() {
             missing: false,
           };
         } catch {
-          // Source estimate was deleted — keep the row visible with a warning
-          // instead of crashing the whole combined estimate.
           return { ...li, missing: true };
         }
       })
     );
     setProject((prev) => ({ ...prev, line_items: updated }));
+    if (editIdRef.current) {
+      await base44.entities.AllInOneEstimate.update(editIdRef.current, {
+        line_items: cleanItems(updated),
+        total_cost: sumItems(updated),
+      });
+    }
     setRefreshing(false);
   }, []);
 
@@ -73,6 +102,7 @@ export default function NewAllInOneEstimate() {
       if (id) {
         const existing = await base44.entities.AllInOneEstimate.get(id);
         if (existing) {
+          editIdRef.current = existing.id;
           setEditId(existing.id);
           setProject({ ...EMPTY_PROJECT, ...existing });
           setIsLoading(false);
@@ -85,37 +115,123 @@ export default function NewAllInOneEstimate() {
     load();
   }, [refreshTotals]);
 
-  const grandTotal = useMemo(
-    () => project.line_items.reduce((sum, li) => sum + (Number(li.total_snapshot) || 0), 0),
+  // ---- LIVE SYNC: subscribe to every module entity that has a section here.
+  // Saving a sub-estimate anywhere in the app instantly updates this total.
+  const moduleKeys = useMemo(
+    () => [...new Set(project.line_items.map((li) => li.module_key))].join(","),
     [project.line_items]
   );
+  useEffect(() => {
+    if (!moduleKeys) return;
+    const unsubs = moduleKeys
+      .split(",")
+      .map((key) => {
+        const mod = ESTIMATOR_MODULES_BY_KEY[key];
+        if (!mod) return null;
+        return getModuleEntity(mod).subscribe((event) => {
+          setProject((prev) => {
+            const idx = prev.line_items.findIndex(
+              (li) => li.project_id === event.id && li.module_key === key
+            );
+            if (idx === -1) return prev;
+            const items = [...prev.line_items];
+            items[idx] =
+              event.type === "delete"
+                ? { ...items[idx], missing: true }
+                : {
+                    ...items[idx],
+                    project_name: event.data?.project_name ?? items[idx].project_name,
+                    client_name: event.data?.client_name ?? items[idx].client_name,
+                    total_snapshot: getModuleTotal(mod, event.data || {}),
+                    missing: false,
+                  };
+            return { ...prev, line_items: items };
+          });
+        });
+      })
+      .filter(Boolean);
+    return () => unsubs.forEach((u) => u());
+  }, [moduleKeys]);
+
+  const grandTotal = useMemo(() => sumItems(project.line_items), [project.line_items]);
 
   const updateField = (field, value) => setProject((prev) => ({ ...prev, [field]: value }));
 
-  const handlePick = (src) => {
-    const mod = pickerModule;
-    setProject((prev) => ({
-      ...prev,
-      line_items: [
-        ...prev.line_items,
+  // ---- BUILD A SECTION: create a real sub-estimate in the module's own
+  // entity, link it as an owned section, and jump into the full estimator.
+  const handleAddSection = async (mod) => {
+    if (!project.project_name || !project.client_name) {
+      toast({
+        title: "Name it first",
+        description: "Enter a project name and client name before adding sections.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setAddingKey(mod.key);
+    try {
+      const sameModuleCount = project.line_items.filter((li) => li.module_key === mod.key).length;
+      const suffix = sameModuleCount > 0 ? ` ${sameModuleCount + 1}` : "";
+      const draft = await getModuleEntity(mod).create({
+        project_name: `${project.project_name} — ${mod.shortName}${suffix}`,
+        client_name: project.client_name,
+        estimate_number: project.estimate_number || "",
+        hyperlink: project.hyperlink || "",
+        status: "draft",
+      });
+      const nextItems = [
+        ...project.line_items,
         {
           module_key: mod.key,
-          project_id: src.id,
-          project_name: src.project_name,
-          client_name: src.client_name,
-          total_snapshot: getModuleTotal(mod, src),
+          project_id: draft.id,
+          project_name: draft.project_name,
+          client_name: project.client_name,
+          total_snapshot: 0,
+          owned: true,
           linked_date: new Date().toISOString(),
         },
-      ],
-    }));
-    setPickerModule(null);
+      ];
+      const aioId = await persist({ ...project, line_items: nextItems });
+      // Jump into the module's real estimator, carrying the All-In-One context
+      window.location.href =
+        `${createPageUrl(mod.newEstimatePage)}?${mod.editParam}=${draft.id}` +
+        `&aio=${aioId}&aio_name=${encodeURIComponent(project.project_name)}`;
+    } catch (e) {
+      setAddingKey(null);
+      toast({ title: "Couldn't create section", description: e.message, variant: "destructive" });
+    }
   };
 
-  const removeItem = (index) => {
-    setProject((prev) => ({
-      ...prev,
-      line_items: prev.line_items.filter((_, i) => i !== index),
-    }));
+  const handleEditSection = (item) => {
+    const mod = ESTIMATOR_MODULES_BY_KEY[item.module_key];
+    if (!mod || !editIdRef.current) return;
+    window.location.href =
+      `${createPageUrl(mod.newEstimatePage)}?${mod.editParam}=${item.project_id}` +
+      `&aio=${editIdRef.current}&aio_name=${encodeURIComponent(project.project_name)}`;
+  };
+
+  const handleRemoveSection = async (idx) => {
+    const item = project.line_items[idx];
+    if (!item) return;
+    if (item.owned && !item.missing) {
+      const mod = ESTIMATOR_MODULES_BY_KEY[item.module_key];
+      if (!confirm(`Remove this section? The underlying ${mod?.shortName || ""} sub-estimate will also be deleted.`)) return;
+      try {
+        await getModuleEntity(mod).delete(item.project_id);
+      } catch {
+        // Sub-estimate already gone — still remove the section row
+      }
+    } else if (!confirm("Remove this section from the combined estimate?")) {
+      return;
+    }
+    const items = project.line_items.filter((_, i) => i !== idx);
+    setProject((prev) => ({ ...prev, line_items: items }));
+    if (editIdRef.current) {
+      await base44.entities.AllInOneEstimate.update(editIdRef.current, {
+        line_items: cleanItems(items),
+        total_cost: sumItems(items),
+      });
+    }
   };
 
   const handleSave = async () => {
@@ -124,18 +240,7 @@ export default function NewAllInOneEstimate() {
       return;
     }
     setIsSaving(true);
-    const payload = {
-      ...project,
-      line_items: project.line_items.map(({ missing, ...li }) => li),
-      total_cost: grandTotal,
-      status: project.line_items.length > 0 ? "calculated" : project.status,
-    };
-    if (editId) {
-      await base44.entities.AllInOneEstimate.update(editId, payload);
-    } else {
-      const created = await base44.entities.AllInOneEstimate.create(payload);
-      setEditId(created.id);
-    }
+    await persist(project);
     setIsSaving(false);
     toast({ title: "Saved", description: "All-in-one estimate saved successfully." });
   };
@@ -157,7 +262,7 @@ export default function NewAllInOneEstimate() {
               <Layers className="w-8 h-8 text-indigo-600" />
               {editId ? "Edit All-In-One Estimate" : "New All-In-One Estimate"}
             </h1>
-            <p className="text-slate-600">Combine estimates from every module into one project total</p>
+            <p className="text-slate-600">Build a multi-trade estimate using every estimator in the app — each section is a full estimate</p>
           </div>
           <Button onClick={handleSave} disabled={isSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3">
             <Save className="w-5 h-5 mr-2" />
@@ -196,12 +301,13 @@ export default function NewAllInOneEstimate() {
               </CardContent>
             </Card>
 
-            {/* Module grid — rendered from the registry, so future estimators appear automatically */}
+            {/* Build sections — rendered from the registry, future estimators appear automatically */}
             <Card className="bg-white border-0 shadow-sm">
               <CardHeader className="border-b border-slate-100">
-                <CardTitle className="text-lg">Add Estimates</CardTitle>
+                <CardTitle className="text-lg">Build Sections</CardTitle>
                 <p className="text-sm text-slate-500">
-                  Attach a saved estimate from any module, or open a module to create a new one, then attach it here.
+                  Click a module to add that estimator as a section — it opens the full estimator,
+                  and everything you build there rolls into this combined total automatically.
                 </p>
               </CardHeader>
               <CardContent className="pt-4">
@@ -209,8 +315,14 @@ export default function NewAllInOneEstimate() {
                   {ESTIMATOR_MODULES.map((mod) => {
                     const Icon = mod.icon;
                     const count = project.line_items.filter((li) => li.module_key === mod.key).length;
+                    const isAdding = addingKey === mod.key;
                     return (
-                      <div key={mod.key} className={`${mod.colors.bg} rounded-xl p-3 flex flex-col gap-2`}>
+                      <button
+                        key={mod.key}
+                        onClick={() => handleAddSection(mod)}
+                        disabled={!!addingKey}
+                        className={`${mod.colors.bg} rounded-xl p-3 flex flex-col gap-2 text-left transition-all hover:shadow-md hover:-translate-y-0.5 disabled:opacity-60 disabled:hover:shadow-none disabled:hover:translate-y-0`}
+                      >
                         <div className="flex items-center gap-2">
                           <Icon className={`w-4 h-4 ${mod.colors.text} flex-shrink-0`} />
                           <span className="text-xs font-semibold text-slate-900 leading-tight">{mod.shortName}</span>
@@ -218,32 +330,37 @@ export default function NewAllInOneEstimate() {
                             <span className="ml-auto text-[10px] font-bold bg-white rounded-full px-1.5 py-0.5 text-slate-700">{count}</span>
                           )}
                         </div>
-                        <div className="flex gap-1.5 mt-auto">
-                          <Button size="sm" variant="outline" className="h-7 text-xs flex-1 bg-white" onClick={() => setPickerModule(mod)}>
-                            <Plus className="w-3 h-3 mr-1" /> Attach
-                          </Button>
-                          <a href={createPageUrl(mod.newEstimatePage)} target="_blank" rel="noopener noreferrer">
-                            <Button size="sm" variant="ghost" className="h-7 text-xs px-2" title={`Create a new ${mod.shortName} estimate in a new tab`}>
-                              <ExternalLink className="w-3 h-3" />
-                            </Button>
-                          </a>
-                        </div>
-                      </div>
+                        <span className={`mt-auto text-xs font-semibold ${mod.colors.text} flex items-center gap-1`}>
+                          {isAdding ? (
+                            <><Loader2 className="w-3 h-3 animate-spin" /> Creating…</>
+                          ) : (
+                            <><Plus className="w-3 h-3" /> Add Section</>
+                          )}
+                        </span>
+                      </button>
                     );
                   })}
+                </div>
+                <div className="mt-3 flex items-start gap-2 p-2.5 bg-indigo-50 border border-indigo-200 rounded-lg">
+                  <Info className="w-4 h-4 text-indigo-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-indigo-900">
+                    Each section is a real estimate in that module — built with its full estimator,
+                    all its formulas, inventories, and settings. Edit a section any time; totals here
+                    update live whenever a section is saved.
+                  </p>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Linked estimates */}
+            {/* Sections */}
             <Card className="bg-white border-0 shadow-sm">
               <CardHeader className="border-b border-slate-100">
-                <CardTitle className="text-lg">Linked Estimates ({project.line_items.length})</CardTitle>
+                <CardTitle className="text-lg">Estimate Sections ({project.line_items.length})</CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
                 {project.line_items.length === 0 ? (
                   <p className="text-sm text-slate-500 py-6 text-center">
-                    Nothing attached yet — use the module cards above to attach saved estimates.
+                    No sections yet — name the project above, then click a module to start building.
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -251,7 +368,8 @@ export default function NewAllInOneEstimate() {
                       <LinkedEstimateRow
                         key={`${item.module_key}-${item.project_id}-${idx}`}
                         item={item}
-                        onRemove={() => removeItem(idx)}
+                        onEdit={() => handleEditSection(item)}
+                        onRemove={() => handleRemoveSection(idx)}
                       />
                     ))}
                   </div>
@@ -270,15 +388,6 @@ export default function NewAllInOneEstimate() {
           </div>
         </div>
       </div>
-
-      {pickerModule && (
-        <EstimatePickerDialog
-          module={pickerModule}
-          excludeIds={project.line_items.filter((li) => li.module_key === pickerModule.key).map((li) => li.project_id)}
-          onPick={handlePick}
-          onClose={() => setPickerModule(null)}
-        />
-      )}
     </div>
   );
 }
