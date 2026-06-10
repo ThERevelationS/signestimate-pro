@@ -729,20 +729,23 @@ export default function BeautifyCanvas({ dataUrl, foundationItems, onChange }) {
         </div>
       </div>
 
-      {/* Right Canvas Area */}
-      <div className="flex-1 border border-slate-300 shadow-inner rounded-xl overflow-hidden bg-slate-100 relative min-h-[500px] lg:min-h-0 flex justify-center items-center">
+      {/* Right Canvas Area — width-driven square that scales with the window.
+          The canvas keeps its 1024px internal resolution; CSS sizes it, and
+          getMousePos() already converts via getBoundingClientRect, so drawing
+          stays accurate at every screen size / aspect ratio. */}
+      <div className="flex-1 min-w-0 border border-slate-300 shadow-inner rounded-xl overflow-hidden bg-slate-100 relative p-2 flex justify-center items-start">
         <canvas 
           ref={bgCanvasRef} 
           width={CANVAS_SIZE} 
           height={CANVAS_SIZE} 
           className="hidden" 
         />
-        <div className="relative w-full h-full max-w-full max-h-full aspect-square flex justify-center items-center">
+        <div className="relative w-full aspect-square" style={{ maxWidth: "min(100%, 80vh)" }}>
             <canvas
               ref={displayCanvasRef}
               width={CANVAS_SIZE}
               height={CANVAS_SIZE}
-              className="w-full h-full block touch-none object-fill"
+              className="w-full h-full block touch-none"
               style={{ 
                  cursor: tool === 'polygon' ? 'crosshair' : 'crosshair',
               }}

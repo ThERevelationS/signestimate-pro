@@ -29,16 +29,27 @@ export default function EstimatorSectionPanel({ item, onClose }) {
           <ChevronUp className="w-3 h-3 mr-1" /> Collapse Section
         </Button>
       </div>
-      <Suspense
-        fallback={
-          <div className="p-16 flex items-center justify-center gap-3 text-slate-600">
-            <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
-            Loading {mod.shortName} estimator…
-          </div>
-        }
-      >
-        <Page key={item.project_id} />
-      </Suspense>
+      {/* Width unlock: embedded estimator pages center themselves with
+          max-w-* containers — inside the All-In-One they get the FULL width
+          of the page so nothing is condensed, at every resolution. */}
+      <div id="aio-embed">
+        <style>{`
+          #aio-embed .max-w-7xl, #aio-embed .max-w-6xl, #aio-embed .max-w-5xl,
+          #aio-embed .max-w-4xl, #aio-embed .max-w-\\[120rem\\], #aio-embed .max-w-screen-2xl {
+            max-width: none !important;
+          }
+        `}</style>
+        <Suspense
+          fallback={
+            <div className="p-16 flex items-center justify-center gap-3 text-slate-600">
+              <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+              Loading {mod.shortName} estimator…
+            </div>
+          }
+        >
+          <Page key={item.project_id} />
+        </Suspense>
+      </div>
     </div>
   );
 }

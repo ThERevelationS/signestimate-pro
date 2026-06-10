@@ -28,6 +28,17 @@ export default function AllInOneFormulas() {
         </p>
       </div>
 
+      <div className="bg-slate-800 text-white p-4 rounded-lg">
+        <h4 className="font-medium mb-2">Cost Summary / Customer View Formulas</h4>
+        <div className="font-mono text-sm space-y-1">
+          <p>Subtotal = Grand Total (Σ section totals)</p>
+          <p>Tax = Subtotal × (tax_percent ÷ 100)</p>
+          <p>Total = Subtotal + Tax</p>
+          <p>Deposit Due = Total × (deposit_percent ÷ 100)</p>
+          <p>Module Share % = module subtotal ÷ Grand Total × 100</p>
+        </div>
+      </div>
+
       <div>
         <h4 className="font-semibold text-slate-900 mb-3">Per-Module Total Sources</h4>
         <p className="text-sm text-slate-600 mb-3">
@@ -67,12 +78,15 @@ export default function AllInOneFormulas() {
           <b>Live sync:</b> section totals refresh from the source sub-estimates every time the
           combined estimate is opened, update in REAL TIME via entity subscriptions while it's
           open, and re-sync when the tab regains focus — refreshed totals are also persisted so
-          the saved record never goes stale. Project info (client, estimate #, hyperlink) is
-          shared — saving the combined estimate pushes it to every built section. Removing an
+          the saved record never goes stale. Project info (client, estimate #, hyperlink, site
+          address) is entered ONCE on the Project Details tab — it auto-fills every new section
+          and is re-pushed to all sections on every save. Removing an
           owned section (or deleting the combined
           estimate) also deletes its underlying sub-estimate. New estimator modules added to{" "}
-          <span className="font-mono">estimatorRegistry.js</span> appear in this table and in the
-          Build Sections grid automatically.
+          <span className="font-mono">estimatorRegistry.js</span> appear in this table, in the
+          Build tab, and in the combined Cost Summary / Bill of Materials automatically — their
+          summary breakdowns and BOM lines come from the registry's breakdownPairs /
+          detailArrays definitions.
         </p>
       </div>
     </div>

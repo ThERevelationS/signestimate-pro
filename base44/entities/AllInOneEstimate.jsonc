@@ -1,7 +1,7 @@
 {
   "name": "AllInOneEstimate",
   "type": "object",
-  "description": "A multifaceted estimate BUILT from sections. Each section is a dedicated sub-estimate created by (and owned by) this estimate in its module's own entity, edited with that module's full estimator. Totals live-sync from the source projects via real-time subscriptions and refresh-on-open. module_key values match components/allInOne/estimatorRegistry.js.",
+  "description": "A multifaceted estimate BUILT from sections. Each section is a dedicated sub-estimate created by (and owned by) this estimate in its module's own entity, edited with that module's full estimator INLINE on the same page. Project info (client, estimate #, hyperlink, site address) is shared down to every owned section automatically. Totals live-sync from the source projects via real-time subscriptions and refresh-on-open. module_key values match components/allInOne/estimatorRegistry.js.",
   "properties": {
     "project_name": {
       "type": "string"
@@ -14,6 +14,33 @@
     },
     "hyperlink": {
       "type": "string"
+    },
+    "site_address": {
+      "type": "string",
+      "description": "Job site address \u2014 shared down to sections whose module supports it (e.g. Channel Letters, Sign Maintenance)."
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "string"
+    },
+    "contact_phone": {
+      "type": "string"
+    },
+    "target_install_date": {
+      "type": "string",
+      "description": "Target install/completion date (YYYY-MM-DD)."
+    },
+    "tax_percent": {
+      "type": "number",
+      "default": 0,
+      "description": "Sales tax % applied in the Customer View (tax = subtotal \u00d7 tax%)."
+    },
+    "deposit_percent": {
+      "type": "number",
+      "default": 50,
+      "description": "Deposit % shown in the Customer View (deposit = total \u00d7 deposit%)."
     },
     "status": {
       "type": "string",
@@ -55,6 +82,10 @@
           },
           "linked_date": {
             "type": "string"
+          },
+          "updated_date_snapshot": {
+            "type": "string",
+            "description": "Last-known updated_date of the source sub-estimate."
           }
         }
       }
