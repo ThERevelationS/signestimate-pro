@@ -9,6 +9,7 @@ import {
   ESTIMATOR_MODULES, ESTIMATOR_MODULES_BY_KEY, getModuleBreakdown,
 } from "./estimatorRegistry";
 import { downloadCSV } from "./aioExport";
+import { computeQuote, quoteWaterfallRows } from "./aioPricing";
 
 // SINGLE POINT cost summary — aggregates every section's cost components
 // (pulled live from the source sub-estimates) into one combined view.
@@ -38,11 +39,8 @@ export default function AllInOneCostSummaryTab({ project, sourceProjects, grandT
   );
   const avg = lineItems.length > 0 ? grandTotal / lineItems.length : 0;
 
-  const taxPct = Number(project.tax_percent) || 0;
-  const tax = grandTotal * (taxPct / 100);
-  const totalWithTax = grandTotal + tax;
-  const depositPct = Number(project.deposit_percent) || 0;
-  const deposit = totalWithTax * (depositPct / 100);
+  const quote = useMemo(() => computeQuote(project), [project]);
+  const waterfall = quoteWaterfallRows(quote);
 
   const exportCSV = () => {
     const rows = [["Section", "Module", "Cost Component", "Amount"]];
@@ -54,9 +52,8 @@ export default function AllInOneCostSummaryTab({ project, sourceProjects, grandT
       });
     });
     rows.push([]);
-    rows.push(["", "", "Subtotal", grandTotal.toFixed(2)]);
-    if (taxPct > 0) rows.push(["", "", `Tax (${taxPct}%)`, tax.toFixed(2)]);
-    rows.push(["", "", "Grand Total", totalWithTax.toFixed(2)]);
+    rows.push(["", "", "Raw sections total", quote.sectionsBase.toFixed(2)]);
+    waterfall.forEach((r) => rows.push(["", "", r.label, r.amount.toFixed(2)]));
     downloadCSV(`${project.project_name || "estimate"}-cost-summary.csv`, rows);
   };
 
@@ -118,10 +115,22 @@ export default function AllInOneCostSummaryTab({ project, sourceProjects, grandT
                 </div>
               ))}
               <div className="border-t pt-2 mt-2 space-y-1">
-                <div className="flex justify-between font-semibold"><span>Subtotal</span><span className="tabular-nums">{fmtCurrency(grandTotal)}</span></div>
-                {taxPct > 0 && <div className="flex justify-between text-slate-600"><span>Tax ({taxPct}%)</span><span className="tabular-nums">{fmtCurrency(tax)}</span></div>}
-                <div className="flex justify-between font-bold text-lg"><span>Grand Total</span><span className="text-green-600 tabular-nums">{fmtCurrency(totalWithTax)}</span></div>
-                {depositPct > 0 && <div className="flex justify-between text-indigo-700 text-sm"><span>Deposit due ({depositPct}%)</span><span className="tabular-nums">{fmtCurrency(deposit)}</span></div>}
+                {waterfall.map((r, i) => (
+                  <div
+                    key={i}
+                    className={`flex justify-between ${
+                      r.kind === "total" ? "font-bold text-lg"
+                      : r.kind === "subtotal" ? "font-semibold"
+                      : r.kind === "deposit" || r.kind === "balance" ? "text-indigo-700 text-sm"
+                      : "text-slate-600 text-sm"
+                    }`}
+                  >
+                    <span>{r.label}</span>
+                    <span className={`tabular-nums ${r.kind === "total" ? "text-green-600" : r.kind === "discount" ? "text-emerald-600" : ""}`}>
+                      {fmtCurrency(r.amount)}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           </CardContent>

@@ -1,7 +1,7 @@
 {
   "name": "AllInOneEstimate",
   "type": "object",
-  "description": "A multifaceted estimate BUILT from sections. Each section is a dedicated sub-estimate created by (and owned by) this estimate in its module's own entity, edited with that module's full estimator INLINE on the same page. Project info (client, estimate #, hyperlink, site address) is shared down to every owned section automatically. Totals live-sync from the source projects via real-time subscriptions and refresh-on-open. module_key values match components/allInOne/estimatorRegistry.js.",
+  "description": "A multifaceted estimate BUILT from sections. Each section is a dedicated sub-estimate created by (and owned by) this estimate in its module's own entity, edited with that module's full estimator INLINE on the same page. Project info (client, estimate #, hyperlink, site address) is shared down to every owned section automatically. Totals live-sync from the source projects via real-time subscriptions and refresh-on-open. Customer pricing waterfall (per-section adjustments \u2192 discount \u2192 contingency \u2192 fees \u2192 tax \u2192 deposit) is computed by components/allInOne/aioPricing.js. module_key values match components/allInOne/estimatorRegistry.js.",
   "properties": {
     "project_name": {
       "type": "string"
@@ -11,6 +11,10 @@
     },
     "estimate_number": {
       "type": "string"
+    },
+    "po_number": {
+      "type": "string",
+      "description": "Customer purchase order number, shown on the customer quote."
     },
     "hyperlink": {
       "type": "string"
@@ -32,21 +36,89 @@
       "type": "string",
       "description": "Target install/completion date (YYYY-MM-DD)."
     },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "normal",
+        "high",
+        "rush"
+      ],
+      "default": "normal"
+    },
+    "tags": {
+      "type": "string",
+      "description": "Comma-separated tags for filtering/search (e.g. 'pylon, rebrand, phase 1')."
+    },
     "tax_percent": {
       "type": "number",
       "default": 0,
-      "description": "Sales tax % applied in the Customer View (tax = subtotal \u00d7 tax%)."
+      "description": "Sales tax % \u2014 tax = taxable base \u00d7 tax%."
     },
     "deposit_percent": {
       "type": "number",
       "default": 50,
-      "description": "Deposit % shown in the Customer View (deposit = total \u00d7 deposit%)."
+      "description": "Deposit % \u2014 deposit = quote total \u00d7 deposit%."
+    },
+    "discount_percent": {
+      "type": "number",
+      "default": 0,
+      "description": "Project-level discount % applied to the adjusted sections subtotal."
+    },
+    "contingency_percent": {
+      "type": "number",
+      "default": 0,
+      "description": "Contingency % applied AFTER discount: contingency = (subtotal \u2212 discount) \u00d7 contingency%."
+    },
+    "shipping_fee": {
+      "type": "number",
+      "default": 0,
+      "description": "Flat project-level shipping/freight fee added before tax."
+    },
+    "permit_fee": {
+      "type": "number",
+      "default": 0,
+      "description": "Flat project-level permit/admin fee added before tax."
+    },
+    "quote_valid_days": {
+      "type": "number",
+      "default": 30,
+      "description": "How many days the customer quote stays valid."
+    },
+    "payment_terms": {
+      "type": "string",
+      "description": "Payment terms text shown on the customer quote."
+    },
+    "scope_inclusions": {
+      "type": "string",
+      "description": "Newline-separated list of what's INCLUDED \u2014 rendered as bullets on the customer quote."
+    },
+    "scope_exclusions": {
+      "type": "string",
+      "description": "Newline-separated list of what's EXCLUDED \u2014 rendered as bullets on the customer quote."
+    },
+    "hide_section_prices": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true the customer quote shows ONE bundled project price instead of per-section pricing."
+    },
+    "company_name": {
+      "type": "string",
+      "description": "Your company name shown in the customer quote header."
+    },
+    "company_phone": {
+      "type": "string"
+    },
+    "company_email": {
+      "type": "string"
     },
     "status": {
       "type": "string",
       "enum": [
         "draft",
         "calculated",
+        "sent",
+        "approved",
         "archived"
       ],
       "default": "draft"
@@ -75,6 +147,33 @@
             "default": 0,
             "description": "Last-known total of the sub-estimate."
           },
+          "adjustment_percent": {
+            "type": "number",
+            "default": 0,
+            "description": "Per-section price adjustment %. Positive = markup, negative = discount. adjusted = total \u00d7 (1 + adj%/100)."
+          },
+          "section_status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "complete"
+            ],
+            "default": "in_progress",
+            "description": "Estimating workflow status of this section."
+          },
+          "section_note": {
+            "type": "string",
+            "description": "Internal note about this section (not shown to the customer)."
+          },
+          "customer_description": {
+            "type": "string",
+            "description": "Customer-facing description shown under the section on the quote."
+          },
+          "include_in_customer": {
+            "type": "boolean",
+            "default": true,
+            "description": "When false, this section's price is bundled into a single 'Additional project scope' quote line instead of being listed."
+          },
           "owned": {
             "type": "boolean",
             "default": false,
@@ -93,7 +192,12 @@
     "total_cost": {
       "type": "number",
       "default": 0,
-      "description": "Grand total = sum of all section totals."
+      "description": "Sum of raw section totals (before adjustments/discount/tax)."
+    },
+    "quote_total": {
+      "type": "number",
+      "default": 0,
+      "description": "Customer-facing quote total after the full pricing waterfall (adjustments, discount, contingency, fees, tax)."
     },
     "notes": {
       "type": "string"

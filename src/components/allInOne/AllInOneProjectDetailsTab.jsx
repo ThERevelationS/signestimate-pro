@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Share2, MapPin, User, Receipt } from "lucide-react";
+import { Sparkles, Share2, MapPin, User, Receipt, Flag } from "lucide-react";
 
 // Single source of truth for project info. These details auto-fill every
 // section created in the Build tab and are pushed to all sections on save —
@@ -63,11 +63,11 @@ export default function AllInOneProjectDetailsTab({ project, updateField }) {
             </div>
           </div>
           <div>
-            <Label>Hyperlink</Label>
+            <Label>Customer PO #</Label>
             <Input
-              value={project.hyperlink || ""}
-              onChange={(e) => updateField("hyperlink", e.target.value)}
-              placeholder="Optional reference link"
+              value={project.po_number || ""}
+              onChange={(e) => updateField("po_number", e.target.value)}
+              placeholder="Purchase order (shown on quote)"
             />
           </div>
           <div className="md:col-span-2">
@@ -94,6 +94,35 @@ export default function AllInOneProjectDetailsTab({ project, updateField }) {
             <Label>Target Install Date</Label>
             <Input type="date" value={project.target_install_date || ""} onChange={(e) => updateField("target_install_date", e.target.value)} />
           </div>
+          <div>
+            <Label className="flex items-center gap-1"><Flag className="w-3.5 h-3.5" /> Priority</Label>
+            <Select value={project.priority || "normal"} onValueChange={(v) => updateField("priority", v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="rush">Rush</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Tags</Label>
+            <Input
+              value={project.tags || ""}
+              onChange={(e) => updateField("tags", e.target.value)}
+              placeholder="comma, separated, tags"
+            />
+            <p className="text-xs text-slate-400 mt-1">Searchable from the projects list</p>
+          </div>
+          <div className="md:col-span-2">
+            <Label>Hyperlink</Label>
+            <Input
+              value={project.hyperlink || ""}
+              onChange={(e) => updateField("hyperlink", e.target.value)}
+              placeholder="Optional reference link"
+            />
+          </div>
           <div className="md:col-span-2">
             <Label>Notes</Label>
             <Textarea
@@ -112,6 +141,9 @@ export default function AllInOneProjectDetailsTab({ project, updateField }) {
             <CardTitle className="text-lg flex items-center gap-2">
               <Receipt className="w-5 h-5 text-indigo-600" /> Pricing Settings
             </CardTitle>
+            <p className="text-xs text-slate-500">
+              Applied in order: adjustments → discount → contingency → fees → tax
+            </p>
           </CardHeader>
           <CardContent className="pt-4 space-y-4">
             <div>
@@ -121,28 +153,65 @@ export default function AllInOneProjectDetailsTab({ project, updateField }) {
                 <SelectContent>
                   <SelectItem value="draft">Draft</SelectItem>
                   <SelectItem value="calculated">Calculated</SelectItem>
+                  <SelectItem value="sent">Sent to Customer</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
                   <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Sales Tax %</Label>
-              <Input
-                type="number" min="0" step="0.1"
-                value={project.tax_percent ?? 0}
-                onChange={(e) => updateField("tax_percent", parseFloat(e.target.value) || 0)}
-              />
-              <p className="text-xs text-slate-400 mt-1">Applied in the Customer View: tax = subtotal × tax%</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Discount %</Label>
+                <Input
+                  type="number" min="0" step="0.5"
+                  value={project.discount_percent ?? 0}
+                  onChange={(e) => updateField("discount_percent", parseFloat(e.target.value) || 0)}
+                />
+              </div>
+              <div>
+                <Label>Contingency %</Label>
+                <Input
+                  type="number" min="0" step="0.5"
+                  value={project.contingency_percent ?? 0}
+                  onChange={(e) => updateField("contingency_percent", parseFloat(e.target.value) || 0)}
+                />
+              </div>
+              <div>
+                <Label>Shipping Fee $</Label>
+                <Input
+                  type="number" min="0" step="1"
+                  value={project.shipping_fee ?? 0}
+                  onChange={(e) => updateField("shipping_fee", parseFloat(e.target.value) || 0)}
+                />
+              </div>
+              <div>
+                <Label>Permit Fee $</Label>
+                <Input
+                  type="number" min="0" step="1"
+                  value={project.permit_fee ?? 0}
+                  onChange={(e) => updateField("permit_fee", parseFloat(e.target.value) || 0)}
+                />
+              </div>
+              <div>
+                <Label>Sales Tax %</Label>
+                <Input
+                  type="number" min="0" step="0.1"
+                  value={project.tax_percent ?? 0}
+                  onChange={(e) => updateField("tax_percent", parseFloat(e.target.value) || 0)}
+                />
+              </div>
+              <div>
+                <Label>Deposit %</Label>
+                <Input
+                  type="number" min="0" max="100" step="1"
+                  value={project.deposit_percent ?? 50}
+                  onChange={(e) => updateField("deposit_percent", parseFloat(e.target.value) || 0)}
+                />
+              </div>
             </div>
-            <div>
-              <Label>Deposit %</Label>
-              <Input
-                type="number" min="0" max="100" step="1"
-                value={project.deposit_percent ?? 50}
-                onChange={(e) => updateField("deposit_percent", parseFloat(e.target.value) || 0)}
-              />
-              <p className="text-xs text-slate-400 mt-1">Deposit due = total × deposit%</p>
-            </div>
+            <p className="text-xs text-slate-400">
+              Per-section adjustment % is set on each section row in the Build tab (the % button).
+            </p>
           </CardContent>
         </Card>
 

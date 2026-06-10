@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Loader2, Radio, Search } from "lucide-react";
 import { ESTIMATOR_MODULES, ESTIMATOR_MODULES_BY_KEY } from "./estimatorRegistry";
+import { adjustedSectionTotal } from "./aioPricing";
 import LinkedEstimateRow from "./LinkedEstimateRow";
 
 // Build tab — module launcher cards + the live sections list with search,
@@ -12,8 +13,9 @@ import LinkedEstimateRow from "./LinkedEstimateRow";
 export default function AllInOneBuildTab({
   project, addingKey, grandTotal, openSection,
   onAddSection, onToggleSection, onRemoveSection, onRenameSection, onDuplicateSection,
-  editorSlot,
+  onUpdateSection, editorSlot,
 }) {
+  const completedCount = project.line_items.filter((li) => li.section_status === "complete").length;
   const [search, setSearch] = useState("");
   const [moduleFilter, setModuleFilter] = useState("all");
   const [sortBy, setSortBy] = useState("added");
@@ -92,6 +94,19 @@ export default function AllInOneBuildTab({
               </span>
             )}
           </div>
+          {project.line_items.length > 0 && (
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 transition-all duration-300"
+                  style={{ width: `${(completedCount / project.line_items.length) * 100}%` }}
+                />
+              </div>
+              <span className="text-xs text-slate-500 flex-shrink-0">
+                {completedCount}/{project.line_items.length} sections complete
+              </span>
+            </div>
+          )}
           {project.line_items.length > 1 && (
             <div className="flex flex-wrap gap-2">
               <div className="relative flex-1 min-w-[180px]">
@@ -132,11 +147,12 @@ export default function AllInOneBuildTab({
                   key={`${item.module_key}-${item.project_id}-${idx}`}
                   item={item}
                   isOpen={openSection?.project_id === item.project_id}
-                  percent={grandTotal > 0 ? ((Number(item.total_snapshot) || 0) / grandTotal) * 100 : 0}
+                  percent={grandTotal > 0 ? (adjustedSectionTotal(item) / grandTotal) * 100 : 0}
                   onEdit={() => onToggleSection(item)}
                   onRemove={() => onRemoveSection(idx)}
                   onRename={(name) => onRenameSection(idx, name)}
                   onDuplicate={() => onDuplicateSection(idx)}
+                  onUpdate={(patch) => onUpdateSection(idx, patch)}
                 />
               ))}
             </div>

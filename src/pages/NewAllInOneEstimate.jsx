@@ -15,6 +15,7 @@ import {
   getModuleTotal,
   buildSharedPayload,
 } from "@/components/allInOne/estimatorRegistry";
+import { computeQuote } from "@/components/allInOne/aioPricing";
 import EstimatorSectionPanel from "@/components/allInOne/EstimatorSectionPanel";
 import AllInOneProjectDetailsTab from "@/components/allInOne/AllInOneProjectDetailsTab";
 import AllInOneBuildTab from "@/components/allInOne/AllInOneBuildTab";
@@ -26,8 +27,23 @@ const EMPTY_PROJECT = {
   project_name: "",
   client_name: "",
   estimate_number: "",
+  po_number: "",
   hyperlink: "",
   site_address: "",
+  priority: "normal",
+  tags: "",
+  discount_percent: 0,
+  contingency_percent: 0,
+  shipping_fee: 0,
+  permit_fee: 0,
+  quote_valid_days: 30,
+  payment_terms: "",
+  scope_inclusions: "",
+  scope_exclusions: "",
+  hide_section_prices: false,
+  company_name: "",
+  company_phone: "",
+  company_email: "",
   contact_name: "",
   contact_email: "",
   contact_phone: "",
@@ -160,6 +176,7 @@ export default function NewAllInOneEstimate() {
   }, [refreshTotals]);
 
   const grandTotal = useMemo(() => sumItems(project.line_items), [project.line_items]);
+  const quote = useMemo(() => computeQuote(project), [project]);
 
   const updateField = (field, value) => {
     setDirty(true);
@@ -172,6 +189,7 @@ export default function NewAllInOneEstimate() {
       ...projectRef.current,
       line_items: stripUi(items),
       total_cost: sumItems(items),
+      quote_total: computeQuote({ ...projectRef.current, line_items: items }).total,
       status: items.length > 0 && projectRef.current.status === "draft" ? "calculated" : projectRef.current.status,
     };
     if (editIdRef.current) {
@@ -276,6 +294,15 @@ export default function NewAllInOneEstimate() {
     setProject((prev) => ({ ...prev, line_items: items }));
     projectRef.current = { ...projectRef.current, line_items: items };
     if (editIdRef.current) await persist(items);
+  };
+
+  // Patch a section's metadata (adjustment %, workflow status, notes,
+  // customer description / visibility). Persisted on the next save.
+  const handleUpdateItem = (index, patch) => {
+    setDirty(true);
+    const items = projectRef.current.line_items.map((li, i) => (i === index ? { ...li, ...patch } : li));
+    setProject((prev) => ({ ...prev, line_items: items }));
+    projectRef.current = { ...projectRef.current, line_items: items };
   };
 
   // Rename a section — pushes the new name into the source sub-estimate too.
@@ -383,6 +410,8 @@ export default function NewAllInOneEstimate() {
   const statusColors = {
     draft: "bg-slate-100 text-slate-700",
     calculated: "bg-emerald-100 text-emerald-800",
+    sent: "bg-blue-100 text-blue-800",
+    approved: "bg-green-100 text-green-800",
     archived: "bg-amber-100 text-amber-800",
   };
 
@@ -406,8 +435,11 @@ export default function NewAllInOneEstimate() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="text-right mr-2">
-              <p className="text-[10px] uppercase text-slate-400 font-medium">Grand Total</p>
-              <p className="text-xl font-bold text-green-600 tabular-nums">{fmtCurrency(grandTotal)}</p>
+              <p className="text-[10px] uppercase text-slate-400 font-medium">Quote Total</p>
+              <p className="text-xl font-bold text-green-600 tabular-nums">{fmtCurrency(quote.total)}</p>
+              {Math.round(quote.total) !== Math.round(grandTotal) && (
+                <p className="text-[10px] text-slate-400 tabular-nums">sections {fmtCurrency(grandTotal)}</p>
+              )}
             </div>
             <Button
               variant="outline"
@@ -453,7 +485,7 @@ export default function NewAllInOneEstimate() {
             <AllInOneBuildTab
               project={project}
               addingKey={addingKey}
-              grandTotal={grandTotal}
+              grandTotal={quote.subtotal}
               openSection={openSection}
               onAddSection={handleAddSection}
               onToggleSection={(item) =>
@@ -462,6 +494,7 @@ export default function NewAllInOneEstimate() {
               onRemoveSection={handleRemove}
               onRenameSection={handleRename}
               onDuplicateSection={handleDuplicate}
+              onUpdateSection={handleUpdateItem}
               editorSlot={
                 openSection ? (
                   <div
@@ -484,7 +517,12 @@ export default function NewAllInOneEstimate() {
           </TabsContent>
 
           <TabsContent value="customer" forceMount className="mt-5 data-[state=inactive]:hidden">
-            <AllInOneCustomerViewTab project={project} grandTotal={grandTotal} />
+            <AllInOneCustomerViewTab
+              project={project}
+              grandTotal={grandTotal}
+              updateField={updateField}
+              onUpdateItem={handleUpdateItem}
+            />
           </TabsContent>
         </Tabs>
       </div>

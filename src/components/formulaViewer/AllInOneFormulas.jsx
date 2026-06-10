@@ -29,14 +29,30 @@ export default function AllInOneFormulas() {
       </div>
 
       <div className="bg-slate-800 text-white p-4 rounded-lg">
-        <h4 className="font-medium mb-2">Cost Summary / Customer View Formulas</h4>
+        <h4 className="font-medium mb-2">Customer Pricing Waterfall (aioPricing.js)</h4>
+        <p className="text-xs text-slate-300 mb-2">
+          Used by the Cost Summary tab, Customer View quote, exports and the saved quote_total —
+          applied in this exact order:
+        </p>
         <div className="font-mono text-sm space-y-1">
-          <p>Subtotal = Grand Total (Σ section totals)</p>
-          <p>Tax = Subtotal × (tax_percent ÷ 100)</p>
-          <p>Total = Subtotal + Tax</p>
-          <p>Deposit Due = Total × (deposit_percent ÷ 100)</p>
-          <p>Module Share % = module subtotal ÷ Grand Total × 100</p>
+          <p>Adjusted Section = section total × (1 + adjustment% ÷ 100)</p>
+          <p>Subtotal = Σ adjusted sections</p>
+          <p>Discount = Subtotal × discount%</p>
+          <p>Contingency = (Subtotal − Discount) × contingency%</p>
+          <p>Fees = shipping fee + permit fee</p>
+          <p>Taxable Base = Subtotal − Discount + Contingency + Fees</p>
+          <p>Tax = Taxable Base × tax%</p>
+          <p>Quote Total = Taxable Base + Tax</p>
+          <p>Deposit Due = Quote Total × deposit%</p>
+          <p>Balance = Quote Total − Deposit Due</p>
+          <p>Module Share % = module subtotal ÷ sections total × 100</p>
         </div>
+        <p className="text-xs text-slate-300 mt-2">
+          Per-section adjustment % is set on each section row (Build tab). On the customer quote,
+          sections hidden from display are bundled into one "Additional project scope" line, and
+          "Bundle into one price" shows a single line equal to the adjusted Subtotal — totals are
+          identical either way.
+        </p>
       </div>
 
       <div>
