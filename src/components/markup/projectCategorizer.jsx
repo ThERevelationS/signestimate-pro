@@ -63,16 +63,23 @@ export function categorizeChannelLetterProject(p) {
   });
 
   // 1b. Letter-level fees
+  // Delivery doesn't apply when every product is dimensional (matches lettersCalculator)
+  const onlyDimensional = (p.letter_purchases || []).length > 0 &&
+    (p.letter_purchases || []).every(lp => lp.letter_type === 'dimensional_letters');
   const letterFees =
-    num(p.letters_delivery_fee) + num(p.letters_design_fee) +
+    (onlyDimensional ? 0 : num(p.letters_delivery_fee)) + num(p.letters_design_fee) +
     num(p.letters_install_supplies_fee) + num(p.letters_permitting_fee) +
     num(p.letters_other_fee);
   if (letterFees > 0) {
     lines.push({ module: 'channel_letter', label: 'Letter Fees (delivery/design/permit/etc.)', cost: letterFees, category_key: 'outsourced_fab' });
   }
 
-  // 2. Installation labor
-  const installLabor = num(p.labor_cost) + num(p.total_personnel_cost);
+  // 2. Installation labor — when a crew is assigned, personnel pricing replaces
+  // the flat-rate labor (labor_cost_in_subtotal = 0), so labor is never double-counted.
+  const baseLabor = p.labor_cost_in_subtotal !== undefined
+    ? num(p.labor_cost_in_subtotal)
+    : num(p.labor_cost);
+  const installLabor = baseLabor + num(p.total_personnel_cost);
   if (installLabor > 0) {
     lines.push({ module: 'channel_letter', label: 'Installation Labor', cost: installLabor, category_key: 'inhouse_labor' });
   }
@@ -87,6 +94,12 @@ export function categorizeChannelLetterProject(p) {
   const eqCost = num(p.total_equipment_cost);
   if (eqCost > 0) {
     lines.push({ module: 'channel_letter', label: 'Equipment Rental', cost: eqCost, category_key: 'outsourced_services' });
+  }
+
+  // 5. Travel — was previously missing, so categorized lines didn't sum to the subtotal
+  const travelCost = num(p.total_travel_cost);
+  if (travelCost > 0) {
+    lines.push({ module: 'channel_letter', label: 'Travel & Fuel', cost: travelCost, category_key: 'outsourced_services' });
   }
 
   return lines;

@@ -29,7 +29,7 @@ import PhotoEstimateModal from "@/components/channelLetterInstall/PhotoEstimateM
 import AIInstallScopeModal from "@/components/channelLetterInstall/AIInstallScopeModal";
 import ConfirmModal from "@/components/channelLetterInstall/ConfirmModal";
 import AddressAutocomplete from "@/components/channelLetterInstall/AddressAutocomplete";
-import { suggestEquipmentForProject, selectedEquipmentFromInventory, suggestPersonnelForProject } from "@/components/channelLetterInstall/equipmentSuggester";
+import { suggestEquipmentForProject, selectedEquipmentFromInventory, suggestPersonnelForProject, suggestCrewSize } from "@/components/channelLetterInstall/equipmentSuggester";
 import {
   calcLineItem,
   calcProjectTotals,
@@ -287,7 +287,8 @@ export default function NewChannelLetterInstallation() {
     const projectLaborHours = recalculated.labor_hours || 0;
     const suggested = suggestEquipmentForProject(project.items, equipmentInventory);
     if (suggested.length === 0) return;
-    const rows = suggested.map((inv) => selectedEquipmentFromInventory(inv, projectLaborHours));
+    const crewSize = (project.personnel || []).length || suggestCrewSize(project.items);
+    const rows = suggested.map((inv) => selectedEquipmentFromInventory(inv, projectLaborHours, crewSize));
     setProject((prev) => ({ ...prev, selected_equipment: rows }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maxInstallHeight, equipmentInventory, hasLoaded]);
@@ -544,7 +545,7 @@ export default function NewChannelLetterInstallation() {
                       value="items"
                       icon={ListChecks}
                       label="Install"
-                      amount={(recalculated.labor_cost || 0) + (recalculated.total_materials_cost || 0)}
+                      amount={(recalculated.labor_cost_in_subtotal ?? recalculated.labor_cost ?? 0) + (recalculated.total_materials_cost || 0)}
                       count={recalculated.items.length}
                     />
                   )}
@@ -794,6 +795,7 @@ export default function NewChannelLetterInstallation() {
                     equipmentInventory={equipmentInventory}
                     items={recalculated.items}
                     projectLaborHours={recalculated.labor_hours || 0}
+                    crewSize={(recalculated.personnel || []).length}
                   />
                 </div>
                 <div id="clp-personnel">

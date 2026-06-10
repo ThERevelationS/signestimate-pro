@@ -241,7 +241,11 @@ export const calcLettersTotals = (project, settings) => {
   const purchases = (project.letter_purchases || []).map(p => calcLetterPurchase(p, settings));
   const purchasesTotal = purchases.reduce((s, p) => s + num(p.total_cost), 0);
 
-  const delivery = num(project.letters_delivery_fee);
+  // Delivery / Shipping doesn't apply when EVERY product is dimensional
+  // (fabricated in-house). The UI hides the fee in that case — exclude it
+  // from the math too so the on-screen rollup matches the total.
+  const onlyDimensional = purchases.length > 0 && purchases.every(p => p.letter_type === "dimensional_letters");
+  const delivery = onlyDimensional ? 0 : num(project.letters_delivery_fee);
   const design = num(project.letters_design_fee);
   const supplies = num(project.letters_install_supplies_fee);
   const permitting = num(project.letters_permitting_fee);

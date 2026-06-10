@@ -14,6 +14,9 @@ export default function InstallSummaryCard({
 }) {
   const itemsCount = (project.items || []).length;
   const labor = parseFloat(project.labor_cost) || 0;
+  // When a crew is assigned, personnel pricing replaces the flat-rate labor in the subtotal
+  const laborViaCrew = !!project.labor_priced_via_personnel;
+  const laborInSubtotal = laborViaCrew ? 0 : labor;
   const materials = parseFloat(project.total_materials_cost) || 0;
   const equipment = parseFloat(project.total_equipment_cost) || 0;
   const personnel = parseFloat(project.total_personnel_cost) || 0;
@@ -23,7 +26,7 @@ export default function InstallSummaryCard({
   const total = parseFloat(project.total_cost) || 0;
 
   const segments = [
-    { label: "Labor",      value: labor,     color: "bg-purple-400" },
+    { label: "Labor",      value: laborInSubtotal, color: "bg-purple-400" },
     { label: "Materials",  value: materials, color: "bg-emerald-400" },
     { label: "Equipment",  value: equipment, color: "bg-amber-400" },
     { label: "Personnel",  value: personnel, color: "bg-sky-400" },
@@ -52,13 +55,21 @@ export default function InstallSummaryCard({
       <CardContent className="space-y-4 pt-2 pb-5 px-5">
         {/* Cost rollup rows */}
         <div className="space-y-1.5 text-sm">
-          <Row label={`Labor (${(project.labor_hours || 0).toFixed(2)} hrs)`} value={labor} dot="bg-purple-400" />
+          {!laborViaCrew && (
+            <Row label={`Labor (${(project.labor_hours || 0).toFixed(2)} hrs)`} value={labor} dot="bg-purple-400" />
+          )}
           <Row label="Materials" value={materials} dot="bg-emerald-400" />
           {equipment > 0 && (
             <Row label={`Equipment (${(project.selected_equipment || []).length})`} value={equipment} dot="bg-amber-400" />
           )}
           {personnel > 0 && (
-            <Row label={`Personnel (${(project.personnel || []).length})`} value={personnel} dot="bg-sky-400" />
+            <Row
+              label={laborViaCrew
+                ? `Crew Labor (${(project.personnel || []).length} crew · ${(project.labor_hours || 0).toFixed(2)} hrs)`
+                : `Personnel (${(project.personnel || []).length})`}
+              value={personnel}
+              dot="bg-sky-400"
+            />
           )}
           {travel > 0 && (
             <Row label={`Travel (${(parseFloat(project.travel_miles_round_trip) || 0).toFixed(1)} mi)`} value={travel} dot="bg-orange-400" />

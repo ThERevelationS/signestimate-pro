@@ -10,7 +10,7 @@ import { FormulaSection, FormulaLine } from './FormulaSection';
 //   1. Base minutes (per letter, by size and type)
 //   2. + Thick/hollow walls additive
 //   3. + Parapet additive (roof or drop)
-//   4. × Height multiplier
+//   4. Height — baked into the size × height-bucket × env base rates (no multiplier)
 //   5. × Wall material multiplier
 //   6. × Escort / badging / after-hours / set-hours multipliers
 //   7. + Poor site access severity additive
@@ -110,16 +110,9 @@ export default function ChannelLetterInstallFormulas({ settings }) {
     stepHours += parapetAdd;
   }
 
-  const beforeHeight = stepHours;
-
-  // ---- Step 4: height multiplier ----
-  const h = v.installation_height_feet;
-  let heightMult = 1.0;
-  if (h <= 12) heightMult = parseFloat(settings.install_height_0_12ft) || 1.0;
-  else if (h <= 20) heightMult = parseFloat(settings.install_height_12_20ft) || 1.3;
-  else if (h <= 30) heightMult = parseFloat(settings.install_height_20_30ft) || 1.6;
-  else heightMult = parseFloat(settings.install_height_30plus_ft) || 2.0;
-  stepHours *= heightMult;
+  // ---- Step 4: height — NO multiplier ----
+  // Install height is baked into the per-size base rates (size × height bucket ×
+  // interior/exterior), exactly like the live calculator. No extra multiplier.
 
   // ---- Step 5: wall material multiplier ----
   const wallKey = `install_wall_material_${v.wall_material}_multiplier`;
@@ -162,9 +155,11 @@ export default function ChannelLetterInstallFormulas({ settings }) {
   // LETTERS PURCHASE MATH (mirrors components/channelLetterInstall/lettersCalculator.js)
   // ============================================================
   const lettersBaseTotal = v.letters_unit_cost * v.letters_size_value * v.letters_qty;
+  // Delivery / Shipping is excluded when the product is dimensional (fabricated in-house)
+  const deliveryApplies = v.letter_type !== 'dimensional_letters';
   const lettersSubtotal =
     lettersBaseTotal +
-    v.letters_delivery_fee +
+    (deliveryApplies ? v.letters_delivery_fee : 0) +
     v.letters_design_fee +
     v.letters_install_supplies_fee +
     v.letters_permitting_fee +
@@ -318,7 +313,9 @@ export default function ChannelLetterInstallFormulas({ settings }) {
         </FormulaSection>
 
         <FormulaSection title="Letters Purchase — Fees" color="purple">
-          <FormulaLine label="Delivery" result={`$${v.letters_delivery_fee.toFixed(2)}`} />
+          {deliveryApplies
+            ? <FormulaLine label="Delivery" result={`$${v.letters_delivery_fee.toFixed(2)}`} />
+            : <FormulaLine label="Delivery" result="excluded — dimensional letters are fabricated in-house" />}
           <FormulaLine label="Design" result={`$${v.letters_design_fee.toFixed(2)}`} />
           <FormulaLine label="Install Supplies" result={`$${v.letters_install_supplies_fee.toFixed(2)}`} />
           <FormulaLine label="Permitting" result={`$${v.letters_permitting_fee.toFixed(2)}`} />
@@ -351,8 +348,8 @@ export default function ChannelLetterInstallFormulas({ settings }) {
           </FormulaSection>
         )}
 
-        <FormulaSection title="Step 4: × Height Multiplier" color="purple">
-          <FormulaLine label={`Height ${v.installation_height_feet} ft`} formula={`${beforeHeight.toFixed(3)} × ${heightMult}`} result={`${(beforeHeight * heightMult).toFixed(3)} hrs`} highlight />
+        <FormulaSection title="Step 4: Height — Baked Into Base Rates" color="purple">
+          <FormulaLine label={`Height ${v.installation_height_feet} ft`} result="no multiplier — the size × height-bucket × interior/exterior rate already includes it" />
         </FormulaSection>
 
         <FormulaSection title="Step 5: × Wall Material" color="purple">
@@ -387,6 +384,26 @@ export default function ChannelLetterInstallFormulas({ settings }) {
           <FormulaLine label="Materials Cost" result={`$${v.materials_cost.toFixed(2)}`} />
           <FormulaLine label="Install Total" result={`$${installTotalCost.toFixed(2)}`} highlight />
         </FormulaSection>
+
+        <div className="bg-sky-50 border border-sky-200 rounded p-3 text-xs space-y-1 text-sky-900">
+          <h4 className="font-bold mb-1">Crew & Equipment Logic (UPDATED)</h4>
+          <p><b>Labor vs. Personnel:</b> when a crew is assigned on Crew &amp; Equipment, the
+            personnel rows price the SAME calculated hours (split across the crew at role rates),
+            so crew cost REPLACES the flat-rate Install Labor in the subtotal — labor is never
+            double-counted.</p>
+          <p><b>Crew size suggestion:</b> 3 people when max install height ≥ 40 ft OR 30+ total
+            letters; otherwise 2 (Crew Lead + Installer). Crew hours = total labor hours ÷ crew size.</p>
+          <p><b>Equipment auto-select:</b> a boom flagged "default for height range" wins; otherwise
+            the smallest lift whose max height ≥ install height + its safety margin (default 2 ft).
+            A transport vehicle (owned preferred) is added unless the lift is a boom truck.</p>
+          <p className="font-mono bg-white border border-sky-200 rounded px-2 py-1">
+            on-site clock hours = labor hours ÷ crew size<br/>
+            rental duration: per-hour = ⌈clock hrs⌉ · per-day = ⌈clock hrs ÷ 8⌉ · per-week = ⌈days ÷ 5⌉<br/>
+            boom idle hours default = ⌈clock hrs⌉
+          </p>
+          <p><b>Dimensional + Backer:</b> installs at the dimensional-lettering per-size rates
+            (no electrical time, no poor-electrical bonus).</p>
+        </div>
 
         <div className="bg-amber-50 border border-amber-200 rounded p-3 text-xs space-y-1 text-amber-900">
           <h4 className="font-bold mb-1">Equipment Fuel Costs (NEW)</h4>

@@ -15,6 +15,7 @@ import {
   recalcEquipmentRow,
   durationUnitLabel,
   isOwnedEquipment,
+  suggestCrewSize,
 } from "./equipmentSuggester";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
@@ -25,7 +26,12 @@ export default function EquipmentSelector({
   equipmentInventory = [],
   items = [],
   projectLaborHours = 0,
+  crewSize = 0,
 }) {
+  // On-site crew size — the actual assigned crew wins, otherwise the suggested crew.
+  // Used to convert man-hours into on-site clock time for rental durations.
+  const effectiveCrewSize = crewSize > 0 ? crewSize : suggestCrewSize(items);
+
   const activeInventory = useMemo(
     () => equipmentInventory.filter((e) => e.is_active !== false),
     [equipmentInventory]
@@ -40,7 +46,7 @@ export default function EquipmentSelector({
 
   const handleAdd = (inv) => {
     if (!inv || selectedIds.has(inv.id)) return;
-    const row = selectedEquipmentFromInventory(inv, projectLaborHours);
+    const row = selectedEquipmentFromInventory(inv, projectLaborHours, effectiveCrewSize);
     onChange([...selectedEquipment, row]);
   };
 
@@ -49,7 +55,7 @@ export default function EquipmentSelector({
   const handleAcceptAllSuggestions = () => {
     const toAdd = suggestions
       .filter((s) => !selectedIds.has(s.id))
-      .map((s) => selectedEquipmentFromInventory(s, projectLaborHours));
+      .map((s) => selectedEquipmentFromInventory(s, projectLaborHours, effectiveCrewSize));
     if (toAdd.length === 0) return;
     onChange([...selectedEquipment, ...toAdd]);
   };

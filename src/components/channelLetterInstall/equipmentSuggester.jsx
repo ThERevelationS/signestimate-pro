@@ -49,16 +49,25 @@ export function suggestEquipmentForProject(items = [], inventory = []) {
   if (defaultByRange) {
     suggestions.push(defaultByRange);
   } else {
-    // 2) Fallback — smallest lift that reaches the required height.
-    const lifts = active
+    // 2) Fallback — smallest lift that reaches the required height PLUS its
+    //    vertical safety margin (default 2 ft). A lift whose max height exactly
+    //    equals the install height leaves no working margin.
+    const marginOf = (e) => {
+      const m = parseFloat(e.vertical_reach_safety_margin_feet);
+      return isNaN(m) ? 2 : m;
+    };
+    const allLifts = active
       .filter((e) => LIFT_TYPES.includes(e.equipment_type))
-      .filter((e) => (parseFloat(e.max_height_feet) || 0) >= maxHeight)
       .sort(
         (a, b) =>
           (parseFloat(a.max_height_feet) || 0) -
           (parseFloat(b.max_height_feet) || 0)
       );
-    if (lifts.length > 0) suggestions.push(lifts[0]);
+    let pick = allLifts.find((e) => (parseFloat(e.max_height_feet) || 0) >= maxHeight + marginOf(e));
+    // Relax the margin if nothing clears it — better to suggest the tallest
+    // option that at least reaches the height than to suggest nothing.
+    if (!pick) pick = allLifts.find((e) => (parseFloat(e.max_height_feet) || 0) >= maxHeight);
+    if (pick) suggestions.push(pick);
   }
 
   // 3) Add a vehicle for transport (prefer owned for cost efficiency) —
@@ -80,27 +89,32 @@ export function suggestEquipmentForProject(items = [], inventory = []) {
 
 /**
  * Build a `selected_equipment` row from an inventory equipment record.
- * Sets a sensible default duration based on the pricing mode and project labor hours.
+ * Default duration = ON-SITE clock time (labor hours ÷ crew size) mapped to the
+ * pricing mode — a 3-person crew burns 24 labor-hours in 8 site hours, so the
+ * lift is only rented for 1 day, not 3.
  * For booms, seeds `idle_running_cost_per_hour` and `idle_hours` (defaults to labor hours).
  */
-export function selectedEquipmentFromInventory(inv, projectLaborHours = 0) {
+export function selectedEquipmentFromInventory(inv, projectLaborHours = 0, crewSize = 1) {
   const laborHours = parseFloat(projectLaborHours) || 0;
-  const laborDays = Math.max(1, Math.ceil(laborHours / 8));
+  // Equipment is rented for ON-SITE (clock) time, not man-hours.
+  const crew = Math.max(1, parseInt(crewSize) || 1);
+  const clockHours = laborHours / crew;
+  const clockDays = Math.max(1, Math.ceil(clockHours / 8));
 
   let duration = 1;
   let unitCost = 0;
 
   switch (inv.pricing_mode) {
     case "per_hour":
-      duration = Math.max(1, Math.ceil(laborHours));
+      duration = Math.max(1, Math.ceil(clockHours));
       unitCost = parseFloat(inv.cost_per_hour) || 0;
       break;
     case "per_day":
-      duration = laborDays;
+      duration = clockDays;
       unitCost = parseFloat(inv.cost_per_day) || 0;
       break;
     case "per_week":
-      duration = Math.max(1, Math.ceil(laborDays / 5));
+      duration = Math.max(1, Math.ceil(clockDays / 5));
       unitCost = parseFloat(inv.cost_per_week) || 0;
       break;
     case "per_month":
@@ -120,8 +134,8 @@ export function selectedEquipmentFromInventory(inv, projectLaborHours = 0) {
   // Idle-running fields apply to booms only
   const isBoom = BOOM_TYPES.includes(inv.equipment_type);
   const idleRate = isBoom ? (parseFloat(inv.idle_running_cost_per_hour) || 0) : 0;
-  // Default idle to labor hours rounded up — most installs run the boom continuously
-  const idleHours = isBoom && idleRate > 0 ? Math.max(0, Math.ceil(laborHours)) : 0;
+  // Default idle to on-site clock hours rounded up — most installs run the boom continuously
+  const idleHours = isBoom && idleRate > 0 ? Math.max(0, Math.ceil(clockHours)) : 0;
 
   // Owned equipment never has a delivery / pickup fee.
   const owned = isOwnedEquipment(inv);
@@ -190,15 +204,13 @@ export function durationUnitLabel(pricing_mode) {
 }
 
 /**
- * Suggest an appropriate crew (Crew Lead / Installer / Helper) for a project.
- * Conservative defaults:
- *   - <= 12 ft and < 12 letters → 2 people (Lead + Installer)
- *   - <= 25 ft OR <= 25 letters → 2 people
- *   - taller / bigger jobs       → 3 people (Lead + Installer + Helper)
- *   - very tall (>= 55 ft) AND big (>= 30 letters) → 3 people
- * Total crew hours = project labor hours, divided evenly per person.
+ * Suggested crew size for a project:
+ *   - 3 people when max install height >= 40 ft OR 30+ total letters
+ *   - otherwise 2 (Crew Lead + Installer)
+ * Shared by the personnel suggester AND the equipment duration math so
+ * on-site time assumptions stay consistent.
  */
-export function suggestPersonnelForProject(items = [], projectLaborHours = 0, rateForRole = () => 0) {
+export function suggestCrewSize(items = []) {
   const maxHeight = items.reduce(
     (m, it) => Math.max(m, parseFloat(it.installation_height_feet) || 0),
     0
@@ -207,10 +219,16 @@ export function suggestPersonnelForProject(items = [], projectLaborHours = 0, ra
     (s, it) => s + (parseFloat(it.qty_letters) || 0),
     0
   );
+  return (maxHeight >= 40 || totalLetters >= 30) ? 3 : 2;
+}
 
-  let crewSize = 2; // baseline: Lead + Installer
-  if (maxHeight >= 55 && totalLetters >= 30) crewSize = 3;
-  else if (maxHeight >= 40 || totalLetters >= 30) crewSize = 3;
+/**
+ * Suggest an appropriate crew (Crew Lead / Installer / Helper) for a project.
+ * Crew size comes from suggestCrewSize(); total crew hours = project labor
+ * hours, divided evenly per person.
+ */
+export function suggestPersonnelForProject(items = [], projectLaborHours = 0, rateForRole = () => 0) {
+  const crewSize = suggestCrewSize(items);
 
   const perPersonHours = projectLaborHours && crewSize > 0
     ? +(projectLaborHours / crewSize).toFixed(2)

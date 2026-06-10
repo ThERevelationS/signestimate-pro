@@ -9,6 +9,7 @@ export const TYPE_LABELS = {
   halo_lit: "Halo-Lit",
   raceway: "Raceway",
   dimensional_lettering: "Dimensional Lettering",
+  dimensional_lettering_with_backer: "Dimensional Lettering + Backer",
 };
 
 export const SIZE_LABELS = {
@@ -138,9 +139,16 @@ export const calcLineItem = (item, settings, inventory) => {
     return d + p + e;
   };
 
+  // The "+ backer" variant installs at the same per-size rates as plain
+  // dimensional lettering (no electrical). Normalize for rate lookups —
+  // previously it fell through to medium flush-mount defaults for every size.
+  const rateType = item.installation_type === "dimensional_lettering_with_backer"
+    ? "dimensional_lettering"
+    : item.installation_type;
+
   let baseHours = 0;
 
-  if (item.installation_type === "raceway") {
+  if (rateType === "raceway") {
     // Raceway: base + extra minutes per foot, plus per-letter mounting minutes, plus electrical hookup per raceway line item.
     const basePerFt = (parseFloat(settings.install_raceway_base_minutes_per_foot) || 30) * MIN_TO_HR;
     const extraPerFt = (parseFloat(settings.install_raceway_extra_minutes_per_foot) || 0) * MIN_TO_HR;
@@ -151,7 +159,7 @@ export const calcLineItem = (item, settings, inventory) => {
     const racewayElecHours = (parseFloat(settings.install_raceway_electrical_hookup_minutes) || 30) * MIN_TO_HR;
     baseHours += racewayElecHours;
   } else {
-    const minutesPerLetter = sizeMinutesForType(item.installation_type, item.letter_size);
+    const minutesPerLetter = sizeMinutesForType(rateType, item.letter_size);
     baseHours = (parseFloat(item.qty_letters) || 0) * minutesPerLetter * MIN_TO_HR;
   }
 
@@ -213,7 +221,7 @@ export const calcLineItem = (item, settings, inventory) => {
   // Note: the size's electrical hookup baseline is ALREADY included in baseHours via sizeMinutesForType() above.
   // Here we add only the SEVERITY bonus on top of that, scaled by qty_letters.
   // Excluded for raceway (uses its own per-raceway hookup) and dimensional (no electrical at all).
-  if (item.poor_electrical_access && item.installation_type !== "raceway" && item.installation_type !== "dimensional_lettering") {
+  if (item.poor_electrical_access && rateType !== "raceway" && rateType !== "dimensional_lettering") {
     const level = Math.max(1, Math.min(10, parseInt(item.poor_electrical_severity) || 1));
     const severityDefaults = { 1: 3, 2: 6, 3: 10, 4: 15, 5: 20, 6: 28, 7: 38, 8: 50, 9: 65, 10: 90 };
     const bonusMin = parseFloat(settings[`install_poor_electrical_level_${level}`]);
@@ -262,6 +270,13 @@ export const calcProjectTotals = (project) => {
     (s, p) => s + (parseFloat(p.total_cost) || 0), 0
   );
 
+  // When a crew is assigned, the personnel rows ARE the priced version of the
+  // calculated install hours (same hours split across the crew at role rates).
+  // Counting both would bill the same labor twice — personnel pricing REPLACES
+  // the flat-rate labor estimate in the subtotal.
+  const labor_priced_via_personnel = total_personnel_cost > 0;
+  const labor_cost_in_subtotal = labor_priced_via_personnel ? 0 : labor_cost;
+
   // Letters purchase rollup (calculated by lettersCalculator separately;
   // we just read the already-stored project.total_letters_cost here)
   const total_letters_cost = parseFloat(project.total_letters_cost) || 0;
@@ -277,7 +292,7 @@ export const calcProjectTotals = (project) => {
   const total_travel_cost = parseFloat(project.total_travel_cost) || 0;
 
   const subtotal =
-    labor_cost +
+    labor_cost_in_subtotal +
     total_materials_cost +
     total_supplies_cost +
     total_equipment_cost +
@@ -291,6 +306,8 @@ export const calcProjectTotals = (project) => {
   return {
     labor_hours,
     labor_cost,
+    labor_cost_in_subtotal,
+    labor_priced_via_personnel,
     total_materials_cost,
     total_supplies_cost,
     total_equipment_cost,

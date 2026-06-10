@@ -278,7 +278,17 @@ export default function SummaryDetailsCard({ project }) {
       {/* ─────────── GRAND TOTAL ─────────── */}
       <Section icon={Calculator} title="Grand Total" color="purple">
         <div className="p-4 text-sm space-y-1">
-          <Row label="Installation Labor" value={project.labor_cost} />
+          {project.labor_priced_via_personnel ? (
+            <div className="flex justify-between">
+              <span className="text-slate-600">
+                Installation Labor{" "}
+                <span className="text-xs text-slate-400">(priced via Personnel crew — not double-counted)</span>
+              </span>
+              <span className="tabular-nums text-slate-400 line-through">{fmt(project.labor_cost)}</span>
+            </div>
+          ) : (
+            <Row label="Installation Labor" value={project.labor_cost} />
+          )}
           <Row label="Installation Materials" value={project.total_materials_cost} />
           <Row label="Supplies" value={project.total_supplies_cost} hideIfZero />
           <Row label="Equipment" value={project.total_equipment_cost} hideIfZero />
