@@ -15,8 +15,8 @@ export default function AllInOneFormulas() {
         <p className="text-sm text-indigo-800">
           The All-In-One Estimator does not introduce new pricing formulas — it BUILDS a
           multifaceted estimate out of sections. Each section creates a dedicated sub-estimate
-          owned by the combined estimate and opens that module's FULL estimator, so every
-          section uses that module's exact calculations. Any change to a module's formulas
+          owned by the combined estimate and loads that module's FULL estimator INLINE on the
+          same page, so every section uses that module's exact calculations. Any change to a module's formulas
           automatically applies to All-In-One sections, since they ARE that module's estimates.
         </p>
       </div>
@@ -67,7 +67,9 @@ export default function AllInOneFormulas() {
           <b>Live sync:</b> section totals refresh from the source sub-estimates every time the
           combined estimate is opened, update in REAL TIME via entity subscriptions while it's
           open, and re-sync when the tab regains focus — refreshed totals are also persisted so
-          the saved record never goes stale. Removing an owned section (or deleting the combined
+          the saved record never goes stale. Project info (client, estimate #, hyperlink) is
+          shared — saving the combined estimate pushes it to every built section. Removing an
+          owned section (or deleting the combined
           estimate) also deletes its underlying sub-estimate. New estimator modules added to{" "}
           <span className="font-mono">estimatorRegistry.js</span> appear in this table and in the
           Build Sections grid automatically.

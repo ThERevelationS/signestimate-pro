@@ -15,6 +15,7 @@ import {
   getModuleTotal,
 } from "@/components/allInOne/estimatorRegistry";
 import LinkedEstimateRow from "@/components/allInOne/LinkedEstimateRow";
+import EstimatorSectionPanel from "@/components/allInOne/EstimatorSectionPanel";
 import AllInOneSummaryCard from "@/components/allInOne/AllInOneSummaryCard";
 
 const EMPTY_PROJECT = {
@@ -47,6 +48,7 @@ export default function NewAllInOneEstimate() {
   const [refreshing, setRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [openSection, setOpenSection] = useState(null);
 
   // Refs keep async callbacks (subscriptions, focus) on the latest state.
   const editIdRef = useRef(null);
@@ -92,7 +94,9 @@ export default function NewAllInOneEstimate() {
   useEffect(() => {
     const load = async () => {
       const urlParams = new URLSearchParams(window.location.search);
-      const id = urlParams.get("edit") || urlParams.get("id");
+      // "aio" takes priority — while a section is open inline, "edit"/"id"
+      // in the URL belong to the embedded sub-estimate, not this estimate.
+      const id = urlParams.get("aio") || urlParams.get("edit") || urlParams.get("id");
       if (id) {
         const existing = await base44.entities.AllInOneEstimate.get(id);
         if (existing) {
@@ -156,8 +160,34 @@ export default function NewAllInOneEstimate() {
     return created.id;
   };
 
+  // ---- INLINE SECTION EDITING ----
+  // Embedded estimator pages read their project id from URL params on mount,
+  // so we swap the URL (replaceState — NO navigation) before mounting the
+  // module's full page component right here inside this page.
+  const openSectionInline = (item, aioIdOverride) => {
+    const mod = ESTIMATOR_MODULES_BY_KEY[item.module_key];
+    const aioId = aioIdOverride || editIdRef.current;
+    if (!mod) return;
+    window.history.replaceState(
+      {}, "",
+      `${createPageUrl("NewAllInOneEstimate")}?aio=${aioId}&${mod.editParam}=${item.project_id}`
+    );
+    setOpenSection(item);
+    window.scrollTo(0, 0);
+  };
+
+  const closeSection = () => {
+    window.history.replaceState(
+      {}, "",
+      `${createPageUrl("NewAllInOneEstimate")}?edit=${editIdRef.current}`
+    );
+    setOpenSection(null);
+    refreshTotals(projectRef.current.line_items);
+    window.scrollTo(0, 0);
+  };
+
   // Build a new section: create an owned sub-estimate in the module's own
-  // entity, save this estimate, then open the module's FULL estimator.
+  // entity, save this estimate, then load the module's FULL estimator inline.
   const handleAddSection = async (mod) => {
     if (!project.project_name || !project.client_name) {
       toast({
@@ -191,8 +221,8 @@ export default function NewAllInOneEstimate() {
     setProject((prev) => ({ ...prev, line_items: items }));
     projectRef.current = { ...projectRef.current, line_items: items };
     const aioId = await persist(items);
-    sessionStorage.setItem("aio_context", JSON.stringify({ id: aioId, name: project.project_name }));
-    window.location.href = `${createPageUrl(mod.newEstimatePage)}?${mod.editParam}=${sub.id}&aio=${aioId}`;
+    setAddingKey(null);
+    openSectionInline({ module_key: mod.key, project_id: sub.id, project_name: sub.project_name }, aioId);
   };
 
   // Remove a section. Owned sections also delete their underlying sub-estimate.
@@ -226,6 +256,22 @@ export default function NewAllInOneEstimate() {
     }
     setIsSaving(true);
     await persist(project.line_items);
+    // Share project info with every built section — truly one project.
+    await Promise.all(
+      project.line_items
+        .filter((li) => li.owned && !li.missing)
+        .map((li) => {
+          const mod = ESTIMATOR_MODULES_BY_KEY[li.module_key];
+          if (!mod) return null;
+          return getModuleEntity(mod)
+            .update(li.project_id, {
+              client_name: project.client_name,
+              estimate_number: project.estimate_number || "",
+              hyperlink: project.hyperlink || "",
+            })
+            .catch(() => {});
+        })
+    );
     setIsSaving(false);
     toast({ title: "Saved", description: "All-in-one estimate saved successfully." });
   };
@@ -236,6 +282,12 @@ export default function NewAllInOneEstimate() {
         <p className="text-slate-600">Loading estimate...</p>
       </div>
     );
+  }
+
+  // A section is open — show the module's FULL estimator inline on this page.
+  // Live-sync subscriptions stay active, so the combined totals keep updating.
+  if (openSection) {
+    return <EstimatorSectionPanel item={openSection} onClose={closeSection} />;
   }
 
   return (
@@ -293,8 +345,9 @@ export default function NewAllInOneEstimate() {
               <CardHeader className="border-b border-slate-100">
                 <CardTitle className="text-lg">Build Sections</CardTitle>
                 <p className="text-sm text-slate-500">
-                  Each section creates a dedicated sub-estimate and opens that module's <b>full estimator</b>.
-                  Save there and the total flows back here automatically — no separate projects to attach.
+                  Each section loads that module's <b>full estimator right here on this page</b> —
+                  no navigating away, no separate projects. Save the section and its total flows
+                  back into the combined estimate automatically.
                 </p>
               </CardHeader>
               <CardContent className="pt-4">
@@ -352,7 +405,7 @@ export default function NewAllInOneEstimate() {
                       <LinkedEstimateRow
                         key={`${item.module_key}-${item.project_id}-${idx}`}
                         item={item}
-                        aioId={editId}
+                        onEdit={() => openSectionInline(item)}
                         onRemove={() => handleRemove(idx)}
                       />
                     ))}

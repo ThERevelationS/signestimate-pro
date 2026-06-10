@@ -7,15 +7,19 @@
 //   - icon/colors:     visual identity (use literal Tailwind classes)
 //   - entityName:      the project entity name (base44.entities[entityName])
 //   - newEstimatePage: page name of that module's "New Estimate" page
+//   - Page:            lazy-loaded page component — embedded INLINE inside the
+//                      All-In-One estimator so sections never leave the page
 //   - editParam:       URL param the estimator page uses to load an existing
 //                      project ("edit" or "id")
 //   - getTotal(p):     how that module's saved project rolls up to ONE total
 //   - totalFormula:    human-readable description of getTotal — shown in the
 //                      Formula Viewer's All-In-One tab automatically
 //
-// The combiner page, the estimate picker, and the Formula Viewer all render
-// from this list, so a new entry shows up everywhere with no other changes.
+// The combiner page, the inline section panel, and the Formula Viewer all
+// render from this list, so a new entry shows up everywhere with no other
+// changes.
 // ============================================================================
+import { lazy } from "react";
 import { base44 } from "@/api/base44Client";
 import {
   Wrench, Anchor, ClipboardCheck, Paintbrush, Zap, Router, Droplets,
@@ -32,6 +36,7 @@ export const ESTIMATOR_MODULES = [
     colors: { text: "text-purple-600", bg: "bg-purple-50", badge: "bg-purple-100 text-purple-800" },
     entityName: "ChannelLetterInstallation",
     newEstimatePage: "NewChannelLetterInstallation",
+    Page: lazy(() => import("@/pages/NewChannelLetterInstallation")),
     editParam: "edit",
     getTotal: (p) => n(p.total_cost),
     totalFormula: "Saved project grand total (total_cost)",
@@ -44,6 +49,7 @@ export const ESTIMATOR_MODULES = [
     colors: { text: "text-amber-600", bg: "bg-amber-50", badge: "bg-amber-100 text-amber-800" },
     entityName: "FoundationProject",
     newEstimatePage: "NewFoundationEstimate",
+    Page: lazy(() => import("@/pages/NewFoundationEstimate")),
     editParam: "id",
     getTotal: (p) =>
       n(p.total_concrete_cost) + n(p.total_rebar_cost) + n(p.total_excavation_cost) +
@@ -61,6 +67,7 @@ export const ESTIMATOR_MODULES = [
     colors: { text: "text-cyan-600", bg: "bg-cyan-50", badge: "bg-cyan-100 text-cyan-800" },
     entityName: "MaintenanceProject",
     newEstimatePage: "NewSignMaintenance",
+    Page: lazy(() => import("@/pages/NewSignMaintenance")),
     editParam: "edit",
     getTotal: (p) => n(p.total_cost),
     totalFormula: "Saved project grand total (total_cost)",
@@ -73,6 +80,7 @@ export const ESTIMATOR_MODULES = [
     colors: { text: "text-blue-600", bg: "bg-blue-50", badge: "bg-blue-100 text-blue-800" },
     entityName: "Project",
     newEstimatePage: "NewPaintEstimate",
+    Page: lazy(() => import("@/pages/NewPaintEstimate")),
     editParam: "edit",
     getTotal: (p) =>
       n(p.total_paint_mask_cost) + n(p.total_liquid_paint_and_supplies_cost) + n(p.total_labor_cost),
@@ -86,6 +94,7 @@ export const ESTIMATOR_MODULES = [
     colors: { text: "text-red-600", bg: "bg-red-50", badge: "bg-red-100 text-red-800" },
     entityName: "LaserProject",
     newEstimatePage: "NewLaserEstimate",
+    Page: lazy(() => import("@/pages/NewLaserEstimate")),
     editParam: "edit",
     getTotal: (p) => n(p.total_machine_cost) + n(p.total_supplies_cost) + n(p.total_labor_cost),
     totalFormula: "machine + supplies + labor",
@@ -98,6 +107,7 @@ export const ESTIMATOR_MODULES = [
     colors: { text: "text-green-600", bg: "bg-green-50", badge: "bg-green-100 text-green-800" },
     entityName: "CNCProject",
     newEstimatePage: "NewCNCEstimate",
+    Page: lazy(() => import("@/pages/NewCNCEstimate")),
     editParam: "edit",
     getTotal: (p) => n(p.total_machine_cost) + n(p.total_labor_cost),
     totalFormula: "machine + labor",
@@ -110,6 +120,7 @@ export const ESTIMATOR_MODULES = [
     colors: { text: "text-orange-600", bg: "bg-orange-50", badge: "bg-orange-100 text-orange-800" },
     entityName: "MetalProject",
     newEstimatePage: "NewMetalEstimate",
+    Page: lazy(() => import("@/pages/NewMetalEstimate")),
     editParam: "edit",
     getTotal: (p) =>
       n(p.total_material_cost) + n(p.total_supplies_cost) + n(p.total_fabrication_cost) +
@@ -124,6 +135,7 @@ export const ESTIMATOR_MODULES = [
     colors: { text: "text-sky-600", bg: "bg-sky-50", badge: "bg-sky-100 text-sky-800" },
     entityName: "VinylProject",
     newEstimatePage: "NewVinylEstimate",
+    Page: lazy(() => import("@/pages/NewVinylEstimate")),
     editParam: "edit",
     getTotal: (p) => n(p.total_cost),
     totalFormula: "Saved project grand total (total_cost)",

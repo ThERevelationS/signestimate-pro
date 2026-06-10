@@ -2,25 +2,14 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2, AlertTriangle, Hammer, Link2 } from "lucide-react";
-import { createPageUrl } from "@/utils";
 import { fmtCurrency } from "@/lib/formatters";
 import { ESTIMATOR_MODULES_BY_KEY } from "./estimatorRegistry";
 
-// One section of the All-In-One estimate. "Open Estimator" launches the
-// module's FULL estimator (same tab) with the All-In-One return context set.
-export default function LinkedEstimateRow({ item, aioId, onRemove }) {
+// One section of the All-In-One estimate. "Edit Section" loads the module's
+// FULL estimator inline on the same page (handled by the parent).
+export default function LinkedEstimateRow({ item, onEdit, onRemove }) {
   const mod = ESTIMATOR_MODULES_BY_KEY[item.module_key];
   const Icon = mod?.icon;
-
-  const openEditor = () => {
-    if (!mod || item.missing) return;
-    if (aioId) {
-      sessionStorage.setItem("aio_context", JSON.stringify({ id: aioId }));
-    }
-    window.location.href =
-      `${createPageUrl(mod.newEstimatePage)}?${mod.editParam}=${item.project_id}` +
-      (aioId ? `&aio=${aioId}` : "");
-  };
 
   return (
     <div className={`flex items-center gap-3 p-3 rounded-lg border ${item.missing ? "border-red-200 bg-red-50" : "border-slate-200 bg-white"}`}>
@@ -55,8 +44,8 @@ export default function LinkedEstimateRow({ item, aioId, onRemove }) {
         {fmtCurrency(item.total_snapshot)}
       </span>
       {!item.missing && mod && (
-        <Button size="sm" variant="outline" onClick={openEditor} className="flex-shrink-0">
-          <Pencil className="w-3.5 h-3.5 mr-1" /> Open Estimator
+        <Button size="sm" variant="outline" onClick={onEdit} className="flex-shrink-0">
+          <Pencil className="w-3.5 h-3.5 mr-1" /> Edit Section
         </Button>
       )}
       <Button
