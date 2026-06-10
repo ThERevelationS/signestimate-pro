@@ -1,13 +1,13 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, AlertTriangle, Hammer, Link2 } from "lucide-react";
+import { Pencil, Trash2, AlertTriangle, Hammer, Link2, ChevronUp } from "lucide-react";
 import { fmtCurrency } from "@/lib/formatters";
 import { ESTIMATOR_MODULES_BY_KEY } from "./estimatorRegistry";
 
 // One section of the All-In-One estimate. "Edit Section" loads the module's
 // FULL estimator inline on the same page (handled by the parent).
-export default function LinkedEstimateRow({ item, onEdit, onRemove }) {
+export default function LinkedEstimateRow({ item, isOpen, onEdit, onRemove }) {
   const mod = ESTIMATOR_MODULES_BY_KEY[item.module_key];
   const Icon = mod?.icon;
 
@@ -44,8 +44,12 @@ export default function LinkedEstimateRow({ item, onEdit, onRemove }) {
         {fmtCurrency(item.total_snapshot)}
       </span>
       {!item.missing && mod && (
-        <Button size="sm" variant="outline" onClick={onEdit} className="flex-shrink-0">
-          <Pencil className="w-3.5 h-3.5 mr-1" /> Edit Section
+        <Button size="sm" variant={isOpen ? "default" : "outline"} onClick={onEdit} className="flex-shrink-0">
+          {isOpen ? (
+            <><ChevronUp className="w-3.5 h-3.5 mr-1" /> Collapse</>
+          ) : (
+            <><Pencil className="w-3.5 h-3.5 mr-1" /> Edit Section</>
+          )}
         </Button>
       )}
       <Button

@@ -173,7 +173,10 @@ export default function NewAllInOneEstimate() {
       `${createPageUrl("NewAllInOneEstimate")}?aio=${aioId}&${mod.editParam}=${item.project_id}`
     );
     setOpenSection(item);
-    window.scrollTo(0, 0);
+    // Scroll down to the inline editor once it mounts.
+    setTimeout(() => {
+      document.getElementById("aio-inline-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
   };
 
   const closeSection = () => {
@@ -282,12 +285,6 @@ export default function NewAllInOneEstimate() {
         <p className="text-slate-600">Loading estimate...</p>
       </div>
     );
-  }
-
-  // A section is open — show the module's FULL estimator inline on this page.
-  // Live-sync subscriptions stay active, so the combined totals keep updating.
-  if (openSection) {
-    return <EstimatorSectionPanel item={openSection} onClose={closeSection} />;
   }
 
   return (
@@ -405,7 +402,12 @@ export default function NewAllInOneEstimate() {
                       <LinkedEstimateRow
                         key={`${item.module_key}-${item.project_id}-${idx}`}
                         item={item}
-                        onEdit={() => openSectionInline(item)}
+                        isOpen={openSection?.project_id === item.project_id}
+                        onEdit={() =>
+                          openSection?.project_id === item.project_id
+                            ? closeSection()
+                            : openSectionInline(item)
+                        }
                         onRemove={() => handleRemove(idx)}
                       />
                     ))}
@@ -424,6 +426,16 @@ export default function NewAllInOneEstimate() {
             />
           </div>
         </div>
+
+        {/* Inline section editor — the module's FULL estimator embedded on THIS page */}
+        {openSection && (
+          <div
+            id="aio-inline-editor"
+            className="mt-8 rounded-2xl border-2 border-indigo-300 overflow-hidden shadow-xl scroll-mt-4"
+          >
+            <EstimatorSectionPanel item={openSection} onClose={closeSection} />
+          </div>
+        )}
       </div>
     </div>
   );

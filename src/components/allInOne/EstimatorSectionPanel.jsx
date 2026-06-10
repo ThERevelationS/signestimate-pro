@@ -1,6 +1,6 @@
 import React, { Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ChevronUp, Loader2 } from "lucide-react";
 import { ESTIMATOR_MODULES_BY_KEY } from "./estimatorRegistry";
 
 // Mounts a module's FULL estimator page INLINE inside the All-In-One
@@ -14,7 +14,7 @@ export default function EstimatorSectionPanel({ item, onClose }) {
   const Page = mod.Page;
 
   return (
-    <div className="bg-slate-50 min-h-screen">
+    <div className="bg-slate-50">
       <div className="sticky top-0 z-30 bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-4 py-2.5 flex items-center gap-3 shadow-md">
         <Icon className="w-4 h-4 flex-shrink-0" />
         <span className="text-sm truncate">
@@ -26,7 +26,7 @@ export default function EstimatorSectionPanel({ item, onClose }) {
           onClick={onClose}
           className="ml-auto h-7 text-xs bg-white text-indigo-700 hover:bg-indigo-50 flex-shrink-0"
         >
-          <ArrowLeft className="w-3 h-3 mr-1" /> Done — Back to Combined Estimate
+          <ChevronUp className="w-3 h-3 mr-1" /> Collapse Section
         </Button>
       </div>
       <Suspense
