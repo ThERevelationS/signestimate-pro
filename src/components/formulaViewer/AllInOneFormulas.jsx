@@ -13,11 +13,11 @@ export default function AllInOneFormulas() {
           <Layers className="w-5 h-5" /> All-In-One Estimator
         </h3>
         <p className="text-sm text-indigo-800">
-          The All-In-One Estimator builds a multi-trade estimate from <b>sections</b>. Adding a
-          section creates a full sub-estimate in that module's own entity and opens the module's
-          real estimator — every formula, inventory, and setting of that module applies unchanged.
-          The combined total is the sum of all section totals. Any change to a module's formulas
-          automatically applies to All-In-One sections, because sections ARE that module's estimates.
+          The All-In-One Estimator does not introduce new pricing formulas — it BUILDS a
+          multifaceted estimate out of sections. Each section creates a dedicated sub-estimate
+          owned by the combined estimate and opens that module's FULL estimator, so every
+          section uses that module's exact calculations. Any change to a module's formulas
+          automatically applies to All-In-One sections, since they ARE that module's estimates.
         </p>
       </div>
 
@@ -64,10 +64,11 @@ export default function AllInOneFormulas() {
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 flex gap-2">
         <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
         <p>
-          Totals sync three ways: (1) refreshed from the source estimates whenever an All-In-One
-          estimate is opened, (2) updated <b>live</b> via real-time subscriptions whenever a section
-          is saved anywhere in the app, and (3) on demand via "Refresh Totals". Removing an owned
-          section also deletes its underlying sub-estimate. New estimator modules added to{" "}
+          <b>Live sync:</b> section totals refresh from the source sub-estimates every time the
+          combined estimate is opened, update in REAL TIME via entity subscriptions while it's
+          open, and re-sync when the tab regains focus — refreshed totals are also persisted so
+          the saved record never goes stale. Removing an owned section (or deleting the combined
+          estimate) also deletes its underlying sub-estimate. New estimator modules added to{" "}
           <span className="font-mono">estimatorRegistry.js</span> appear in this table and in the
           Build Sections grid automatically.
         </p>

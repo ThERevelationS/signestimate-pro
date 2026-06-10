@@ -45,17 +45,18 @@ export default function AllInOneProjects() {
   const handleDelete = async (project) => {
     const owned = (project.line_items || []).filter((li) => li.owned);
     const msg = owned.length > 0
-      ? `Delete "${project.project_name}"? This will also delete its ${owned.length} built-in section estimate${owned.length === 1 ? "" : "s"}.`
+      ? `Delete "${project.project_name}"? Its ${owned.length} built-in section estimate${owned.length === 1 ? "" : "s"} will also be permanently deleted.`
       : `Are you sure you want to delete "${project.project_name}"?`;
     if (!confirm(msg)) return;
-    // Owned sections were created by this estimate — clean them up too
+    // Owned sections were created by this estimate — delete them with it.
     for (const li of owned) {
       const mod = ESTIMATOR_MODULES_BY_KEY[li.module_key];
-      if (!mod) continue;
-      try {
-        await getModuleEntity(mod).delete(li.project_id);
-      } catch {
-        // Sub-estimate already deleted — continue
+      if (mod) {
+        try {
+          await getModuleEntity(mod).delete(li.project_id);
+        } catch {
+          // Sub-estimate already gone.
+        }
       }
     }
     await base44.entities.AllInOneEstimate.delete(project.id);

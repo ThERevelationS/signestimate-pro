@@ -35,7 +35,7 @@ export default function AllInOneSummaryCard({ lineItems, grandTotal, onRefresh, 
       <CardContent className="pt-4">
         {subtotals.length === 0 ? (
           <p className="text-sm text-slate-500 py-4 text-center">
-            No sections yet. Add a section from any estimator module to start building the combined total.
+            No sections yet. Build sections with any module's estimator and the combined total appears here.
           </p>
         ) : (
           <div className="space-y-2 text-sm">
