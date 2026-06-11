@@ -374,7 +374,9 @@ export default function NewChannelLetterInstallation({ embeddedId = null, embedd
 
   // Save / Export
   const saveProject = async () => {
-    if (!project.project_name || !project.client_name || !project.estimate_number || !project.hyperlink) {
+    // In embedded (All-In-One) mode these fields are inherited from the parent
+    // estimate and shown read-only, so don't block the save on them.
+    if (!embedded && (!project.project_name || !project.client_name || !project.estimate_number || !project.hyperlink)) {
       alert("Please fill in Project Name, Client Name, Estimate Number, and Project Link.");
       setActiveTab("project");
       return;
@@ -573,55 +575,85 @@ export default function NewChannelLetterInstallation({ embeddedId = null, embedd
                     <CardTitle className="text-lg">Project Information</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div id="clp-client-name">
-                        <Label htmlFor="client_name">Client Name *</Label>
-                        <ClientSearchInput
-                          value={project.client_name}
-                          onChange={(val) => updateProject({ client_name: val })}
-                          onSelectProject={(data) => updateProject({
-                            client_name: data.client_name || project.client_name,
-                            project_name: data.project_name || project.project_name,
-                            estimate_number: data.estimate_number || project.estimate_number,
-                            hyperlink: data.hyperlink || project.hyperlink,
-                          })}
-                          className="mt-1"
-                          placeholder="Enter client name"
-                        />
+                    {embedded ? (
+                      /* Inside All-In-One: client / estimate # / link come from the
+                         parent estimate. Show them read-only so they aren't re-entered. */
+                      <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 px-4 py-3">
+                        <p className="text-xs font-medium text-indigo-700 mb-2">
+                          Inherited from the All-In-One estimate
+                        </p>
+                        <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                          <div className="flex justify-between sm:block">
+                            <span className="text-slate-500">Client</span>
+                            <span className="sm:block font-medium text-slate-900">{project.client_name || "—"}</span>
+                          </div>
+                          <div className="flex justify-between sm:block">
+                            <span className="text-slate-500">Section Name</span>
+                            <span className="sm:block font-medium text-slate-900">{project.project_name || "—"}</span>
+                          </div>
+                          <div className="flex justify-between sm:block">
+                            <span className="text-slate-500">Estimate #</span>
+                            <span className="sm:block font-medium text-slate-900">{project.estimate_number || "—"}</span>
+                          </div>
+                          <div className="flex justify-between sm:block">
+                            <span className="text-slate-500">Project Link</span>
+                            <span className="sm:block font-medium text-slate-900 truncate">{project.hyperlink || "—"}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div id="clp-project-name">
-                        <Label htmlFor="project_name">Project Name *</Label>
-                        <Input
-                          id="project_name"
-                          value={project.project_name}
-                          onChange={(e) => updateProject({ project_name: e.target.value })}
-                          placeholder="Enter project name"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div id="clp-estimate-number">
-                        <Label htmlFor="estimate_number">Estimate Number *</Label>
-                        <Input
-                          id="estimate_number"
-                          value={project.estimate_number}
-                          onChange={(e) => updateProject({ estimate_number: e.target.value })}
-                          placeholder="e.g., INST-2024-001"
-                          className="mt-1"
-                        />
-                      </div>
-                      <div id="clp-hyperlink">
-                        <Label htmlFor="hyperlink">Project Link *</Label>
-                        <Input
-                          id="hyperlink"
-                          value={project.hyperlink}
-                          onChange={(e) => updateProject({ hyperlink: e.target.value })}
-                          placeholder="https://..."
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
+                    ) : (
+                      <>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div id="clp-client-name">
+                            <Label htmlFor="client_name">Client Name *</Label>
+                            <ClientSearchInput
+                              value={project.client_name}
+                              onChange={(val) => updateProject({ client_name: val })}
+                              onSelectProject={(data) => updateProject({
+                                client_name: data.client_name || project.client_name,
+                                project_name: data.project_name || project.project_name,
+                                estimate_number: data.estimate_number || project.estimate_number,
+                                hyperlink: data.hyperlink || project.hyperlink,
+                              })}
+                              className="mt-1"
+                              placeholder="Enter client name"
+                            />
+                          </div>
+                          <div id="clp-project-name">
+                            <Label htmlFor="project_name">Project Name *</Label>
+                            <Input
+                              id="project_name"
+                              value={project.project_name}
+                              onChange={(e) => updateProject({ project_name: e.target.value })}
+                              placeholder="Enter project name"
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div id="clp-estimate-number">
+                            <Label htmlFor="estimate_number">Estimate Number *</Label>
+                            <Input
+                              id="estimate_number"
+                              value={project.estimate_number}
+                              onChange={(e) => updateProject({ estimate_number: e.target.value })}
+                              placeholder="e.g., INST-2024-001"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div id="clp-hyperlink">
+                            <Label htmlFor="hyperlink">Project Link *</Label>
+                            <Input
+                              id="hyperlink"
+                              value={project.hyperlink}
+                              onChange={(e) => updateProject({ hyperlink: e.target.value })}
+                              placeholder="https://..."
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
                     {/* Interior / Exterior — project-level default (each line item can override) */}
                     <div id="clp-install-env">
                       <Label className="text-sm font-semibold text-slate-900">Installation Environment</Label>
