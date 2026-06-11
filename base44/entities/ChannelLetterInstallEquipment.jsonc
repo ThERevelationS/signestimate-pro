@@ -60,6 +60,11 @@
       "default": false,
       "description": "When true, this boom lift / boom truck is the default pick when an install falls inside its height range."
     },
+    "is_primary_owned": {
+      "type": "boolean",
+      "default": false,
+      "description": "Marks your go-to OWNED lift for normal use. The equipment suggester picks this lift first for any job it can reach, only stepping up to a taller/rented lift when the install height exceeds its reach."
+    },
     "default_height_min_feet": {
       "type": "number",
       "default": 0,

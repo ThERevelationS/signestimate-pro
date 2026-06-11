@@ -298,6 +298,7 @@ export const syncInstallItemsFromPurchases = (existingItems, purchases, emptyLin
   const defaultMaterialsForItem = (item) => (inventory || [])
       .filter(inv => {
         if (!inv.is_default) return false;
+        if (inv.pricing_mode === "per_raceway_foot") return false; // raceway priced on Letters tab only
         const list = Array.isArray(inv.applies_to_list) ? inv.applies_to_list : [];
         if (list.length > 0) return list.includes(item.installation_type);
         if (!inv.applies_to || inv.applies_to === "all") return true;

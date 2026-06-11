@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Edit, Plus, Wrench, Link2, Settings2, Truck, ArrowUpFromLine } from "lucide-react";
+import { Trash2, Edit, Plus, Wrench, Link2, Settings2, Truck, ArrowUpFromLine, Star } from "lucide-react";
 
 const FoundationInventoryEntity = base44.entities.FoundationInventory;
 const ChannelLetterInstallEquipmentEntity = base44.entities.ChannelLetterInstallEquipment;
@@ -63,6 +63,7 @@ function normalizeRow(row, source) {
       kind: "equipment",              // top-level equipment (no attachment tree on this entity)
       equipment_type: row.equipment_type || "",
       ownership: row.ownership || "rented",
+      is_primary_owned: row.is_primary_owned ?? false,
       cost_per_day: row.cost_per_day || 0,
       cost_per_week: row.cost_per_week || 0,
       cost_per_month: row.cost_per_month || 0,
@@ -157,6 +158,21 @@ export default function MasterEquipmentTab({ isAdmin }) {
     } else {
       setFoundationRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, [field]: next } : r)));
     }
+  };
+
+  // Mark a boom lift as the "Primary owned lift" — the suggester's go-to pick.
+  // Only ONE channel-letter equipment row can be primary at a time, so clear it
+  // on every other channel row first.
+  const setPrimaryOwned = async (row, next) => {
+    if (row._source !== "channel_letter_equipment") return;
+    if (next) {
+      const others = channelRows.filter((r) => r.id !== row.id && r.is_primary_owned);
+      await Promise.all(others.map((r) => ChannelLetterInstallEquipmentEntity.update(r.id, { is_primary_owned: false })));
+    }
+    await ChannelLetterInstallEquipmentEntity.update(row.id, { is_primary_owned: next });
+    setChannelRows((prev) => prev.map((r) =>
+      r.id === row.id ? { ...r, is_primary_owned: next } : (next ? { ...r, is_primary_owned: false } : r)
+    ));
   };
 
   const openAdd = () => {
@@ -259,9 +275,11 @@ export default function MasterEquipmentTab({ isAdmin }) {
               equipment={allFoundationEquipment}
               loading={loading}
               isAdmin={isAdmin}
+              isBoomList
               onEdit={openEdit}
               onDelete={deleteItem}
               onToggle={toggleVisibility}
+              onSetPrimary={setPrimaryOwned}
             />
           </TabsContent>
           <TabsContent value="attachment">
@@ -314,7 +332,7 @@ export default function MasterEquipmentTab({ isAdmin }) {
 }
 
 // ── List ──────────────────────────────────────────────────────────────────
-function EquipmentList({ rows, attachments = [], subAttachments = [], equipment = [], isAttachment, isSubAttachment, loading, isAdmin, onEdit, onDelete, onToggle }) {
+function EquipmentList({ rows, attachments = [], subAttachments = [], equipment = [], isAttachment, isSubAttachment, isBoomList, loading, isAdmin, onEdit, onDelete, onToggle, onSetPrimary }) {
   if (loading) return <div className="text-center text-slate-400 py-8">Loading…</div>;
   if (rows.length === 0) return <div className="text-center py-8 text-slate-400 text-sm italic border rounded bg-slate-50">No items in this category.</div>;
 
@@ -329,6 +347,11 @@ function EquipmentList({ rows, attachments = [], subAttachments = [], equipment 
                 <Badge variant="outline" className="text-[10px] font-normal">
                   {row._source === "channel_letter_equipment" ? "Channel Letter Equip." : "Foundation"}
                 </Badge>
+                {isBoomList && row.ownership === "owned" && row.is_primary_owned && (
+                  <Badge className="text-[10px] font-medium bg-amber-100 text-amber-800 border-amber-200 gap-1">
+                    <Star className="w-3 h-3 fill-amber-500 text-amber-500" /> Primary
+                  </Badge>
+                )}
               </CardTitle>
               <div className="flex gap-4 text-xs text-slate-600 mt-1">
                 <span>Day: <strong>${row.cost_per_day}</strong></span>
@@ -338,6 +361,17 @@ function EquipmentList({ rows, attachments = [], subAttachments = [], equipment 
             </div>
             {isAdmin && (
               <div className="flex gap-1">
+                {isBoomList && row.ownership === "owned" && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => onSetPrimary?.(row, !row.is_primary_owned)}
+                    className={`h-7 w-7 ${row.is_primary_owned ? "text-amber-500" : "text-slate-300 hover:text-amber-400"}`}
+                    title={row.is_primary_owned ? "Primary owned lift — the suggester's go-to pick. Click to unset." : "Set as Primary owned lift (suggester's go-to pick)"}
+                  >
+                    <Star className={`w-4 h-4 ${row.is_primary_owned ? "fill-amber-500" : ""}`} />
+                  </Button>
+                )}
                 <Button size="icon" variant="ghost" onClick={() => onEdit(row)} className="h-7 w-7"><Edit className="w-3.5 h-3.5" /></Button>
                 <Button size="icon" variant="ghost" onClick={() => onDelete(row)} className="h-7 w-7 text-red-500"><Trash2 className="w-3.5 h-3.5" /></Button>
               </div>

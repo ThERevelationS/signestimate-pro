@@ -44,11 +44,14 @@ export const emptyLineItem = () => ({
   materials: [],
 });
 
-// Decide which inventory items should auto-attach to a new line item
+// Decide which inventory items should auto-attach to a new line item.
+// NOTE: Raceway hardware ("per_raceway_foot") is intentionally EXCLUDED here —
+// raceway cost is priced exclusively on the Letters tab, never in install materials.
 export const defaultMaterialsForItem = (item, inventory) => {
   return (inventory || [])
     .filter(inv => {
       if (!inv.is_default) return false;
+      if (inv.pricing_mode === "per_raceway_foot") return false; // raceway priced on Letters tab only
       // Prefer the new multi-select field; fall back to legacy single-value field.
       const list = Array.isArray(inv.applies_to_list) ? inv.applies_to_list : [];
       if (list.length > 0) return list.includes(item.installation_type);
@@ -229,15 +232,21 @@ export const calcLineItem = (item, settings, inventory) => {
     baseHours += ((parseFloat(item.qty_letters) || 0) * bonus) * MIN_TO_HR;
   }
 
-  // Recompute material quantities based on current item state (qty/size/raceway changed)
-  const materials = (item.materials || []).map(mat => {
-    const inv = (inventory || []).find(i => i.id === mat.inventory_item_id);
-    if (!inv) {
-      // detached/manual material — leave as-is
-      return { ...mat, total_cost: (parseFloat(mat.unit_cost) || 0) * (parseFloat(mat.quantity) || 0) };
-    }
-    return materialFromInventory(inv, item);
-  });
+  // Recompute material quantities based on current item state (qty/size/raceway changed).
+  // Raceway hardware ("per_raceway_foot") is priced on the Letters tab only, so we
+  // strip any such material that may linger on older saved estimates.
+  const materials = (item.materials || [])
+    .filter(mat => mat.pricing_mode !== "per_raceway_foot")
+    .map(mat => {
+      const inv = (inventory || []).find(i => i.id === mat.inventory_item_id);
+      if (!inv) {
+        // detached/manual material — leave as-is
+        return { ...mat, total_cost: (parseFloat(mat.unit_cost) || 0) * (parseFloat(mat.quantity) || 0) };
+      }
+      if (inv.pricing_mode === "per_raceway_foot") return null;
+      return materialFromInventory(inv, item);
+    })
+    .filter(Boolean);
 
   const materialsCost = materials.reduce((sum, m) => sum + (parseFloat(m.total_cost) || 0), 0);
   const laborCost = baseHours * laborRate;

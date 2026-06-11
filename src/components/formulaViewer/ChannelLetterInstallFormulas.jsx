@@ -393,9 +393,16 @@ export default function ChannelLetterInstallFormulas({ settings }) {
             double-counted.</p>
           <p><b>Crew size suggestion:</b> 3 people when max install height ≥ 40 ft OR 30+ total
             letters; otherwise 2 (Crew Lead + Installer). Crew hours = total labor hours ÷ crew size.</p>
-          <p><b>Equipment auto-select:</b> a boom flagged "default for height range" wins; otherwise
-            the smallest lift whose max height ≥ install height + its safety margin (default 2 ft).
-            A transport vehicle (owned preferred) is added unless the lift is a boom truck.</p>
+          <p><b>Equipment auto-select (UPDATED):</b> exactly ONE lift is suggested — never two booms.
+            Selection order: (1) your <b>Primary owned lift</b> (marked in Equipment Inventory) whenever
+            it can reach the install height; (2) a boom flagged "default for height range"; (3) the
+            smallest OWNED lift that reaches (owned is always preferred); only when the install height
+            exceeds your owned reach does it fall back to the smallest RENTED lift that reaches
+            (height + safety margin, default 2 ft). A transport vehicle (owned preferred) is added unless
+            the lift is a boom truck.</p>
+          <p><b>Travel & Fuel auto-calc:</b> the shop→site mileage lookup now runs in the background the
+            moment a site address is set and equipment is auto-selected, so Travel &amp; Fuel is already
+            computed (cached per shop|site address pair) by the time you open the Crew tab.</p>
           <p className="font-mono bg-white border border-sky-200 rounded px-2 py-1">
             on-site clock hours = labor hours ÷ crew size<br/>
             rental duration: per-hour = ⌈clock hrs⌉ · per-day = ⌈clock hrs ÷ 8⌉ · per-week = ⌈days ÷ 5⌉<br/>
@@ -403,6 +410,9 @@ export default function ChannelLetterInstallFormulas({ settings }) {
           </p>
           <p><b>Dimensional + Backer:</b> installs at the dimensional-lettering per-size rates
             (no electrical time, no poor-electrical bonus).</p>
+          <p><b>Raceway cost (UPDATED):</b> raceway hardware is priced ONLY on the Letters tab
+            (Raceway / Raceway-Mounted rows). Any "per raceway foot" install material is excluded
+            from the Install Materials list entirely so raceway is never double-counted.</p>
         </div>
 
         <div className="bg-amber-50 border border-amber-200 rounded p-3 text-xs space-y-1 text-amber-900">

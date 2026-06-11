@@ -14,16 +14,78 @@ export function isOwnedEquipment(invOrRow = {}) {
   return invOrRow.pricing_mode === "owned_flat" || invOrRow.pricing_mode === "per_project_flat";
 }
 
+// Is this inventory record owned (vs rented)?
+const invIsOwned = (e) =>
+  e.ownership === "owned" || e.pricing_mode === "owned_flat" || e.pricing_mode === "per_project_flat";
+
+const safetyMarginOf = (e) => {
+  const m = parseFloat(e.vertical_reach_safety_margin_feet);
+  return isNaN(m) ? 2 : m;
+};
+
+// Does this lift reach the install height (with its safety margin)?
+const liftReaches = (e, height) =>
+  (parseFloat(e.max_height_feet) || 0) >= height + safetyMarginOf(e);
+
+/**
+ * Pick exactly ONE lift for the job. Selection order:
+ *  1. A boom flagged `is_primary_owned` (your go-to owned boom) — used whenever
+ *     it can reach the install height. This is the "normal use" default.
+ *  2. A boom flagged `is_default_for_height` whose configured range contains
+ *     the install height.
+ *  3. Otherwise the SMALLEST lift that reaches the height — but OWNED lifts are
+ *     always preferred over rented ones when both can reach. Only fall back to
+ *     a rented lift when no owned lift is tall enough (install height exceeds
+ *     your owned reach).
+ * Never returns more than one lift.
+ */
+function pickLift(active, maxHeight) {
+  const lifts = active.filter((e) => LIFT_TYPES.includes(e.equipment_type));
+  if (lifts.length === 0) return null;
+
+  // 1) Primary owned boom — your marked go-to, used whenever it reaches.
+  const primaryOwned = lifts.find(
+    (e) => invIsOwned(e) && e.is_primary_owned && liftReaches(e, maxHeight)
+  );
+  if (primaryOwned) return primaryOwned;
+
+  // 2) Default-by-height-range boom.
+  const defaultByRange = lifts.find((e) => {
+    if (!BOOM_TYPES.includes(e.equipment_type)) return false;
+    if (!e.is_default_for_height) return false;
+    const min = parseFloat(e.default_height_min_feet) || 0;
+    const max = parseFloat(e.default_height_max_feet) || 0;
+    if (max <= 0) return false;
+    return maxHeight >= min && maxHeight <= max;
+  });
+  if (defaultByRange) return defaultByRange;
+
+  const bySize = (a, b) => (parseFloat(a.max_height_feet) || 0) - (parseFloat(b.max_height_feet) || 0);
+
+  // 3a) Smallest OWNED lift that reaches (owned always preferred).
+  const ownedReaching = lifts.filter((e) => invIsOwned(e) && liftReaches(e, maxHeight)).sort(bySize);
+  if (ownedReaching.length > 0) return ownedReaching[0];
+
+  // 3b) Install height exceeds owned reach → smallest RENTED lift that reaches.
+  const rentedReaching = lifts.filter((e) => !invIsOwned(e) && liftReaches(e, maxHeight)).sort(bySize);
+  if (rentedReaching.length > 0) return rentedReaching[0];
+
+  // 3c) Nothing clears the safety margin — pick the tallest lift that at least
+  //     physically reaches, preferring owned.
+  const anyReaching = lifts
+    .filter((e) => (parseFloat(e.max_height_feet) || 0) >= maxHeight)
+    .sort((a, b) => {
+      const own = (invIsOwned(b) ? 1 : 0) - (invIsOwned(a) ? 1 : 0);
+      if (own !== 0) return own;
+      return bySize(b, a); // tallest first
+    });
+  return anyReaching[0] || null;
+}
+
 /**
  * Given a list of line items and the equipment inventory, suggest which
  * pieces of equipment should be selected. Returns inventory items.
- *
- * Height-matching strategy (in order of preference):
- *  1. A boom_lift / boom_truck flagged `is_default_for_height` whose
- *     [default_height_min_feet, default_height_max_feet] range contains the
- *     project's max install height.
- *  2. Otherwise, the smallest active lift whose max_height_feet >= the
- *     project's max install height (legacy behavior).
+ * Always returns at most ONE lift + (if needed) ONE transport vehicle.
  */
 export function suggestEquipmentForProject(items = [], inventory = []) {
   if (!items.length || !inventory.length) return [];
@@ -36,51 +98,16 @@ export function suggestEquipmentForProject(items = [], inventory = []) {
   const active = inventory.filter((e) => e.is_active !== false);
   const suggestions = [];
 
-  // 1) Default-by-height-range boom (user-configured) wins
-  const defaultByRange = active.find((e) => {
-    if (!BOOM_TYPES.includes(e.equipment_type)) return false;
-    if (!e.is_default_for_height) return false;
-    const min = parseFloat(e.default_height_min_feet) || 0;
-    const max = parseFloat(e.default_height_max_feet) || 0;
-    if (max <= 0) return false;
-    return maxHeight >= min && maxHeight <= max;
-  });
+  // Exactly one lift for the job.
+  const lift = pickLift(active, maxHeight);
+  if (lift) suggestions.push(lift);
 
-  if (defaultByRange) {
-    suggestions.push(defaultByRange);
-  } else {
-    // 2) Fallback — smallest lift that reaches the required height PLUS its
-    //    vertical safety margin (default 2 ft). A lift whose max height exactly
-    //    equals the install height leaves no working margin.
-    const marginOf = (e) => {
-      const m = parseFloat(e.vertical_reach_safety_margin_feet);
-      return isNaN(m) ? 2 : m;
-    };
-    const allLifts = active
-      .filter((e) => LIFT_TYPES.includes(e.equipment_type))
-      .sort(
-        (a, b) =>
-          (parseFloat(a.max_height_feet) || 0) -
-          (parseFloat(b.max_height_feet) || 0)
-      );
-    let pick = allLifts.find((e) => (parseFloat(e.max_height_feet) || 0) >= maxHeight + marginOf(e));
-    // Relax the margin if nothing clears it — better to suggest the tallest
-    // option that at least reaches the height than to suggest nothing.
-    if (!pick) pick = allLifts.find((e) => (parseFloat(e.max_height_feet) || 0) >= maxHeight);
-    if (pick) suggestions.push(pick);
-  }
-
-  // 3) Add a vehicle for transport (prefer owned for cost efficiency) —
-  //    but skip this if the lift we already picked IS a vehicle (boom truck).
+  // Add a transport vehicle (prefer owned) — unless the lift IS a vehicle (boom truck).
   const haveVehicle = suggestions.some((s) => VEHICLE_TYPES.includes(s.equipment_type));
   if (!haveVehicle) {
     const vehicles = active
       .filter((e) => VEHICLE_TYPES.includes(e.equipment_type))
-      .sort((a, b) => {
-        const aOwned = a.ownership === "owned" ? 0 : 1;
-        const bOwned = b.ownership === "owned" ? 0 : 1;
-        return aOwned - bOwned;
-      });
+      .sort((a, b) => (invIsOwned(a) ? 0 : 1) - (invIsOwned(b) ? 0 : 1));
     if (vehicles.length > 0) suggestions.push(vehicles[0]);
   }
 

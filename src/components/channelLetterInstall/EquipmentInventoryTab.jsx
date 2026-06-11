@@ -27,6 +27,8 @@ const EQUIPMENT_TYPES = [
 
 const VEHICLE_TYPES = ["truck", "car", "van", "flatbed", "boom_truck"];
 const BOOM_TYPES = ["boom_lift", "boom_truck"];
+// Lift-type equipment that can be marked as the "primary owned" go-to lift.
+const LIFT_TYPES = ["ladder", "scissor_lift", "boom_lift", "boom_truck", "scaffold"];
 
 const FUEL_TYPES = [
   { value: "na", label: "N/A" },
@@ -65,6 +67,7 @@ const emptyItem = (mode = "owned", scope = "construction") => ({
   deployed_truck_width_feet: 0,
   vertical_reach_safety_margin_feet: 2,
   is_default_for_height: false,
+  is_primary_owned: false,
   default_height_min_feet: 0,
   default_height_max_feet: 0,
   idle_running_cost_per_hour: 0,
@@ -225,6 +228,19 @@ export default function EquipmentInventoryTab({ scope = "construction" }) {
             </label>
           </div>
         </div>
+        {/* Primary owned go-to lift — for owned ladder / scissor / scaffold (booms handle this in their own block below) */}
+        {mode === "owned" && LIFT_TYPES.includes(it.equipment_type) && !showBoomFields && (
+          <div className="mt-2">
+            <label className="flex items-center gap-1.5 cursor-pointer text-xs bg-emerald-100/40 border border-emerald-200/60 rounded-md px-2 py-1.5 w-fit">
+              <Checkbox
+                checked={!!it.is_primary_owned}
+                onCheckedChange={(c) => update(origIndex, { is_primary_owned: !!c })}
+              />
+              <span className="font-semibold text-emerald-800">⭐ Primary owned lift (my go-to for normal use)</span>
+              <span className="text-emerald-700/70 font-normal">— auto-selected on any job it can reach</span>
+            </label>
+          </div>
+        )}
         {showBoomFields && (
           <div className="grid md:grid-cols-12 gap-2 mt-2 p-2 rounded-md bg-purple-100/40 border border-purple-200/60">
             <div className="md:col-span-12 flex items-center gap-1.5 text-[11px] font-semibold text-purple-900 mb-0.5">
@@ -276,6 +292,20 @@ export default function EquipmentInventoryTab({ scope = "construction" }) {
                 className="h-8 mt-0.5"
               />
             </div>
+
+            {/* Primary owned go-to lift (owned booms only) */}
+            {mode === "owned" && (
+              <div className="md:col-span-12 -mb-1">
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs">
+                  <Checkbox
+                    checked={!!it.is_primary_owned}
+                    onCheckedChange={(c) => update(origIndex, { is_primary_owned: !!c })}
+                  />
+                  <span className="font-semibold text-emerald-800">⭐ Primary owned lift (my go-to for normal use)</span>
+                  <span className="text-emerald-700/70 font-normal">— auto-selected on any job it can reach</span>
+                </label>
+              </div>
+            )}
 
             {/* Auto-pick-by-height + idle running cost */}
             <div className="md:col-span-12 mt-1 pt-2 border-t border-purple-200/50 grid md:grid-cols-12 gap-2 items-end">

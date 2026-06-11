@@ -30,6 +30,7 @@ import AIInstallScopeModal from "@/components/channelLetterInstall/AIInstallScop
 import ConfirmModal from "@/components/channelLetterInstall/ConfirmModal";
 import AddressAutocomplete from "@/components/channelLetterInstall/AddressAutocomplete";
 import { suggestEquipmentForProject, selectedEquipmentFromInventory, suggestPersonnelForProject, suggestCrewSize } from "@/components/channelLetterInstall/equipmentSuggester";
+import { calculateTravelMiles } from "@/functions/calculateTravelMiles";
 import {
   calcLineItem,
   calcProjectTotals,
@@ -275,6 +276,50 @@ export default function NewChannelLetterInstallation({ embeddedId = null, embedd
     next.splice(to, 0, moved);
     setProject(prev => ({ ...prev, items: next }));
   };
+
+  // Travel auto-calc trigger: fire as soon as we have a site address AND at least
+  // one piece of equipment selected (e.g. the auto-suggested boom), regardless of
+  // which tab is active. This way Travel & Fuel is already computed by the time the
+  // user lands on the Crew tab — no waiting on the slow mileage lookup.
+  // TravelCostCard de-dupes by shop|site address pair, so a stable key per address
+  // is enough; we only want it to be non-null once prerequisites are met.
+  const hasSiteAddress = !!(project.site_address && project.site_address.trim());
+  const hasEquipment = (project.selected_equipment || []).length > 0;
+  const travelAutoKey = (hasSiteAddress && hasEquipment && scope !== "letters_only")
+    ? `auto:${project.site_address}`
+    : null;
+
+  // Background mileage prefetch — runs in the page (not the Crew tab) so the slow
+  // shop→site lookup happens the moment equipment is auto-selected. By the time the
+  // user opens the Crew tab the miles are already in, so Travel & Fuel is instant.
+  const travelPrefetchKeyRef = React.useRef(null);
+  useEffect(() => {
+    const shop = (settings.install_shop_address || "").trim();
+    const site = (project.site_address || "").trim();
+    if (!hasLoaded) return;
+    if (scope === "letters_only") return;
+    if (!shop || !site || !hasEquipment) return;
+    // Already have miles → nothing to fetch.
+    if ((parseFloat(project.travel_miles_round_trip) || 0) > 0) return;
+    const key = `${shop}|${site}`;
+    if (travelPrefetchKeyRef.current === key) return; // already fetched this pair
+    travelPrefetchKeyRef.current = key;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await calculateTravelMiles({ shop_address: shop, site_address: site });
+        const rt = parseFloat(res?.data?.round_trip_miles);
+        if (!cancelled && isFinite(rt) && rt > 0) {
+          updateProject({ travel_miles_round_trip: rt });
+        }
+      } catch (e) {
+        // Silent — the Crew tab's manual "Auto" button is still available as a fallback.
+        console.error("Travel prefetch failed:", e);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasLoaded, hasEquipment, project.site_address, settings.install_shop_address, scope]);
 
   // Auto-suggest equipment when max install height changes (only if user hasn't picked any yet)
   const maxInstallHeight = useMemo(
@@ -859,7 +904,7 @@ export default function NewChannelLetterInstallation({ embeddedId = null, embedd
                         updateProject({ total_travel_cost: total });
                       }
                     }}
-                    autoTriggerKey={activeTab === "crew" ? "crew" : null}
+                    autoTriggerKey={travelAutoKey}
                   />
                 </div>
                 {equipmentInventory.length === 0 && (
