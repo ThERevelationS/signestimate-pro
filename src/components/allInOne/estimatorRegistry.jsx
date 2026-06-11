@@ -27,6 +27,17 @@
 // ============================================================================
 import { lazy } from "react";
 import { base44 } from "@/api/base44Client";
+
+// Dynamic-import with one retry — guards against transient
+// "Failed to fetch dynamically imported module" chunk errors after rebuilds.
+const lazyRetry = (importFn) =>
+  lazy(() =>
+    importFn().catch(() =>
+      new Promise((resolve, reject) =>
+        setTimeout(() => importFn().then(resolve).catch(reject), 600)
+      )
+    )
+  );
 import {
   Wrench, Anchor, ClipboardCheck, Paintbrush, Zap, Router, Droplets,
 } from "lucide-react";
@@ -57,7 +68,7 @@ export const ESTIMATOR_MODULES = [
     colors: { text: "text-purple-600", bg: "bg-purple-50", badge: "bg-purple-100 text-purple-800", hex: "#9333ea" },
     entityName: "ChannelLetterInstallation",
     newEstimatePage: "NewChannelLetterInstallation",
-    Page: lazy(() => import("@/pages/NewChannelLetterInstallation")),
+    Page: lazyRetry(() => import("@/pages/NewChannelLetterInstallation")),
     editParam: "edit",
     sharedFields: [...BASE_SHARED_FIELDS, "site_address"],
     getTotal: (p) => n(p.total_cost),
@@ -87,7 +98,7 @@ export const ESTIMATOR_MODULES = [
     colors: { text: "text-amber-600", bg: "bg-amber-50", badge: "bg-amber-100 text-amber-800", hex: "#d97706" },
     entityName: "FoundationProject",
     newEstimatePage: "NewFoundationEstimate",
-    Page: lazy(() => import("@/pages/NewFoundationEstimate")),
+    Page: lazyRetry(() => import("@/pages/NewFoundationEstimate")),
     editParam: "id",
     sharedFields: BASE_SHARED_FIELDS,
     getTotal: (p) =>
@@ -122,7 +133,7 @@ export const ESTIMATOR_MODULES = [
     colors: { text: "text-cyan-600", bg: "bg-cyan-50", badge: "bg-cyan-100 text-cyan-800", hex: "#0891b2" },
     entityName: "MaintenanceProject",
     newEstimatePage: "NewSignMaintenance",
-    Page: lazy(() => import("@/pages/NewSignMaintenance")),
+    Page: lazyRetry(() => import("@/pages/NewSignMaintenance")),
     editParam: "edit",
     sharedFields: [...BASE_SHARED_FIELDS, "site_address"],
     getTotal: (p) => n(p.total_cost),
@@ -150,7 +161,7 @@ export const ESTIMATOR_MODULES = [
     colors: { text: "text-blue-600", bg: "bg-blue-50", badge: "bg-blue-100 text-blue-800", hex: "#2563eb" },
     entityName: "Project",
     newEstimatePage: "NewPaintEstimate",
-    Page: lazy(() => import("@/pages/NewPaintEstimate")),
+    Page: lazyRetry(() => import("@/pages/NewPaintEstimate")),
     editParam: "edit",
     sharedFields: BASE_SHARED_FIELDS,
     getTotal: (p) =>
@@ -172,7 +183,7 @@ export const ESTIMATOR_MODULES = [
     colors: { text: "text-red-600", bg: "bg-red-50", badge: "bg-red-100 text-red-800", hex: "#dc2626" },
     entityName: "LaserProject",
     newEstimatePage: "NewLaserEstimate",
-    Page: lazy(() => import("@/pages/NewLaserEstimate")),
+    Page: lazyRetry(() => import("@/pages/NewLaserEstimate")),
     editParam: "edit",
     sharedFields: BASE_SHARED_FIELDS,
     getTotal: (p) => n(p.total_machine_cost) + n(p.total_supplies_cost) + n(p.total_labor_cost),
@@ -193,7 +204,7 @@ export const ESTIMATOR_MODULES = [
     colors: { text: "text-green-600", bg: "bg-green-50", badge: "bg-green-100 text-green-800", hex: "#16a34a" },
     entityName: "CNCProject",
     newEstimatePage: "NewCNCEstimate",
-    Page: lazy(() => import("@/pages/NewCNCEstimate")),
+    Page: lazyRetry(() => import("@/pages/NewCNCEstimate")),
     editParam: "edit",
     sharedFields: BASE_SHARED_FIELDS,
     getTotal: (p) => n(p.total_machine_cost) + n(p.total_labor_cost),
@@ -213,7 +224,7 @@ export const ESTIMATOR_MODULES = [
     colors: { text: "text-orange-600", bg: "bg-orange-50", badge: "bg-orange-100 text-orange-800", hex: "#ea580c" },
     entityName: "MetalProject",
     newEstimatePage: "NewMetalEstimate",
-    Page: lazy(() => import("@/pages/NewMetalEstimate")),
+    Page: lazyRetry(() => import("@/pages/NewMetalEstimate")),
     editParam: "edit",
     sharedFields: BASE_SHARED_FIELDS,
     getTotal: (p) =>
@@ -238,7 +249,7 @@ export const ESTIMATOR_MODULES = [
     colors: { text: "text-sky-600", bg: "bg-sky-50", badge: "bg-sky-100 text-sky-800", hex: "#0284c7" },
     entityName: "VinylProject",
     newEstimatePage: "NewVinylEstimate",
-    Page: lazy(() => import("@/pages/NewVinylEstimate")),
+    Page: lazyRetry(() => import("@/pages/NewVinylEstimate")),
     editParam: "edit",
     sharedFields: BASE_SHARED_FIELDS,
     getTotal: (p) => n(p.total_cost),
