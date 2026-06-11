@@ -354,9 +354,15 @@ function EquipmentList({ rows, attachments = [], subAttachments = [], equipment 
                 )}
               </CardTitle>
               <div className="flex gap-4 text-xs text-slate-600 mt-1">
-                <span>Day: <strong>${row.cost_per_day}</strong></span>
-                <span>Wk: <strong>${row.cost_per_week}</strong></span>
-                <span>Mo: <strong>${row.cost_per_month}</strong></span>
+                {row.ownership === "owned" ? (
+                  <span className="text-emerald-700 font-medium">Owned — no rental cost</span>
+                ) : (
+                  <>
+                    <span>Day: <strong>${row.cost_per_day}</strong></span>
+                    <span>Wk: <strong>${row.cost_per_week}</strong></span>
+                    <span>Mo: <strong>${row.cost_per_month}</strong></span>
+                  </>
+                )}
               </div>
             </div>
             {isAdmin && (
@@ -447,6 +453,14 @@ function EquipmentForm({ normalized, ownership, allFoundationEquipment, allFound
         cost_flat: r.cost_flat || 0,
         delivery_pickup_cost: r.delivery_pickup_cost || 0,
         max_height_feet: r.max_height_feet || 0,
+        vertical_reach_safety_margin_feet: r.vertical_reach_safety_margin_feet ?? 2,
+        is_default_for_height: !!r.is_default_for_height,
+        default_height_min_feet: r.default_height_min_feet || 0,
+        default_height_max_feet: r.default_height_max_feet || 0,
+        is_primary_owned: !!r.is_primary_owned,
+        mpg: r.mpg || 0,
+        fuel_type: r.fuel_type || "na",
+        idle_running_cost_per_hour: r.idle_running_cost_per_hour || 0,
         rental_company: r.rental_company || "",
         notes: r.notes || "",
         show_in_channel_letters: r.show_in_channel_letters ?? true,
@@ -518,6 +532,15 @@ function EquipmentForm({ normalized, ownership, allFoundationEquipment, allFound
         savedId = saved.id;
       } else {
         await ChannelLetterInstallEquipmentEntity.update(normalized.id, payload);
+      }
+      // Only one boom may be the Primary owned lift — clear it on all others.
+      if (payload.is_primary_owned) {
+        const all = await ChannelLetterInstallEquipmentEntity.list();
+        await Promise.all(
+          all
+            .filter((r) => r.id !== savedId && r.is_primary_owned)
+            .map((r) => ChannelLetterInstallEquipmentEntity.update(r.id, { is_primary_owned: false }))
+        );
       }
     } else {
       const payload = cleanForOwnership({ ...form });
@@ -685,6 +708,43 @@ function EquipmentForm({ normalized, ownership, allFoundationEquipment, allFound
           </div>
         )}
       </div>
+
+      {/* Boom reach / default-range config — drives the equipment suggester. */}
+      {source === "channel_letter_equipment" && ["boom_lift", "boom_truck"].includes(equipmentType) && (
+        <div className="rounded-lg border bg-sky-50/60 border-sky-200 p-3 space-y-3">
+          <p className="text-xs font-semibold text-sky-900">Boom Reach & Auto-Select</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Safety Margin (ft)</Label>
+              <Input type="number" className="h-8" value={form.vertical_reach_safety_margin_feet ?? 2} onChange={(e) => set("vertical_reach_safety_margin_feet", parseFloat(e.target.value) || 0)} />
+            </div>
+          </div>
+          {isOwned && (
+            <Toggle
+              label="Primary owned lift (suggester's go-to pick)"
+              checked={form.is_primary_owned}
+              onChange={(v) => set("is_primary_owned", v)}
+            />
+          )}
+          <Toggle
+            label="Default for a height range"
+            checked={form.is_default_for_height}
+            onChange={(v) => set("is_default_for_height", v)}
+          />
+          {form.is_default_for_height && (
+            <div className="grid grid-cols-2 gap-3 pl-1">
+              <div>
+                <Label className="text-xs">Min Height (ft)</Label>
+                <Input type="number" className="h-8" value={form.default_height_min_feet || 0} onChange={(e) => set("default_height_min_feet", parseFloat(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label className="text-xs">Max Height (ft)</Label>
+                <Input type="number" className="h-8" value={form.default_height_max_feet || 0} onChange={(e) => set("default_height_max_feet", parseFloat(e.target.value) || 0)} />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 5. Pricing Mode — only for RENTED. Always Per Day / Week / Month. */}
       {isRented && (
