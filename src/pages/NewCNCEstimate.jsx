@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { CNCProject, Settings } from "@/entities/all";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,9 +21,13 @@ import { categorizeCNCProject } from "@/components/markup/projectCategorizer";
 const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8", "1", "1-1/4", "1-1/2", "2", "2-1/2", "3", "3-1/2", "4"];
 const materials = ["Acrylic", "Wood", "MDF", "Plywood", "PVC", "HDPE", "Aluminum", "Corian"];
 
-export default function NewCNCEstimate() {
+export default function NewCNCEstimate({ embeddedId = null, embedded = false }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Prop wins when embedded inside the All-In-One estimator.
+  const editId = embeddedId || searchParams.get("edit");
   const { setIsDirty } = useUnsavedChanges();
+  const [isEditing, setIsEditing] = useState(false);
   const [project, setProject] = useState({
     project_name: "",
     client_name: "",
@@ -55,16 +60,25 @@ export default function NewCNCEstimate() {
       const settingsObj = {};
       settingsData.forEach(s => { settingsObj[s.setting_name] = s.setting_value; });
       setGlobalSettings(settingsObj);
-      
-      // Initialize project settings from global settings for a new estimate
-      setProject(prev => ({
-        ...prev,
-        machine_rate_per_hour: parseFloat(settingsObj.cnc_machine_rate) || 75,
-        labor_rate: parseFloat(settingsObj.cnc_labor_rate) || 45,
-        setup_time_percentage: parseFloat(settingsObj.cnc_setup_time_percentage) || 20, // Initialize new field
-        fixed_setup_hours: parseFloat(settingsObj.min_cnc_setup_hours) || 0, // Initialize new field
-        notes: settingsObj.default_notes_template || ""
-      }));
+
+      if (editId) {
+        // Editing an existing CNC estimate (or an All-In-One section).
+        const existing = await CNCProject.get(editId);
+        if (existing) {
+          setProject(prev => ({ ...prev, ...existing, items: existing.items || [] }));
+          setIsEditing(true);
+        }
+      } else {
+        // Initialize project settings from global settings for a new estimate
+        setProject(prev => ({
+          ...prev,
+          machine_rate_per_hour: parseFloat(settingsObj.cnc_machine_rate) || 75,
+          labor_rate: parseFloat(settingsObj.cnc_labor_rate) || 45,
+          setup_time_percentage: parseFloat(settingsObj.cnc_setup_time_percentage) || 20, // Initialize new field
+          fixed_setup_hours: parseFloat(settingsObj.min_cnc_setup_hours) || 0, // Initialize new field
+          notes: settingsObj.default_notes_template || ""
+        }));
+      }
     } catch (error) {
       console.error('Error loading prerequisites:', error);
     }
@@ -191,16 +205,24 @@ export default function NewCNCEstimate() {
     try {
       const { totalMachine, totalLabor } = calculateTotals();
       const finalProject = { ...project, total_machine_cost: totalMachine, total_labor_cost: totalLabor, status: 'calculated' }
-      
-      const created = await CNCProject.create(finalProject);
+
+      let savedId = editId;
+      if (isEditing && editId) {
+        await CNCProject.update(editId, finalProject);
+      } else {
+        const created = await CNCProject.create(finalProject);
+        savedId = created?.id;
+      }
       await upsertCustomerSummaryForEstimate({
         module: "cnc",
         client_name: project.client_name,
-        project_id: created?.id,
+        project_id: savedId,
         project_name: project.project_name,
         estimate_number: project.estimate_number,
       });
-      navigate(createPageUrl("CNCProjects"));
+      // Inside the All-In-One estimator we stay put — the parent live-syncs the
+      // total and the user collapses the section themselves.
+      if (!embedded) navigate(createPageUrl("CNCProjects"));
     } catch (error) {
       console.error('Error saving project:', error);
       alert('Error saving project. Please try again.');

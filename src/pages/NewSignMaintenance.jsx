@@ -38,10 +38,11 @@ const blankProject = () => ({
   notes: "",
 });
 
-export default function NewSignMaintenance() {
+export default function NewSignMaintenance({ embeddedId = null, embedded = false }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const editId = searchParams.get("edit");
+  // Prop wins when embedded inside the All-In-One estimator.
+  const editId = embeddedId || searchParams.get("edit");
   const [isEditing, setIsEditing] = useState(false);
   const { setIsDirty } = useUnsavedChanges();
 

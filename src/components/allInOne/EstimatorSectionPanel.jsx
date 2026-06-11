@@ -12,6 +12,10 @@ export default function EstimatorSectionPanel({ item, onClose }) {
   if (!mod) return null;
   const Icon = mod.icon;
   const Page = mod.Page;
+  // We pass the sub-estimate id DIRECTLY as a prop (not just via URL params).
+  // React Router's useSearchParams does not pick up the replaceState the
+  // parent does, so embedded pages must read this prop to load the right
+  // record. Embedded mode also hides the page's own back / nav buttons.
 
   return (
     <div className="bg-slate-50">
@@ -47,7 +51,7 @@ export default function EstimatorSectionPanel({ item, onClose }) {
             </div>
           }
         >
-          <Page key={item.project_id} />
+          <Page key={item.project_id} embeddedId={item.project_id} embedded />
         </Suspense>
       </div>
     </div>

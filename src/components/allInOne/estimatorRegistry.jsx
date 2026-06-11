@@ -295,6 +295,8 @@ export const getModuleDetailLines = (mod, project) => {
 };
 
 // Auto-fill payload: AIO project details mapped onto a module's entity fields.
+// NOTE: project_name is intentionally NOT pushed here — each section keeps its
+// own name (e.g. "Main St — Paint"). client/estimate #/link/address ARE shared.
 export const buildSharedPayload = (mod, aio) => {
   const fields = mod.sharedFields || BASE_SHARED_FIELDS;
   const out = {};

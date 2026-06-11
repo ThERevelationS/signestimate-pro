@@ -68,10 +68,11 @@ const blankProject = () => ({
   notes: "",
 });
 
-export default function NewChannelLetterInstallation() {
+export default function NewChannelLetterInstallation({ embeddedId = null, embedded = false }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const editId = searchParams.get("edit");
+  // Prop wins when embedded inside the All-In-One estimator.
+  const editId = embeddedId || searchParams.get("edit");
   const [isEditing, setIsEditing] = useState(false);
   const { setIsDirty } = useUnsavedChanges();
 
@@ -401,7 +402,7 @@ export default function NewChannelLetterInstallation() {
         project_name: project.project_name,
         estimate_number: project.estimate_number,
       });
-      navigate(createPageUrl("ChannelLetterInstallationProjects"));
+      if (!embedded) navigate(createPageUrl("ChannelLetterInstallationProjects"));
     } catch (e) {
       console.error(e);
       alert("Save failed: " + e.message);

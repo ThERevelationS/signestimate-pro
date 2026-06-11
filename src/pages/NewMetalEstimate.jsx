@@ -21,10 +21,11 @@ const itemTypes = ["channel_letters", "cabinet_sign", "monument_sign", "pole_sig
 // materialTypes is not directly used in the current structure for display, but could be for filtering
 // const materialTypes = ["Aluminum", "Steel", "Stainless_Steel", "Galvanized_Steel"];
 
-export default function NewMetalEstimate() {
+export default function NewMetalEstimate({ embeddedId = null, embedded = false }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const editId = searchParams.get('edit');
+  // Prop wins when embedded inside the All-In-One estimator.
+  const editId = embeddedId || searchParams.get('edit');
   const [isEditing, setIsEditing] = useState(false);
   const { setIsDirty } = useUnsavedChanges();
 
@@ -265,7 +266,7 @@ export default function NewMetalEstimate() {
         project_name: project.project_name,
         estimate_number: project.estimate_number,
       });
-      navigate(createPageUrl("MetalProjects"));
+      if (!embedded) navigate(createPageUrl("MetalProjects"));
     } catch (error) {
       console.error('Error saving project:', error);
       alert('Error saving project. Please try again.');

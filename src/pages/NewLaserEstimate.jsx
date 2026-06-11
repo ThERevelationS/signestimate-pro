@@ -44,9 +44,10 @@ const parseImperialFraction = (fractionString) => {
   return totalValue;
 };
 
-export default function NewLaserEstimate() {
+export default function NewLaserEstimate({ embeddedId = null, embedded = false }) {
   const [searchParams] = useSearchParams();
-  const editId = searchParams.get('edit');
+  // Prop wins when embedded inside the All-In-One estimator.
+  const editId = embeddedId || searchParams.get('edit');
   const [isEditing, setIsEditing] = useState(false);
   const { setIsDirty } = useUnsavedChanges();
 

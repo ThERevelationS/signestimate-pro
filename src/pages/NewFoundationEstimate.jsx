@@ -160,10 +160,11 @@ function newWall() {
   };
 }
 
-export default function NewFoundationEstimate() {
+export default function NewFoundationEstimate({ embeddedId = null, embedded = false }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const editId = new URLSearchParams(location.search).get('id');
+  // Prop wins when embedded inside the All-In-One estimator.
+  const editId = embeddedId || new URLSearchParams(location.search).get('id');
   const { isDirty, setIsDirty } = useContext(UnsavedChangesContext) || { isDirty: false, setIsDirty: () => {} };
 
   const [project, setProject] = useState({
@@ -917,7 +918,7 @@ export default function NewFoundationEstimate() {
         const created = await FoundationProjectEntity.create(data); 
         savedId = created.id;
         setProject(prev => ({...prev, id: created.id}));
-        window.history.replaceState(null, '', `?id=${created.id}`);
+        if (!embedded) window.history.replaceState(null, '', `?id=${created.id}`);
       }
       // Don't auto-update the CustomerSummary on background auto-saves —
       // only on explicit user-driven saves.
@@ -947,7 +948,8 @@ export default function NewFoundationEstimate() {
         setAutoSaving(false);
       } else {
         setSaving(false);
-        navigate(createPageUrl('FoundationProjects'));
+        // Inside the All-In-One estimator we stay put — the parent live-syncs.
+        if (!embedded) navigate(createPageUrl('FoundationProjects'));
       }
     }
   };
@@ -1012,16 +1014,18 @@ export default function NewFoundationEstimate() {
   }, [project, items, walls, polesData, selectedEquipmentList, totals, isDirty, editId, saving, autoSaving, autoSaveEnabled]);
 
   useEffect(() => {
-    // Lock body scroll to strictly use our internal scroll container
-    document.body.style.overflow = 'hidden';
+    // Lock body scroll to strictly use our internal scroll container —
+    // but NOT when embedded in the All-In-One estimator (it would freeze the
+    // whole AIO page's scroll).
+    if (!embedded) document.body.style.overflow = 'hidden';
     const interval = setInterval(() => {
       if (autoSaveRef.current) autoSaveRef.current();
     }, 30000); // 30 seconds
     return () => {
-      document.body.style.overflow = '';
+      if (!embedded) document.body.style.overflow = '';
       clearInterval(interval);
     };
-  }, []);
+  }, [embedded]);
 
   const handleBlur = (e) => {
     // We defer the save slightly to let state update if multiple fields blur in sequence
@@ -1044,7 +1048,7 @@ export default function NewFoundationEstimate() {
   }
 
   return (
-    <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 61px)' }} onBlur={handleBlur}>
+    <div className="flex flex-col overflow-hidden" style={{ height: embedded ? '85vh' : 'calc(100vh - 61px)' }} onBlur={handleBlur}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-white flex-shrink-0 flex-wrap gap-2 z-40 shadow-sm">
         <div className="flex items-center gap-3">

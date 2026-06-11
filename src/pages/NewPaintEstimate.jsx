@@ -59,10 +59,12 @@ const formatPaintVolume = (gallons) => {
   return `${totalGallons} gal | ${totalQuarts} qt | ${totalPints} pt`;
 };
 
-export default function NewPaintEstimate() {
+export default function NewPaintEstimate({ embeddedId = null, embedded = false }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const editId = searchParams.get('edit');
+  // When embedded inside the All-In-One estimator the id is passed as a prop
+  // (replaceState isn't seen by useSearchParams), so the prop wins.
+  const editId = embeddedId || searchParams.get('edit');
   const [isEditing, setIsEditing] = useState(false);
 
   const [showEmailModal, setShowEmailModal] = useState(false);

@@ -38,9 +38,10 @@ import {
 
 const fmt = (n) => `$${Number(n || 0).toFixed(2)}`;
 
-export default function NewVinylEstimate() {
+export default function NewVinylEstimate({ embeddedId = null, embedded = false }) {
   const [search] = useSearchParams();
-  const projectId = search.get("id") || search.get("edit");
+  // Prop wins when embedded inside the All-In-One estimator.
+  const projectId = embeddedId || search.get("id") || search.get("edit");
   const navigate = useNavigate();
 
   const [project, setProject] = useState(blankVinylProject());
@@ -235,10 +236,10 @@ export default function NewVinylEstimate() {
         saved = await VinylProject.update(projectId, payload);
       } else {
         saved = await VinylProject.create(payload);
-        navigate(`${createPageUrl("NewVinylEstimate")}?id=${saved.id}`, { replace: true });
+        if (!embedded) navigate(`${createPageUrl("NewVinylEstimate")}?id=${saved.id}`, { replace: true });
       }
       setProject(migrateProject(saved));
-      alert("Estimate saved.");
+      if (!embedded) alert("Estimate saved.");
     } catch (e) {
       console.error(e); alert("Save failed: " + e.message);
     }
