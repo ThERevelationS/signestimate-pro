@@ -54,7 +54,7 @@ export default function NewSignMaintenance({ embeddedId = null, embedded = false
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
-  const [activeTab, setActiveTab] = useState("project");
+  const [activeTab, setActiveTab] = useState(embedded ? "items" : "project");
 
   useEffect(() => { if (!loading) setHasLoaded(true); }, [loading]);
   useEffect(() => { if (hasLoaded) setIsDirty(true); }, [project, hasLoaded, setIsDirty]);
@@ -133,7 +133,7 @@ export default function NewSignMaintenance({ embeddedId = null, embedded = false
   };
 
   const saveProject = async () => {
-    if (!project.project_name || !project.client_name || !project.estimate_number || !project.hyperlink) {
+    if (!embedded && (!project.project_name || !project.client_name || !project.estimate_number || !project.hyperlink)) {
       alert("Please fill in Project Name, Client Name, Estimate Number, and Project Link.");
       setActiveTab("project");
       return;
@@ -147,7 +147,7 @@ export default function NewSignMaintenance({ embeddedId = null, embedded = false
       } else {
         await MaintenanceProject.create(dataToSave);
       }
-      navigate(createPageUrl("SignMaintenanceProjects"));
+      if (!embedded) navigate(createPageUrl("SignMaintenanceProjects"));
     } catch (e) {
       console.error(e);
       alert("Save failed: " + e.message);
@@ -189,7 +189,7 @@ export default function NewSignMaintenance({ embeddedId = null, embedded = false
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <div className="sticky top-[64px] z-30 -mx-2 px-2 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60">
                 <TabsList className="grid w-full grid-cols-4 bg-white shadow-md border border-slate-200 h-auto p-1 gap-1">
-                  <TabsTrigger value="project" className="py-2 text-xs"><FileText className="w-3.5 h-3.5 mr-1" />Project</TabsTrigger>
+                  <TabsTrigger value="project" className="py-2 text-xs"><FileText className="w-3.5 h-3.5 mr-1" />{embedded ? "Options" : "Project"}</TabsTrigger>
                   <TabsTrigger value="items" className="py-2 text-xs">
                     <ListChecks className="w-3.5 h-3.5 mr-1" />Service Items
                     {recalculated.items?.length > 0 && <span className="ml-1 text-[10px] bg-slate-100 px-1.5 rounded-full">{recalculated.items.length}</span>}
@@ -202,39 +202,43 @@ export default function NewSignMaintenance({ embeddedId = null, embedded = false
               {/* PROJECT TAB */}
               <TabsContent value="project" className="mt-4 space-y-4">
                 <Card className="bg-white border-0 shadow-sm">
-                  <CardHeader className="pb-3"><CardTitle className="text-lg">Project Information</CardTitle></CardHeader>
+                  <CardHeader className="pb-3"><CardTitle className="text-lg">{embedded ? "Section Options" : "Project Information"}</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Client Name *</Label>
-                        <ClientSearchInput
-                          value={project.client_name}
-                          onChange={(v) => updateProject({ client_name: v })}
-                          onSelectProject={(d) => updateProject({
-                            client_name: d.client_name || project.client_name,
-                            project_name: d.project_name || project.project_name,
-                            estimate_number: d.estimate_number || project.estimate_number,
-                            hyperlink: d.hyperlink || project.hyperlink,
-                          })}
-                          className="mt-1"
-                          placeholder="Enter client name"
-                        />
-                      </div>
-                      <div>
-                        <Label>Project Name *</Label>
-                        <Input value={project.project_name} onChange={(e) => updateProject({ project_name: e.target.value })} placeholder="e.g. Main St Sign — Annual Service" className="mt-1" />
-                      </div>
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Estimate Number *</Label>
-                        <Input value={project.estimate_number} onChange={(e) => updateProject({ estimate_number: e.target.value })} placeholder="e.g. SVC-2026-001" className="mt-1" />
-                      </div>
-                      <div>
-                        <Label>Project Link *</Label>
-                        <Input value={project.hyperlink} onChange={(e) => updateProject({ hyperlink: e.target.value })} placeholder="https://…" className="mt-1" />
-                      </div>
-                    </div>
+                    {!embedded && (
+                      <>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <Label>Client Name *</Label>
+                            <ClientSearchInput
+                              value={project.client_name}
+                              onChange={(v) => updateProject({ client_name: v })}
+                              onSelectProject={(d) => updateProject({
+                                client_name: d.client_name || project.client_name,
+                                project_name: d.project_name || project.project_name,
+                                estimate_number: d.estimate_number || project.estimate_number,
+                                hyperlink: d.hyperlink || project.hyperlink,
+                              })}
+                              className="mt-1"
+                              placeholder="Enter client name"
+                            />
+                          </div>
+                          <div>
+                            <Label>Project Name *</Label>
+                            <Input value={project.project_name} onChange={(e) => updateProject({ project_name: e.target.value })} placeholder="e.g. Main St Sign — Annual Service" className="mt-1" />
+                          </div>
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <Label>Estimate Number *</Label>
+                            <Input value={project.estimate_number} onChange={(e) => updateProject({ estimate_number: e.target.value })} placeholder="e.g. SVC-2026-001" className="mt-1" />
+                          </div>
+                          <div>
+                            <Label>Project Link *</Label>
+                            <Input value={project.hyperlink} onChange={(e) => updateProject({ hyperlink: e.target.value })} placeholder="https://…" className="mt-1" />
+                          </div>
+                        </div>
+                      </>
+                    )}
 
                     <div>
                       <Label className="text-sm font-semibold text-slate-900">Service Environment</Label>
@@ -270,12 +274,14 @@ export default function NewSignMaintenance({ embeddedId = null, embedded = false
                   </CardContent>
                 </Card>
 
+                {!embedded && (
                 <Card className="bg-white border-0 shadow-sm">
                   <CardHeader className="pb-3"><CardTitle className="text-lg">Notes</CardTitle></CardHeader>
                   <CardContent>
                     <Textarea value={project.notes} onChange={(e) => updateProject({ notes: e.target.value })} placeholder="Service notes, customer history, special considerations…" className="h-32" />
                   </CardContent>
                 </Card>
+                )}
 
                 <div className="flex justify-end">
                   <Button onClick={() => setActiveTab("items")} className="bg-cyan-600 hover:bg-cyan-700 text-white">Continue to Service Items →</Button>

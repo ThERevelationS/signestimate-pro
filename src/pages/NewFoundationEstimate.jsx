@@ -192,7 +192,7 @@ export default function NewFoundationEstimate({ embeddedId = null, embedded = fa
   const [wallMaterials, setWallMaterials] = useState([]);
   const [settings, setSettings] = useState({});
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('info');
+  const [activeTab, setActiveTab] = useState(embedded ? 'foundation' : 'info');
   const [loading, setLoading] = useState(true);
   const [missingFields, setMissingFields] = useState([]);
   const [show3D, setShow3D] = useState(true);
@@ -875,7 +875,9 @@ export default function NewFoundationEstimate({ embeddedId = null, embedded = fa
     if (!project.project_name) missing.push('project_name');
     if (!project.client_name) missing.push('client_name');
     
-    if (missing.length > 0) {
+    // In embedded (All-In-One) mode the client/project fields are inherited
+    // from the parent estimate and not shown here, so don't block the save.
+    if (missing.length > 0 && !embedded) {
       if (isAutoSave) return;
       setMissingFields(missing);
       setActiveTab('info');
@@ -1185,7 +1187,7 @@ export default function NewFoundationEstimate({ embeddedId = null, embedded = fa
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col min-h-0">
               <div className="p-4 pb-0 bg-white border-b flex-shrink-0 z-30 sticky top-0 shadow-sm">
                 <TabsList className="mb-4 flex-wrap h-auto bg-white p-1 gap-1 border border-slate-200 rounded-xl shadow-md">
-                <TabBadgeTrigger value="info" icon={FileTextIcon} label="Project Info" color="orange" />
+                {!embedded && <TabBadgeTrigger value="info" icon={FileTextIcon} label="Project Info" color="orange" />}
                 <TabBadgeTrigger value="foundation" icon={AnchorIcon} label="Foundation" count={items.length} color="orange" />
                 {items.some(i => i.excavation_method === 'equipment_excavation') && (
                   <TabBadgeTrigger value="equipment" icon={WrenchIcon} label="Equipment" count={selectedEquipmentList.length > 0 ? selectedEquipmentList.length : undefined} color="orange" />
@@ -1201,7 +1203,7 @@ export default function NewFoundationEstimate({ embeddedId = null, embedded = fa
 
             <div className="p-4 pt-0">
               {/* PROJECT INFO */}
-              <TabsContent value="info" className="space-y-4 pt-4">
+              {!embedded && <TabsContent value="info" className="space-y-4 pt-4">
                 <Card className="border-indigo-200 shadow-sm overflow-hidden">
                   <CardHeader className="bg-indigo-50/50 border-b border-indigo-100"><CardTitle className="text-base text-indigo-900">Project Information</CardTitle></CardHeader>
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1245,7 +1247,7 @@ export default function NewFoundationEstimate({ embeddedId = null, embedded = fa
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
+              </TabsContent>}
 
               {/* FOUNDATION ITEMS */}
               <TabsContent value="foundation" className="space-y-4 pt-4">
