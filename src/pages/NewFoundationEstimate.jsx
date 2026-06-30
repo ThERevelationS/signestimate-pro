@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
-import { Plus, Save, ArrowLeft, Trash2, Crosshair, Move, Undo, Redo, Copy, HelpCircle, ChevronDown } from 'lucide-react';
+import { Plus, Save, ArrowLeft, Trash2, Crosshair, Move, Undo, Redo, Copy, HelpCircle, ChevronDown, Check, X } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import WallSection from '@/components/WallSection';
@@ -1352,26 +1352,64 @@ export default function NewFoundationEstimate({ embeddedId = null, embedded = fa
                               {availableAdmixes.map(admix => {
                                 const isChecked = (project.project_concrete_admixtures || []).includes(admix.id);
                                 return (
-                                  <DropdownMenuCheckboxItem
+                                  <div
                                     key={admix.id}
-                                    checked={isChecked}
-                                    onCheckedChange={(checked) => {
+                                    role="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
                                       let current = [...(project.project_concrete_admixtures || [])];
-                                      if (checked) current.push(admix.id);
-                                      else current = current.filter(x => x !== admix.id);
+                                      if (isChecked) current = current.filter(x => x !== admix.id);
+                                      else current.push(admix.id);
                                       updateProject('project_concrete_admixtures', current);
                                     }}
-                                    className="flex flex-col items-start px-2 py-2 cursor-pointer whitespace-normal focus:bg-slate-50"
+                                    className={`flex items-start gap-3 rounded-lg px-3 py-2.5 cursor-pointer whitespace-normal transition-colors border ${
+                                      isChecked
+                                        ? 'bg-amber-50 border-amber-400 ring-1 ring-amber-300'
+                                        : 'bg-white border-transparent hover:bg-slate-50'
+                                    }`}
                                   >
-                                    <div className="font-bold text-sm text-slate-900 leading-tight">
-                                      {admix.name}
+                                    <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                                      isChecked ? 'bg-amber-500 border-amber-500' : 'bg-white border-slate-300'
+                                    }`}>
+                                      {isChecked && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
                                     </div>
-                                    <p className="text-xs text-slate-500 mt-1 leading-snug">{admix.desc}</p>
-                                  </DropdownMenuCheckboxItem>
+                                    <div className="min-w-0">
+                                      <div className={`font-bold text-sm leading-tight ${isChecked ? 'text-amber-900' : 'text-slate-900'}`}>
+                                        {admix.name}
+                                      </div>
+                                      <p className="text-xs text-slate-500 mt-1 leading-snug">{admix.desc}</p>
+                                    </div>
+                                  </div>
                                 );
                               })}
                             </DropdownMenuContent>
                           </DropdownMenu>
+
+                          {/* Selected admixtures shown as visible chips below the dropdown */}
+                          {(project.project_concrete_admixtures || []).length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {(project.project_concrete_admixtures || []).map(id => {
+                                const a = availableAdmixes.find(x => x.id === id);
+                                if (!a) return null;
+                                return (
+                                  <Badge key={id} className="bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-100 gap-1 pl-2 pr-1 py-1">
+                                    <Check className="w-3 h-3" strokeWidth={3} />
+                                    {a.name}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const current = (project.project_concrete_admixtures || []).filter(x => x !== id);
+                                        updateProject('project_concrete_admixtures', current);
+                                      }}
+                                      className="ml-0.5 rounded hover:bg-amber-200 p-0.5"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
