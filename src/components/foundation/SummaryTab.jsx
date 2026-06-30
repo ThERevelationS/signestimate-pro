@@ -271,18 +271,20 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
       polesData.forEach((p, i) => {
           const inv = inventory.find(inv => inv.id === p.pole_id);
           let cost = 0;
+          // Total pole length = height above ground + depth in ground.
+          const totalPoleInches = (p.height_inches || 0) + (p.y_offset_inches || 0);
           if (inv) {
              if (inv.pole_pricing_mode === 'stock_price') {
                  const stockLen = (inv.pole_stock_length_ft || 20) * 12;
-                 const pieces = Math.ceil(p.height_inches / stockLen);
+                 const pieces = Math.ceil(totalPoleInches / stockLen);
                  const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : (inv.pole_stock_price || 0);
                  cost = pieces * rate;
              } else {
                  const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : (inv.cost_per_unit || 0);
-                 cost = (p.height_inches / 12) * rate;
+                 cost = (totalPoleInches / 12) * rate;
              }
           }
-          lines.push(`Pole #${i + 1} (${p.height_inches}" height): $${cost.toFixed(2)}`);
+          lines.push(`Pole #${i + 1} (${p.height_inches}" above ground + ${p.y_offset_inches || 0}" buried = ${totalPoleInches}" total): $${cost.toFixed(2)}`);
       });
       lines.push(`Poles Total: $${polesTotal.toFixed(2)}`);
     }
@@ -359,22 +361,24 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
     }
     if (polesTotal > 0) {
       rows.push([]);
-      rows.push(['Pole', 'Height (in)', 'Cost']);
+      rows.push(['Pole', 'Total Length (in)', 'Cost']);
       polesData.forEach((p, i) => {
           const inv = inventory.find(inv => inv.id === p.pole_id);
           let cost = 0;
+          // Total pole length = height above ground + depth in ground.
+          const totalPoleInches = (p.height_inches || 0) + (p.y_offset_inches || 0);
           if (inv) {
              if (inv.pole_pricing_mode === 'stock_price') {
                  const stockLen = (inv.pole_stock_length_ft || 20) * 12;
-                 const pieces = Math.ceil(p.height_inches / stockLen);
+                 const pieces = Math.ceil(totalPoleInches / stockLen);
                  const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : (inv.pole_stock_price || 0);
                  cost = pieces * rate;
              } else {
                  const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : (inv.cost_per_unit || 0);
-                 cost = (p.height_inches / 12) * rate;
+                 cost = (totalPoleInches / 12) * rate;
              }
           }
-          rows.push([`Pole #${i + 1}`, p.height_inches, cost.toFixed(2)]);
+          rows.push([`Pole #${i + 1}`, totalPoleInches, cost.toFixed(2)]);
       });
       rows.push(['Poles Total', totals.polesTotal.toFixed(2)]);
     }
@@ -884,10 +888,12 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                 let unitLabel = '';
                 let baseQty = 0;
                 
+                // Total pole length = height above ground + depth in ground.
+                const totalPoleInches = (p.height_inches || 0) + (p.y_offset_inches || 0);
                 if (inv) {
                    if (inv.pole_pricing_mode === 'stock_price') {
                        const stockLen = (inv.pole_stock_length_ft || 20) * 12;
-                       baseQty = Math.ceil(p.height_inches / stockLen);
+                       baseQty = Math.ceil(totalPoleInches / stockLen);
                        defaultRate = inv.pole_stock_price || 0;
                        unitLabel = 'piece';
                        
@@ -895,7 +901,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                        const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : defaultRate;
                        cost = pieces * rate;
                    } else {
-                       baseQty = p.height_inches / 12;
+                       baseQty = totalPoleInches / 12;
                        defaultRate = inv.cost_per_unit || 0;
                        unitLabel = 'ft';
                        
@@ -908,7 +914,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                 // Painting cost
                 let paintingCost = 0;
                 if (p.include_pole_painting && inv) {
-                    const heightFt = (p.height_inches || 0) / 12;
+                    const heightFt = totalPoleInches / 12;
                     const paintCostPerLf = parseFloat(settings['pole_paint_cost_per_lf'] || 3.50);
                     const paintLaborPerLf = parseFloat(settings['pole_paint_labor_per_lf'] || 2.50);
                     const w = inv.pole_width_inches || 6;
@@ -946,10 +952,10 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                     {p.include_pole_painting && (
                       <CostRow 
                         label="Pole Painting"
-                        qtyLabel={`${((p.height_inches || 0) / 12).toFixed(1)} LF × size multiplier`}
+                        qtyLabel={`${(totalPoleInches / 12).toFixed(1)} LF × size multiplier`}
                         readOnly
                         calculatedTotal={paintingCost}
-                        detailText={`Painting (paint + labor) for ${((p.height_inches || 0) / 12).toFixed(1)} LF, ${inv?.pole_width_inches || 6}" pole = $${paintingCost.toFixed(2)}`}
+                        detailText={`Painting (paint + labor) for ${(totalPoleInches / 12).toFixed(1)} LF, ${inv?.pole_width_inches || 6}" pole = $${paintingCost.toFixed(2)}`}
                       />
                     )}
                   </div>
