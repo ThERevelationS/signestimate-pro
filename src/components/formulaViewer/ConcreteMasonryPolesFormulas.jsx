@@ -104,8 +104,9 @@ export default function ConcreteMasonryPolesFormulas({ settings }) {
     finishing_labor_rate: num(settings.finishing_labor_rate, 50),
     excavation_method: 'equipment_excavation',
 
-    // Pole
-    pole_total_height_in: 144,
+    // Pole — total length = height above ground + depth in ground
+    pole_height_above_in: 84,
+    pole_depth_in_ground_in: 36,
     pole_cost_per_ft: 25,
     pole_paint_rate_per_lf: 4,
     include_pole: true,
@@ -204,8 +205,9 @@ export default function ConcreteMasonryPolesFormulas({ settings }) {
   const finishingHrs = v.include_finishing ? volumeCY * 0.4 * v.quantity : 0;
   const finishingLaborCost = finishingHrs * v.finishing_labor_rate;
 
-  // Pole
-  const poleFt = v.pole_total_height_in / 12;
+  // Pole — total length = height above ground + depth in ground
+  const poleTotalIn = (v.pole_height_above_in || 0) + (v.pole_depth_in_ground_in || 0);
+  const poleFt = poleTotalIn / 12;
   const poleCost = v.include_pole ? poleFt * v.pole_cost_per_ft * v.quantity : 0;
   const polePaintCost = v.include_pole && v.include_pole_paint ? poleFt * v.pole_paint_rate_per_lf * v.quantity : 0;
 
@@ -308,7 +310,8 @@ export default function ConcreteMasonryPolesFormulas({ settings }) {
               <ToggleRow label="Include Pole Paint" checked={v.include_pole_paint} onChange={(c) => set('include_pole_paint', c)} />
               {v.include_pole && (
                 <div className="grid grid-cols-2 gap-2">
-                  <div><Label>Pole Height (in)</Label><Input type="number" value={v.pole_total_height_in} onChange={(e) => setN('pole_total_height_in', e.target.value)} /></div>
+                  <div><Label>Height Above Ground (in)</Label><Input type="number" value={v.pole_height_above_in} onChange={(e) => setN('pole_height_above_in', e.target.value)} /></div>
+                  <div><Label>Depth in Ground (in)</Label><Input type="number" value={v.pole_depth_in_ground_in} onChange={(e) => setN('pole_depth_in_ground_in', e.target.value)} /></div>
                   <div><Label>Pole ($/ft)</Label><Input type="number" value={v.pole_cost_per_ft} onChange={(e) => setN('pole_cost_per_ft', e.target.value)} /></div>
                   <div><Label>Paint ($/LF)</Label><Input type="number" value={v.pole_paint_rate_per_lf} onChange={(e) => setN('pole_paint_rate_per_lf', e.target.value)} /></div>
                 </div>
@@ -388,7 +391,8 @@ export default function ConcreteMasonryPolesFormulas({ settings }) {
 
           {v.include_pole && (
             <FormulaSection title="Step 7: Pole" color="indigo">
-              <FormulaLine label="Pole Length" result={`${poleFt.toFixed(2)} ft`} />
+              <FormulaLine label="Total Pole Length" formula={`(${v.pole_height_above_in}" above + ${v.pole_depth_in_ground_in}" in ground) ÷ 12`} result={`${poleFt.toFixed(2)} ft`} highlight />
+              <FormulaLine label="(Depth in ground EXTENDS the pole — it is added to the above-ground height)" />
               <FormulaLine label="Pole Cost" formula={`${poleFt.toFixed(2)} × $${v.pole_cost_per_ft} × ${v.quantity}`} result={`$${poleCost.toFixed(2)}`} highlight />
               {v.include_pole_paint && (
                 <FormulaLine label="Paint" formula={`${poleFt.toFixed(2)} × $${v.pole_paint_rate_per_lf} × ${v.quantity}`} result={`$${polePaintCost.toFixed(2)}`} highlight />

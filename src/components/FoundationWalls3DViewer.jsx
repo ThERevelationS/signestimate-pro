@@ -785,8 +785,11 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
         const inv = polesInventory.find(i => i.id === p.pole_id);
         if (!inv) return;
         
-        const hFt = (p.height_inches || 0) / 12;
+        const aboveFt = (p.height_inches || 0) / 12;
         const yOffFt = (p.y_offset_inches || 0) / 12;
+        // Total pole length = height above ground + depth in ground.
+        // Adding depth EXTENDS the pole (it does not sink a fixed-length pole).
+        const hFt = aboveFt + yOffFt;
         const widFt = (inv.pole_width_inches || 6) / 12;
         const depFt = (inv.pole_depth_inches || 6) / 12;
         
@@ -796,10 +799,10 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
 
         const fIdx = p.foundation_idx !== undefined ? p.foundation_idx : 0;
         
-        // y_offset is from top of foundation downwards.
-        // top of foundation is at gradeOffsetFt.
+        // Bottom of pole sits y_offset (depth in ground) below the top of the
+        // foundation; top of pole rises height-above-ground above it.
         const topOfFoundation = gradeOffsetFt;
-        const topOfPole = topOfFoundation - yOffFt + hFt;
+        const topOfPole = topOfFoundation + aboveFt;
         const yCenter = topOfPole - hFt / 2;
 
         let mat = new THREE.MeshStandardMaterial({ color: p.pole_color || 0x475569, roughness: 0.3, metalness: 0.8 }); // default steel

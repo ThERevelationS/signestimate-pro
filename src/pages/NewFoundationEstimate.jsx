@@ -775,7 +775,8 @@ export default function NewFoundationEstimate({ embeddedId = null, embedded = fa
 
     const calcPolePaintingCost = (p, inv) => {
         if (!p.include_pole_painting || !inv) return 0;
-        const heightFt = (p.height_inches || 0) / 12;
+        // Total pole length = height above ground + depth in ground.
+        const heightFt = ((p.height_inches || 0) + (p.y_offset_inches || 0)) / 12;
         const paintCostPerLf = getSetting('pole_paint_cost_per_lf', 3.50);
         const paintLaborPerLf = getSetting('pole_paint_labor_per_lf', 2.50);
         const sizeMult = getPolePaintingSizeMultiplier(inv);
@@ -786,14 +787,16 @@ export default function NewFoundationEstimate({ embeddedId = null, embedded = fa
         const inv = inventory.find(i => i.id === p.pole_id);
         if (!inv) return sum;
         let poleCost = 0;
+        // Total pole length = height above ground + depth in ground.
+        const totalPoleInches = (p.height_inches || 0) + (p.y_offset_inches || 0);
         if (inv.pole_pricing_mode === 'stock_price') {
             const stockLen = (inv.pole_stock_length_ft || 20) * 12;
-            const pieces = Math.ceil(p.height_inches / stockLen);
+            const pieces = Math.ceil(totalPoleInches / stockLen);
             const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : (inv.pole_stock_price || 0);
             poleCost = pieces * rate;
         } else {
             const rate = typeof p.custom_cost_per_unit === 'number' ? p.custom_cost_per_unit : (inv.cost_per_unit || 0);
-            poleCost = (p.height_inches / 12) * rate;
+            poleCost = (totalPoleInches / 12) * rate;
         }
         poleCost += calcPolePaintingCost(p, inv);
         return sum + poleCost;
