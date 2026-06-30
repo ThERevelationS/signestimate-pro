@@ -19,6 +19,7 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
   const [xrayMode, setXrayMode] = useState(true);
   const [hideGround, setHideGround] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(100);
+  const hasFramedRef = useRef(false);
 
   // ── Scene setup (once) ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -918,7 +919,10 @@ export default function FoundationWalls3DViewer({ items = [], walls = [], polesD
     });
 
     // ── Camera framing ────────────────────────────────────────────────────────
-    if (items.length > 0 && cameraRef.current && controlsRef.current) {
+    // Only auto-frame the FIRST time items appear. After that, leave the user's
+    // camera position untouched so edits don't reset the view.
+    if (items.length > 0 && !hasFramedRef.current && cameraRef.current && controlsRef.current) {
+      hasFramedRef.current = true;
       const first = items[0];
       const lenFt = (first.length_inches || 48) / 12;
       const widFt = (first.width_inches || 48) / 12;
