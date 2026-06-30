@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus, ArrowLeft, Wrench, FileText, ListChecks, HardHat, Calculator, MapPin, Package, ClipboardCheck } from "lucide-react";
 import ServiceItemRow from "@/components/signMaintenance/ServiceItemRow";
 import EquipmentSelector from "@/components/channelLetterInstall/EquipmentSelector";
+import LadderSelector from "@/components/channelLetterInstall/LadderSelector";
 import PersonnelSelector from "@/components/channelLetterInstall/PersonnelSelector";
 import TravelCostCard from "@/components/channelLetterInstall/TravelCostCard";
 import AddressAutocomplete from "@/components/channelLetterInstall/AddressAutocomplete";
@@ -333,6 +334,13 @@ export default function NewSignMaintenance({ embeddedId = null, embedded = false
                   equipmentInventory={equipmentInventory}
                   items={recalculated.items}
                   projectLaborHours={recalculated.labor_hours || 0}
+                />
+                <LadderSelector
+                  selectedEquipment={recalculated.selected_equipment || []}
+                  onChange={(next) => updateProject({ selected_equipment: next })}
+                  equipmentInventory={equipmentInventory}
+                  projectLaborHours={recalculated.labor_hours || 0}
+                  crewSize={(recalculated.personnel || []).length}
                 />
                 <PersonnelSelector
                   personnel={recalculated.personnel || []}

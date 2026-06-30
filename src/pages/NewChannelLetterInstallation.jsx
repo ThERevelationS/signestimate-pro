@@ -18,6 +18,7 @@ import ItemsList from "@/components/channelLetterInstall/ItemsList";
 import CrewEquipmentHint from "@/components/channelLetterInstall/CrewEquipmentHint";
 import ValidationWarnings from "@/components/channelLetterInstall/ValidationWarnings";
 import EquipmentSelector from "@/components/channelLetterInstall/EquipmentSelector";
+import LadderSelector from "@/components/channelLetterInstall/LadderSelector";
 import PersonnelSelector from "@/components/channelLetterInstall/PersonnelSelector";
 import LettersPurchaseTab from "@/components/channelLetterInstall/LettersPurchaseTab";
 import TravelCostCard from "@/components/channelLetterInstall/TravelCostCard";
@@ -872,6 +873,15 @@ export default function NewChannelLetterInstallation({ embeddedId = null, embedd
                     onChange={(next) => updateProject({ selected_equipment: next })}
                     equipmentInventory={equipmentInventory}
                     items={recalculated.items}
+                    projectLaborHours={recalculated.labor_hours || 0}
+                    crewSize={(recalculated.personnel || []).length}
+                  />
+                </div>
+                <div id="clp-ladder">
+                  <LadderSelector
+                    selectedEquipment={recalculated.selected_equipment || []}
+                    onChange={(next) => updateProject({ selected_equipment: next })}
+                    equipmentInventory={equipmentInventory}
                     projectLaborHours={recalculated.labor_hours || 0}
                     crewSize={(recalculated.personnel || []).length}
                   />
