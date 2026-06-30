@@ -146,6 +146,12 @@ function CostRow({
 export default function SummaryTab({ items, walls, totals, calcItemCost, project, polesData = [], selectedEquipmentList = [], inventory = [], onUpdateItem, onUpdateWall, onUpdatePole, onUpdateEquipment, settings = {} }) {
   const polesTotal = totals.polesTotal || 0;
   const [allCopied, setAllCopied] = useState(false);
+  // Only show the delivered "Concrete Service" card when an item actually uses a
+  // concrete_service supplier. Bagged-concrete-only projects have no truck delivery.
+  const hasConcreteService = items.some(item => {
+    const inv = inventory.find(i => i.id === item.selected_concrete_id);
+    return inv && inv.material_type === 'concrete_service';
+  });
   // Markup is intentionally NOT shown here — all customer-facing markups live on the Customer Pricing tab.
 
   const allAttachments = inventory.filter(i => i.material_type === 'attachment');
@@ -416,6 +422,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
         <p className="text-xs text-slate-400 mt-1">Click any cost value to copy it to clipboard. See the <span className="font-semibold">Customer Pricing</span> tab for tier markups.</p>
       </CardHeader>
       <CardContent className="space-y-3">
+        {hasConcreteService && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm mb-4">
             <div className="flex justify-between items-center text-base font-bold text-blue-900 mb-3 border-b border-blue-200 pb-2">
                 <span>Concrete Service (Project Total)</span>
@@ -478,6 +485,7 @@ export default function SummaryTab({ items, walls, totals, calcItemCost, project
                 )}
             </div>
         </div>
+        )}
 
         {items.map((item, idx) => {
           const c = calcItemCost(item);
