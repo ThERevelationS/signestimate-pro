@@ -24,6 +24,29 @@ const MainPage = mainPageKey ? Pages[mainPageKey] : (() => null);
 
 setupIframeMessaging();
 
+// After a redeploy, old lazy-chunk hashes become invalid and produce
+// "Failed to fetch dynamically imported module" errors. Reload once (guarded
+// by sessionStorage so we never loop) to pull the fresh chunk manifest.
+const handleChunkLoadError = (message) => {
+  if (typeof message === 'string' &&
+      /Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed/i.test(message)) {
+    const key = 'chunk_reload_once';
+    if (!sessionStorage.getItem(key)) {
+      sessionStorage.setItem(key, '1');
+      window.location.reload();
+      return true;
+    }
+  }
+  return false;
+};
+
+window.addEventListener('error', (e) => handleChunkLoadError(e?.message));
+window.addEventListener('unhandledrejection', (e) => handleChunkLoadError(e?.reason?.message || String(e?.reason || '')));
+// Clear the guard once the app successfully boots so future redeploys can retry.
+window.addEventListener('load', () => {
+  setTimeout(() => sessionStorage.removeItem('chunk_reload_once'), 4000);
+});
+
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
   : <>{children}</>;
