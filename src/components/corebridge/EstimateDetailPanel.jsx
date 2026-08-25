@@ -20,6 +20,9 @@ export default function EstimateDetailPanel({
   statusBadge,
   renderItem,
   totals = [],
+  grandTotal,
+  extraFields,
+  editParam = "edit",
   itemsLabel = "Products",
 }) {
   const items = project.items || [];
@@ -30,7 +33,7 @@ export default function EstimateDetailPanel({
         <h2 className="text-sm font-bold text-lime-700 uppercase tracking-wide">Estimate Details</h2>
         <div className="flex items-center gap-2">
           {statusBadge}
-          <Link to={`${createPageUrl(editPage)}?edit=${project.id}`}>
+          <Link to={`${createPageUrl(editPage)}?${editParam}=${project.id}`}>
             <Button variant="outline" size="sm" className="h-7 rounded-sm text-xs">
               <Edit className="w-3.5 h-3.5 mr-1" /> Edit
             </Button>
@@ -49,6 +52,7 @@ export default function EstimateDetailPanel({
           </a>
         )}
         <p className="text-slate-600">Created: {format(new Date(project.created_date), "MM/dd/yyyy")}</p>
+        {extraFields}
       </div>
 
       <div className="px-4 py-3 border-b border-slate-200">
@@ -83,6 +87,13 @@ export default function EstimateDetailPanel({
               {fmtCurrency(totals.reduce((s, t) => s + (Number(t.value) || 0), 0))}
             </span>
           </div>
+        </div>
+      )}
+
+      {totals.length === 0 && grandTotal !== undefined && (
+        <div className="px-4 py-3 flex justify-between font-bold text-slate-900 text-sm">
+          <span>Total:</span>
+          <span className="tabular-nums">{fmtCurrency(grandTotal)}</span>
         </div>
       )}
 

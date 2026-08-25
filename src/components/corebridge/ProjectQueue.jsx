@@ -29,6 +29,7 @@ export default function ProjectQueue({
   loadingMore,
   onLoadMore,
   detailPanel,
+  headerActions,
   emptyMessage = "No estimates found.",
 }) {
   return (
@@ -41,11 +42,14 @@ export default function ProjectQueue({
               <h1 className="text-base font-bold text-lime-700 uppercase tracking-wide">{title}</h1>
               {subtitle && <p className="text-xs text-slate-500">{subtitle}</p>}
             </div>
-            <Link to={createPageUrl(newEstimatePage)}>
-              <Button size="sm" className="bg-zinc-800 hover:bg-zinc-700 text-white rounded-sm h-8">
-                <Plus className="w-4 h-4 mr-1" /> Create New
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2 flex-wrap">
+              {headerActions}
+              <Link to={createPageUrl(newEstimatePage)}>
+                <Button size="sm" className="bg-zinc-800 hover:bg-zinc-700 text-white rounded-sm h-8">
+                  <Plus className="w-4 h-4 mr-1" /> Create New
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {/* Filter panel */}
