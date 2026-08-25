@@ -1,7 +1,7 @@
 {
   "name": "AllInOneEstimate",
   "type": "object",
-  "description": "A multifaceted estimate BUILT from sections. Each section is a dedicated sub-estimate created by (and owned by) this estimate in its module's own entity, edited with that module's full estimator INLINE on the same page. Project info (client, estimate #, hyperlink, site address) is shared down to every owned section automatically. Totals live-sync from the source projects via real-time subscriptions and refresh-on-open. Customer pricing waterfall (per-section adjustments \u2192 discount \u2192 contingency \u2192 fees \u2192 tax \u2192 deposit) is computed by components/allInOne/aioPricing.js. module_key values match components/allInOne/estimatorRegistry.js. Step 1 (Estimate Details) fields \u2014 customer_id, terms, order_contact, office_phone, salesperson, sales_center, tax_group \u2014 come from the Customer / TaxGroup / EstimateOption entities.",
+  "description": "A multifaceted estimate BUILT from sections. Each section is a dedicated sub-estimate created by (and owned by) this estimate in its module's own entity, edited with that module's full estimator INLINE on the same page. Project info (client, estimate #, hyperlink, site address) is shared down to every owned section automatically. Totals live-sync from the source projects via real-time subscriptions and refresh-on-open. Customer pricing waterfall (per-section adjustments \u2192 discount \u2192 contingency \u2192 fees \u2192 tax \u2192 deposit) is computed by components/allInOne/aioPricing.js. module_key values match components/allInOne/estimatorRegistry.js. Step 1 (Estimate Details) fields \u2014 customer_id, terms, order_contact, office_phone, salesperson, sales_center, tax_group \u2014 come from the Customer / TaxGroup / EstimateOption entities. The quote presentation fields (branding, display toggles, text blocks) are edited in the Quote Settings panel on the Customer View tab and default from the QuoteDefaults record; scope lists are built from the QuoteScopeLine library, including auto-scope lines triggered by the modules present on the estimate.",
   "properties": {
     "project_name": {
       "type": "string",
@@ -121,11 +121,16 @@
     },
     "scope_inclusions": {
       "type": "string",
-      "description": "Newline-separated list of what's INCLUDED \u2014 rendered as bullets on the customer quote."
+      "description": "Newline-separated list of what's INCLUDED \u2014 rendered as bullets on the customer quote. Built from the QuoteScopeLine library plus auto-scope lines."
     },
     "scope_exclusions": {
       "type": "string",
       "description": "Newline-separated list of what's EXCLUDED \u2014 rendered as bullets on the customer quote."
+    },
+    "scope_auto_apply": {
+      "type": "boolean",
+      "default": true,
+      "description": "When true, scope library lines flagged always_include, or whose auto_modules match a section on this estimate, are added to the scope lists automatically."
     },
     "hide_section_prices": {
       "type": "boolean",
@@ -141,6 +146,138 @@
     },
     "company_email": {
       "type": "string"
+    },
+    "company_address": {
+      "type": "string"
+    },
+    "company_website": {
+      "type": "string"
+    },
+    "company_license": {
+      "type": "string",
+      "description": "License / registration number printed under the company block."
+    },
+    "company_logo_url": {
+      "type": "string"
+    },
+    "quote_title": {
+      "type": "string",
+      "default": "Project Estimate",
+      "description": "Headline printed at the top of the quote."
+    },
+    "quote_accent_color": {
+      "type": "string",
+      "default": "#4f46e5",
+      "description": "Hex accent color for the quote header rule and highlight text."
+    },
+    "quote_intro_text": {
+      "type": "string",
+      "description": "Optional paragraph printed above the pricing table."
+    },
+    "quote_footer_text": {
+      "type": "string",
+      "description": "Optional paragraph printed at the very bottom of the quote."
+    },
+    "quote_terms_conditions": {
+      "type": "string",
+      "description": "Terms & conditions block printed on the quote."
+    },
+    "warranty_text": {
+      "type": "string",
+      "description": "Warranty statement printed on the quote."
+    },
+    "lead_time_text": {
+      "type": "string",
+      "description": "Production / install lead time statement printed on the quote."
+    },
+    "show_company_block": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_logo": {
+      "type": "boolean",
+      "default": false
+    },
+    "show_contact_block": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_estimate_number": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_po_number": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_site_address": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_dates": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_category_column": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_section_descriptions": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_scope_lists": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_subtotal_line": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_discount_line": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_fees_line": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_tax_line": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_deposit_lines": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_notes_on_quote": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_terms_block": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_warranty_block": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_lead_time_block": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_signature_block": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_validity_footer": {
+      "type": "boolean",
+      "default": true
+    },
+    "round_prices_to_dollar": {
+      "type": "boolean",
+      "default": false,
+      "description": "Display-only: rounds every price shown on the customer quote to the nearest dollar. Does not change stored totals."
     },
     "status": {
       "type": "string",
@@ -198,6 +335,11 @@
           "customer_description": {
             "type": "string",
             "description": "Customer-facing description shown under the section on the quote."
+          },
+          "customer_quantity": {
+            "type": "number",
+            "default": 1,
+            "description": "Display-only quantity shown on the quote when the quantity column is enabled."
           },
           "include_in_customer": {
             "type": "boolean",

@@ -7,6 +7,7 @@ import { Plus, Trash2, Settings2, Star, ChevronDown, ChevronRight } from "lucide
 import { useAuth } from "@/lib/AuthContext";
 import OptionListEditor from "@/components/estimateDetails/OptionListEditor";
 import SalespeopleEditor from "@/components/estimateDetails/SalespeopleEditor";
+import QuoteScopeLibraryEditor from "@/components/estimateDetails/QuoteScopeLibraryEditor";
 
 // Admin control panel for every dropdown used in Step 1: Estimate Details and
 // the customer forms. Each list is collapsed by default so the page stays short.
@@ -96,6 +97,10 @@ export default function EstimateSettings() {
 
         <Section title="Salespeople (app users)" defaultOpen>
           <SalespeopleEditor canEdit={canEdit} />
+        </Section>
+
+        <Section title="Quote Scope Library (auto scopes)">
+          <QuoteScopeLibraryEditor canEdit={canEdit} />
         </Section>
 
         <Section title="Tax Groups" count={taxGroups.length}>

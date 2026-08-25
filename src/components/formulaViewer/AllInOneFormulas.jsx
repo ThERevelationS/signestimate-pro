@@ -57,6 +57,31 @@ export default function AllInOneFormulas() {
         </p>
       </div>
 
+      <div className="bg-slate-800 text-white p-4 rounded-lg">
+        <h4 className="font-medium mb-2">Quote Settings & Auto-Scope Engine</h4>
+        <p className="text-xs text-slate-300 mb-2">
+          Quote Settings (Customer View tab) control PRESENTATION only — no toggle changes any
+          stored total. Rounding is display-only, and hiding a waterfall line does not remove its
+          amount from the Quote Total.
+        </p>
+        <div className="font-mono text-sm space-y-1">
+          <p>Displayed Price = round_prices_to_dollar ? round(price) : price</p>
+          <p>Table columns = Scope of Work + (show_category_column) + (show_quantity_column) + Price</p>
+          <p>Waterfall rows shown = rows where their show_*_line toggle is on</p>
+          <p>Bundled quote (hide_section_prices) = one line equal to adjusted Subtotal</p>
+          <p>Hidden section (include_in_customer = false) → bundled into "Additional project scope"</p>
+        </div>
+        <p className="text-xs text-slate-300 mt-2">
+          <b>Auto-scope:</b> a QuoteScopeLine is auto-added to the quote's scope lists when
+          <span className="font-mono"> always_include </span> is true, OR when its
+          <span className="font-mono"> auto_modules </span> contains a module key that has a section on the
+          estimate. Lines are merged without duplicates and never overwrite typed lines; it re-runs
+          whenever the set of products changes (while <span className="font-mono">scope_auto_apply</span> is on).
+          The library is managed under Estimate Settings → Quote Scope Library, and company-wide
+          branding/display defaults live in the QuoteDefaults record ("Save as default" / "Load defaults").
+        </p>
+      </div>
+
       <div>
         <h4 className="font-semibold text-slate-900 mb-3">Per-Module Total Sources</h4>
         <p className="text-sm text-slate-600 mb-3">
