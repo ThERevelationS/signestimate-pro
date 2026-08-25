@@ -373,6 +373,10 @@
     },
     "notes": {
       "type": "string"
+    },
+    "edit_reason": {
+      "type": "string",
+      "description": "Required reason captured on Step 3 (Finalize Estimate) before saving. Must be filled to save the estimate."
     }
   },
   "required": [

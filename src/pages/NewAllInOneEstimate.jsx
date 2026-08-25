@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef, useContext } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { createPageUrl } from "@/utils";
+import { UnsavedChangesContext } from "@/components/UnsavedChangesContext";
 import {
   Layers, Save, RefreshCw, Link as LinkIcon, ArrowLeft, ArrowRight,
 } from "lucide-react";
@@ -61,6 +64,7 @@ const EMPTY_PROJECT = {
   status: "draft",
   line_items: [],
   notes: "",
+  edit_reason: "",
 };
 
 const stripUi = (items) => items.map(({ missing, ...li }) => li);
@@ -77,6 +81,7 @@ const sumItems = (items) => items.reduce((s, li) => s + (Number(li.total_snapsho
 // ============================================================================
 export default function NewAllInOneEstimate() {
   const { toast } = useToast();
+  const { setIsDirty: setNavDirty } = useContext(UnsavedChangesContext);
   const [project, setProject] = useState(EMPTY_PROJECT);
   const [editId, setEditId] = useState(null);
   const [addingKey, setAddingKey] = useState(null);
@@ -396,6 +401,59 @@ export default function NewAllInOneEstimate() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Keep the Layout's unsaved-changes nav guard in sync with our dirty flag.
+  useEffect(() => { setNavDirty(dirty); }, [dirty, setNavDirty]);
+
+  // Block browser close / refresh while there are unsaved changes. Uses a ref
+  // so a programmatic save-and-exit can bypass the prompt without waiting for
+  // a re-render to detach the listener.
+  const dirtyRef = useRef(false);
+  const skipBeforeUnload = useRef(false);
+  useEffect(() => { dirtyRef.current = dirty; }, [dirty]);
+  useEffect(() => {
+    const onBeforeUnload = (e) => {
+      if (!dirtyRef.current || skipBeforeUnload.current) return;
+      e.preventDefault(); e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
+  // Step 3 "Save Estimate" — requires a reason, persists, then returns to the
+  // customer page (or the projects queue if no customer is linked).
+  const handleSaveAndExit = async () => {
+    const p = projectRef.current;
+    if (!p.project_name || !p.client_name) {
+      setActiveTab("details");
+      toast({ title: "Missing details", description: "Project name and client name are required.", variant: "destructive" });
+      return;
+    }
+    if (!p.edit_reason || !p.edit_reason.trim()) {
+      toast({ title: "Reason required", description: "Please enter a reason for editing before saving.", variant: "destructive" });
+      return;
+    }
+    setIsSaving(true);
+    await persist(p.line_items);
+    await Promise.all(
+      p.line_items
+        .filter((li) => li.owned && !li.missing)
+        .map((li) => {
+          const mod = ESTIMATOR_MODULES_BY_KEY[li.module_key];
+          if (!mod) return null;
+          return getModuleEntity(mod).update(li.project_id, buildSharedPayload(mod, p)).catch(() => {});
+        })
+    );
+    setIsSaving(false);
+    setDirty(false);
+    setNavDirty(false);
+    skipBeforeUnload.current = true;
+    toast({ title: "Saved", description: "Estimate saved. Returning to customer page." });
+    const dest = p.customer_id
+      ? `${createPageUrl("CustomerDetail")}?id=${p.customer_id}`
+      : createPageUrl("AllInOneProjects");
+    window.location.href = dest;
+  };
+
   const copyShareLink = async () => {
     if (!editIdRef.current) {
       toast({ title: "Save first", description: "Save the estimate to get a shareable link." });
@@ -551,9 +609,36 @@ export default function NewAllInOneEstimate() {
               />
             </div>
 
-            <div className="mt-5 flex justify-end">
-              <StepNavButtons activeTab={activeTab} onNavigate={setActiveTab} large />
-            </div>
+            {activeTab === "customer" ? (
+              <div className="mt-5 border-t border-slate-300 pt-4 flex items-center gap-3 flex-wrap">
+                <Label className="text-xs font-semibold text-slate-700 whitespace-nowrap">Reason For Editing:</Label>
+                <Input
+                  className="h-9 rounded-sm max-w-md flex-1 min-w-[200px]"
+                  placeholder="required"
+                  value={project.edit_reason || ""}
+                  onChange={(e) => updateField("edit_reason", e.target.value)}
+                />
+                <div className="flex gap-2 ml-auto">
+                  <button
+                    onClick={() => setActiveTab("build")}
+                    className="px-5 py-2.5 text-sm bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-sm font-semibold text-slate-800 flex items-center gap-1.5 transition-colors"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" /> Previous Step
+                  </button>
+                  <button
+                    onClick={handleSaveAndExit}
+                    disabled={isSaving}
+                    className="px-5 py-2.5 text-sm bg-lime-200 hover:bg-lime-300 border border-lime-500 rounded-sm font-semibold text-slate-900 flex items-center gap-1.5 transition-colors disabled:opacity-60"
+                  >
+                    <Save className="w-3.5 h-3.5" /> {isSaving ? "Saving…" : "Save Estimate"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-5 flex justify-end">
+                <StepNavButtons activeTab={activeTab} onNavigate={setActiveTab} large />
+              </div>
+            )}
           </div>
         </div>
       </div>

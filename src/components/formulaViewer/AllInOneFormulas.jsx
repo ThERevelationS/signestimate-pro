@@ -74,6 +74,7 @@ export default function AllInOneFormulas() {
           <p>&nbsp;&nbsp;combined state+county rate for the site address and matches the closest tax group)</p>
           <p>Estimate # / Order # = generateDocNumber(prefix) → EST-XXXXX / INV-XXXXX</p>
           <p>&nbsp;&nbsp;Shared atomic counter (DocNumberCounter) — linear, never overlaps between estimates &amp; orders</p>
+          <p>Save guard (Step 3): edit_reason is required to save; unsaved changes block browser close &amp; nav</p>
         </div>
         <p className="text-xs text-slate-300 mt-2">
           <b>Auto-scope:</b> a QuoteScopeLine is auto-added to the quote's scope lists when

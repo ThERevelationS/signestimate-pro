@@ -13,7 +13,7 @@ import NotesFlagsTab from "@/components/customers/tabs/NotesFlagsTab";
 import HistoryTab from "@/components/customers/tabs/HistoryTab";
 import AnalyticsTab from "@/components/customers/tabs/AnalyticsTab";
 
-const TABS = ["Information", "Settings", "Contacts", "Notes & Flags", "History", "Analytics"];
+const TABS = ["Information", "Settings", "Contacts", "Notes & Flags", "Orders and Estimates", "Analytics"];
 
 // Full customer record — same form used to create it, plus the account tabs.
 export default function CustomerDetail() {
@@ -119,7 +119,7 @@ export default function CustomerDetail() {
                 {tab === "Settings" && <SettingsTab customer={customer} lists={lists} onChange={change} />}
                 {tab === "Contacts" && <ContactsTab customer={customer} lists={lists} onChange={change} />}
                 {tab === "Notes & Flags" && <NotesFlagsTab customerId={id} notes={notes} onReload={loadNotes} />}
-                {tab === "History" && <HistoryTab customer={customer} estimates={estimates} />}
+                {tab === "Orders and Estimates" && <HistoryTab customer={customer} estimates={estimates} />}
                 {tab === "Analytics" && <AnalyticsTab estimates={estimates} />}
               </>
             )}
