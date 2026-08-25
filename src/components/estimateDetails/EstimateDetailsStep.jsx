@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Customer, TaxGroup, EstimateOption } from "@/entities/all";
+import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,8 @@ import { useAuth } from "@/lib/AuthContext";
 import CustomerSearchDialog from "./CustomerSearchDialog";
 import CreateCustomerDialog from "./CreateCustomerDialog";
 import { buildEstimateDefaults } from "./estimateDefaults";
+import useCustomerLists from "@/components/customers/useCustomerLists";
+import SearchableSelect from "@/components/common/SearchableSelect";
 
 // ============================================================================
 // Step 1: Estimate Details — CoreBridge layout.
@@ -22,33 +24,26 @@ import { buildEstimateDefaults } from "./estimateDefaults";
 // ============================================================================
 export default function EstimateDetailsStep({ project, updateField }) {
   const { user } = useAuth();
-  const [options, setOptions] = useState([]);
-  const [taxGroups, setTaxGroups] = useState([]);
+  const lists = useCustomerLists();
+  const { options, taxGroups } = lists;
   const [customer, setCustomer] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showMore, setShowMore] = useState(false);
 
+  // Apply the admin-flagged defaults (tax group, terms, sales center,
+  // salesperson matched to the signed-in user) to still-empty fields.
   useEffect(() => {
-    (async () => {
-      const [opts, taxes] = await Promise.all([
-        EstimateOption.list("sort_order", 500),
-        TaxGroup.list("sort_order", 200),
-      ]);
-      setOptions(opts || []);
-      setTaxGroups(taxes || []);
-      // Apply the admin-flagged defaults (tax group, terms, sales center,
-      // salesperson matched to the signed-in user) to still-empty fields.
-      const patch = buildEstimateDefaults({ project, options: opts || [], taxGroups: taxes || [], user });
-      Object.entries(patch).forEach(([k, v]) => updateField(k, v));
-    })();
+    if (lists.loading) return;
+    const patch = buildEstimateDefaults({ project, options, taxGroups, salespeople: lists.salespeople, user });
+    Object.entries(patch).forEach(([k, v]) => updateField(k, v));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.email]);
+  }, [lists.loading, user?.email]);
 
   // Load the linked customer so the contact dropdown has something to offer.
   useEffect(() => {
     if (!project.customer_id) { setCustomer(null); return; }
-    Customer.get(project.customer_id).then(setCustomer).catch(() => setCustomer(null));
+    base44.entities.Customer.get(project.customer_id).then(setCustomer).catch(() => setCustomer(null));
   }, [project.customer_id]);
 
   const opts = (type) => options.filter((o) => o.option_type === type && o.is_active !== false);
@@ -79,6 +74,9 @@ export default function EstimateDetailsStep({ project, updateField }) {
 
   const contactChoices = customer
     ? [
+        ...(customer.additional_contacts || [])
+          .filter((x) => x.is_active !== false)
+          .map((x) => `${x.first_name || ""} ${x.last_name || ""}`.trim()),
         [customer.contact_first_name, customer.contact_last_name].filter(Boolean).join(" "),
         customer.billing_contact_name,
       ].filter(Boolean)
@@ -134,12 +132,42 @@ export default function EstimateDetailsStep({ project, updateField }) {
           />
         )}
         {row("Terms",
-          <Select value={project.terms || ""} onValueChange={(v) => { updateField("terms", v); if (!project.payment_terms) updateField("payment_terms", v); }}>
-            <SelectTrigger className="h-8 rounded-sm bg-white text-sm max-w-xs"><SelectValue placeholder="select" /></SelectTrigger>
-            <SelectContent>
-              {opts("terms").map((o) => <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <div className="max-w-xs">
+            <SearchableSelect
+              value={project.terms || ""}
+              options={lists.listValues("terms")}
+              onChange={(v) => { updateField("terms", v); if (!project.payment_terms) updateField("payment_terms", v); }}
+            />
+          </div>
+        )}
+        {customer && (
+          <>
+            {row("Industry Type",
+              <div className="max-w-xs">
+                <SearchableSelect
+                  value={customer.industry_type || ""}
+                  options={lists.listValues("industry_type")}
+                  onChange={async (v) => {
+                    await base44.entities.Customer.update(customer.id, { industry_type: v });
+                    setCustomer({ ...customer, industry_type: v });
+                  }}
+                />
+              </div>,
+              "Type to search. Saved back onto the customer record."
+            )}
+            {row("Origination",
+              <div className="max-w-xs">
+                <SearchableSelect
+                  value={customer.customer_origination || ""}
+                  options={lists.listValues("customer_origination")}
+                  onChange={async (v) => {
+                    await base44.entities.Customer.update(customer.id, { customer_origination: v });
+                    setCustomer({ ...customer, customer_origination: v });
+                  }}
+                />
+              </div>
+            )}
+          </>
         )}
         {row("Estimate #",
           <div className="flex items-center gap-2">
@@ -185,12 +213,12 @@ export default function EstimateDetailsStep({ project, updateField }) {
           {row("Salesperson",
             <Select value={project.salesperson || ""} onValueChange={(v) => {
               updateField("salesperson", v);
-              const sp = opts("salesperson").find((o) => o.label === v);
+              const sp = lists.salespeople.find((u) => (u.screen_name || u.full_name || u.email) === v);
               if (sp?.email) updateField("company_email", sp.email);
             }}>
               <SelectTrigger className="h-8 rounded-sm bg-white text-sm"><SelectValue placeholder="select" /></SelectTrigger>
               <SelectContent>
-                {opts("salesperson").map((o) => <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>)}
+                {lists.salespersonNames.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
               </SelectContent>
             </Select>
           )}
@@ -271,16 +299,11 @@ export default function EstimateDetailsStep({ project, updateField }) {
         )}
       </div>
 
-      {showSearch && (
-        <CustomerSearchDialog options={options} onClose={() => setShowSearch(false)} onPick={applyCustomer} />
+      {showSearch && !lists.loading && (
+        <CustomerSearchDialog lists={lists} onClose={() => setShowSearch(false)} onPick={applyCustomer} />
       )}
-      {showCreate && (
-        <CreateCustomerDialog
-          options={options}
-          taxGroups={taxGroups}
-          onClose={() => setShowCreate(false)}
-          onCreated={applyCustomer}
-        />
+      {showCreate && !lists.loading && (
+        <CreateCustomerDialog lists={lists} onClose={() => setShowCreate(false)} onCreated={applyCustomer} />
       )}
     </div>
   );

@@ -79,10 +79,11 @@ export default function TopNav({ currentUser, hasPermission, onNavClick, pathnam
     },
     {
       label: 'Customers',
-      to: p('CustomerSummaries'),
+      to: p('Customers'),
       items: [
-        { label: 'Search', to: p('CustomerSummaries') },
-        { label: 'Create New', to: p('CustomerSummary') },
+        { label: 'Customer Search', to: p('Customers') },
+        { divider: 'Legacy' },
+        { label: 'Customer Summaries', to: p('CustomerSummaries') },
       ],
     },
     {

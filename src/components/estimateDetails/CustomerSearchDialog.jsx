@@ -1,31 +1,30 @@
 import React, { useState } from "react";
-import { Customer } from "@/entities/all";
+import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import SearchableSelect from "@/components/common/SearchableSelect";
 import { X } from "lucide-react";
 
 // Customer Search — every field is a filter; empty search returns everyone.
-export default function CustomerSearchDialog({ options, onClose, onPick }) {
+export default function CustomerSearchDialog({ lists, onClose, onPick }) {
   const [f, setF] = useState({
     company_name: "", first_name: "", last_name: "", email: "", address: "",
-    salesperson: "all", location: "all", master_account: "all", include_inactive: false,
+    salesperson: "all", location: "all", master_account: "", industry_type: "", include_inactive: false,
   });
   const [results, setResults] = useState(null);
   const [searching, setSearching] = useState(false);
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
 
-  const opts = (type) => (options || []).filter((o) => o.option_type === type && o.is_active !== false);
-
   const search = async () => {
     setSearching(true);
-    const all = await Customer.list("company_name", 1000);
+    const all = await base44.entities.Customer.list("company_name", 1000);
     const t = (v) => (v || "").toLowerCase();
     setResults(
       (all || []).filter((c) => {
-        if (!f.include_inactive && c.is_active === false) return false;
+        if (!f.include_inactive && (c.is_active === false || c.customer_status === "inactive")) return false;
         if (f.company_name && !t(c.company_name).includes(t(f.company_name))) return false;
         if (f.first_name && !t(c.contact_first_name).includes(t(f.first_name))) return false;
         if (f.last_name && !t(c.contact_last_name).includes(t(f.last_name))) return false;
@@ -33,7 +32,8 @@ export default function CustomerSearchDialog({ options, onClose, onPick }) {
         if (f.address && !`${t(c.billing_address_1)} ${t(c.billing_city)} ${t(c.billing_state)}`.includes(t(f.address))) return false;
         if (f.salesperson !== "all" && c.salesperson !== f.salesperson) return false;
         if (f.location !== "all" && c.location !== f.location) return false;
-        if (f.master_account !== "all" && c.master_account !== f.master_account) return false;
+        if (f.master_account && c.master_account !== f.master_account) return false;
+        if (f.industry_type && c.industry_type !== f.industry_type) return false;
         return true;
       })
     );
@@ -56,10 +56,10 @@ export default function CustomerSearchDialog({ options, onClose, onPick }) {
           <div>
             <Label className="text-xs">Salesperson</Label>
             <Select value={f.salesperson} onValueChange={(v) => set("salesperson", v)}>
-              <SelectTrigger className="h-8 rounded-sm bg-white"><SelectValue placeholder="select" /></SelectTrigger>
+              <SelectTrigger className="h-8 rounded-sm bg-white"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">select</SelectItem>
-                {opts("salesperson").map((o) => <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>)}
+                <SelectItem value="all">All</SelectItem>
+                {lists.salespersonNames.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -69,25 +69,23 @@ export default function CustomerSearchDialog({ options, onClose, onPick }) {
               <SelectTrigger className="h-8 rounded-sm bg-white"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
-                {opts("sales_center").map((o) => <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>)}
+                {lists.listValues("sales_center").map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div>
+            <Label className="text-xs">Industry Type</Label>
+            <SearchableSelect className="mt-0.5" value={f.industry_type} options={lists.listValues("industry_type")} onChange={(v) => set("industry_type", v)} placeholder="any industry" />
+          </div>
+          <div>
             <Label className="text-xs">Master Account</Label>
-            <Select value={f.master_account} onValueChange={(v) => set("master_account", v)}>
-              <SelectTrigger className="h-8 rounded-sm bg-white"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">-- select --</SelectItem>
-                {opts("master_account").map((o) => <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect className="mt-0.5" value={f.master_account} options={lists.listValues("master_account")} onChange={(v) => set("master_account", v)} placeholder="any account" />
           </div>
-          <div className="flex items-end gap-2 pb-1">
-            <Checkbox id="inc-inactive" checked={f.include_inactive} onCheckedChange={(v) => set("include_inactive", !!v)} />
-            <Label htmlFor="inc-inactive" className="text-xs cursor-pointer">Include Inactive</Label>
-          </div>
-          <div className="flex items-end">
+          <div className="flex items-end gap-3 pb-1">
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <Checkbox checked={f.include_inactive} onCheckedChange={(v) => set("include_inactive", !!v)} />
+              Include Inactive
+            </label>
             <Button size="sm" className="h-8 rounded-sm bg-zinc-700 hover:bg-zinc-800 text-white" onClick={search} disabled={searching}>
               {searching ? "Searching…" : "Search"}
             </Button>
@@ -104,6 +102,7 @@ export default function CustomerSearchDialog({ options, onClose, onPick }) {
                 <th className="px-2 py-1.5">Primary Contact</th>
                 <th className="px-2 py-1.5">Company Phone</th>
                 <th className="px-2 py-1.5">Email Address</th>
+                <th className="px-2 py-1.5">Industry</th>
                 <th className="px-2 py-1.5">Salesperson</th>
               </tr>
             </thead>
@@ -116,11 +115,12 @@ export default function CustomerSearchDialog({ options, onClose, onPick }) {
                   <td className="px-2 py-1.5">{[c.contact_first_name, c.contact_last_name].filter(Boolean).join(" ") || "—"}</td>
                   <td className="px-2 py-1.5">{c.company_phone || "—"}</td>
                   <td className="px-2 py-1.5">{c.contact_email || "—"}</td>
+                  <td className="px-2 py-1.5">{c.industry_type || "—"}</td>
                   <td className="px-2 py-1.5">{c.salesperson || "—"}</td>
                 </tr>
               ))}
               {results && results.length === 0 && (
-                <tr><td colSpan={6} className="px-2 py-4 text-slate-500">No customers matched those filters.</td></tr>
+                <tr><td colSpan={7} className="px-2 py-4 text-slate-500">No customers matched those filters.</td></tr>
               )}
             </tbody>
           </table>
@@ -129,8 +129,7 @@ export default function CustomerSearchDialog({ options, onClose, onPick }) {
             <div className="pt-4 text-sm text-slate-700">
               <p className="font-bold mb-2">How to use Customer Search</p>
               <p>Think of the different search boxes as filters.</p>
-              <p>If you click "search" without filling in any of the boxes, you will get back all customers.</p>
-              <p>The more information you put into the text boxes, the more accurate and filtered your search will be.</p>
+              <p>Click "Search" with everything blank to get back all customers — the more you fill in, the tighter the result.</p>
             </div>
           )}
         </div>

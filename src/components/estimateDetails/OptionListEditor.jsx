@@ -47,8 +47,7 @@ export default function OptionListEditor({ title, optionType, description, rows,
   };
 
   return (
-    <div className="bg-white border border-slate-300 rounded-sm p-4">
-      <p className="text-sm font-bold text-slate-800">{title}</p>
+    <div>
       {description && <p className="text-xs text-slate-500 mb-2">{description}</p>}
 
       {canEdit && (
@@ -61,7 +60,7 @@ export default function OptionListEditor({ title, optionType, description, rows,
         </div>
       )}
 
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
         {rows.length === 0 && <p className="text-xs text-slate-500 py-2">No values yet.</p>}
         {rows.map((r) => (
           <div key={r.id} className="flex items-center gap-3 py-1.5 text-sm">
