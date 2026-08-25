@@ -18,7 +18,6 @@ export default function Customers() {
   const lists = useCustomerLists();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [pending, setPending] = useState(EMPTY);
   const [filters, setFilters] = useState(EMPTY);
   const [creating, setCreating] = useState(false);
 
@@ -61,19 +60,19 @@ export default function Customers() {
         <div className="px-4 py-3 bg-slate-100 border-b border-slate-300 grid grid-cols-2 md:grid-cols-7 gap-3 items-end">
           <div>
             <Label className="text-xs">Company Name</Label>
-            <Input className="h-8 rounded-sm bg-white" value={pending.company} onChange={(e) => setPending({ ...pending, company: e.target.value })} />
+            <Input className="h-8 rounded-sm bg-white" value={filters.company} onChange={(e) => setFilters({ ...filters, company: e.target.value })} placeholder="Type to filter…" />
           </div>
           <div>
             <Label className="text-xs">Contact</Label>
-            <Input className="h-8 rounded-sm bg-white" value={pending.contact} onChange={(e) => setPending({ ...pending, contact: e.target.value })} />
+            <Input className="h-8 rounded-sm bg-white" value={filters.contact} onChange={(e) => setFilters({ ...filters, contact: e.target.value })} placeholder="Type to filter…" />
           </div>
           <div>
             <Label className="text-xs">Email</Label>
-            <Input className="h-8 rounded-sm bg-white" value={pending.email} onChange={(e) => setPending({ ...pending, email: e.target.value })} />
+            <Input className="h-8 rounded-sm bg-white" value={filters.email} onChange={(e) => setFilters({ ...filters, email: e.target.value })} placeholder="Type to filter…" />
           </div>
           <div>
             <Label className="text-xs">Salesperson</Label>
-            <Select value={pending.salesperson} onValueChange={(v) => setPending({ ...pending, salesperson: v })}>
+            <Select value={filters.salesperson} onValueChange={(v) => setFilters({ ...filters, salesperson: v })}>
               <SelectTrigger className="h-8 rounded-sm bg-white"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
@@ -83,7 +82,7 @@ export default function Customers() {
           </div>
           <div>
             <Label className="text-xs">Location</Label>
-            <Select value={pending.location} onValueChange={(v) => setPending({ ...pending, location: v })}>
+            <Select value={filters.location} onValueChange={(v) => setFilters({ ...filters, location: v })}>
               <SelectTrigger className="h-8 rounded-sm bg-white"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
@@ -93,7 +92,7 @@ export default function Customers() {
           </div>
           <div>
             <Label className="text-xs">Industry Type</Label>
-            <Select value={pending.industry} onValueChange={(v) => setPending({ ...pending, industry: v })}>
+            <Select value={filters.industry} onValueChange={(v) => setFilters({ ...filters, industry: v })}>
               <SelectTrigger className="h-8 rounded-sm bg-white"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
@@ -103,10 +102,10 @@ export default function Customers() {
           </div>
           <div className="flex flex-col gap-2">
             <label className="flex items-center gap-2 text-xs cursor-pointer">
-              <Checkbox checked={pending.include_inactive} onCheckedChange={(v) => setPending({ ...pending, include_inactive: !!v })} />
+              <Checkbox checked={filters.include_inactive} onCheckedChange={(v) => setFilters({ ...filters, include_inactive: !!v })} />
               Include Inactive
             </label>
-            <Button className="h-8 bg-zinc-700 hover:bg-zinc-600 text-white rounded-sm" onClick={() => setFilters({ ...pending })}>Search</Button>
+            <Button variant="outline" className="h-8 rounded-sm" onClick={() => setFilters(EMPTY)}>Clear</Button>
           </div>
         </div>
 
