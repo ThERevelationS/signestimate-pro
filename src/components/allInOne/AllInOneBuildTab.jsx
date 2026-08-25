@@ -38,17 +38,17 @@ export default function AllInOneBuildTab({
   const usedModules = [...new Set(project.line_items.map((li) => li.module_key))];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Module launcher — rendered from the registry, future estimators appear automatically */}
-      <Card className="bg-white border-0 shadow-sm">
-        <CardHeader className="border-b border-slate-100">
-          <CardTitle className="text-lg">Add a Section</CardTitle>
-          <p className="text-sm text-slate-500">
-            Each section loads that module's <b>full estimator right here on this page</b> — project
-            info is auto-filled from the Project Details tab, so you never re-enter it.
+      <Card className="bg-white border border-slate-300 rounded-sm shadow-sm">
+        <CardHeader className="border-b border-slate-200 py-2.5 px-4">
+          <CardTitle className="text-sm font-bold text-lime-700 uppercase tracking-wide">Add a Product</CardTitle>
+          <p className="text-xs text-slate-500">
+            Each product loads that module's <b>full estimator right here on this page</b> — project
+            info is auto-filled from Estimate Details, so you never re-enter it.
           </p>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="pt-3 px-4 pb-4">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {ESTIMATOR_MODULES.map((mod) => {
               const Icon = mod.icon;
@@ -59,7 +59,7 @@ export default function AllInOneBuildTab({
                   key={mod.key}
                   onClick={() => onAddSection(mod)}
                   disabled={!!addingKey}
-                  className={`${mod.colors.bg} rounded-xl p-3 flex flex-col gap-1.5 text-left border border-transparent hover:border-slate-300 hover:shadow-sm transition-all disabled:opacity-60`}
+                  className={`${mod.colors.bg} rounded-sm p-3 flex flex-col gap-1.5 text-left border border-slate-200 hover:border-lime-500 hover:shadow-sm transition-all disabled:opacity-60`}
                 >
                   <div className="flex items-center gap-2">
                     <Icon className={`w-4 h-4 ${mod.colors.text} flex-shrink-0`} />
@@ -71,9 +71,9 @@ export default function AllInOneBuildTab({
                   <span className="text-[10px] text-slate-500 leading-tight">{mod.description}</span>
                   <span className={`mt-auto inline-flex items-center text-xs font-medium ${mod.colors.text}`}>
                     {adding ? (
-                      <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Creating section…</>
+                      <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Adding product…</>
                     ) : (
-                      <><Plus className="w-3 h-3 mr-1" /> Build Estimate</>
+                      <><Plus className="w-3 h-3 mr-1" /> Add Product</>
                     )}
                   </span>
                 </button>
@@ -83,13 +83,15 @@ export default function AllInOneBuildTab({
         </CardContent>
       </Card>
 
-      {/* Sections list */}
-      <Card className="bg-white border-0 shadow-sm">
-        <CardHeader className="border-b border-slate-100 space-y-3">
+      {/* Products list */}
+      <Card className="bg-white border border-slate-300 rounded-sm shadow-sm">
+        <CardHeader className="border-b border-slate-200 space-y-2.5 py-2.5 px-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <CardTitle className="text-lg">Estimate Sections ({project.line_items.length})</CardTitle>
+            <CardTitle className="text-sm font-bold text-lime-700 uppercase tracking-wide">
+              Estimate Products ({project.line_items.length})
+            </CardTitle>
             {project.line_items.length > 0 && (
-              <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1 flex items-center gap-1.5">
+              <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-sm px-2 py-0.5 flex items-center gap-1.5">
                 <Radio className="w-3 h-3" /> Live-synced with source estimators
               </span>
             )}
@@ -103,7 +105,7 @@ export default function AllInOneBuildTab({
                 />
               </div>
               <span className="text-xs text-slate-500 flex-shrink-0">
-                {completedCount}/{project.line_items.length} sections complete
+                {completedCount}/{project.line_items.length} products complete
               </span>
             </div>
           )}
@@ -111,10 +113,10 @@ export default function AllInOneBuildTab({
             <div className="flex flex-wrap gap-2">
               <div className="relative flex-1 min-w-[180px]">
                 <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                <Input className="pl-8 h-9" placeholder="Search sections…" value={search} onChange={(e) => setSearch(e.target.value)} />
+                <Input className="pl-8 h-8 rounded-sm" placeholder="Search products…" value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
               <Select value={moduleFilter} onValueChange={setModuleFilter}>
-                <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-44 h-8 rounded-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All modules</SelectItem>
                   {usedModules.map((k) => (
@@ -123,7 +125,7 @@ export default function AllInOneBuildTab({
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-36 h-8 rounded-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="added">Order added</SelectItem>
                   <SelectItem value="name">By name</SelectItem>
@@ -133,13 +135,13 @@ export default function AllInOneBuildTab({
             </div>
           )}
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="pt-3 px-4 pb-4">
           {project.line_items.length === 0 ? (
             <p className="text-sm text-slate-500 py-6 text-center">
-              No sections yet — use the module cards above to start building this estimate.
+              No products yet — use the module cards above to start building this estimate.
             </p>
           ) : visibleItems.length === 0 ? (
-            <p className="text-sm text-slate-500 py-6 text-center">No sections match your search.</p>
+            <p className="text-sm text-slate-500 py-6 text-center">No products match your search.</p>
           ) : (
             <div className="space-y-2">
               {visibleItems.map(({ item, idx }) => (

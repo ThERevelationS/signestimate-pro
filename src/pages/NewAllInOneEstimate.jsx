@@ -419,16 +419,16 @@ export default function NewAllInOneEstimate() {
     <div className="p-4 md:p-6 bg-slate-50 min-h-screen">
       {/* FULL page width — no max-width cap, scales with every resolution */}
       <div className="w-full">
-        {/* Header */}
-        <div className="flex flex-wrap justify-between items-center mb-5 gap-3">
+        {/* Header — CoreBridge estimate banner */}
+        <div className="bg-white border border-slate-300 rounded-sm px-4 py-2.5 mb-4 flex flex-wrap justify-between items-center gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-3 flex-wrap">
-              <Layers className="w-7 h-7 text-indigo-600 flex-shrink-0" />
+            <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2 flex-wrap">
+              <Layers className="w-5 h-5 text-lime-600 flex-shrink-0" />
               <span className="truncate">{project.project_name || (editId ? "Edit All-In-One Estimate" : "New All-In-One Estimate")}</span>
               <Badge className={`${statusColors[project.status] || statusColors.draft} border-0`}>{project.status}</Badge>
               {dirty && <span className="w-2.5 h-2.5 rounded-full bg-amber-400" title="Unsaved changes" />}
             </h1>
-            <p className="text-slate-500 text-sm mt-0.5">
+            <p className="text-slate-500 text-xs mt-0.5">
               One page, one set of project info, every estimator.
               {lastSynced && <span className="text-slate-400"> · Totals synced {lastSynced.toLocaleTimeString()}</span>}
             </p>
@@ -438,7 +438,7 @@ export default function NewAllInOneEstimate() {
               <p className="text-[10px] uppercase text-slate-400 font-medium">Quote Total</p>
               <p className="text-xl font-bold text-green-600 tabular-nums">{fmtCurrency(quote.total)}</p>
               {Math.round(quote.total) !== Math.round(grandTotal) && (
-                <p className="text-[10px] text-slate-400 tabular-nums">sections {fmtCurrency(grandTotal)}</p>
+                <p className="text-[10px] text-slate-400 tabular-nums">products {fmtCurrency(grandTotal)}</p>
               )}
             </div>
             <Button
@@ -453,7 +453,7 @@ export default function NewAllInOneEstimate() {
             <Button variant="outline" size="sm" onClick={copyShareLink} title="Copy estimate link">
               <LinkIcon className="w-4 h-4" />
             </Button>
-            <Button onClick={handleSave} disabled={isSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white" title="Save (Ctrl+S)">
+            <Button onClick={handleSave} disabled={isSaving} className="bg-zinc-800 hover:bg-zinc-700 text-white rounded-sm" title="Save (Ctrl+S)">
               <Save className="w-4 h-4 mr-2" />
               {isSaving ? "Saving…" : editId ? "Update" : "Save"}
             </Button>
@@ -517,7 +517,7 @@ export default function NewAllInOneEstimate() {
                   openSection ? (
                     <div
                       id="aio-inline-editor"
-                      className="rounded-2xl border-2 border-indigo-300 overflow-hidden shadow-xl scroll-mt-4"
+                      className="rounded-sm border-2 border-lime-500 overflow-hidden shadow-xl scroll-mt-4"
                     >
                       <EstimatorSectionPanel item={openSection} onClose={closeSection} />
                     </div>

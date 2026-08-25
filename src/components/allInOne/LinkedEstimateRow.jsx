@@ -33,13 +33,13 @@ export default function LinkedEstimateRow({ item, isOpen, percent, onEdit, onRem
   };
 
   return (
-    <div className={`rounded-lg border ${item.missing ? "border-red-200 bg-red-50" : isOpen ? "border-indigo-300 bg-indigo-50/40" : "border-slate-200 bg-white"}`}>
-      <div className="flex items-center gap-3 p-3 flex-wrap sm:flex-nowrap">
+    <div className={`rounded-sm border ${item.missing ? "border-red-200 bg-red-50" : isOpen ? "border-lime-500 bg-lime-50/60" : "border-slate-200 bg-white"}`}>
+      <div className="flex items-center gap-3 px-3 py-2 flex-wrap sm:flex-nowrap">
         {/* Workflow status toggle */}
         {!item.missing && onUpdate && (
           <button
             onClick={() => onUpdate({ section_status: isComplete ? "in_progress" : "complete" })}
-            title={isComplete ? "Mark as in progress" : "Mark section complete"}
+            title={isComplete ? "Mark as in progress" : "Mark product complete"}
             className="flex-shrink-0"
           >
             {isComplete
@@ -48,7 +48,7 @@ export default function LinkedEstimateRow({ item, isOpen, percent, onEdit, onRem
           </button>
         )}
         {Icon && (
-          <div className={`w-9 h-9 rounded-lg ${mod.colors.bg} flex items-center justify-center flex-shrink-0`}>
+          <div className={`w-9 h-9 rounded-sm ${mod.colors.bg} flex items-center justify-center flex-shrink-0`}>
             <Icon className={`w-4 h-4 ${mod.colors.text}`} />
           </div>
         )}
@@ -72,7 +72,7 @@ export default function LinkedEstimateRow({ item, isOpen, percent, onEdit, onRem
             ) : (
               <button
                 className="font-medium text-slate-900 truncate hover:underline decoration-dotted text-left"
-                title="Click to rename section"
+                title="Click to rename product"
                 onClick={() => { if (!item.missing && onRename) { setDraftName(item.project_name || ""); setRenaming(true); } }}
               >
                 {item.project_name || "Untitled"}
@@ -123,7 +123,7 @@ export default function LinkedEstimateRow({ item, isOpen, percent, onEdit, onRem
               {isOpen ? (
                 <><ChevronUp className="w-3.5 h-3.5 mr-1" /> Collapse</>
               ) : (
-                <><Pencil className="w-3.5 h-3.5 mr-1" /> Edit Section</>
+                <><Pencil className="w-3.5 h-3.5 mr-1" /> Edit Product</>
               )}
             </Button>
             {onUpdate && (
@@ -138,7 +138,7 @@ export default function LinkedEstimateRow({ item, isOpen, percent, onEdit, onRem
               </Button>
             )}
             {onDuplicate && (
-              <Button size="sm" variant="ghost" onClick={onDuplicate} className="flex-shrink-0 text-slate-500 hover:text-slate-800" title="Duplicate this section">
+              <Button size="sm" variant="ghost" onClick={onDuplicate} className="flex-shrink-0 text-slate-500 hover:text-slate-800" title="Duplicate this product">
                 <Copy className="w-4 h-4" />
               </Button>
             )}
@@ -149,13 +149,13 @@ export default function LinkedEstimateRow({ item, isOpen, percent, onEdit, onRem
           size="sm"
           onClick={onRemove}
           className="text-red-500 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
-          title={item.owned ? "Remove section (deletes its sub-estimate)" : "Remove from this estimate"}
+          title={item.owned ? "Remove product (deletes its sub-estimate)" : "Remove from this estimate"}
         >
           <Trash2 className="w-4 h-4" />
         </Button>
       </div>
 
-      {/* Section tools: per-section price adjustment + internal note */}
+      {/* Product tools: per-product price adjustment + internal note */}
       {showTools && !item.missing && onUpdate && (
         <div className="px-3 pb-3 grid sm:grid-cols-2 gap-3 border-t border-slate-100 pt-3">
           <div>
@@ -190,7 +190,7 @@ export default function LinkedEstimateRow({ item, isOpen, percent, onEdit, onRem
       )}
 
       {percent > 0 && mod && (
-        <div className="h-1 rounded-b-lg bg-slate-100 overflow-hidden">
+        <div className="h-1 bg-slate-100 overflow-hidden">
           <div className="h-full" style={{ width: `${Math.min(100, percent)}%`, backgroundColor: mod.colors.hex }} />
         </div>
       )}
