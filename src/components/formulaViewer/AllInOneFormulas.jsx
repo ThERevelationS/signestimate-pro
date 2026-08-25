@@ -41,6 +41,7 @@ export default function AllInOneFormulas() {
           <p>Contingency = (Subtotal − Discount) × contingency%</p>
           <p>Fees = shipping fee + permit fee</p>
           <p>Taxable Base = Subtotal − Discount + Contingency + Fees</p>
+          <p>tax% = selected Tax Group's rate (Step 1 · Estimate Settings)</p>
           <p>Tax = Taxable Base × tax%</p>
           <p>Quote Total = Taxable Base + Tax</p>
           <p>Deposit Due = Quote Total × deposit%</p>

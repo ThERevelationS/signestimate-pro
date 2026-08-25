@@ -18,6 +18,7 @@ import RouteSkeleton from '@/components/RouteSkeleton';
 const AllInOneProjects = lazy(() => import('@/pages/AllInOneProjects'));
 const NewAllInOneEstimate = lazy(() => import('@/pages/NewAllInOneEstimate'));
 const QuickProducts = lazy(() => import('@/pages/QuickProducts'));
+const EstimateSettings = lazy(() => import('@/pages/EstimateSettings'));
 const QuickProductEditor = lazy(() => import('@/pages/QuickProductEditor'));
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -86,6 +87,7 @@ const AuthenticatedApp = () => {
           <Route path="/AllInOneProjects" element={<AllInOneProjects />} />
           <Route path="/NewAllInOneEstimate" element={<NewAllInOneEstimate />} />
           <Route path="/QuickProducts" element={<QuickProducts />} />
+          <Route path="/EstimateSettings" element={<EstimateSettings />} />
           <Route path="/QuickProductEditor" element={<QuickProductEditor />} />
           {Object.entries(Pages).map(([path, Page]) => (
             <Route key={path} path={`/${path}`} element={<Page />} />

@@ -1,13 +1,19 @@
 {
   "name": "AllInOneEstimate",
   "type": "object",
-  "description": "A multifaceted estimate BUILT from sections. Each section is a dedicated sub-estimate created by (and owned by) this estimate in its module's own entity, edited with that module's full estimator INLINE on the same page. Project info (client, estimate #, hyperlink, site address) is shared down to every owned section automatically. Totals live-sync from the source projects via real-time subscriptions and refresh-on-open. Customer pricing waterfall (per-section adjustments \u2192 discount \u2192 contingency \u2192 fees \u2192 tax \u2192 deposit) is computed by components/allInOne/aioPricing.js. module_key values match components/allInOne/estimatorRegistry.js.",
+  "description": "A multifaceted estimate BUILT from sections. Each section is a dedicated sub-estimate created by (and owned by) this estimate in its module's own entity, edited with that module's full estimator INLINE on the same page. Project info (client, estimate #, hyperlink, site address) is shared down to every owned section automatically. Totals live-sync from the source projects via real-time subscriptions and refresh-on-open. Customer pricing waterfall (per-section adjustments \u2192 discount \u2192 contingency \u2192 fees \u2192 tax \u2192 deposit) is computed by components/allInOne/aioPricing.js. module_key values match components/allInOne/estimatorRegistry.js. Step 1 (Estimate Details) fields \u2014 customer_id, terms, order_contact, office_phone, salesperson, sales_center, tax_group \u2014 come from the Customer / TaxGroup / EstimateOption entities.",
   "properties": {
     "project_name": {
-      "type": "string"
+      "type": "string",
+      "description": "Estimate description shown in Step 1."
     },
     "client_name": {
-      "type": "string"
+      "type": "string",
+      "description": "Customer company name."
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Linked Customer record id."
     },
     "estimate_number": {
       "type": "string"
@@ -15,6 +21,30 @@
     "po_number": {
       "type": "string",
       "description": "Customer purchase order number, shown on the customer quote."
+    },
+    "terms": {
+      "type": "string",
+      "description": "Payment terms selected from the admin-managed terms list."
+    },
+    "order_contact": {
+      "type": "string",
+      "description": "Contact on the order (from the customer's contacts)."
+    },
+    "office_phone": {
+      "type": "string"
+    },
+    "office_phone_ext": {
+      "type": "string"
+    },
+    "salesperson": {
+      "type": "string"
+    },
+    "sales_center": {
+      "type": "string"
+    },
+    "tax_group": {
+      "type": "string",
+      "description": "Name of the selected TaxGroup \u2014 sets tax_percent."
     },
     "hyperlink": {
       "type": "string"

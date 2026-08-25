@@ -17,7 +17,7 @@ import {
 } from "@/components/allInOne/estimatorRegistry";
 import { computeQuote } from "@/components/allInOne/aioPricing";
 import EstimatorSectionPanel from "@/components/allInOne/EstimatorSectionPanel";
-import AllInOneProjectDetailsTab from "@/components/allInOne/AllInOneProjectDetailsTab";
+import EstimateDetailsStep from "@/components/estimateDetails/EstimateDetailsStep";
 import AllInOneBuildTab from "@/components/allInOne/AllInOneBuildTab";
 import AllInOneCostSummaryTab from "@/components/allInOne/AllInOneCostSummaryTab";
 import AllInOneBOMTab from "@/components/allInOne/AllInOneBOMTab";
@@ -47,6 +47,14 @@ const EMPTY_PROJECT = {
   contact_name: "",
   contact_email: "",
   contact_phone: "",
+  customer_id: "",
+  terms: "",
+  order_contact: "",
+  office_phone: "",
+  office_phone_ext: "",
+  salesperson: "",
+  sales_center: "",
+  tax_group: "",
   target_install_date: "",
   tax_percent: 0,
   deposit_percent: 50,
@@ -496,7 +504,7 @@ export default function NewAllInOneEstimate() {
             </div>
 
             <div className={activeTab === "details" ? "" : "hidden"}>
-              <AllInOneProjectDetailsTab project={project} updateField={updateField} />
+              <EstimateDetailsStep project={project} updateField={updateField} />
             </div>
 
             <div className={activeTab === "build" ? "" : "hidden"}>

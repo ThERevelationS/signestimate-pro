@@ -1,0 +1,151 @@
+{
+  "name": "Customer",
+  "type": "object",
+  "description": "Customer account used by Step 1 of the estimate workflow (company, primary/billing contact, billing + location address, and sales associations). Created from the Create New Customer dialog and found with the Customer Search dialog.",
+  "properties": {
+    "company_name": {
+      "type": "string"
+    },
+    "company_phone": {
+      "type": "string"
+    },
+    "company_fax": {
+      "type": "string"
+    },
+    "additional_phone": {
+      "type": "string"
+    },
+    "additional_phone_type": {
+      "type": "string",
+      "enum": [
+        "",
+        "office",
+        "cell",
+        "fax",
+        "home",
+        "other"
+      ],
+      "default": ""
+    },
+    "contact_first_name": {
+      "type": "string"
+    },
+    "contact_last_name": {
+      "type": "string"
+    },
+    "contact_position": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "string"
+    },
+    "contact_office_phone": {
+      "type": "string"
+    },
+    "contact_office_ext": {
+      "type": "string"
+    },
+    "contact_cell_phone": {
+      "type": "string"
+    },
+    "contact_status": {
+      "type": "string"
+    },
+    "job_authority": {
+      "type": "string"
+    },
+    "billing_contact_same": {
+      "type": "boolean",
+      "default": true
+    },
+    "billing_contact_name": {
+      "type": "string"
+    },
+    "billing_contact_email": {
+      "type": "string"
+    },
+    "billing_address_1": {
+      "type": "string"
+    },
+    "billing_address_2": {
+      "type": "string"
+    },
+    "billing_city": {
+      "type": "string"
+    },
+    "billing_state": {
+      "type": "string"
+    },
+    "billing_postal_code": {
+      "type": "string"
+    },
+    "billing_postal_ext": {
+      "type": "string"
+    },
+    "billing_country": {
+      "type": "string",
+      "default": "United States"
+    },
+    "location_same_as_billing": {
+      "type": "boolean",
+      "default": true
+    },
+    "location_address_1": {
+      "type": "string"
+    },
+    "location_address_2": {
+      "type": "string"
+    },
+    "location_city": {
+      "type": "string"
+    },
+    "location_state": {
+      "type": "string"
+    },
+    "location_postal_code": {
+      "type": "string"
+    },
+    "salesperson": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string",
+      "description": "Sales center / location this customer belongs to."
+    },
+    "default_tax_group": {
+      "type": "string"
+    },
+    "customer_origination": {
+      "type": "string"
+    },
+    "industry_type": {
+      "type": "string"
+    },
+    "master_account": {
+      "type": "string"
+    },
+    "terms": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "company_name"
+  ],
+  "rls": {
+    "create": {},
+    "read": {},
+    "update": {},
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

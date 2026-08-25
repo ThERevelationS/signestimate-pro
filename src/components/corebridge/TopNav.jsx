@@ -114,10 +114,12 @@ export default function TopNav({ currentUser, hasPermission, onNavClick, pathnam
     },
   ].filter((m) => m.to || (m.items && m.items.some((it) => !it.divider)));
 
-  const settingsItems = [...visibleModules, ...visibleQuick].map((m) => ({
-    label: m.name.replace(' Estimate', ''),
-    to: p(m.settings),
-  }));
+  const settingsItems = [{ label: 'Estimate Settings', to: p('EstimateSettings') }, { divider: 'Modules' }].concat(
+    [...visibleModules, ...visibleQuick].map((m) => ({
+      label: m.name.replace(' Estimate', ''),
+      to: p(m.settings),
+    }))
+  );
   const toolsItems = [
     { label: 'Formula Viewer', to: p('FormulaViewer') },
     { label: 'Report Bug / Feature', to: p('Report') },
