@@ -247,9 +247,9 @@ export default function AllInOneCustomerViewTab({ project, grandTotal, updateFie
                   <p className="font-bold text-slate-900 text-base">{project.project_name}</p>
                   <p>{project.client_name}</p>
                   {on(project, "show_site_address") && project.site_address && <p>{project.site_address}</p>}
-                  {(project.contact_name || project.contact_phone || project.contact_email) && (
+                  {(project.order_contact || project.contact_name || project.contact_phone || project.contact_email) && (
                     <p className="text-xs text-slate-400">
-                      {[project.contact_name, project.contact_phone, project.contact_email].filter(Boolean).join(" · ")}
+                      {[project.order_contact || project.contact_name, project.contact_phone, project.contact_email].filter(Boolean).join(" · ")}
                     </p>
                   )}
                 </div>

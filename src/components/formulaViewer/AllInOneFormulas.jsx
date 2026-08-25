@@ -70,6 +70,8 @@ export default function AllInOneFormulas() {
           <p>Waterfall rows shown = rows where their show_*_line toggle is on</p>
           <p>Bundled quote (hide_section_prices) = one line equal to adjusted Subtotal</p>
           <p>Hidden section (include_in_customer = false) → bundled into "Additional project scope"</p>
+          <p>Tax Group selection → tax_percent = TaxGroup.tax_percent (AI "Find by address" looks up the</p>
+          <p>&nbsp;&nbsp;combined state+county rate for the site address and matches the closest tax group)</p>
         </div>
         <p className="text-xs text-slate-300 mt-2">
           <b>Auto-scope:</b> a QuoteScopeLine is auto-added to the quote's scope lists when

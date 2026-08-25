@@ -2,6 +2,9 @@ import React from "react";
 import { Label } from "@/components/ui/label";
 import { Building2, Palette } from "lucide-react";
 import { SettingsGroup, TextField, NumField, ToggleRow } from "./quoteSettingsUi";
+import LogoUploadField from "./LogoUploadField";
+import OrderContactField from "./OrderContactField";
+import TaxGroupField from "./TaxGroupField";
 
 const PRESET_COLORS = ["#4f46e5", "#0f172a", "#0891b2", "#65a30d", "#dc2626", "#ea580c", "#7c3aed", "#475569"];
 
@@ -11,7 +14,7 @@ export default function QuoteBrandingGroup({ project, updateField }) {
   return (
     <>
       <SettingsGroup title="Company & Contact Info" icon={Building2} defaultOpen>
-        <TextField label="Your Company Name" value={project.company_name} onChange={f("company_name")} placeholder="Shown in the quote header" />
+        <TextField label="Company Name" value={project.company_name} onChange={f("company_name")} placeholder="Shown in the quote header" />
         <div className="grid grid-cols-2 gap-2">
           <TextField label="Company Phone" value={project.company_phone} onChange={f("company_phone")} />
           <TextField label="Company Email" value={project.company_email} onChange={f("company_email")} />
@@ -21,8 +24,12 @@ export default function QuoteBrandingGroup({ project, updateField }) {
           <TextField label="Website" value={project.company_website} onChange={f("company_website")} />
           <TextField label="License #" value={project.company_license} onChange={f("company_license")} />
         </div>
-        <TextField label="Logo URL" value={project.company_logo_url} onChange={f("company_logo_url")} placeholder="https://…" />
+        <LogoUploadField value={project.company_logo_url} onChange={f("company_logo_url")} />
         <ToggleRow label="Show logo" hint="Prints the logo above the company name" checked={project.show_logo} onChange={f("show_logo")} />
+        <div className="pt-1 border-t border-slate-100 space-y-2.5">
+          <OrderContactField project={project} updateField={updateField} />
+          <TaxGroupField project={project} updateField={updateField} />
+        </div>
       </SettingsGroup>
 
       <SettingsGroup title="Quote Branding" icon={Palette}>

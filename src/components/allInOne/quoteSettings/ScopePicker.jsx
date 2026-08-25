@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, X, ChevronsUpDown, Sparkles } from "lucide-react";
 import { scopeLines, scopeText, mergeScope, autoScopeMatches } from "./autoScopes";
+import ScopeLineDialog from "./ScopeLineDialog";
 
 // Dropdown-driven scope editor: pick lines from the QuoteScopeLine library
 // (grouped by category), see the current lines as removable chips, and add
@@ -13,6 +14,7 @@ export default function ScopePicker({ label, kind, project, library, value, onCh
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [custom, setCustom] = useState("");
+  const [editIdx, setEditIdx] = useState(null);
 
   const lines = scopeLines(value);
   const used = new Set(lines.map((l) => l.toLowerCase()));
@@ -42,6 +44,11 @@ export default function ScopePicker({ label, kind, project, library, value, onCh
 
   const removeAt = (idx) => onChange(scopeText(lines.filter((_, i) => i !== idx)));
 
+  const replaceAt = (idx, text) => onChange(scopeText(lines.map((l, i) => (i === idx ? text : l))));
+
+  const libraryRowFor = (text) =>
+    (library || []).find((r) => r.kind === kind && (r.text || "").toLowerCase() === (text || "").toLowerCase()) || null;
+
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -68,7 +75,9 @@ export default function ScopePicker({ label, kind, project, library, value, onCh
               }`}
             >
               {isAuto && <Sparkles className="w-2.5 h-2.5" />}
-              {l}
+              <button type="button" onClick={() => setEditIdx(i)} className="hover:underline text-left" title="Click to view / edit">
+                {l}
+              </button>
               <button type="button" onClick={() => removeAt(i)} className="hover:text-red-600"><X className="w-3 h-3" /></button>
             </span>
           );
@@ -133,6 +142,19 @@ export default function ScopePicker({ label, kind, project, library, value, onCh
           <Plus className="w-3 h-3" />
         </Button>
       </div>
+
+      {editIdx !== null && (
+        <ScopeLineDialog
+          open
+          onOpenChange={(v) => { if (!v) setEditIdx(null); }}
+          line={lines[editIdx]}
+          kind={kind}
+          isAuto={autoTexts.has((lines[editIdx] || "").toLowerCase())}
+          libraryRow={libraryRowFor(lines[editIdx])}
+          onSave={(text) => replaceAt(editIdx, text)}
+          onRemove={() => removeAt(editIdx)}
+        />
+      )}
     </div>
   );
 }
