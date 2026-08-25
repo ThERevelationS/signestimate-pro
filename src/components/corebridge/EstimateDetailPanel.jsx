@@ -24,6 +24,7 @@ export default function EstimateDetailPanel({
   extraFields,
   editParam = "edit",
   itemsLabel = "Products",
+  hideItems = false,
 }) {
   const items = project.items || [];
 
@@ -55,7 +56,7 @@ export default function EstimateDetailPanel({
         {extraFields}
       </div>
 
-      <div className="px-4 py-3 border-b border-slate-200">
+      <div className={`px-4 py-3 border-b border-slate-200 ${hideItems ? "hidden" : ""}`}>
         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">{itemsLabel}</p>
         <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
           {items.map((item, i) => {

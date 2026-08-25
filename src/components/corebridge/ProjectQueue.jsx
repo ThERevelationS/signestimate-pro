@@ -30,6 +30,7 @@ export default function ProjectQueue({
   onLoadMore,
   detailPanel,
   headerActions,
+  filterExtras,
   emptyMessage = "No estimates found.",
 }) {
   return (
@@ -53,8 +54,8 @@ export default function ProjectQueue({
           </div>
 
           {/* Filter panel */}
-          <div className="px-4 py-3 bg-slate-100 border-b border-slate-300">
-            <div className="max-w-sm">
+          <div className="px-4 py-3 bg-slate-100 border-b border-slate-300 flex flex-wrap items-end gap-4">
+            <div className="w-full max-w-sm">
               <Label className="text-xs">Search (project or customer)</Label>
               <Input
                 className="h-8 rounded-sm bg-white"
@@ -63,6 +64,7 @@ export default function ProjectQueue({
                 placeholder="Type to filter…"
               />
             </div>
+            {filterExtras}
           </div>
 
           {/* Results table */}
