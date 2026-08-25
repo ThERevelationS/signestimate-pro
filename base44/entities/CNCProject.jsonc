@@ -103,6 +103,38 @@
           },
           "labor_cost": {
             "type": "number"
+          },
+          "force_enhanced": {
+            "type": "boolean",
+            "default": false,
+            "description": "User flagged this item as requiring enhanced/special hold-down regardless of the calculated risk."
+          },
+          "cutter_diameter_in": {
+            "type": "number",
+            "default": 0,
+            "description": "Cutter diameter in inches \u2014 used by the Hold-Down Advisor."
+          },
+          "smallest_detail_in": {
+            "type": "number",
+            "default": 0,
+            "description": "Narrowest stroke/feature width in inches \u2014 used by the Hold-Down Advisor."
+          },
+          "workholding_method": {
+            "type": "string",
+            "enum": [
+              "vacuum_full",
+              "vacuum_zoned",
+              "tape_glue",
+              "screws",
+              "clamps",
+              "none"
+            ],
+            "description": "Existing base workholding on the machine \u2014 used by the Hold-Down Advisor."
+          },
+          "creates_loose_pieces": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the cut releases small individual pieces at cut-through (always true for lettering)."
           }
         }
       }

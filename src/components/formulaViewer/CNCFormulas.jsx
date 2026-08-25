@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormulaSection, FormulaLine } from './FormulaSection';
+import CNCHoldDownFormulas from './CNCHoldDownFormulas';
 
 // CNC math (mirrors NewCNCEstimate / CNCProject calculations):
 //   machine_time_hours = (cut_length / cut_speed_ipm + carve_area / carve_speed) / 60
@@ -40,6 +41,7 @@ export default function CNCFormulas({ settings }) {
   const projectTotal = itemTotal * v.quantity;
 
   return (
+    <div className="space-y-8">
     <div className="grid md:grid-cols-2 gap-6">
       <div>
         <h3 className="font-semibold text-slate-900 mb-4">Demo Values (Editable)</h3>
@@ -110,6 +112,19 @@ export default function CNCFormulas({ settings }) {
           </div>
         </div>
       </div>
+    </div>
+
+    <div>
+      <h3 className="font-semibold text-slate-900 mb-1">Hold-Down Advisor (advisory only — no cost impact)</h3>
+      <p className="text-xs text-slate-500 mb-4">
+        Risk score = footprint + detail-vs-cutter + loose pieces + thin stock + cutting-force proxy + workholding modifier.
+        Score ≤2 = normal, 3–5 = elevated, ≥6 = high. Elevated/high (or manual flag) triggers the enhanced plan:
+        tab width = cutter × 1.5 (0.1875"–0.5"), tab thickness = stock × 0.4 (0.04"–0.12"),
+        tabs = ⌈perimeter ÷ 4–6"⌉, plus material-specific onion skin and a slowed conventional final pass.
+        Geometry too small to tab falls back to adhesive + onion skin.
+      </p>
+      <CNCHoldDownFormulas />
+    </div>
     </div>
   );
 }

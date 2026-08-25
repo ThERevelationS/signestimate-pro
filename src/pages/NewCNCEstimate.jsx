@@ -17,6 +17,7 @@ import { createPageUrl } from "@/utils";
 import TabBadgeTrigger from "@/components/channelLetterInstall/TabBadgeTrigger";
 import CustomerPricingTab from "@/components/markup/CustomerPricingTab";
 import { categorizeCNCProject } from "@/components/markup/projectCategorizer";
+import HoldDownAdvisor from "@/components/cnc/HoldDownAdvisor";
 
 const imperialSizes = ["1/16", "1/8", "3/16", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8", "1", "1-1/4", "1-1/2", "2", "2-1/2", "3", "3-1/2", "4"];
 const materials = ["Acrylic", "Wood", "MDF", "Plywood", "PVC", "HDPE", "Aluminum", "Corian"];
@@ -106,6 +107,11 @@ export default function NewCNCEstimate({ embeddedId = null, embedded = false }) 
         setup_time_hours: 0,
         machine_cost: 0,
         labor_cost: 0,
+        force_enhanced: false,
+        cutter_diameter_in: 0,
+        smallest_detail_in: 0,
+        workholding_method: "",
+        creates_loose_pieces: false,
       }]
     }));
   };
@@ -1137,6 +1143,12 @@ export default function NewCNCEstimate({ embeddedId = null, embedded = false }) 
                       {item.item_type === '3d_carving' && (<div><Label>Carve Speed (in²/min)</Label><Input type="number" min="0" value={item.carve_speed_sqipm || ""} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(index, 'carve_speed_sqipm', parseFloat(e.target.value) || 0)} /></div>)}
                     </div>
                     
+                    <HoldDownAdvisor
+                      item={item}
+                      onUpdate={(field, value) => updateItem(index, field, value)}
+                      letterPerimFactor={parseFloat(globalSettings.cnc_letter_perimeter_factor) || 3.5}
+                    />
+
                     <div className="mt-4 p-4 bg-white rounded-lg border">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div><span className="text-slate-500">Machine Time:</span><p className="font-medium">{(item.machine_time_hours || 0).toFixed(1)} hrs</p></div>
