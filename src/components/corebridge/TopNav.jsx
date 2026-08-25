@@ -86,7 +86,11 @@ export default function TopNav({ currentUser, hasPermission, onNavClick, pathnam
     },
     {
       label: 'Quick Price',
-      items: visibleQuick.map((m) => ({ label: m.name, to: p(m.newEst) })),
+      items: [
+        { label: 'Full Estimate', to: p('NewAllInOneEstimate') },
+        { divider: 'Quick Estimators' },
+        ...visibleQuick.map((m) => ({ label: m.name, to: p(m.newEst) })),
+      ],
     },
     {
       label: 'Estimates',
