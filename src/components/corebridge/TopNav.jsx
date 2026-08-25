@@ -27,7 +27,7 @@ const QUICK_PRICE_NAV = [
   { id: 'vinyl_estimator', name: 'Vinyl Estimate', projects: 'VinylProjects', newEst: 'NewVinylEstimate', settings: 'VinylSettings', inventory: 'VinylInventory' },
 ];
 
-function NavMenu({ label, to, items, isActive, onNavClick }) {
+function NavMenu({ label, to, items, isActive, onNavClick, align = 'left' }) {
   const cls = `block px-4 lg:px-6 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors ${
     isActive ? 'text-lime-400' : 'text-white hover:bg-zinc-800'
   }`;
@@ -39,7 +39,7 @@ function NavMenu({ label, to, items, isActive, onNavClick }) {
         <span className={`${cls} cursor-default`}>{label}</span>
       )}
       {items && items.length > 0 && (
-        <div className="absolute left-0 top-full hidden group-hover:block bg-zinc-900 border border-zinc-700 shadow-2xl min-w-[240px] z-[130]">
+        <div className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-full hidden group-hover:block bg-zinc-900 border border-zinc-700 shadow-2xl min-w-[240px] max-h-[70vh] overflow-y-auto z-[130]`}>
           {items.map((it, i) =>
             it.divider ? (
               <div key={`d-${i}`} className="px-4 py-1 text-[10px] uppercase tracking-wider text-zinc-500 font-bold bg-zinc-800/60 border-b border-zinc-800">{it.divider}</div>
@@ -155,15 +155,15 @@ export default function TopNav({ currentUser, hasPermission, onNavClick, pathnam
       </div>
 
       {/* Primary nav bar */}
-      <nav className="bg-zinc-900 flex items-stretch overflow-x-auto">
+      <nav className="bg-zinc-900 flex items-stretch flex-wrap">
         <div className="flex items-stretch flex-1">
           {menus.map((m) => (
             <NavMenu key={m.label} label={m.label} to={m.to} items={m.items} isActive={menuActive(m)} onNavClick={onNavClick} />
           ))}
         </div>
         <div className="flex items-stretch">
-          <NavMenu label="Settings" items={settingsItems} isActive={menuActive({ items: settingsItems })} onNavClick={onNavClick} />
-          <NavMenu label="Tools" items={toolsItems} isActive={menuActive({ items: toolsItems })} onNavClick={onNavClick} />
+          <NavMenu label="Settings" align="right" items={settingsItems} isActive={menuActive({ items: settingsItems })} onNavClick={onNavClick} />
+          <NavMenu label="Tools" align="right" items={toolsItems} isActive={menuActive({ items: toolsItems })} onNavClick={onNavClick} />
         </div>
       </nav>
     </div>
