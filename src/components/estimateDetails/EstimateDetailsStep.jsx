@@ -177,7 +177,14 @@ export default function EstimateDetailsStep({ project, updateField }) {
               onChange={(e) => updateField("estimate_number", e.target.value)}
             />
             <Button variant="outline" size="sm" className="h-8 rounded-sm text-xs"
-              onClick={() => updateField("estimate_number", `AIO-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`)}>
+              onClick={async () => {
+                try {
+                  const res = await base44.functions.invoke("generateDocNumber", { prefix: "EST" });
+                  updateField("estimate_number", res.data.number);
+                } catch (e) {
+                  updateField("estimate_number", `EST-${String(Date.now()).slice(-5)}`);
+                }
+              }}>
               <Sparkles className="w-3 h-3 mr-1" /> Generate
             </Button>
           </div>
