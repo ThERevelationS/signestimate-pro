@@ -83,32 +83,32 @@ export default function CustomerDetail() {
           onSetStatus={setStatus}
         />
 
-        <div className="bg-white border border-slate-300 rounded-sm">
-          <div className="flex flex-wrap gap-1 px-3 pt-2 border-b border-slate-300">
+        <div className="bg-white rounded-xl shadow-sm ring-1 ring-slate-200/80">
+          <div className="flex flex-wrap items-center gap-1 px-4 border-b border-slate-200">
             {TABS.map((t) => (
               <button key={t} onClick={() => { setTab(t); setEditing(false); }}
-                className={`px-3 py-1.5 text-xs font-semibold border rounded-t-sm -mb-px ${
-                  tab === t ? "bg-white border-slate-300 border-b-white text-slate-900" : "bg-slate-100 border-slate-200 text-slate-500 hover:text-slate-700"
+                className={`px-3.5 py-3 text-xs font-semibold border-b-2 -mb-px transition-colors ${
+                  tab === t ? "border-red-600 text-red-700" : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
                 }`}>
                 {t}
               </button>
             ))}
             {dirty && (
-              <Button size="sm" className="ml-auto mb-1 h-7 rounded-sm bg-lime-600 hover:bg-lime-700 text-white text-xs"
+              <Button size="sm" className="ml-auto mb-1.5 h-8 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs shadow-sm shadow-red-600/25"
                 onClick={save} disabled={saving}>
                 <Save className="w-3.5 h-3.5 mr-1" /> {saving ? "Saving…" : "Save Changes"}
               </Button>
             )}
           </div>
 
-          <div className="p-4">
+          <div className="p-5">
             {editing ? (
               <>
-                <h2 className="text-sm font-bold uppercase tracking-wider text-lime-600 mb-4">Edit Customer</h2>
+                <h2 className="text-sm font-bold uppercase tracking-wider text-red-600 mb-4">Edit Customer</h2>
                 <CustomerForm value={customer} onChange={change} lists={lists} showRequired />
                 <div className="flex justify-end gap-2 border-t border-slate-200 mt-6 pt-4">
-                  <Button variant="outline" size="sm" className="h-8 rounded-sm" onClick={() => setEditing(false)}>Done Editing</Button>
-                  <Button size="sm" className="h-8 rounded-sm bg-lime-600 hover:bg-lime-700 text-white" onClick={save} disabled={saving}>
+                  <Button variant="outline" size="sm" className="h-8 rounded-lg" onClick={() => setEditing(false)}>Done Editing</Button>
+                  <Button size="sm" className="h-8 rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-sm shadow-red-600/25" onClick={save} disabled={saving}>
                     {saving ? "Saving…" : "Save Customer"}
                   </Button>
                 </div>

@@ -22,10 +22,10 @@ export default function HistoryTab({ customer, estimates }) {
 
   return (
     <div>
-      <div className="flex gap-1 mb-3">
+      <div className="flex gap-1 mb-4">
         {[["orders", "Orders"], ["estimates", "Estimates"], ["account", "Account"]].map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
-            className={`px-3 py-1.5 text-xs font-semibold border rounded-t-sm ${tab === k ? "bg-white border-slate-300 border-b-white text-slate-900" : "bg-slate-100 border-slate-200 text-slate-500"}`}>
+            className={`px-3.5 py-1.5 text-xs font-semibold rounded-full transition-colors ${tab === k ? "bg-red-600 text-white shadow-sm shadow-red-600/25" : "bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700"}`}>
             {label}
           </button>
         ))}
@@ -35,12 +35,12 @@ export default function HistoryTab({ customer, estimates }) {
         <>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs text-slate-600">Search:</span>
-            <Input className="h-7 rounded-sm text-xs w-64" value={q} onChange={(e) => setQ(e.target.value)} />
+            <Input className="h-8 rounded-lg text-xs w-64 border-slate-200" value={q} onChange={(e) => setQ(e.target.value)} />
             <span className="text-xs text-slate-400 ml-auto">{rows.length} order{rows.length === 1 ? "" : "s"}</span>
           </div>
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-600 text-white text-left text-xs">
+              <tr className="bg-red-600 text-white text-left text-xs">
                 <th className="px-2 py-1.5">Order #</th>
                 <th className="px-2 py-1.5">Description</th>
                 <th className="px-2 py-1.5"># of Products</th>
@@ -54,7 +54,7 @@ export default function HistoryTab({ customer, estimates }) {
               {rows.map((e, i) => (
                 <tr key={e.id} className={`border-b border-slate-200 ${i % 2 ? "bg-slate-50" : ""}`}>
                   <td className="px-2 py-1.5">
-                    <Link to={`${createPageUrl("NewAllInOneEstimate")}?edit=${e.id}`} className="text-lime-700 font-semibold hover:underline">
+                    <Link to={`${createPageUrl("NewAllInOneEstimate")}?edit=${e.id}`} className="text-red-700 font-semibold hover:underline">
                       {e.estimate_number || "Open"}
                     </Link>
                   </td>
@@ -72,12 +72,12 @@ export default function HistoryTab({ customer, estimates }) {
         <>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs text-slate-600">Search:</span>
-            <Input className="h-7 rounded-sm text-xs w-64" value={q} onChange={(e) => setQ(e.target.value)} />
+            <Input className="h-8 rounded-lg text-xs w-64 border-slate-200" value={q} onChange={(e) => setQ(e.target.value)} />
             <span className="text-xs text-slate-400 ml-auto">{rows.length} estimate{rows.length === 1 ? "" : "s"}</span>
           </div>
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-600 text-white text-left text-xs">
+              <tr className="bg-red-600 text-white text-left text-xs">
                 <th className="px-2 py-1.5">Estimate #</th>
                 <th className="px-2 py-1.5">Description</th>
                 <th className="px-2 py-1.5"># of Products</th>
@@ -91,7 +91,7 @@ export default function HistoryTab({ customer, estimates }) {
               {rows.map((e, i) => (
                 <tr key={e.id} className={`border-b border-slate-200 ${i % 2 ? "bg-slate-50" : ""}`}>
                   <td className="px-2 py-1.5">
-                    <Link to={`${createPageUrl("NewAllInOneEstimate")}?edit=${e.id}`} className="text-lime-700 font-semibold hover:underline">
+                    <Link to={`${createPageUrl("NewAllInOneEstimate")}?edit=${e.id}`} className="text-red-700 font-semibold hover:underline">
                       {e.estimate_number || "Open"}
                     </Link>
                   </td>
@@ -108,7 +108,7 @@ export default function HistoryTab({ customer, estimates }) {
       ) : (
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-slate-600 text-white text-left text-xs">
+            <tr className="bg-red-600 text-white text-left text-xs">
               <th className="px-2 py-1.5">Created</th>
               <th className="px-2 py-1.5">Description</th>
             </tr>

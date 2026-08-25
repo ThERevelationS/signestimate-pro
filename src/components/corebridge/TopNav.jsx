@@ -29,7 +29,7 @@ const QUICK_PRICE_NAV = [
 
 function NavMenu({ label, to, items, isActive, onNavClick, align = 'left' }) {
   const cls = `block px-4 lg:px-6 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors ${
-    isActive ? 'text-lime-400' : 'text-white hover:bg-zinc-800'
+    isActive ? 'text-white bg-red-800/60' : 'text-red-50 hover:bg-red-800/40 hover:text-white'
   }`;
   return (
     <div className="relative group">
@@ -39,16 +39,16 @@ function NavMenu({ label, to, items, isActive, onNavClick, align = 'left' }) {
         <span className={`${cls} cursor-default`}>{label}</span>
       )}
       {items && items.length > 0 && (
-        <div className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-full hidden group-hover:block bg-zinc-900 border border-zinc-700 shadow-2xl min-w-[240px] max-h-[70vh] overflow-y-auto z-[130]`}>
+        <div className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-full hidden group-hover:block bg-white border border-slate-200 shadow-xl rounded-b-lg min-w-[240px] max-h-[70vh] overflow-y-auto z-[130] ring-1 ring-slate-200/50`}>
           {items.map((it, i) =>
             it.divider ? (
-              <div key={`d-${i}`} className="px-4 py-1 text-[10px] uppercase tracking-wider text-zinc-500 font-bold bg-zinc-800/60 border-b border-zinc-800">{it.divider}</div>
+              <div key={`d-${i}`} className="px-4 py-1.5 text-[10px] uppercase tracking-wider text-red-600 font-bold bg-red-50/60 border-b border-slate-100">{it.divider}</div>
             ) : (
               <Link
                 key={it.to + it.label}
                 to={it.to}
                 onClick={(e) => onNavClick(e, it.to)}
-                className="block px-4 py-2.5 text-sm text-white font-medium hover:bg-zinc-700 border-b border-zinc-800 last:border-0"
+                className="block px-4 py-2.5 text-sm text-slate-700 font-medium hover:bg-red-50 hover:text-red-700 border-b border-slate-100 last:border-0 transition-colors"
               >
                 {it.label}
               </Link>
@@ -139,7 +139,7 @@ export default function TopNav({ currentUser, hasPermission, onNavClick, pathnam
       {/* Brand strip */}
       <div className="bg-white border-b border-slate-200 px-4 py-1.5 flex items-center justify-between">
         <Link to={p('Dashboard')} onClick={(e) => onNavClick(e, p('Dashboard'))} className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-zinc-900 rounded flex items-center justify-center">
+          <div className="w-7 h-7 bg-gradient-to-br from-red-600 to-red-700 rounded-md flex items-center justify-center shadow-sm shadow-red-600/30">
             <span className="text-white font-bold text-xs">SE</span>
           </div>
           <span className="font-bold text-slate-900 text-sm">SignEstimate Pro</span>
@@ -152,12 +152,12 @@ export default function TopNav({ currentUser, hasPermission, onNavClick, pathnam
             <UserIcon className="w-3.5 h-3.5" />
             {currentUser?.screen_name || currentUser?.full_name || currentUser?.email || ''}
           </span>
-          <span className="uppercase text-[10px] font-bold tracking-wider text-lime-700 hidden sm:inline">Sales Module</span>
+          <span className="uppercase text-[10px] font-bold tracking-wider text-red-600 hidden sm:inline">Sales Module</span>
         </div>
       </div>
 
       {/* Primary nav bar */}
-      <nav className="bg-zinc-900 flex items-stretch flex-wrap">
+      <nav className="bg-gradient-to-r from-red-700 to-red-600 flex items-stretch flex-wrap shadow-sm">
         <div className="flex items-stretch flex-1">
           {menus.map((m) => (
             <NavMenu key={m.label} label={m.label} to={m.to} items={m.items} isActive={menuActive(m)} onNavClick={onNavClick} />
