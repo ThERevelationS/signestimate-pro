@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/AuthContext";
 import CustomerSearchDialog from "./CustomerSearchDialog";
 import CreateCustomerDialog from "./CreateCustomerDialog";
+import { buildEstimateDefaults } from "./estimateDefaults";
 
 // ============================================================================
 // Step 1: Estimate Details — CoreBridge layout.
@@ -36,8 +37,13 @@ export default function EstimateDetailsStep({ project, updateField }) {
       ]);
       setOptions(opts || []);
       setTaxGroups(taxes || []);
+      // Apply the admin-flagged defaults (tax group, terms, sales center,
+      // salesperson matched to the signed-in user) to still-empty fields.
+      const patch = buildEstimateDefaults({ project, options: opts || [], taxGroups: taxes || [], user });
+      Object.entries(patch).forEach(([k, v]) => updateField(k, v));
     })();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email]);
 
   // Load the linked customer so the contact dropdown has something to offer.
   useEffect(() => {
@@ -128,7 +134,7 @@ export default function EstimateDetailsStep({ project, updateField }) {
           />
         )}
         {row("Terms",
-          <Select value={project.terms || ""} onValueChange={(v) => updateField("terms", v)}>
+          <Select value={project.terms || ""} onValueChange={(v) => { updateField("terms", v); if (!project.payment_terms) updateField("payment_terms", v); }}>
             <SelectTrigger className="h-8 rounded-sm bg-white text-sm max-w-xs"><SelectValue placeholder="select" /></SelectTrigger>
             <SelectContent>
               {opts("terms").map((o) => <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>)}
@@ -177,7 +183,11 @@ export default function EstimateDetailsStep({ project, updateField }) {
         </div>
         <div className="md:pl-6">
           {row("Salesperson",
-            <Select value={project.salesperson || ""} onValueChange={(v) => updateField("salesperson", v)}>
+            <Select value={project.salesperson || ""} onValueChange={(v) => {
+              updateField("salesperson", v);
+              const sp = opts("salesperson").find((o) => o.label === v);
+              if (sp?.email) updateField("company_email", sp.email);
+            }}>
               <SelectTrigger className="h-8 rounded-sm bg-white text-sm"><SelectValue placeholder="select" /></SelectTrigger>
               <SelectContent>
                 {opts("salesperson").map((o) => <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>)}
@@ -202,7 +212,10 @@ export default function EstimateDetailsStep({ project, updateField }) {
               </SelectContent>
             </Select>
           )}
-          <p className="text-[11px] text-slate-500 pl-2 pt-1">Tax applied to this estimate: {project.tax_percent || 0}%</p>
+          <p className="text-[11px] text-slate-500 pl-2 pt-1">
+            Tax applied to this estimate: {project.tax_percent || 0}%
+            {project.terms ? ` · Terms "${project.terms}" print on the customer quote` : ""}
+          </p>
         </div>
       </div>
 

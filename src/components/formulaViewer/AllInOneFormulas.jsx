@@ -42,6 +42,7 @@ export default function AllInOneFormulas() {
           <p>Fees = shipping fee + permit fee</p>
           <p>Taxable Base = Subtotal − Discount + Contingency + Fees</p>
           <p>tax% = selected Tax Group's rate (Step 1 · Estimate Settings)</p>
+          <p>New estimate defaults: the Tax Group / Terms / Sales Center starred as "default" in Estimate Settings are pre-applied, so tax% comes from the default tax group until changed, and the chosen Terms also fill the payment terms printed on the customer quote.</p>
           <p>Tax = Taxable Base × tax%</p>
           <p>Quote Total = Taxable Base + Tax</p>
           <p>Deposit Due = Quote Total × deposit%</p>

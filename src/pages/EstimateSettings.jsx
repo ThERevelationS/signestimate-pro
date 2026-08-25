@@ -3,21 +3,21 @@ import { EstimateOption, TaxGroup } from "@/entities/all";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, Settings2 } from "lucide-react";
+import { Plus, Trash2, Settings2, Star } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import OptionListEditor from "@/components/estimateDetails/OptionListEditor";
 
 // Admin control panel for every dropdown used in Step 1: Estimate Details and
 // the customer dialogs. Non-admins can view the lists but not change them.
 const LISTS = [
-  { type: "salesperson", title: "Salespeople", withEmail: true, description: "Selectable in the Salesperson dropdown." },
-  { type: "sales_center", title: "Sales Centers / Locations", description: "Selectable as Sales Center on an estimate and Location on a customer." },
-  { type: "terms", title: "Payment Terms", description: "e.g. Net 30, 50% deposit / balance on completion." },
-  { type: "customer_origination", title: "Customer Origination", description: "How the customer found you." },
-  { type: "industry_type", title: "Industry Types" },
-  { type: "contact_status", title: "Contact Statuses" },
-  { type: "job_authority", title: "Job Authority Levels" },
-  { type: "master_account", title: "Master Accounts" },
+  { type: "salesperson", title: "Salespeople", withEmail: true, description: "Salesperson dropdown + Estimates queue filter. The email is auto-matched to the signed-in user and used as the quote contact." },
+  { type: "sales_center", title: "Sales Centers / Locations", description: "Sales Center on an estimate, Location on a customer, and a filter on the Estimates queue." },
+  { type: "terms", title: "Payment Terms", description: "Chosen terms also fill the payment terms printed on the customer quote." },
+  { type: "customer_origination", title: "Customer Origination", description: "How the customer found you — set on the customer record." },
+  { type: "industry_type", title: "Industry Types", description: "Set on the customer record." },
+  { type: "contact_status", title: "Contact Statuses", description: "Set on a customer's primary contact." },
+  { type: "job_authority", title: "Job Authority Levels", description: "Set on a customer's primary contact." },
+  { type: "master_account", title: "Master Accounts", description: "Groups customers together and filters Customer Search." },
   { type: "phone_type", title: "Phone Types", description: "Used by the additional phone selector." },
 ];
 
@@ -48,6 +48,16 @@ export default function EstimateSettings() {
     load();
   };
 
+  // One default tax group — pre-applied to every new estimate.
+  const makeDefaultTax = async (t) => {
+    const turningOff = !!t.is_default;
+    for (const other of taxGroups) {
+      if (other.is_default && other.id !== t.id) await TaxGroup.update(other.id, { is_default: false });
+    }
+    await TaxGroup.update(t.id, { is_default: !turningOff });
+    load();
+  };
+
   const removeTax = async (t) => {
     if (!confirm(`Delete tax group "${t.group_name}"?`)) return;
     await TaxGroup.delete(t.id);
@@ -64,7 +74,10 @@ export default function EstimateSettings() {
             <Settings2 className="w-5 h-5 text-lime-600" /> Estimate Settings
           </h1>
           <p className="text-xs text-slate-500">
-            Controls every dropdown on Step 1: Estimate Details and the customer dialogs.
+            Controls every dropdown on Step 1: Estimate Details and the customer dialogs. Star a value to make it
+            the <b>default on every new estimate</b> — the default tax group sets the estimate's tax %, the default
+            terms print on the customer quote, and a salesperson whose email matches the signed-in user is selected
+            automatically (their email becomes the quote contact).
             {!canEdit && " You have view-only access — ask an admin to change these lists."}
           </p>
         </div>
@@ -91,8 +104,12 @@ export default function EstimateSettings() {
                 <span className={`flex-1 ${t.is_active === false ? "text-slate-400 line-through" : "text-slate-800"}`}>
                   {t.group_name} <span className="text-slate-500">({t.tax_percent}%)</span>
                 </span>
+                {t.is_default && <span className="text-[10px] font-bold uppercase text-amber-600">default</span>}
                 {canEdit && (
                   <>
+                    <button type="button" onClick={() => makeDefaultTax(t)} title="Use as the default tax group on new estimates">
+                      <Star className={`w-3.5 h-3.5 ${t.is_default ? "text-amber-500 fill-amber-400" : "text-slate-300 hover:text-amber-400"}`} />
+                    </button>
                     <Switch checked={t.is_active !== false} onCheckedChange={(v) => TaxGroup.update(t.id, { is_active: v }).then(load)} />
                     <Button variant="ghost" size="sm" className="h-6 px-1.5 text-red-500 hover:bg-red-50" onClick={() => removeTax(t)}>
                       <Trash2 className="w-3.5 h-3.5" />

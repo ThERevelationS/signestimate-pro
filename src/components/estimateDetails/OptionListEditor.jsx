@@ -3,7 +3,7 @@ import { EstimateOption } from "@/entities/all";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Star } from "lucide-react";
 
 // Reusable admin editor for one EstimateOption list (salespeople, sales
 // centers, terms, etc.). Read-only for non-admins.
@@ -36,6 +36,16 @@ export default function OptionListEditor({ title, optionType, description, rows,
     onChanged();
   };
 
+  // One default per list — it is pre-selected on every new estimate.
+  const makeDefault = async (row) => {
+    const turningOff = !!row.is_default;
+    for (const r of rows) {
+      if (r.is_default && r.id !== row.id) await EstimateOption.update(r.id, { is_default: false });
+    }
+    await EstimateOption.update(row.id, { is_default: !turningOff });
+    onChanged();
+  };
+
   return (
     <div className="bg-white border border-slate-300 rounded-sm p-4">
       <p className="text-sm font-bold text-slate-800">{title}</p>
@@ -58,8 +68,12 @@ export default function OptionListEditor({ title, optionType, description, rows,
             <span className={`flex-1 ${r.is_active === false ? "text-slate-400 line-through" : "text-slate-800"}`}>
               {r.label}{r.email ? <span className="text-xs text-slate-400"> · {r.email}</span> : null}
             </span>
+            {r.is_default && <span className="text-[10px] font-bold uppercase text-amber-600">default</span>}
             {canEdit && (
               <>
+                <button type="button" onClick={() => makeDefault(r)} title="Use as the default on new estimates">
+                  <Star className={`w-3.5 h-3.5 ${r.is_default ? "text-amber-500 fill-amber-400" : "text-slate-300 hover:text-amber-400"}`} />
+                </button>
                 <Switch checked={r.is_active !== false} onCheckedChange={(v) => toggleActive(r, v)} />
                 <Button variant="ghost" size="sm" className="h-6 px-1.5 text-red-500 hover:bg-red-50" onClick={() => remove(r)}>
                   <Trash2 className="w-3.5 h-3.5" />

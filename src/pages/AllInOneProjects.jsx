@@ -23,7 +23,7 @@ const STATUS_COLORS = {
   archived: "bg-slate-200 text-slate-600 border-slate-300",
 };
 
-const EMPTY_FILTERS = { estimate: "", company: "", description: "", status: "active" };
+const EMPTY_FILTERS = { estimate: "", company: "", description: "", status: "active", salesperson: "all", sales_center: "all" };
 
 // CoreBridge-style Estimates search: labeled filter panel + dense results table.
 export default function AllInOneProjects() {
@@ -33,6 +33,7 @@ export default function AllInOneProjects() {
   const [pending, setPending] = useState(EMPTY_FILTERS);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [duplicatingId, setDuplicatingId] = useState(null);
+  const [options, setOptions] = useState([]);
 
   const loadProjects = async () => {
     setIsLoading(true);
@@ -43,7 +44,12 @@ export default function AllInOneProjects() {
 
   useEffect(() => {
     loadProjects();
+    // Salesperson / Sales Center filters come from the admin Estimate Settings lists.
+    base44.entities.EstimateOption.list("sort_order", 500).then((rows) => setOptions(rows || []));
   }, []);
+
+  const listValues = (type) =>
+    options.filter((o) => o.option_type === type && o.is_active !== false);
 
   const applySearch = () => setFilters({ ...pending });
 
@@ -54,6 +60,8 @@ export default function AllInOneProjects() {
     const est = filters.estimate.trim().toLowerCase();
     const co = filters.company.trim().toLowerCase();
     const desc = filters.description.trim().toLowerCase();
+    if (filters.salesperson !== "all") rows = rows.filter((p) => p.salesperson === filters.salesperson);
+    if (filters.sales_center !== "all") rows = rows.filter((p) => p.sales_center === filters.sales_center);
     if (est) rows = rows.filter((p) => (p.estimate_number || "").toLowerCase().includes(est));
     if (co) rows = rows.filter((p) => (p.client_name || "").toLowerCase().includes(co));
     if (desc)
@@ -166,7 +174,7 @@ export default function AllInOneProjects() {
 
         {/* Filter panel */}
         <div className="px-4 py-3 bg-slate-100 border-b border-slate-300">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
             <div>
               <Label className="text-xs">Estimate #</Label>
               <Input className="h-8 rounded-sm bg-white" value={pending.estimate}
@@ -200,6 +208,26 @@ export default function AllInOneProjects() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label className="text-xs">Salesperson</Label>
+              <Select value={pending.salesperson} onValueChange={(v) => setPending((p) => ({ ...p, salesperson: v }))}>
+                <SelectTrigger className="h-8 rounded-sm bg-white"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  {listValues("salesperson").map((o) => <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Sales Center</Label>
+              <Select value={pending.sales_center} onValueChange={(v) => setPending((p) => ({ ...p, sales_center: v }))}>
+                <SelectTrigger className="h-8 rounded-sm bg-white"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  {listValues("sales_center").map((o) => <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <Button onClick={applySearch} className="h-8 bg-zinc-700 hover:bg-zinc-600 text-white rounded-sm">
               Search
             </Button>
@@ -221,6 +249,7 @@ export default function AllInOneProjects() {
                   <th className="text-left px-3 py-2 font-semibold">Customer</th>
                   <th className="text-left px-3 py-2 font-semibold">Estimate Description</th>
                   <th className="text-left px-3 py-2 font-semibold">Products</th>
+                  <th className="text-left px-3 py-2 font-semibold whitespace-nowrap">Salesperson</th>
                   <th className="text-left px-3 py-2 font-semibold whitespace-nowrap">Created Date</th>
                   <th className="text-left px-3 py-2 font-semibold">Status</th>
                   <th className="text-right px-3 py-2 font-semibold">Total</th>
@@ -252,6 +281,10 @@ export default function AllInOneProjects() {
                         })}
                         {(project.line_items?.length || 0) > 4 && <span className="text-[10px] text-slate-400">+{project.line_items.length - 4}</span>}
                       </div>
+                    </td>
+                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">
+                      {project.salesperson || "—"}
+                      {project.sales_center && <span className="block text-[10px] text-slate-400">{project.sales_center}</span>}
                     </td>
                     <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{format(new Date(project.created_date), "MM/dd/yyyy")}</td>
                     <td className="px-3 py-2">
