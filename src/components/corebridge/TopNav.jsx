@@ -101,7 +101,11 @@ export default function TopNav({ currentUser, hasPermission, onNavClick, pathnam
     },
     {
       label: 'Products',
+      to: p('QuickProducts'),
       items: [
+        { label: 'Manage Quick Products', to: p('QuickProducts') },
+        { label: 'New Quick Product', to: p('QuickProductEditor') },
+        { divider: 'Inventories' },
         ...(isAdmin ? [{ label: 'Master Inventory', to: p('MasterInventory') }] : []),
         ...[...visibleModules, ...visibleQuick]
           .filter((m) => m.inventory)
