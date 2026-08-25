@@ -148,7 +148,7 @@ export default function TopNav({ currentUser, hasPermission, onNavClick, pathnam
           <span className="hidden md:inline">{new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</span>
           <span className="flex items-center gap-1 font-medium text-slate-800">
             <UserIcon className="w-3.5 h-3.5" />
-            {currentUser?.full_name || currentUser?.email || ''}
+            {currentUser?.screen_name || currentUser?.full_name || currentUser?.email || ''}
           </span>
           <span className="uppercase text-[10px] font-bold tracking-wider text-lime-700 hidden sm:inline">Sales Module</span>
         </div>
