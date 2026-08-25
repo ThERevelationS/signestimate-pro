@@ -2,11 +2,11 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createPageUrl } from "@/utils";
 import {
-  Layers, Save, RefreshCw, Link as LinkIcon, FileText, Hammer, PieChart, Package, Receipt,
+  Layers, Save, RefreshCw, Link as LinkIcon, ArrowLeft, ArrowRight,
 } from "lucide-react";
+import EstimateStepRail from "@/components/allInOne/EstimateStepRail";
 import { useToast } from "@/components/ui/use-toast";
 import { fmtCurrency } from "@/lib/formatters";
 import {
@@ -460,72 +460,123 @@ export default function NewAllInOneEstimate() {
           </div>
         </div>
 
-        {/* Tabs — project details + all single-point summaries at the top */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="flex flex-wrap h-auto gap-1 bg-white border border-slate-200 p-1.5 rounded-xl shadow-sm w-full justify-start">
-            <TabsTrigger value="details" className="gap-1.5"><FileText className="w-4 h-4" /> Project Details</TabsTrigger>
-            <TabsTrigger value="build" className="gap-1.5">
-              <Hammer className="w-4 h-4" /> Build Estimate
-              {project.line_items.length > 0 && (
-                <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 rounded-full px-1.5">{project.line_items.length}</span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="summary" className="gap-1.5"><PieChart className="w-4 h-4" /> Cost Summary</TabsTrigger>
-            <TabsTrigger value="bom" className="gap-1.5"><Package className="w-4 h-4" /> Bill of Materials</TabsTrigger>
-            <TabsTrigger value="customer" className="gap-1.5"><Receipt className="w-4 h-4" /> Customer View</TabsTrigger>
-          </TabsList>
+        {/* CoreBridge-style step workflow: persistent step rail + Order
+            Summary on the left, the active step's content on the right.
+            Every view stays MOUNTED (hidden, not unmounted) so the inline
+            estimator keeps in-progress edits while checking other views. */}
+        <div className="flex flex-col lg:flex-row gap-4 items-start">
+          <EstimateStepRail
+            project={project}
+            editId={editId}
+            active={activeTab}
+            onNavigate={setActiveTab}
+            quote={quote}
+            onSave={handleSave}
+            isSaving={isSaving}
+            dirty={dirty}
+          />
 
-          {/* forceMount + hidden keeps the inline estimator mounted (with any
-              in-progress edits) while the user checks the summary tabs. */}
-          <TabsContent value="details" forceMount className="mt-5 data-[state=inactive]:hidden">
-            <AllInOneProjectDetailsTab project={project} updateField={updateField} />
-          </TabsContent>
+          <div className="flex-1 min-w-0 w-full">
+            <div className="bg-white border border-slate-300 rounded-sm px-4 py-2 mb-4 flex items-center justify-between gap-2 flex-wrap">
+              <h2 className="text-base font-bold text-slate-800">
+                {{
+                  details: "Step 1: Estimate Details",
+                  build: "Step 2: Edit Products",
+                  customer: "Step 3: Finalize Estimate",
+                  summary: "Cost Summary",
+                  bom: "Bill of Materials",
+                }[activeTab]}
+                {activeTab === "build" && project.line_items.length > 0 && (
+                  <span className="ml-2 text-[11px] font-bold bg-lime-100 text-lime-800 rounded-full px-2 py-0.5">
+                    {project.line_items.length} product{project.line_items.length === 1 ? "" : "s"}
+                  </span>
+                )}
+              </h2>
+              <StepNavButtons activeTab={activeTab} onNavigate={setActiveTab} />
+            </div>
 
-          <TabsContent value="build" forceMount className="mt-5 data-[state=inactive]:hidden">
-            <AllInOneBuildTab
-              project={project}
-              addingKey={addingKey}
-              grandTotal={quote.subtotal}
-              openSection={openSection}
-              onAddSection={handleAddSection}
-              onToggleSection={(item) =>
-                openSection?.project_id === item.project_id ? closeSection() : openSectionInline(item)
-              }
-              onRemoveSection={handleRemove}
-              onRenameSection={handleRename}
-              onDuplicateSection={handleDuplicate}
-              onUpdateSection={handleUpdateItem}
-              editorSlot={
-                openSection ? (
-                  <div
-                    id="aio-inline-editor"
-                    className="rounded-2xl border-2 border-indigo-300 overflow-hidden shadow-xl scroll-mt-4"
-                  >
-                    <EstimatorSectionPanel item={openSection} onClose={closeSection} />
-                  </div>
-                ) : null
-              }
-            />
-          </TabsContent>
+            <div className={activeTab === "details" ? "" : "hidden"}>
+              <AllInOneProjectDetailsTab project={project} updateField={updateField} />
+            </div>
 
-          <TabsContent value="summary" forceMount className="mt-5 data-[state=inactive]:hidden">
-            <AllInOneCostSummaryTab project={project} sourceProjects={sourceProjects} grandTotal={grandTotal} />
-          </TabsContent>
+            <div className={activeTab === "build" ? "" : "hidden"}>
+              <AllInOneBuildTab
+                project={project}
+                addingKey={addingKey}
+                grandTotal={quote.subtotal}
+                openSection={openSection}
+                onAddSection={handleAddSection}
+                onToggleSection={(item) =>
+                  openSection?.project_id === item.project_id ? closeSection() : openSectionInline(item)
+                }
+                onRemoveSection={handleRemove}
+                onRenameSection={handleRename}
+                onDuplicateSection={handleDuplicate}
+                onUpdateSection={handleUpdateItem}
+                editorSlot={
+                  openSection ? (
+                    <div
+                      id="aio-inline-editor"
+                      className="rounded-2xl border-2 border-indigo-300 overflow-hidden shadow-xl scroll-mt-4"
+                    >
+                      <EstimatorSectionPanel item={openSection} onClose={closeSection} />
+                    </div>
+                  ) : null
+                }
+              />
+            </div>
 
-          <TabsContent value="bom" forceMount className="mt-5 data-[state=inactive]:hidden">
-            <AllInOneBOMTab project={project} sourceProjects={sourceProjects} />
-          </TabsContent>
+            <div className={activeTab === "summary" ? "" : "hidden"}>
+              <AllInOneCostSummaryTab project={project} sourceProjects={sourceProjects} grandTotal={grandTotal} />
+            </div>
 
-          <TabsContent value="customer" forceMount className="mt-5 data-[state=inactive]:hidden">
-            <AllInOneCustomerViewTab
-              project={project}
-              grandTotal={grandTotal}
-              updateField={updateField}
-              onUpdateItem={handleUpdateItem}
-            />
-          </TabsContent>
-        </Tabs>
+            <div className={activeTab === "bom" ? "" : "hidden"}>
+              <AllInOneBOMTab project={project} sourceProjects={sourceProjects} />
+            </div>
+
+            <div className={activeTab === "customer" ? "" : "hidden"}>
+              <AllInOneCustomerViewTab
+                project={project}
+                grandTotal={grandTotal}
+                updateField={updateField}
+                onUpdateItem={handleUpdateItem}
+              />
+            </div>
+
+            <div className="mt-5 flex justify-end">
+              <StepNavButtons activeTab={activeTab} onNavigate={setActiveTab} large />
+            </div>
+          </div>
+        </div>
       </div>
+    </div>
+  );
+}
+
+// Previous Step / Next Step buttons — CoreBridge workflow navigation.
+const STEP_ORDER = ["details", "build", "customer"];
+function StepNavButtons({ activeTab, onNavigate, large }) {
+  const idx = STEP_ORDER.indexOf(activeTab);
+  if (idx === -1) return null;
+  const size = large ? "px-5 py-2.5 text-sm" : "px-3 py-1.5 text-xs";
+  return (
+    <div className="flex gap-2">
+      {idx > 0 && (
+        <button
+          onClick={() => onNavigate(STEP_ORDER[idx - 1])}
+          className={`${size} bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-sm font-semibold text-slate-800 flex items-center gap-1.5 transition-colors`}
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> Previous Step
+        </button>
+      )}
+      {idx < STEP_ORDER.length - 1 && (
+        <button
+          onClick={() => onNavigate(STEP_ORDER[idx + 1])}
+          className={`${size} bg-lime-200 hover:bg-lime-300 border border-lime-500 rounded-sm font-semibold text-slate-900 flex items-center gap-1.5 transition-colors`}
+        >
+          Next Step <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      )}
     </div>
   );
 }
