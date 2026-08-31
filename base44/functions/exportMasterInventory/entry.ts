@@ -5,6 +5,7 @@ const CATALOGS = [
   'FoundationInventory',
   'ChannelLetterInstallInventory',
   'ChannelLetterInstallEquipment',
+  'LaborServiceInventory',
 ];
 
 async function listAll(entity: any) {
