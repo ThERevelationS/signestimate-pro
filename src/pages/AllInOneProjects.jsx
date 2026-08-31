@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Plus, Edit2, Trash2, Layers, Copy, Loader2 } from "lucide-react";
+import {
+  Plus, Search, Edit2, Trash2, Layers, Copy, Loader2,
+  DollarSign, FileStack, CheckCircle2, Flame,
+} from "lucide-react";
 import { format } from "date-fns";
+import useDebouncedValue from "@/hooks/useDebouncedValue";
 import { fmtCurrency } from "@/lib/formatters";
 import { useToast } from "@/components/ui/use-toast";
 import { ESTIMATOR_MODULES_BY_KEY, getModuleEntity } from "@/components/allInOne/estimatorRegistry";
@@ -16,24 +20,27 @@ import { ESTIMATOR_MODULES_BY_KEY, getModuleEntity } from "@/components/allInOne
 const PAGE_SIZE = 200;
 
 const STATUS_COLORS = {
-  draft: "bg-amber-100 text-amber-800 border-amber-300",
-  calculated: "bg-lime-100 text-lime-800 border-lime-300",
-  sent: "bg-blue-100 text-blue-800 border-blue-300",
-  approved: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  archived: "bg-slate-200 text-slate-600 border-slate-300",
+  draft: "bg-amber-100 text-amber-800 border-amber-200",
+  calculated: "bg-green-100 text-green-800 border-green-200",
+  sent: "bg-blue-100 text-blue-800 border-blue-200",
+  approved: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  archived: "bg-slate-100 text-slate-800 border-slate-200",
 };
 
-const EMPTY_FILTERS = { estimate: "", company: "", description: "", status: "active", salesperson: "all", sales_center: "all" };
+const PRIORITY_BADGES = {
+  high: { label: "High", cls: "bg-orange-100 text-orange-800" },
+  rush: { label: "RUSH", cls: "bg-red-100 text-red-800" },
+};
 
-// CoreBridge-style Estimates search: labeled filter panel + dense results table.
 export default function AllInOneProjects() {
   const { toast } = useToast();
   const [projects, setProjects] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebouncedValue(searchTerm, 200);
   const [isLoading, setIsLoading] = useState(true);
-  const [pending, setPending] = useState(EMPTY_FILTERS);
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [statusFilter, setStatusFilter] = useState("active");
+  const [sortBy, setSortBy] = useState("newest");
   const [duplicatingId, setDuplicatingId] = useState(null);
-  const [options, setOptions] = useState([]);
 
   const loadProjects = async () => {
     setIsLoading(true);
@@ -44,36 +51,32 @@ export default function AllInOneProjects() {
 
   useEffect(() => {
     loadProjects();
-    // Salesperson / Sales Center filters come from the admin Estimate Settings lists.
-    base44.entities.EstimateOption.list("sort_order", 500).then((rows) => setOptions(rows || []));
   }, []);
 
-  const listValues = (type) =>
-    options.filter((o) => o.option_type === type && o.is_active !== false);
-
-  const applySearch = () => setFilters({ ...pending });
-
   const filteredProjects = useMemo(() => {
+    const term = debouncedSearch.trim().toLowerCase();
     let rows = projects;
-    if (filters.status === "active") rows = rows.filter((p) => p.status !== "archived");
-    else if (filters.status !== "all") rows = rows.filter((p) => p.status === filters.status);
-    const est = filters.estimate.trim().toLowerCase();
-    const co = filters.company.trim().toLowerCase();
-    const desc = filters.description.trim().toLowerCase();
-    if (filters.salesperson !== "all") rows = rows.filter((p) => p.salesperson === filters.salesperson);
-    if (filters.sales_center !== "all") rows = rows.filter((p) => p.sales_center === filters.sales_center);
-    if (est) rows = rows.filter((p) => (p.estimate_number || "").toLowerCase().includes(est));
-    if (co) rows = rows.filter((p) => (p.client_name || "").toLowerCase().includes(co));
-    if (desc)
+    if (statusFilter === "active") rows = rows.filter((p) => p.status !== "archived");
+    else if (statusFilter !== "all") rows = rows.filter((p) => p.status === statusFilter);
+    if (term) {
       rows = rows.filter(
         (p) =>
-          (p.project_name || "").toLowerCase().includes(desc) ||
-          (p.tags || "").toLowerCase().includes(desc) ||
-          (p.site_address || "").toLowerCase().includes(desc)
+          p.project_name?.toLowerCase().includes(term) ||
+          p.client_name?.toLowerCase().includes(term) ||
+          p.estimate_number?.toLowerCase().includes(term) ||
+          p.tags?.toLowerCase().includes(term) ||
+          p.site_address?.toLowerCase().includes(term)
       );
-    return [...rows].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
-  }, [projects, filters]);
+    }
+    if (sortBy === "newest") rows = [...rows].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+    if (sortBy === "oldest") rows = [...rows].sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+    if (sortBy === "value") rows = [...rows].sort((a, b) => (b.quote_total || b.total_cost || 0) - (a.quote_total || a.total_cost || 0));
+    if (sortBy === "name") rows = [...rows].sort((a, b) => (a.project_name || "").localeCompare(b.project_name || ""));
+    if (sortBy === "client") rows = [...rows].sort((a, b) => (a.client_name || "").localeCompare(b.client_name || ""));
+    return rows;
+  }, [projects, debouncedSearch, statusFilter, sortBy]);
 
+  // Pipeline stats across non-archived estimates.
   const stats = useMemo(() => {
     const active = projects.filter((p) => p.status !== "archived");
     return {
@@ -87,9 +90,10 @@ export default function AllInOneProjects() {
   const handleDelete = async (project) => {
     const owned = (project.line_items || []).filter((li) => li.owned);
     const msg = owned.length > 0
-      ? `Delete "${project.project_name}"? Its ${owned.length} built-in product estimate${owned.length === 1 ? "" : "s"} will also be permanently deleted.`
+      ? `Delete "${project.project_name}"? Its ${owned.length} built-in section estimate${owned.length === 1 ? "" : "s"} will also be permanently deleted.`
       : `Are you sure you want to delete "${project.project_name}"?`;
     if (!confirm(msg)) return;
+    // Owned sections were created by this estimate — delete them with it.
     for (const li of owned) {
       const mod = ESTIMATOR_MODULES_BY_KEY[li.module_key];
       if (mod) {
@@ -104,7 +108,8 @@ export default function AllInOneProjects() {
     await loadProjects();
   };
 
-  // Deep duplicate — clones the estimate AND every owned sub-estimate.
+  // Deep duplicate — clones the estimate AND every owned sub-estimate so the
+  // copy is fully independent.
   const handleDuplicate = async (project) => {
     setDuplicatingId(project.id);
     const newItems = [];
@@ -132,7 +137,7 @@ export default function AllInOneProjects() {
       line_items: newItems,
     });
     setDuplicatingId(null);
-    toast({ title: "Estimate cloned", description: `"${project.project_name} (copy)" created with independent products.` });
+    toast({ title: "Estimate duplicated", description: `"${project.project_name} (copy)" created with independent sections.` });
     await loadProjects();
   };
 
@@ -145,61 +150,56 @@ export default function AllInOneProjects() {
 
   if (isLoading) {
     return (
-      <div className="p-8 flex items-center justify-center">
-        <p className="text-slate-600">Loading estimates...</p>
+      <div className="p-6 md:p-8 bg-slate-50 min-h-screen flex items-center justify-center">
+        <p className="text-slate-600">Loading projects...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="max-w-[1400px] mx-auto bg-white border border-slate-300 rounded-sm shadow-sm">
-        {/* Page header */}
-        <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2">
-          <h1 className="text-base font-bold text-lime-700 uppercase tracking-wide flex items-center gap-2">
-            <Layers className="w-4 h-4" /> Estimates
-          </h1>
-          <div className="flex items-center gap-4 text-xs text-slate-500">
-            <span>Active: <b className="text-slate-800">{stats.count}</b></span>
-            <span>Pipeline: <b className="text-green-700">{fmtCurrency(stats.pipeline)}</b></span>
-            <span>Drafts: <b className="text-slate-800">{stats.drafts}</b></span>
-            <span>Approved: <b className="text-emerald-700">{stats.approved}</b></span>
-            <Link to={createPageUrl("NewAllInOneEstimate")}>
-              <Button size="sm" className="bg-zinc-800 hover:bg-zinc-700 text-white rounded-sm h-8">
-                <Plus className="w-4 h-4 mr-1" /> Create New
-              </Button>
-            </Link>
+    <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+              <Layers className="w-8 h-8 text-indigo-600" />
+              All-In-One Estimates
+            </h1>
+            <p className="text-slate-600">Combined estimates built from multiple estimator modules</p>
           </div>
+          <Link to={createPageUrl("NewAllInOneEstimate")}>
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3">
+              <Plus className="w-5 h-5 mr-2" />
+              New Estimate
+            </Button>
+          </Link>
         </div>
 
-        {/* Filter panel */}
-        <div className="px-4 py-3 bg-slate-100 border-b border-slate-300">
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
-            <div>
-              <Label className="text-xs">Estimate #</Label>
-              <Input className="h-8 rounded-sm bg-white" value={pending.estimate}
-                onChange={(e) => setPending((p) => ({ ...p, estimate: e.target.value }))}
-                onKeyDown={(e) => e.key === "Enter" && applySearch()} />
-            </div>
-            <div>
-              <Label className="text-xs">Company Name</Label>
-              <Input className="h-8 rounded-sm bg-white" value={pending.company}
-                onChange={(e) => setPending((p) => ({ ...p, company: e.target.value }))}
-                onKeyDown={(e) => e.key === "Enter" && applySearch()} />
-            </div>
-            <div>
-              <Label className="text-xs">Description</Label>
-              <Input className="h-8 rounded-sm bg-white" value={pending.description}
-                onChange={(e) => setPending((p) => ({ ...p, description: e.target.value }))}
-                onKeyDown={(e) => e.key === "Enter" && applySearch()} />
-            </div>
-            <div>
-              <Label className="text-xs">Status</Label>
-              <Select value={pending.status} onValueChange={(v) => setPending((p) => ({ ...p, status: v }))}>
-                <SelectTrigger className="h-8 rounded-sm bg-white"><SelectValue /></SelectTrigger>
+        {/* Pipeline stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <StatCard icon={FileStack} label="Active Estimates" value={stats.count} />
+          <StatCard icon={DollarSign} label="Pipeline Value" value={fmtCurrency(stats.pipeline)} accent="text-green-600" />
+          <StatCard icon={Edit2} label="Drafts" value={stats.drafts} />
+          <StatCard icon={CheckCircle2} label="Approved" value={stats.approved} accent="text-emerald-600" />
+        </div>
+
+        <Card className="bg-white border-0 shadow-sm">
+          <CardHeader className="border-b border-slate-100">
+            <div className="flex flex-wrap gap-2">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <Input
+                  placeholder="Search by name, client, estimate #, tags, address…"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">All Active</SelectItem>
-                  <SelectItem value="all">All (incl. archived)</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
                   <SelectItem value="calculated">Calculated</SelectItem>
                   <SelectItem value="sent">Sent</SelectItem>
@@ -207,123 +207,128 @@ export default function AllInOneProjects() {
                   <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div>
-              <Label className="text-xs">Salesperson</Label>
-              <Select value={pending.salesperson} onValueChange={(v) => setPending((p) => ({ ...p, salesperson: v }))}>
-                <SelectTrigger className="h-8 rounded-sm bg-white"><SelectValue /></SelectTrigger>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  {listValues("salesperson").map((o) => <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>)}
+                  <SelectItem value="newest">Newest first</SelectItem>
+                  <SelectItem value="oldest">Oldest first</SelectItem>
+                  <SelectItem value="value">Highest value</SelectItem>
+                  <SelectItem value="name">By name</SelectItem>
+                  <SelectItem value="client">By client</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label className="text-xs">Sales Center</Label>
-              <Select value={pending.sales_center} onValueChange={(v) => setPending((p) => ({ ...p, sales_center: v }))}>
-                <SelectTrigger className="h-8 rounded-sm bg-white"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  {listValues("sales_center").map((o) => <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={applySearch} className="h-8 bg-zinc-700 hover:bg-zinc-600 text-white rounded-sm">
-              Search
-            </Button>
-          </div>
-        </div>
-
-        {/* Results table */}
-        {filteredProjects.length === 0 ? (
-          <div className="p-12 text-center text-slate-500">
-            <Layers className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-            <p>No estimates match. Create one to roll multiple module estimates into a single total.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-zinc-700 text-white text-xs">
-                  <th className="text-left px-3 py-2 font-semibold">Estimate #</th>
-                  <th className="text-left px-3 py-2 font-semibold">Customer</th>
-                  <th className="text-left px-3 py-2 font-semibold">Estimate Description</th>
-                  <th className="text-left px-3 py-2 font-semibold">Products</th>
-                  <th className="text-left px-3 py-2 font-semibold whitespace-nowrap">Salesperson</th>
-                  <th className="text-left px-3 py-2 font-semibold whitespace-nowrap">Created Date</th>
-                  <th className="text-left px-3 py-2 font-semibold">Status</th>
-                  <th className="text-right px-3 py-2 font-semibold">Total</th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProjects.map((project, idx) => (
-                  <tr key={project.id} className={`border-b border-slate-200 hover:bg-lime-50/60 ${idx % 2 ? "bg-slate-50/60" : "bg-white"}`}>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <Link to={`${createPageUrl("NewAllInOneEstimate")}?edit=${project.id}`}
-                        className="text-lime-700 font-semibold hover:underline">
-                        {project.estimate_number || "Open"}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2 text-slate-800 font-medium">{project.client_name}</td>
-                    <td className="px-3 py-2 text-slate-700">
-                      {project.project_name}
-                      {project.site_address && <span className="text-slate-400 text-xs"> · {project.site_address}</span>}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex gap-1 flex-wrap items-center">
-                        <span className="text-slate-700 font-medium">{project.line_items?.length || 0}</span>
-                        {(project.line_items || []).slice(0, 4).map((li, i) => {
+          </CardHeader>
+          <CardContent className="p-0">
+            {filteredProjects.length === 0 ? (
+              <div className="p-12 text-center text-slate-500">
+                <Layers className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                <p>No combined estimates match. Create one to roll multiple module estimates into a single total.</p>
+              </div>
+            ) : (
+              <div className="space-y-0">
+                {filteredProjects.map((project) => {
+                  const prio = PRIORITY_BADGES[project.priority];
+                  const dueSoon = project.target_install_date &&
+                    new Date(project.target_install_date) - Date.now() < 14 * 86400000 &&
+                    new Date(project.target_install_date) >= Date.now();
+                  return (
+                    <div key={project.id} className="p-6 border-b border-slate-50 last:border-b-0 hover:bg-indigo-50/40 transition-colors">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-slate-900 truncate flex items-center gap-2">
+                            {project.project_name}
+                            {prio && <Badge className={`${prio.cls} border-0 text-[10px] flex items-center gap-0.5`}><Flame className="w-2.5 h-2.5" />{prio.label}</Badge>}
+                          </h3>
+                          <p className="text-slate-600 text-sm">{project.client_name}{project.site_address && <span className="text-slate-400"> · {project.site_address}</span>}</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Badge className={STATUS_COLORS[project.status] || STATUS_COLORS.draft}>{project.status}</Badge>
+                          <Link to={`${createPageUrl("NewAllInOneEstimate")}?edit=${project.id}`}>
+                            <Button variant="outline" size="sm">
+                              <Edit2 className="w-4 h-4 mr-1" /> Edit
+                            </Button>
+                          </Link>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDuplicate(project)}
+                            disabled={!!duplicatingId}
+                            className="text-slate-500 hover:text-slate-800"
+                            title="Duplicate (deep copy incl. all built sections)"
+                          >
+                            {duplicatingId === project.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleArchive(project)}
+                            className="text-slate-500 hover:text-slate-800 text-xs"
+                            title={project.status === "archived" ? "Restore" : "Archive"}
+                          >
+                            {project.status === "archived" ? "Restore" : "Archive"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(project)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-slate-500 flex-wrap">
+                        <span>{format(new Date(project.created_date), "MMM d, yyyy")}</span>
+                        {project.estimate_number && <span>#{project.estimate_number}</span>}
+                        {project.target_install_date && (
+                          <span className={dueSoon ? "text-orange-600 font-medium" : ""}>
+                            Install: {format(new Date(project.target_install_date), "MMM d")}{dueSoon && " (soon)"}
+                          </span>
+                        )}
+                        <span>{project.line_items?.length || 0} section{(project.line_items?.length || 0) === 1 ? "" : "s"}</span>
+                        <span className="font-semibold text-slate-900">
+                          {fmtCurrency(project.quote_total || project.total_cost)}
+                          {project.quote_total > 0 && project.quote_total !== project.total_cost && (
+                            <span className="text-xs text-slate-400 font-normal ml-1">(quote)</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex gap-1.5 mt-2 flex-wrap">
+                        {(project.line_items || []).map((li, i) => {
                           const mod = ESTIMATOR_MODULES_BY_KEY[li.module_key];
                           return mod ? (
-                            <Badge key={i} className={`${mod.colors.badge} border-0 text-[9px] px-1`}>{mod.shortName}</Badge>
+                            <Badge key={i} className={`${mod.colors.badge} border-0 text-[10px]`}>{mod.shortName}</Badge>
                           ) : null;
                         })}
-                        {(project.line_items?.length || 0) > 4 && <span className="text-[10px] text-slate-400">+{project.line_items.length - 4}</span>}
+                        {(project.tags || "").split(",").map((t) => t.trim()).filter(Boolean).map((t, i) => (
+                          <Badge key={`tag-${i}`} variant="outline" className="text-[10px] text-slate-500">{t}</Badge>
+                        ))}
                       </div>
-                    </td>
-                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">
-                      {project.salesperson || "—"}
-                      {project.sales_center && <span className="block text-[10px] text-slate-400">{project.sales_center}</span>}
-                    </td>
-                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{format(new Date(project.created_date), "MM/dd/yyyy")}</td>
-                    <td className="px-3 py-2">
-                      <span className={`inline-block px-2 py-0.5 text-[10px] font-bold uppercase border rounded-sm ${STATUS_COLORS[project.status] || STATUS_COLORS.draft}`}>
-                        {project.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right font-semibold text-slate-900 tabular-nums whitespace-nowrap">
-                      {fmtCurrency(project.quote_total || project.total_cost)}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-0.5">
-                        <Link to={`${createPageUrl("NewAllInOneEstimate")}?edit=${project.id}`} title="Edit">
-                          <Button variant="ghost" size="icon" className="h-7 w-7"><Edit2 className="w-3.5 h-3.5" /></Button>
-                        </Link>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Clone estimate"
-                          onClick={() => handleDuplicate(project)} disabled={!!duplicatingId}>
-                          {duplicatingId === project.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />}
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-7 text-[11px] px-1.5 text-slate-500"
-                          onClick={() => toggleArchive(project)}>
-                          {project.status === "archived" ? "Restore" : "Archive"}
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700"
-                          onClick={() => handleDelete(project)} title="Delete">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="px-3 py-2 text-xs text-slate-500 border-t border-slate-200">
-              Showing {filteredProjects.length} of {projects.length} estimates
-            </p>
-          </div>
-        )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
+  );
+}
+
+function StatCard({ icon: Icon, label, value, accent = "text-slate-900" }) {
+  return (
+    <Card className="bg-white border-0 shadow-sm">
+      <CardContent className="p-4 flex items-center gap-3">
+        <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0">
+          <Icon className="w-4 h-4 text-indigo-600" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs text-slate-500">{label}</p>
+          <p className={`font-bold truncate ${accent}`}>{value}</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,17 +1,15 @@
-// List of saved Vinyl Estimator projects — CoreBridge dense queue.
+// List of saved Vinyl Estimator projects.
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { VinylProject } from "@/entities/all";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Settings as SettingsIcon } from "lucide-react";
+import { Plus, Trash2, Droplets, Settings as SettingsIcon } from "lucide-react";
 import { format } from "date-fns";
 import { fmtCurrency } from "@/lib/formatters";
-import useDebouncedValue from "@/hooks/useDebouncedValue";
-import ProjectQueue from "@/components/corebridge/ProjectQueue";
-import EstimateDetailPanel from "@/components/corebridge/EstimateDetailPanel";
 
 // Mirror the FoundationProjects cap so initial paint isn't blocked
 // downloading the full historical list.
@@ -22,9 +20,6 @@ export default function VinylProjects() {
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const debouncedSearch = useDebouncedValue(searchTerm, 200);
-  const [selectedId, setSelectedId] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -53,88 +48,82 @@ export default function VinylProjects() {
 
   useEffect(() => { load(); }, []);
 
-  const filtered = useMemo(() => {
-    const term = debouncedSearch.trim().toLowerCase();
-    if (!term) return projects;
-    return projects.filter(p =>
-      p.project_name?.toLowerCase().includes(term) ||
-      p.client_name?.toLowerCase().includes(term)
-    );
-  }, [projects, debouncedSearch]);
-
-  useEffect(() => {
-    if (filtered.length === 0) { setSelectedId(null); return; }
-    if (!selectedId || !filtered.some(p => p.id === selectedId)) setSelectedId(filtered[0].id);
-  }, [filtered, selectedId]);
-
-  const selected = useMemo(() => filtered.find(p => p.id === selectedId) || null, [filtered, selectedId]);
-
   const remove = async (id, name) => {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
     await VinylProject.delete(id);
     load();
   };
 
-  if (loading) return <div className="p-8 text-slate-600">Loading estimates...</div>;
-
-  const columns = [
-    { key: "name", label: "Estimate Description", render: (p) => <span className="font-medium text-slate-800">{p.project_name}</span> },
-    { key: "client", label: "Customer", render: (p) => <span className="text-slate-700">{p.client_name}</span> },
-    { key: "status", label: "Status", render: (p) => <Badge variant="outline" className="capitalize text-[10px]">{p.status || "draft"}</Badge> },
-    { key: "parts", label: "Parts", render: (p) => <span className="text-slate-600">{p.items?.length || 0}</span> },
-    { key: "created", label: "Created Date", render: (p) => <span className="text-slate-600 whitespace-nowrap">{p.created_date && format(new Date(p.created_date), "MM/dd/yyyy")}</span> },
-    { key: "total", label: "Total", align: "right", render: (p) => <span className="font-semibold text-slate-900">{fmtCurrency(p.total_cost)}</span> },
-    {
-      key: "actions", label: "", align: "right",
-      render: (p) => (
-        <Button variant="ghost" size="sm" className="h-6 px-1.5 text-red-500 hover:text-red-700 hover:bg-red-50"
-          onClick={(e) => { e.stopPropagation(); remove(p.id, p.project_name); }}>
-          <Trash2 className="w-3.5 h-3.5" />
-        </Button>
-      ),
-    },
-  ];
-
   return (
-    <ProjectQueue
-      title="Vinyl Estimates"
-      subtitle="Printed graphics, cut vinyl & laminated decals"
-      newEstimatePage="NewVinylEstimate"
-      headerActions={
-        <Link to={createPageUrl("VinylSettings")}>
-          <Button variant="outline" size="sm" className="h-8 rounded-sm">
-            <SettingsIcon className="w-4 h-4 mr-1" /> Machines
-          </Button>
-        </Link>
-      }
-      searchTerm={searchTerm}
-      onSearchChange={setSearchTerm}
-      rows={filtered}
-      totalCount={projects.length}
-      columns={columns}
-      selectedId={selectedId}
-      onSelect={setSelectedId}
-      hasMore={hasMore && !debouncedSearch}
-      loadingMore={loadingMore}
-      onLoadMore={loadMore}
-      emptyMessage="No vinyl estimates yet."
-      detailPanel={selected ? (
-        <EstimateDetailPanel
-          project={selected}
-          editPage="NewVinylEstimate"
-          editParam="id"
-          itemsLabel="Parts"
-          statusBadge={<Badge variant="outline" className="capitalize text-[10px]">{selected.status || "draft"}</Badge>}
-          renderItem={(item, i) => ({
-            title: item.part_name || item.description || `Part ${i + 1}`,
-            lines: [
-              item.width_inches && item.height_inches ? `${item.width_inches}" × ${item.height_inches}"` : null,
-              item.quantity ? `Qty ${item.quantity}` : null,
-            ],
-          })}
-          grandTotal={selected.total_cost}
-        />
-      ) : null}
-    />
+    <div className="min-h-screen bg-slate-50 p-6 md:p-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
+              <Droplets className="w-7 h-7 text-blue-600" /> Vinyl Projects
+            </h1>
+            <p className="text-slate-600">Printed graphics, cut vinyl & laminated decals</p>
+          </div>
+          <div className="flex gap-2">
+            <Link to={createPageUrl("VinylSettings")}>
+              <Button variant="outline"><SettingsIcon className="w-4 h-4 mr-1" /> Machines</Button>
+            </Link>
+            <Link to={createPageUrl("NewVinylEstimate")}>
+              <Button className="bg-slate-800 hover:bg-slate-900 text-white"><Plus className="w-4 h-4 mr-1" /> New Estimate</Button>
+            </Link>
+          </div>
+        </div>
+
+        {loading ? (
+          <p className="text-slate-500 text-center py-12">Loading…</p>
+        ) : projects.length === 0 ? (
+          <Card><CardContent className="py-16 text-center text-slate-500">
+            <Droplets className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+            <p className="mb-4">No vinyl projects yet.</p>
+            <Link to={createPageUrl("NewVinylEstimate")}>
+              <Button className="bg-slate-800 hover:bg-slate-900 text-white"><Plus className="w-4 h-4 mr-1" /> Create First Estimate</Button>
+            </Link>
+          </CardContent></Card>
+        ) : (
+          <>
+            <div className="grid md:grid-cols-2 gap-4">
+              {projects.map(p => (
+                <Card key={p.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <Link to={`${createPageUrl("NewVinylEstimate")}?id=${p.id}`} className="flex-1 min-w-0">
+                        <CardTitle className="text-base hover:text-blue-600 truncate">{p.project_name}</CardTitle>
+                        <p className="text-sm text-slate-500 truncate">{p.client_name}</p>
+                      </Link>
+                      <Button variant="ghost" size="icon" onClick={() => remove(p.id, p.project_name)} className="text-red-500 hover:bg-red-50 h-8 w-8">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <Badge variant="outline" className="capitalize">{p.status || "draft"}</Badge>
+                      <span>{p.created_date && format(new Date(p.created_date), "MMM d, yyyy")}</span>
+                      <span>· {p.items?.length || 0} part(s)</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-600">Total</span>
+                      <span className="font-semibold tabular-nums">{fmtCurrency(p.total_cost)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            {hasMore && (
+              <div className="flex justify-center mt-6">
+                <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+                  {loadingMore ? "Loading…" : "Load more projects"}
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }

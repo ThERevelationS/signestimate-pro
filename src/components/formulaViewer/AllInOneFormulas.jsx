@@ -41,8 +41,6 @@ export default function AllInOneFormulas() {
           <p>Contingency = (Subtotal − Discount) × contingency%</p>
           <p>Fees = shipping fee + permit fee</p>
           <p>Taxable Base = Subtotal − Discount + Contingency + Fees</p>
-          <p>tax% = selected Tax Group's rate (Step 1 · Estimate Settings)</p>
-          <p>New estimate defaults: the Tax Group / Terms / Sales Center starred as "default" in Estimate Settings are pre-applied, so tax% comes from the default tax group until changed, and the chosen Terms also fill the payment terms printed on the customer quote.</p>
           <p>Tax = Taxable Base × tax%</p>
           <p>Quote Total = Taxable Base + Tax</p>
           <p>Deposit Due = Quote Total × deposit%</p>
@@ -54,36 +52,6 @@ export default function AllInOneFormulas() {
           sections hidden from display are bundled into one "Additional project scope" line, and
           "Bundle into one price" shows a single line equal to the adjusted Subtotal — totals are
           identical either way.
-        </p>
-      </div>
-
-      <div className="bg-slate-800 text-white p-4 rounded-lg">
-        <h4 className="font-medium mb-2">Quote Settings & Auto-Scope Engine</h4>
-        <p className="text-xs text-slate-300 mb-2">
-          Quote Settings (Customer View tab) control PRESENTATION only — no toggle changes any
-          stored total. Rounding is display-only, and hiding a waterfall line does not remove its
-          amount from the Quote Total.
-        </p>
-        <div className="font-mono text-sm space-y-1">
-          <p>Displayed Price = round_prices_to_dollar ? round(price) : price</p>
-          <p>Table columns = Scope of Work + (show_category_column) + (show_quantity_column) + Price</p>
-          <p>Waterfall rows shown = rows where their show_*_line toggle is on</p>
-          <p>Bundled quote (hide_section_prices) = one line equal to adjusted Subtotal</p>
-          <p>Hidden section (include_in_customer = false) → bundled into "Additional project scope"</p>
-          <p>Tax Group selection → tax_percent = TaxGroup.tax_percent (AI "Find by address" looks up the</p>
-          <p>&nbsp;&nbsp;combined state+county rate for the site address and matches the closest tax group)</p>
-          <p>Estimate # / Order # = generateDocNumber(prefix) → EST-XXXXX / INV-XXXXX</p>
-          <p>&nbsp;&nbsp;Shared atomic counter (DocNumberCounter) — linear, never overlaps between estimates &amp; orders</p>
-          <p>Save guard (Step 3): edit_reason is required to save; unsaved changes block browser close &amp; nav</p>
-        </div>
-        <p className="text-xs text-slate-300 mt-2">
-          <b>Auto-scope:</b> a QuoteScopeLine is auto-added to the quote's scope lists when
-          <span className="font-mono"> always_include </span> is true, OR when its
-          <span className="font-mono"> auto_modules </span> contains a module key that has a section on the
-          estimate. Lines are merged without duplicates and never overwrite typed lines; it re-runs
-          whenever the set of products changes (while <span className="font-mono">scope_auto_apply</span> is on).
-          The library is managed under Estimate Settings → Quote Scope Library, and company-wide
-          branding/display defaults live in the QuoteDefaults record ("Save as default" / "Load defaults").
         </p>
       </div>
 

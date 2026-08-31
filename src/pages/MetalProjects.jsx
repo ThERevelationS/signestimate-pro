@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { MetalProject } from "@/entities/all";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { Plus, Eye, Edit } from "lucide-react";
 import { format } from "date-fns";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
-import ProjectQueue from "@/components/corebridge/ProjectQueue";
-import EstimateDetailPanel from "@/components/corebridge/EstimateDetailPanel";
+import { fmtCurrency } from "@/lib/formatters";
 
 const PAGE_SIZE = 200;
 
@@ -64,50 +69,94 @@ export default function MetalProjects() {
     setLoadingMore(false);
   };
 
-  if (isLoading) return <div className="p-8 text-slate-600">Loading estimates...</div>;
-
-  const columns = [
-    { key: "name", label: "Estimate Description", render: (p) => <span className="font-medium text-slate-800">{p.project_name}</span> },
-    { key: "client", label: "Customer", render: (p) => <span className="text-slate-700">{p.client_name}</span> },
-    { key: "items", label: "Products", render: (p) => <span className="text-slate-600">{p.items?.length || 0}</span> },
-    { key: "created", label: "Created Date", render: (p) => <span className="text-slate-600 whitespace-nowrap">{format(new Date(p.created_date), 'MM/dd/yyyy')}</span> },
-  ];
+  if (isLoading) return <div className="p-8">Loading projects...</div>;
 
   return (
-    <ProjectQueue
-      title="Metal Fabrication Estimates"
-      subtitle="Manage your metal fabrication estimates"
-      newEstimatePage="NewMetalEstimate"
-      searchTerm={searchTerm}
-      onSearchChange={setSearchTerm}
-      rows={filtered}
-      totalCount={projects.length}
-      columns={columns}
-      selectedId={selectedId}
-      onSelect={setSelectedId}
-      hasMore={hasMore && !debouncedSearch}
-      loadingMore={loadingMore}
-      onLoadMore={loadMore}
-      detailPanel={selected ? (
-        <EstimateDetailPanel
-          project={selected}
-          editPage="NewMetalEstimate"
-          renderItem={(item, i) => ({
-            title: item.description || `Item ${i + 1}`,
-            lines: [
-              `${(item.material_type || '').replace(/_/g, ' ')}${item.material_thickness ? ` — ${item.material_thickness}` : ''}`,
-              item.item_type ? item.item_type.replace(/_/g, ' ') : null,
-            ],
-          })}
-          totals={[
-            { label: "Material Cost", value: selected.total_material_cost },
-            { label: "Supplies Cost", value: selected.total_supplies_cost },
-            { label: "Fabrication Cost", value: selected.total_fabrication_cost },
-            { label: "Welding Cost", value: selected.total_welding_cost },
-            { label: "Finishing Cost", value: selected.total_finishing_cost },
-          ]}
-        />
-      ) : null}
-    />
+    <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">Metal Fabrication Projects</h1>
+            <p className="text-slate-600">Manage your metal fabrication estimates</p>
+          </div>
+          <Link to={createPageUrl("NewMetalEstimate")}><Button><Plus className="w-5 h-5 mr-2" />New Estimate</Button></Link>
+        </div>
+
+        <div className="grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <Card className="bg-white border-0 shadow-sm">
+              <CardHeader><Input placeholder="Search projects..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></CardHeader>
+              <CardContent className="p-0">
+                {filtered.length === 0 ? <div className="p-12 text-center text-slate-500">No projects found.</div> :
+                  <div>
+                    {filtered.map((p) => (
+                      <div key={p.id} className={`p-6 border-b hover:bg-slate-25 cursor-pointer ${selectedId === p.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`} onClick={() => setSelectedId(p.id)}>
+                        <div className="flex justify-between mb-2">
+                          <div>
+                            <h3 className="font-semibold">{p.project_name}</h3>
+                            <p className="text-slate-600">{p.client_name}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-4 text-sm text-slate-500"><span>{format(new Date(p.created_date), 'MMM d, yyyy')}</span><span>{p.items?.length || 0} items</span></div>
+                      </div>
+                    ))}
+                    {hasMore && !debouncedSearch && (
+                      <div className="p-4 flex justify-center">
+                        <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+                          {loadingMore ? "Loading…" : "Load more projects"}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                }
+              </CardContent>
+            </Card>
+          </div>
+          <div>
+            {selected ? (
+              <Card className="bg-white border-0 shadow-sm sticky top-8">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Project Details</CardTitle>
+                    <Link to={createPageUrl(`NewMetalEstimate?edit=${selected.id}`)}>
+                      <Button variant="outline" size="sm">
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit
+                      </Button>
+                    </Link>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6 pt-6">
+                  <div>
+                    <h3 className="font-semibold mb-2">{selected.project_name}</h3>
+                    <p>Client: {selected.client_name}</p>
+                    <p>Created: {format(new Date(selected.created_date), 'MMM d, yyyy')}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-3">Items</h4>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                      {selected.items?.map((item, i) => <div key={i} className="p-3 bg-slate-50 rounded-lg text-sm"><p className="font-medium">{item.description || `Item ${i + 1}`}</p><p className="capitalize">{item.material_type?.replace('_', ' ')} - {item.material_thickness}</p><p className="capitalize text-slate-500">{item.item_type?.replace('_', ' ')}</p></div>)}
+                    </div>
+                  </div>
+                  <div className="border-t pt-4 space-y-2 text-sm">
+                    <div className="flex justify-between"><span>Material Cost:</span><span className="font-medium">{fmtCurrency(selected.total_material_cost)}</span></div>
+                    <div className="flex justify-between"><span>Supplies Cost:</span><span className="font-medium">{fmtCurrency(selected.total_supplies_cost)}</span></div>
+                    <div className="flex justify-between"><span>Fabrication Cost:</span><span className="font-medium">{fmtCurrency(selected.total_fabrication_cost)}</span></div>
+                    <div className="flex justify-between"><span>Welding Cost:</span><span className="font-medium">{fmtCurrency(selected.total_welding_cost)}</span></div>
+                    <div className="flex justify-between"><span>Finishing Cost:</span><span className="font-medium">{fmtCurrency(selected.total_finishing_cost)}</span></div>
+                  </div>
+                  {selected.notes && (
+                    <div className="border-t pt-4">
+                      <h4 className="font-medium mb-2">Notes</h4>
+                      <p className="text-sm text-slate-600">{selected.notes}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ) : <Card><CardContent className="p-12 text-center text-slate-500"><Eye className="w-12 h-12 mx-auto mb-4" /><p>Select a project</p></CardContent></Card>}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

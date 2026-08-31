@@ -1,21 +1,18 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Project } from "@/entities/all";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { Plus, Search, Eye, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useAuth } from "@/lib/AuthContext";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
-import ProjectQueue from "@/components/corebridge/ProjectQueue";
-import EstimateDetailPanel from "@/components/corebridge/EstimateDetailPanel";
+import { fmtCurrency } from "@/lib/formatters";
 
 const PAGE_SIZE = 200;
-
-const statusColors = {
-  draft: 'bg-amber-100 text-amber-800 border-amber-200',
-  calculated: 'bg-green-100 text-green-800 border-green-200',
-  archived: 'bg-slate-100 text-slate-800 border-slate-200',
-};
 
 export default function PaintProjects() {
   // useAuth() to avoid a duplicate User.me() (already fetched on bootstrap).
@@ -94,69 +91,190 @@ export default function PaintProjects() {
     }
   };
 
-  if (isLoading) return <div className="p-8 text-slate-600">Loading estimates...</div>;
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'draft': return 'bg-amber-100 text-amber-800 border-amber-200';
+      case 'calculated': return 'bg-green-100 text-green-800 border-green-200';
+      case 'archived': return 'bg-slate-100 text-slate-800 border-slate-200';
+      default: return 'bg-slate-100 text-slate-800 border-slate-200';
+    }
+  };
 
-  const columns = [
-    { key: "name", label: "Estimate Description", render: (p) => <span className="font-medium text-slate-800">{p.project_name}</span> },
-    { key: "client", label: "Customer", render: (p) => <span className="text-slate-700">{p.client_name}</span> },
-    { key: "status", label: "Status", render: (p) => <Badge className={`${statusColors[p.status] || statusColors.archived} text-[10px]`}>{p.status}</Badge> },
-    { key: "items", label: "Products", render: (p) => <span className="text-slate-600">{p.items?.length || 0}</span> },
-    { key: "created", label: "Created Date", render: (p) => <span className="text-slate-600 whitespace-nowrap">{format(new Date(p.created_date), 'MM/dd/yyyy')}</span> },
-    {
-      key: "actions", label: "", align: "right",
-      render: (p) => (
-        <Button
-          variant="ghost" size="sm"
-          className="h-6 px-1.5 text-red-500 hover:text-red-700 hover:bg-red-50"
-          onClick={(e) => { e.stopPropagation(); deleteProject(p.id, p.project_name); }}
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </Button>
-      ),
-    },
-  ];
+  if (isLoading) {
+    return (
+      <div className="p-6 md:p-8 bg-slate-50 min-h-screen flex items-center justify-center">
+        <p className="text-slate-600">Loading projects...</p>
+      </div>
+    );
+  }
 
   return (
-    <ProjectQueue
-      title="Paint Estimates"
-      subtitle="Manage your paint project estimates"
-      newEstimatePage="NewPaintEstimate"
-      searchTerm={searchTerm}
-      onSearchChange={setSearchTerm}
-      rows={filteredProjects}
-      totalCount={projects.length}
-      columns={columns}
-      selectedId={selectedProjectId}
-      onSelect={setSelectedProjectId}
-      hasMore={hasMore && !debouncedSearch}
-      loadingMore={loadingMore}
-      onLoadMore={loadMore}
-      detailPanel={selectedProject ? (
-        <EstimateDetailPanel
-          project={selectedProject}
-          editPage="NewPaintEstimate"
-          statusBadge={<Badge className={`${statusColors[selectedProject.status] || statusColors.archived} text-[10px]`}>{selectedProject.status}</Badge>}
-          renderItem={(item, i) => ({
-            title: item.description || `Item ${i + 1}`,
-            lines: [
-              item.item_type ? `Type: ${item.item_type.replace(/_/g, ' ')}` : null,
-              (item.item_type === 'panel' || item.item_type === 'complex_shapes')
-                ? `${item.length}"L × ${item.width}"H × ${item.thickness}" thick`
-                : `${item.length} letters @ ${item.width}" high, ${item.thickness}" thick`,
-              item.letter_size ? `Letter Size: ${item.letter_size.replace(/_/g, ' ')}` : null,
-              item.edge_complexity_multiplier && item.edge_complexity_multiplier !== 1.0
-                ? `Edge Complexity: ${item.edge_complexity_multiplier}x` : null,
-              item.paint_mask_sqft > 0 ? `Paint Mask: ${item.paint_mask_sqft} sq ft` : null,
-              item.paint_colors?.length ? `Colors: ${item.paint_colors.join(', ')}` : null,
-            ],
-          })}
-          totals={[
-            { label: "Total Paint Mask", value: selectedProject.total_paint_mask_cost },
-            { label: "Total Paint & Supplies", value: selectedProject.total_liquid_paint_and_supplies_cost },
-            { label: "Total Labor", value: selectedProject.total_labor_cost },
-          ]}
-        />
-      ) : null}
-    />
+    <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">My Paint Projects</h1>
+            <p className="text-slate-600">Manage your paint project estimates</p>
+          </div>
+          <Link to={createPageUrl("NewPaintEstimate")}>
+            <Button className="bg-slate-800 hover:bg-slate-900 text-white px-6 py-3">
+              <Plus className="w-5 h-5 mr-2" />
+              New Estimate
+            </Button>
+          </Link>
+        </div>
+
+        <div className="grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <Card className="bg-white border-0 shadow-sm">
+              <CardHeader className="border-b border-slate-100">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                    <Input placeholder="Search projects..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {filteredProjects.length === 0 ? (
+                  <div className="p-12 text-center text-slate-500"><p>No projects found.</p></div>
+                ) : (
+                  <div className="space-y-0">
+                    {filteredProjects.map((project) => (
+                      <Link 
+                        key={project.id}
+                        to={`${createPageUrl("NewPaintEstimate")}?edit=${project.id}`}
+                        className="block"
+                      >
+                        <div
+                          className={`p-6 border-b border-slate-50 last:border-b-0 hover:bg-blue-50 transition-colors cursor-pointer ${selectedProjectId === project.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-slate-900 truncate">{project.project_name}</h3>
+                              <p className="text-slate-600 mb-2">{project.client_name}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className={`${getStatusColor(project.status)} mt-1`}>{project.status}</Badge>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  deleteProject(project.id, project.project_name);
+                                }}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-slate-500">
+                            <span>{format(new Date(project.created_date), 'MMM d, yyyy')}</span>
+                            <span>{project.items?.length || 0} items</span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                    {hasMore && !debouncedSearch && (
+                      <div className="p-4 flex justify-center">
+                        <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+                          {loadingMore ? "Loading…" : "Load more projects"}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          <div>
+            {selectedProject ? (
+              <Card className="bg-white border-0 shadow-sm sticky top-8">
+                <CardHeader className="border-b border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg font-semibold text-slate-900">Project Details</CardTitle>
+                    <Link to={`${createPageUrl("NewPaintEstimate")}?edit=${selectedProject.id}`}>
+                      <Button variant="outline" size="sm">
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit
+                      </Button>
+                    </Link>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6 pt-6">
+                  <div>
+                    <h3 className="font-semibold text-slate-900 mb-2">{selectedProject.project_name}</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2 text-slate-600"><span className="font-medium">Client:</span>{selectedProject.client_name}</div>
+                      {selectedProject.estimate_number && (
+                        <div className="flex items-center gap-2 text-slate-600"><span className="font-medium">Estimate #:</span>{selectedProject.estimate_number}</div>
+                      )}
+                      {selectedProject.hyperlink && (
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <span className="font-medium">Link:</span>
+                          <a 
+                            href={selectedProject.hyperlink} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 underline truncate max-w-48"
+                          >
+                            {selectedProject.hyperlink}
+                          </a>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-slate-600"><span className="font-medium">Created:</span>{format(new Date(selectedProject.created_date), 'MMM d, yyyy')}</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium text-slate-900 mb-3">Project Items</h4>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                      {selectedProject.items?.map((item, index) => (
+                        <div key={index} className="p-3 bg-slate-50 rounded-lg">
+                          <p className="font-medium text-sm text-slate-900 mb-1">{item.description || `Item ${index + 1}`}</p>
+                          <div className="text-xs text-slate-500 space-y-1">
+                            <p className="capitalize">Type: {item.item_type?.replace('_', ' ')}</p>
+                            {item.item_type === 'panel' || item.item_type === 'complex_shapes' ? (
+                              <p>{item.length}"L × {item.width}"H × {item.thickness}" thick</p>
+                            ) : (
+                              <p>{item.length} letters @ {item.width}" high, {item.thickness}" thick</p>
+                            )}
+                            {item.letter_size && <p className="capitalize">Letter Size: {item.letter_size?.replace('_', ' ')}</p>}
+                            {item.edge_complexity_multiplier && item.edge_complexity_multiplier !== 1.0 && (
+                              <p>Edge Complexity: {item.edge_complexity_multiplier}x</p>
+                            )}
+                            {item.paint_mask_sqft > 0 && <p>Paint Mask: {item.paint_mask_sqft} sq ft</p>}
+                            {item.paint_colors && item.paint_colors.length > 0 && (
+                              <p>Colors: {item.paint_colors.join(', ')}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="border-t pt-4">
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between"><span className="text-slate-600">Total Paint Mask:</span><span className="font-medium">{fmtCurrency(selectedProject.total_paint_mask_cost)}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-600">Total Paint & Supplies:</span><span className="font-medium">{fmtCurrency(selectedProject.total_liquid_paint_and_supplies_cost)}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-600">Total Labor:</span><span className="font-medium">{fmtCurrency(selectedProject.total_labor_cost)}</span></div>
+                    </div>
+                  </div>
+                  {selectedProject.notes && (
+                    <div>
+                      <h4 className="font-medium text-slate-900 mb-2">Notes</h4>
+                      <p className="text-sm text-slate-600">{selectedProject.notes}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="bg-white border-0 shadow-sm"><CardContent className="p-12 text-center text-slate-500"><Eye className="w-12 h-12 mx-auto mb-4 text-slate-300" /><p>Select a project to view details</p></CardContent></Card>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -2,22 +2,16 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Printer, ClipboardCopy, FileText, Eye, EyeOff } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Printer, ClipboardCopy, FileText, Settings2, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { fmtCurrency } from "@/lib/formatters";
 import { ESTIMATOR_MODULES_BY_KEY } from "./estimatorRegistry";
 import { computeQuote, adjustedSectionTotal, quoteWaterfallRows } from "./aioPricing";
-import QuoteSettingsPanel from "./quoteSettings/QuoteSettingsPanel";
-import { on, accent, quoteMoney, visibleWaterfall } from "./quoteSettings/quoteDisplay";
 
 const bullets = (text) => (text || "").split("\n").map((l) => l.trim()).filter(Boolean);
-
-const TextBlock = ({ title, body }) => !body ? null : (
-  <div className="mt-5 text-sm text-slate-600">
-    <p className="font-semibold text-slate-900 mb-1">{title}</p>
-    <p className="whitespace-pre-wrap">{body}</p>
-  </div>
-);
 
 // SINGLE POINT customer-facing quote — editable (company branding, scope
 // lists, terms, per-section descriptions, price bundling) with a live preview
@@ -28,13 +22,8 @@ export default function AllInOneCustomerViewTab({ project, grandTotal, updateFie
   const lineItems = allItems.filter((li) => !li.missing);
   const quote = computeQuote(project);
   // Adjustments are baked into the per-line adjusted prices, so the
-  // "adjustments" waterfall row is skipped on the quote. Remaining rows are
-  // filtered by the Quote Settings display toggles.
-  const waterfall = visibleWaterfall(quoteWaterfallRows(quote).filter((r) => r.kind !== "adjust"), project);
-  const money = quoteMoney(project);
-  const A = accent(project);
-  const showQty = !!project.show_quantity_column;
-  const showCat = on(project, "show_category_column");
+  // "adjustments" waterfall row is skipped on the quote.
+  const waterfall = quoteWaterfallRows(quote).filter((r) => r.kind !== "adjust");
 
   const today = new Date().toLocaleDateString();
   const validDays = Number(project.quote_valid_days) || 30;
@@ -51,8 +40,7 @@ export default function AllInOneCustomerViewTab({ project, grandTotal, updateFie
     const lines = included.map((li) => ({
       name: li.project_name || "",
       category: ESTIMATOR_MODULES_BY_KEY[li.module_key]?.name || li.module_key,
-      desc: on(project, "show_section_descriptions") ? (li.customer_description || "") : "",
-      qty: li.customer_quantity ?? 1,
+      desc: li.customer_description || "",
       price: adjustedSectionTotal(li),
     }));
     const excludedSum = excluded.reduce((s, li) => s + adjustedSectionTotal(li), 0);
@@ -62,51 +50,41 @@ export default function AllInOneCustomerViewTab({ project, grandTotal, updateFie
     return lines;
   })();
 
-  const scopeOn = on(project, "show_scope_lists");
-  const inclusions = scopeOn ? bullets(project.scope_inclusions) : [];
-  const exclusions = scopeOn ? bullets(project.scope_exclusions) : [];
+  const inclusions = bullets(project.scope_inclusions);
+  const exclusions = bullets(project.scope_exclusions);
 
   const handlePrint = () => {
     const w = window.open("", "_blank");
     if (!w) return;
     const rowsHtml = displayLines.map((l) => `<tr>
       <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;">${l.name}${l.desc ? `<br/><span style="color:#64748b;font-size:12px;">${l.desc}</span>` : ""}</td>
-      ${showCat ? `<td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#64748b;">${l.category}</td>` : ""}
-      ${showQty ? `<td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:center;color:#475569;">${l.qty ?? 1}</td>` : ""}
-      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;vertical-align:top;">${money(l.price)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#64748b;">${l.category}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;vertical-align:top;">${fmtCurrency(l.price)}</td>
     </tr>`).join("");
-    const waterfallHtml = waterfall.map((r) => `<div style="display:flex;justify-content:space-between;padding:4px 0;${r.kind === "total" ? "border-top:2px solid #0f172a;font-weight:bold;font-size:16px;padding-top:8px;" : r.kind === "subtotal" ? "font-weight:600;" : "color:#475569;"}${r.kind === "deposit" || r.kind === "balance" ? `color:${A};font-weight:600;` : ""}"><span>${r.label}</span><span>${money(r.amount)}</span></div>`).join("");
+    const waterfallHtml = waterfall.map((r) => `<div style="display:flex;justify-content:space-between;padding:4px 0;${r.kind === "total" ? "border-top:2px solid #0f172a;font-weight:bold;font-size:16px;padding-top:8px;" : r.kind === "subtotal" ? "font-weight:600;" : "color:#475569;"}${r.kind === "deposit" || r.kind === "balance" ? "color:#4f46e5;font-weight:600;" : ""}"><span>${r.label}</span><span>${fmtCurrency(r.amount)}</span></div>`).join("");
     const listHtml = (title, items) => items.length === 0 ? "" : `<div style="flex:1;min-width:220px;"><b style="font-size:13px;">${title}</b><ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:#475569;">${items.map((i) => `<li style="margin:2px 0;">${i}</li>`).join("")}</ul></div>`;
-    const textBlock = (title, body) => !body ? "" : `<div style="margin-top:16px;font-size:13px;color:#475569;"><b>${title}</b><p style="white-space:pre-wrap;margin:4px 0 0;">${body}</p></div>`;
-    const metaLine = [
-      on(project, "show_estimate_number") && project.estimate_number ? `Estimate #${project.estimate_number}` : "",
-      on(project, "show_po_number") && project.po_number ? `PO #${project.po_number}` : "",
-      on(project, "show_dates") ? `Date: ${today}` : "",
-      on(project, "show_dates") ? `Valid until: ${validUntil}` : "",
-    ].filter(Boolean).join(" · ");
     w.document.write(`<!DOCTYPE html><html><head><title>Estimate — ${project.project_name || ""}</title></head>
 <body style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;max-width:760px;margin:32px auto;padding:0 24px;">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid ${A};padding-bottom:16px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #4f46e5;padding-bottom:16px;">
     <div>
-      ${project.show_logo && project.company_logo_url ? `<img src="${project.company_logo_url}" style="max-height:56px;margin-bottom:8px;" />` : ""}
-      ${on(project, "show_company_block") && project.company_name ? `<p style="margin:0 0 6px;font-size:18px;font-weight:bold;color:${A};">${project.company_name}</p>` : ""}
-      <h1 style="margin:0;font-size:22px;">${project.quote_title || "Project Estimate"}</h1>
-      ${metaLine ? `<p style="margin:4px 0 0;color:#64748b;font-size:13px;">${metaLine}</p>` : ""}
-      ${on(project, "show_company_block") ? `<p style="margin:2px 0 0;color:#64748b;font-size:12px;">${[project.company_phone, project.company_email, project.company_address, project.company_website, project.company_license ? `Lic. ${project.company_license}` : ""].filter(Boolean).join(" · ")}</p>` : ""}
+      ${project.company_name ? `<p style="margin:0 0 6px;font-size:18px;font-weight:bold;color:#4f46e5;">${project.company_name}</p>` : ""}
+      <h1 style="margin:0;font-size:22px;">Project Estimate</h1>
+      <p style="margin:4px 0 0;color:#64748b;font-size:13px;">
+        ${project.estimate_number ? `Estimate #${project.estimate_number} · ` : ""}${project.po_number ? `PO #${project.po_number} · ` : ""}Date: ${today} · Valid until: ${validUntil}
+      </p>
+      ${project.company_phone || project.company_email ? `<p style="margin:2px 0 0;color:#64748b;font-size:12px;">${[project.company_phone, project.company_email].filter(Boolean).join(" · ")}</p>` : ""}
     </div>
-    ${on(project, "show_contact_block") ? `<div style="text-align:right;font-size:13px;color:#475569;">
+    <div style="text-align:right;font-size:13px;color:#475569;">
       <b style="font-size:15px;color:#0f172a;">${project.project_name || ""}</b><br/>
       ${project.client_name || ""}<br/>
-      ${on(project, "show_site_address") ? `${project.site_address || ""}<br/>` : ""}
+      ${project.site_address || ""}<br/>
       ${[project.contact_name, project.contact_phone, project.contact_email].filter(Boolean).join(" · ")}
-    </div>` : ""}
+    </div>
   </div>
-  ${project.quote_intro_text ? `<p style="margin:16px 0 0;font-size:13px;color:#475569;white-space:pre-wrap;">${project.quote_intro_text}</p>` : ""}
   <table style="width:100%;border-collapse:collapse;margin-top:20px;font-size:14px;">
     <thead><tr style="text-align:left;color:#64748b;font-size:11px;text-transform:uppercase;">
       <th style="padding:8px 12px;border-bottom:2px solid #cbd5e1;">Scope of Work</th>
-      ${showCat ? `<th style="padding:8px 12px;border-bottom:2px solid #cbd5e1;">Category</th>` : ""}
-      ${showQty ? `<th style="padding:8px 12px;border-bottom:2px solid #cbd5e1;text-align:center;">Qty</th>` : ""}
+      <th style="padding:8px 12px;border-bottom:2px solid #cbd5e1;">Category</th>
       <th style="padding:8px 12px;border-bottom:2px solid #cbd5e1;text-align:right;">Price</th>
     </tr></thead>
     <tbody>${rowsHtml}</tbody>
@@ -116,17 +94,13 @@ export default function AllInOneCustomerViewTab({ project, grandTotal, updateFie
     ${listHtml("Included in this estimate", inclusions)}
     ${listHtml("Not included", exclusions)}
   </div>
-  ${textBlock("Payment terms", project.payment_terms)}
-  ${on(project, "show_lead_time_block") ? textBlock("Lead time", project.lead_time_text) : ""}
-  ${on(project, "show_warranty_block") ? textBlock("Warranty", project.warranty_text) : ""}
-  ${on(project, "show_terms_block") ? textBlock("Terms &amp; conditions", project.quote_terms_conditions) : ""}
-  ${on(project, "show_notes_on_quote") ? textBlock("Notes", project.notes) : ""}
-  ${on(project, "show_signature_block") ? `<div style="display:flex;gap:48px;margin-top:48px;">
+  ${project.payment_terms ? `<div style="margin-top:20px;font-size:13px;color:#475569;"><b>Payment terms</b><p style="white-space:pre-wrap;margin:4px 0 0;">${project.payment_terms}</p></div>` : ""}
+  ${project.notes ? `<div style="margin-top:16px;font-size:13px;color:#475569;"><b>Notes</b><p style="white-space:pre-wrap;margin:4px 0 0;">${project.notes}</p></div>` : ""}
+  <div style="display:flex;gap:48px;margin-top:48px;">
     <div style="flex:1;"><div style="border-top:1px solid #0f172a;padding-top:6px;font-size:12px;color:#475569;">Customer signature / date</div></div>
     <div style="flex:1;"><div style="border-top:1px solid #0f172a;padding-top:6px;font-size:12px;color:#475569;">${project.company_name || "Company"} signature / date</div></div>
-  </div>` : ""}
-  ${on(project, "show_validity_footer") ? `<p style="margin-top:28px;font-size:11px;color:#94a3b8;">This estimate is valid for ${validDays} days from the date above. Pricing subject to final site verification.</p>` : ""}
-  ${project.quote_footer_text ? `<p style="margin-top:12px;font-size:11px;color:#94a3b8;white-space:pre-wrap;">${project.quote_footer_text}</p>` : ""}
+  </div>
+  <p style="margin-top:28px;font-size:11px;color:#94a3b8;">This estimate is valid for ${validDays} days from the date above. Pricing subject to final site verification.</p>
   <script>window.onload = () => window.print();</script>
 </body></html>`);
     w.document.close();
@@ -161,7 +135,50 @@ export default function AllInOneCustomerViewTab({ project, grandTotal, updateFie
     <div className="grid lg:grid-cols-3 gap-6">
       {/* ---- Quote editor ---- */}
       <div className="space-y-4">
-        <QuoteSettingsPanel project={project} updateField={updateField} depositPct={quote.depositPct} />
+        <Card className="bg-white border-0 shadow-sm">
+          <CardHeader className="border-b border-slate-100">
+            <CardTitle className="text-base flex items-center gap-2"><Settings2 className="w-4 h-4 text-indigo-600" /> Quote Settings</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-3">
+            <div>
+              <Label className="text-xs">Your Company Name</Label>
+              <Input className="h-8" value={project.company_name || ""} onChange={(e) => updateField("company_name", e.target.value)} placeholder="Shown in the quote header" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">Company Phone</Label>
+                <Input className="h-8" value={project.company_phone || ""} onChange={(e) => updateField("company_phone", e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Company Email</Label>
+                <Input className="h-8" value={project.company_email || ""} onChange={(e) => updateField("company_email", e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Quote Valid (days)</Label>
+              <Input className="h-8 w-24" type="number" min="1" value={project.quote_valid_days ?? 30} onChange={(e) => updateField("quote_valid_days", parseInt(e.target.value) || 30)} />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-slate-200 p-2.5">
+              <div className="text-xs">
+                <p className="font-medium text-slate-700">Bundle into one price</p>
+                <p className="text-slate-400">Hide per-section pricing</p>
+              </div>
+              <Switch checked={!!project.hide_section_prices} onCheckedChange={(v) => updateField("hide_section_prices", v)} />
+            </div>
+            <div>
+              <Label className="text-xs">Payment Terms</Label>
+              <Textarea className="h-16 text-sm" value={project.payment_terms || ""} onChange={(e) => updateField("payment_terms", e.target.value)} placeholder={`e.g. ${quote.depositPct || 50}% deposit to begin, balance net 30 on completion.`} />
+            </div>
+            <div>
+              <Label className="text-xs">Included in Scope (one per line)</Label>
+              <Textarea className="h-20 text-sm" value={project.scope_inclusions || ""} onChange={(e) => updateField("scope_inclusions", e.target.value)} placeholder={"Fabrication per approved drawings\nInstallation & equipment\nOne year workmanship warranty"} />
+            </div>
+            <div>
+              <Label className="text-xs">Excluded from Scope (one per line)</Label>
+              <Textarea className="h-20 text-sm" value={project.scope_exclusions || ""} onChange={(e) => updateField("scope_exclusions", e.target.value)} placeholder={"Primary electrical to sign location\nPermit fees unless listed\nLandscaping repair"} />
+            </div>
+          </CardContent>
+        </Card>
 
         {!project.hide_section_prices && (
           <Card className="bg-white border-0 shadow-sm">
@@ -186,24 +203,12 @@ export default function AllInOneCustomerViewTab({ project, grandTotal, updateFie
                       <span className={`text-xs font-medium truncate flex-1 ${visible ? "text-slate-800" : "text-slate-400 line-through"}`}>{li.project_name}</span>
                       <span className="text-xs tabular-nums text-slate-500">{fmtCurrency(adjustedSectionTotal(li))}</span>
                     </div>
-                    <div className="flex gap-1.5">
-                      <Input
-                        className="h-7 text-xs flex-1"
-                        value={li.customer_description || ""}
-                        onChange={(e) => onUpdateItem(idx, { customer_description: e.target.value })}
-                        placeholder="Customer-facing description (optional)"
-                      />
-                      {showQty && (
-                        <Input
-                          className="h-7 text-xs w-16"
-                          type="number"
-                          min="1"
-                          value={li.customer_quantity ?? 1}
-                          onChange={(e) => onUpdateItem(idx, { customer_quantity: parseFloat(e.target.value) || 1 })}
-                          title="Display quantity"
-                        />
-                      )}
-                    </div>
+                    <Input
+                      className="h-7 text-xs"
+                      value={li.customer_description || ""}
+                      onChange={(e) => onUpdateItem(idx, { customer_description: e.target.value })}
+                      placeholder="Customer-facing description (optional)"
+                    />
                   </div>
                 );
               })}
@@ -221,51 +226,36 @@ export default function AllInOneCustomerViewTab({ project, grandTotal, updateFie
 
         <Card className="bg-white border-0 shadow-md">
           <CardContent className="p-8">
-            <div className="flex flex-wrap justify-between items-start gap-4 pb-5 border-b-4" style={{ borderBottomColor: A }}>
+            <div className="flex flex-wrap justify-between items-start gap-4 border-b-4 border-indigo-600 pb-5">
               <div>
-                {project.show_logo && project.company_logo_url && (
-                  <img src={project.company_logo_url} alt="" className="max-h-14 mb-2 object-contain" />
-                )}
-                {on(project, "show_company_block") && project.company_name && (
-                  <p className="font-bold text-lg leading-tight" style={{ color: A }}>{project.company_name}</p>
-                )}
-                <h2 className="text-2xl font-bold text-slate-900">{project.quote_title || "Project Estimate"}</h2>
+                {project.company_name && <p className="text-indigo-600 font-bold text-lg leading-tight">{project.company_name}</p>}
+                <h2 className="text-2xl font-bold text-slate-900">Project Estimate</h2>
                 <p className="text-sm text-slate-500 mt-1">
-                  {on(project, "show_estimate_number") && project.estimate_number && <>Estimate #{project.estimate_number} · </>}
-                  {on(project, "show_po_number") && project.po_number && <>PO #{project.po_number} · </>}
-                  {on(project, "show_dates") && <>Date: {today} · Valid until: {validUntil}</>}
+                  {project.estimate_number && <>Estimate #{project.estimate_number} · </>}
+                  {project.po_number && <>PO #{project.po_number} · </>}
+                  Date: {today} · Valid until: {validUntil}
                 </p>
-                {on(project, "show_company_block") && (
+                {(project.company_phone || project.company_email) && (
+                  <p className="text-xs text-slate-400">{[project.company_phone, project.company_email].filter(Boolean).join(" · ")}</p>
+                )}
+              </div>
+              <div className="text-right text-sm text-slate-600">
+                <p className="font-bold text-slate-900 text-base">{project.project_name}</p>
+                <p>{project.client_name}</p>
+                {project.site_address && <p>{project.site_address}</p>}
+                {(project.contact_name || project.contact_phone || project.contact_email) && (
                   <p className="text-xs text-slate-400">
-                    {[project.company_phone, project.company_email, project.company_address, project.company_website,
-                      project.company_license ? `Lic. ${project.company_license}` : ""].filter(Boolean).join(" · ")}
+                    {[project.contact_name, project.contact_phone, project.contact_email].filter(Boolean).join(" · ")}
                   </p>
                 )}
               </div>
-              {on(project, "show_contact_block") && (
-                <div className="text-right text-sm text-slate-600">
-                  <p className="font-bold text-slate-900 text-base">{project.project_name}</p>
-                  <p>{project.client_name}</p>
-                  {on(project, "show_site_address") && project.site_address && <p>{project.site_address}</p>}
-                  {(project.order_contact || project.contact_name || project.contact_phone || project.contact_email) && (
-                    <p className="text-xs text-slate-400">
-                      {[project.order_contact || project.contact_name, project.contact_phone, project.contact_email].filter(Boolean).join(" · ")}
-                    </p>
-                  )}
-                </div>
-              )}
             </div>
-
-            {project.quote_intro_text && (
-              <p className="mt-4 text-sm text-slate-600 whitespace-pre-wrap">{project.quote_intro_text}</p>
-            )}
 
             <table className="w-full text-sm mt-6">
               <thead>
                 <tr className="text-left text-xs uppercase text-slate-400">
                   <th className="py-2 px-3 border-b-2 border-slate-200 font-medium">Scope of Work</th>
-                  {showCat && <th className="py-2 px-3 border-b-2 border-slate-200 font-medium">Category</th>}
-                  {showQty && <th className="py-2 px-3 border-b-2 border-slate-200 font-medium text-center">Qty</th>}
+                  <th className="py-2 px-3 border-b-2 border-slate-200 font-medium">Category</th>
                   <th className="py-2 px-3 border-b-2 border-slate-200 font-medium text-right">Price</th>
                 </tr>
               </thead>
@@ -276,9 +266,8 @@ export default function AllInOneCustomerViewTab({ project, grandTotal, updateFie
                       {l.name}
                       {l.desc && <p className="text-xs text-slate-500 mt-0.5">{l.desc}</p>}
                     </td>
-                    {showCat && <td className="py-2.5 px-3 border-b border-slate-100 text-slate-500 align-top">{l.category}</td>}
-                    {showQty && <td className="py-2.5 px-3 border-b border-slate-100 text-center text-slate-600 align-top tabular-nums">{l.qty ?? 1}</td>}
-                    <td className="py-2.5 px-3 border-b border-slate-100 text-right font-semibold tabular-nums align-top">{money(l.price)}</td>
+                    <td className="py-2.5 px-3 border-b border-slate-100 text-slate-500 align-top">{l.category}</td>
+                    <td className="py-2.5 px-3 border-b border-slate-100 text-right font-semibold tabular-nums align-top">{fmtCurrency(l.price)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -291,13 +280,12 @@ export default function AllInOneCustomerViewTab({ project, grandTotal, updateFie
                   className={`flex justify-between ${
                     r.kind === "total" ? "font-bold text-lg border-t-2 border-slate-900 pt-2"
                     : r.kind === "subtotal" ? "font-semibold"
-                    : r.kind === "deposit" || r.kind === "balance" ? "font-semibold"
+                    : r.kind === "deposit" || r.kind === "balance" ? "text-indigo-700 font-semibold"
                     : "text-slate-600"
                   }`}
-                  style={r.kind === "deposit" || r.kind === "balance" ? { color: A } : undefined}
                 >
                   <span>{r.label}</span>
-                  <span className="tabular-nums">{money(r.amount)}</span>
+                  <span className="tabular-nums">{fmtCurrency(r.amount)}</span>
                 </div>
               ))}
             </div>
@@ -319,27 +307,27 @@ export default function AllInOneCustomerViewTab({ project, grandTotal, updateFie
               </div>
             )}
 
-            <TextBlock title="Payment terms" body={project.payment_terms} />
-            {on(project, "show_lead_time_block") && <TextBlock title="Lead time" body={project.lead_time_text} />}
-            {on(project, "show_warranty_block") && <TextBlock title="Warranty" body={project.warranty_text} />}
-            {on(project, "show_terms_block") && <TextBlock title="Terms & conditions" body={project.quote_terms_conditions} />}
-            {on(project, "show_notes_on_quote") && <TextBlock title="Notes" body={project.notes} />}
-
-            {on(project, "show_signature_block") && (
-              <div className="flex gap-12 mt-12">
-                <div className="flex-1 border-t border-slate-900 pt-1.5 text-xs text-slate-500">Customer signature / date</div>
-                <div className="flex-1 border-t border-slate-900 pt-1.5 text-xs text-slate-500">{project.company_name || "Company"} signature / date</div>
+            {project.payment_terms && (
+              <div className="mt-6 text-sm text-slate-600">
+                <p className="font-semibold text-slate-900 mb-1">Payment terms</p>
+                <p className="whitespace-pre-wrap">{project.payment_terms}</p>
+              </div>
+            )}
+            {project.notes && (
+              <div className="mt-5 text-sm text-slate-600">
+                <p className="font-semibold text-slate-900 mb-1">Notes</p>
+                <p className="whitespace-pre-wrap">{project.notes}</p>
               </div>
             )}
 
-            {on(project, "show_validity_footer") && (
-              <p className="mt-8 text-xs text-slate-400">
-                This estimate is valid for {validDays} days from the date above. Pricing subject to final site verification.
-              </p>
-            )}
-            {project.quote_footer_text && (
-              <p className="mt-3 text-xs text-slate-400 whitespace-pre-wrap">{project.quote_footer_text}</p>
-            )}
+            <div className="flex gap-12 mt-12">
+              <div className="flex-1 border-t border-slate-900 pt-1.5 text-xs text-slate-500">Customer signature / date</div>
+              <div className="flex-1 border-t border-slate-900 pt-1.5 text-xs text-slate-500">{project.company_name || "Company"} signature / date</div>
+            </div>
+
+            <p className="mt-8 text-xs text-slate-400">
+              This estimate is valid for {validDays} days from the date above. Pricing subject to final site verification.
+            </p>
           </CardContent>
         </Card>
       </div>

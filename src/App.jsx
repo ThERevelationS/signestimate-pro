@@ -17,11 +17,6 @@ import RouteSkeleton from '@/components/RouteSkeleton';
 // explicit routes (the pagesConfig loop below only knows about older pages).
 const AllInOneProjects = lazy(() => import('@/pages/AllInOneProjects'));
 const NewAllInOneEstimate = lazy(() => import('@/pages/NewAllInOneEstimate'));
-const QuickProducts = lazy(() => import('@/pages/QuickProducts'));
-const EstimateSettings = lazy(() => import('@/pages/EstimateSettings'));
-const QuickProductEditor = lazy(() => import('@/pages/QuickProductEditor'));
-const Customers = lazy(() => import('@/pages/Customers'));
-const CustomerDetail = lazy(() => import('@/pages/CustomerDetail'));
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -88,11 +83,6 @@ const AuthenticatedApp = () => {
           <Route path="/" element={<MainPage />} />
           <Route path="/AllInOneProjects" element={<AllInOneProjects />} />
           <Route path="/NewAllInOneEstimate" element={<NewAllInOneEstimate />} />
-          <Route path="/QuickProducts" element={<QuickProducts />} />
-          <Route path="/EstimateSettings" element={<EstimateSettings />} />
-          <Route path="/QuickProductEditor" element={<QuickProductEditor />} />
-          <Route path="/Customers" element={<Customers />} />
-          <Route path="/CustomerDetail" element={<CustomerDetail />} />
           {Object.entries(Pages).map(([path, Page]) => (
             <Route key={path} path={`/${path}`} element={<Page />} />
           ))}

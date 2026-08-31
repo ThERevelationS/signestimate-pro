@@ -1,107 +1,91 @@
-import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
-import { createPageUrl } from "@/utils";
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { Bell, FileText, TrendingUp, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { createPageUrl } from "@/utils";
+import { ArrowRight, ServerOff } from "lucide-react";
+import { MODULES } from "@/components/modulesRegistry";
+import { useAuth } from "@/lib/AuthContext";
 
-// ============================================================================
-// Sales Home — notifications & activity feed only.
-// No estimate creation here; use the Quick Price / Estimates menus to build.
-// ============================================================================
 export default function Dashboard() {
-  const [estimates, setEstimates] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Auth + module statuses are loaded once by AuthProvider during app bootstrap;
+  // this page no longer issues its own User.me() / ModuleStatus.list() calls.
+  const { moduleStatusesLoaded, hasModulePermission } = useAuth();
+  const isLoading = !moduleStatusesLoaded;
 
-  useEffect(() => {
-    base44.entities.AllInOneEstimate.list("-updated_date", 12)
-      .then(setEstimates)
-      .catch(() => setEstimates([]))
-      .finally(() => setLoading(false));
-  }, []);
+  // Use the same module list as the sidebar (single source of truth).
+  const modules = MODULES.map((m) => ({
+    name: m.key,
+    title: m.name,
+    description: m.description,
+    icon: m.icon,
+    color: m.color,
+    page: m.newEstimatePage,
+  }));
 
-  const statusIcon = (status) => {
-    switch (status) {
-      case "approved": return <CheckCircle2 className="w-4 h-4 text-green-600" />;
-      case "sent": return <FileText className="w-4 h-4 text-blue-600" />;
-      case "archived": return <AlertCircle className="w-4 h-4 text-slate-400" />;
-      default: return <Clock className="w-4 h-4 text-amber-600" />;
+  const renderModuleCard = (module) => {
+    const isEnabled = hasModulePermission(module.name);
+    const Icon = module.icon;
+
+    if (isLoading) {
+      return (
+        <Card key={module.name} className="bg-white border-0 shadow-lg animate-pulse">
+          <CardHeader><div className="h-8 bg-slate-200 rounded w-3/4"></div></CardHeader>
+          <CardContent><div className="h-4 bg-slate-200 rounded w-full"></div></CardContent>
+        </Card>
+      );
     }
+
+    if (!isEnabled) {
+      return null; // Don't render disabled modules
+    }
+
+    return (
+      <Link key={module.name} to={createPageUrl(module.page)}>
+        <Card className="bg-white border-0 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
+          <CardHeader>
+            <div className="flex items-center gap-4">
+              <div className={`p-4 bg-${module.color}-100 rounded-xl`}>
+                <Icon className={`w-8 h-8 text-${module.color}-600`} />
+              </div>
+              <div>
+                <CardTitle className="text-xl font-semibold text-slate-900">{module.title}</CardTitle>
+                <p className="text-slate-500">{module.description}</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className={`flex items-center text-${module.color}-600 font-medium`}>
+              <span>Start New Estimate</span>
+              <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+    );
   };
 
-  const statusLabel = (status) => ({
-    draft: "Draft",
-    calculated: "Calculated",
-    sent: "Sent to Customer",
-    approved: "Approved",
-    archived: "Archived",
-  }[status] || "Draft");
+  const visibleModules = modules.filter((m) => hasModulePermission(m.name));
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="max-w-[900px] mx-auto space-y-4">
-        {/* Header */}
-        <div className="bg-white border border-slate-300 rounded-sm shadow-sm px-4 py-3 flex items-center gap-2">
-          <Bell className="w-5 h-5 text-lime-700" />
-          <h1 className="text-base font-bold text-lime-700 uppercase tracking-wide">Sales Home — Notifications</h1>
+    <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-slate-900 mb-2">Estimator Modules</h1>
+          <p className="text-lg text-slate-600">Select a module to begin creating an estimate.</p>
         </div>
-
-        {/* Summary tiles */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-white border border-slate-300 rounded-sm shadow-sm px-4 py-3">
-            <p className="text-xs text-slate-500 uppercase font-semibold">Active Estimates</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{estimates.filter(e => e.status !== "archived").length}</p>
+        {visibleModules.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {modules.map((module) => renderModuleCard(module))}
           </div>
-          <div className="bg-white border border-slate-300 rounded-sm shadow-sm px-4 py-3">
-            <p className="text-xs text-slate-500 uppercase font-semibold">Awaiting Approval</p>
-            <p className="text-2xl font-bold text-blue-600 mt-1">{estimates.filter(e => e.status === "sent").length}</p>
-          </div>
-          <div className="bg-white border border-slate-300 rounded-sm shadow-sm px-4 py-3">
-            <p className="text-xs text-slate-500 uppercase font-semibold">Approved</p>
-            <p className="text-2xl font-bold text-green-600 mt-1">{estimates.filter(e => e.status === "approved").length}</p>
-          </div>
-          <div className="bg-white border border-slate-300 rounded-sm shadow-sm px-4 py-3">
-            <p className="text-xs text-slate-500 uppercase font-semibold">In Draft</p>
-            <p className="text-2xl font-bold text-amber-600 mt-1">{estimates.filter(e => e.status === "draft" || e.status === "calculated").length}</p>
-          </div>
-        </div>
-
-        {/* Recent activity feed */}
-        <div className="bg-white border border-slate-300 rounded-sm shadow-sm">
-          <div className="px-4 py-2.5 border-b border-slate-200 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-slate-500" />
-            <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Recent Estimate Activity</h2>
-          </div>
-
-          {loading ? (
-            <div className="p-6 space-y-3">
-              {[1, 2, 3].map(i => <div key={i} className="h-12 bg-slate-100 rounded-sm animate-pulse" />)}
-            </div>
-          ) : estimates.length === 0 ? (
-            <div className="py-12 text-center text-slate-500">
-              <Bell className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-              <p className="text-sm">No recent activity. Create an estimate from the Estimates menu.</p>
-            </div>
-          ) : (
-            <div>
-              {estimates.map((e, i) => (
-                <Link
-                  key={e.id}
-                  to={`${createPageUrl("NewAllInOneEstimate")}?id=${e.id}`}
-                  className={`flex items-center gap-3 px-4 py-3 border-b border-slate-100 last:border-b-0 hover:bg-lime-50/60 transition-colors ${i % 2 ? "bg-slate-50/40" : ""}`}
-                >
-                  {statusIcon(e.status)}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-slate-900 text-sm truncate">{e.project_name || "Untitled"}</p>
-                    <p className="text-xs text-slate-500 truncate">{e.client_name || "No customer"} · {statusLabel(e.status)}</p>
-                  </div>
-                  <span className="text-xs text-slate-400 whitespace-nowrap">
-                    {e.updated_date ? new Date(e.updated_date).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+        ) : (
+          <Card className="bg-white border-0 shadow-sm">
+            <CardContent className="py-12 text-center text-slate-500">
+              <ServerOff className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+              <p>No modules are currently available for you. Contact your administrator.</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

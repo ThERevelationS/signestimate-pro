@@ -1,15 +1,12 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef, useContext } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createPageUrl } from "@/utils";
-import { UnsavedChangesContext } from "@/components/UnsavedChangesContext";
 import {
-  Layers, Save, RefreshCw, Link as LinkIcon, ArrowLeft, ArrowRight,
+  Layers, Save, RefreshCw, Link as LinkIcon, FileText, Hammer, PieChart, Package, Receipt,
 } from "lucide-react";
-import EstimateStepRail from "@/components/allInOne/EstimateStepRail";
 import { useToast } from "@/components/ui/use-toast";
 import { fmtCurrency } from "@/lib/formatters";
 import {
@@ -20,7 +17,7 @@ import {
 } from "@/components/allInOne/estimatorRegistry";
 import { computeQuote } from "@/components/allInOne/aioPricing";
 import EstimatorSectionPanel from "@/components/allInOne/EstimatorSectionPanel";
-import EstimateDetailsStep from "@/components/estimateDetails/EstimateDetailsStep";
+import AllInOneProjectDetailsTab from "@/components/allInOne/AllInOneProjectDetailsTab";
 import AllInOneBuildTab from "@/components/allInOne/AllInOneBuildTab";
 import AllInOneCostSummaryTab from "@/components/allInOne/AllInOneCostSummaryTab";
 import AllInOneBOMTab from "@/components/allInOne/AllInOneBOMTab";
@@ -50,21 +47,12 @@ const EMPTY_PROJECT = {
   contact_name: "",
   contact_email: "",
   contact_phone: "",
-  customer_id: "",
-  terms: "",
-  order_contact: "",
-  office_phone: "",
-  office_phone_ext: "",
-  salesperson: "",
-  sales_center: "",
-  tax_group: "",
   target_install_date: "",
   tax_percent: 0,
   deposit_percent: 50,
   status: "draft",
   line_items: [],
   notes: "",
-  edit_reason: "",
 };
 
 const stripUi = (items) => items.map(({ missing, ...li }) => li);
@@ -81,7 +69,6 @@ const sumItems = (items) => items.reduce((s, li) => s + (Number(li.total_snapsho
 // ============================================================================
 export default function NewAllInOneEstimate() {
   const { toast } = useToast();
-  const { setIsDirty: setNavDirty } = useContext(UnsavedChangesContext);
   const [project, setProject] = useState(EMPTY_PROJECT);
   const [editId, setEditId] = useState(null);
   const [addingKey, setAddingKey] = useState(null);
@@ -401,59 +388,6 @@ export default function NewAllInOneEstimate() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Keep the Layout's unsaved-changes nav guard in sync with our dirty flag.
-  useEffect(() => { setNavDirty(dirty); }, [dirty, setNavDirty]);
-
-  // Block browser close / refresh while there are unsaved changes. Uses a ref
-  // so a programmatic save-and-exit can bypass the prompt without waiting for
-  // a re-render to detach the listener.
-  const dirtyRef = useRef(false);
-  const skipBeforeUnload = useRef(false);
-  useEffect(() => { dirtyRef.current = dirty; }, [dirty]);
-  useEffect(() => {
-    const onBeforeUnload = (e) => {
-      if (!dirtyRef.current || skipBeforeUnload.current) return;
-      e.preventDefault(); e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, []);
-
-  // Step 3 "Save Estimate" — requires a reason, persists, then returns to the
-  // customer page (or the projects queue if no customer is linked).
-  const handleSaveAndExit = async () => {
-    const p = projectRef.current;
-    if (!p.project_name || !p.client_name) {
-      setActiveTab("details");
-      toast({ title: "Missing details", description: "Project name and client name are required.", variant: "destructive" });
-      return;
-    }
-    if (!p.edit_reason || !p.edit_reason.trim()) {
-      toast({ title: "Reason required", description: "Please enter a reason for editing before saving.", variant: "destructive" });
-      return;
-    }
-    setIsSaving(true);
-    await persist(p.line_items);
-    await Promise.all(
-      p.line_items
-        .filter((li) => li.owned && !li.missing)
-        .map((li) => {
-          const mod = ESTIMATOR_MODULES_BY_KEY[li.module_key];
-          if (!mod) return null;
-          return getModuleEntity(mod).update(li.project_id, buildSharedPayload(mod, p)).catch(() => {});
-        })
-    );
-    setIsSaving(false);
-    setDirty(false);
-    setNavDirty(false);
-    skipBeforeUnload.current = true;
-    toast({ title: "Saved", description: "Estimate saved. Returning to customer page." });
-    const dest = p.customer_id
-      ? `${createPageUrl("CustomerDetail")}?id=${p.customer_id}`
-      : createPageUrl("AllInOneProjects");
-    window.location.href = dest;
-  };
-
   const copyShareLink = async () => {
     if (!editIdRef.current) {
       toast({ title: "Save first", description: "Save the estimate to get a shareable link." });
@@ -485,16 +419,16 @@ export default function NewAllInOneEstimate() {
     <div className="p-4 md:p-6 bg-slate-50 min-h-screen">
       {/* FULL page width — no max-width cap, scales with every resolution */}
       <div className="w-full">
-        {/* Header — CoreBridge estimate banner */}
-        <div className="bg-white border border-slate-300 rounded-sm px-4 py-2.5 mb-4 flex flex-wrap justify-between items-center gap-3">
+        {/* Header */}
+        <div className="flex flex-wrap justify-between items-center mb-5 gap-3">
           <div className="min-w-0">
-            <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2 flex-wrap">
-              <Layers className="w-5 h-5 text-lime-600 flex-shrink-0" />
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-3 flex-wrap">
+              <Layers className="w-7 h-7 text-indigo-600 flex-shrink-0" />
               <span className="truncate">{project.project_name || (editId ? "Edit All-In-One Estimate" : "New All-In-One Estimate")}</span>
               <Badge className={`${statusColors[project.status] || statusColors.draft} border-0`}>{project.status}</Badge>
               {dirty && <span className="w-2.5 h-2.5 rounded-full bg-amber-400" title="Unsaved changes" />}
             </h1>
-            <p className="text-slate-500 text-xs mt-0.5">
+            <p className="text-slate-500 text-sm mt-0.5">
               One page, one set of project info, every estimator.
               {lastSynced && <span className="text-slate-400"> · Totals synced {lastSynced.toLocaleTimeString()}</span>}
             </p>
@@ -504,7 +438,7 @@ export default function NewAllInOneEstimate() {
               <p className="text-[10px] uppercase text-slate-400 font-medium">Quote Total</p>
               <p className="text-xl font-bold text-green-600 tabular-nums">{fmtCurrency(quote.total)}</p>
               {Math.round(quote.total) !== Math.round(grandTotal) && (
-                <p className="text-[10px] text-slate-400 tabular-nums">products {fmtCurrency(grandTotal)}</p>
+                <p className="text-[10px] text-slate-400 tabular-nums">sections {fmtCurrency(grandTotal)}</p>
               )}
             </div>
             <Button
@@ -519,157 +453,79 @@ export default function NewAllInOneEstimate() {
             <Button variant="outline" size="sm" onClick={copyShareLink} title="Copy estimate link">
               <LinkIcon className="w-4 h-4" />
             </Button>
-            <Button onClick={handleSave} disabled={isSaving} className="bg-zinc-800 hover:bg-zinc-700 text-white rounded-sm" title="Save (Ctrl+S)">
+            <Button onClick={handleSave} disabled={isSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white" title="Save (Ctrl+S)">
               <Save className="w-4 h-4 mr-2" />
               {isSaving ? "Saving…" : editId ? "Update" : "Save"}
             </Button>
           </div>
         </div>
 
-        {/* CoreBridge-style step workflow: persistent step rail + Order
-            Summary on the left, the active step's content on the right.
-            Every view stays MOUNTED (hidden, not unmounted) so the inline
-            estimator keeps in-progress edits while checking other views. */}
-        <div className="flex flex-col lg:flex-row gap-4 items-start">
-          <EstimateStepRail
-            project={project}
-            editId={editId}
-            active={activeTab}
-            onNavigate={setActiveTab}
-            quote={quote}
-            onSave={handleSave}
-            isSaving={isSaving}
-            dirty={dirty}
-          />
+        {/* Tabs — project details + all single-point summaries at the top */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="flex flex-wrap h-auto gap-1 bg-white border border-slate-200 p-1.5 rounded-xl shadow-sm w-full justify-start">
+            <TabsTrigger value="details" className="gap-1.5"><FileText className="w-4 h-4" /> Project Details</TabsTrigger>
+            <TabsTrigger value="build" className="gap-1.5">
+              <Hammer className="w-4 h-4" /> Build Estimate
+              {project.line_items.length > 0 && (
+                <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 rounded-full px-1.5">{project.line_items.length}</span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="summary" className="gap-1.5"><PieChart className="w-4 h-4" /> Cost Summary</TabsTrigger>
+            <TabsTrigger value="bom" className="gap-1.5"><Package className="w-4 h-4" /> Bill of Materials</TabsTrigger>
+            <TabsTrigger value="customer" className="gap-1.5"><Receipt className="w-4 h-4" /> Customer View</TabsTrigger>
+          </TabsList>
 
-          <div className="flex-1 min-w-0 w-full">
-            <div className="bg-white border border-slate-300 rounded-sm px-4 py-2 mb-4 flex items-center justify-between gap-2 flex-wrap">
-              <h2 className="text-base font-bold text-slate-800">
-                {{
-                  details: "Step 1: Estimate Details",
-                  build: "Step 2: Edit Products",
-                  customer: "Step 3: Finalize Estimate",
-                  summary: "Cost Summary",
-                  bom: "Bill of Materials",
-                }[activeTab]}
-                {activeTab === "build" && project.line_items.length > 0 && (
-                  <span className="ml-2 text-[11px] font-bold bg-lime-100 text-lime-800 rounded-full px-2 py-0.5">
-                    {project.line_items.length} product{project.line_items.length === 1 ? "" : "s"}
-                  </span>
-                )}
-              </h2>
-              <StepNavButtons activeTab={activeTab} onNavigate={setActiveTab} />
-            </div>
+          {/* forceMount + hidden keeps the inline estimator mounted (with any
+              in-progress edits) while the user checks the summary tabs. */}
+          <TabsContent value="details" forceMount className="mt-5 data-[state=inactive]:hidden">
+            <AllInOneProjectDetailsTab project={project} updateField={updateField} />
+          </TabsContent>
 
-            <div className={activeTab === "details" ? "" : "hidden"}>
-              <EstimateDetailsStep project={project} updateField={updateField} />
-            </div>
-
-            <div className={activeTab === "build" ? "" : "hidden"}>
-              <AllInOneBuildTab
-                project={project}
-                addingKey={addingKey}
-                grandTotal={quote.subtotal}
-                openSection={openSection}
-                onAddSection={handleAddSection}
-                onToggleSection={(item) =>
-                  openSection?.project_id === item.project_id ? closeSection() : openSectionInline(item)
-                }
-                onRemoveSection={handleRemove}
-                onRenameSection={handleRename}
-                onDuplicateSection={handleDuplicate}
-                onUpdateSection={handleUpdateItem}
-                editorSlot={
-                  openSection ? (
-                    <div
-                      id="aio-inline-editor"
-                      className="rounded-sm border-2 border-lime-500 overflow-hidden shadow-xl scroll-mt-4"
-                    >
-                      <EstimatorSectionPanel item={openSection} onClose={closeSection} />
-                    </div>
-                  ) : null
-                }
-              />
-            </div>
-
-            <div className={activeTab === "summary" ? "" : "hidden"}>
-              <AllInOneCostSummaryTab project={project} sourceProjects={sourceProjects} grandTotal={grandTotal} />
-            </div>
-
-            <div className={activeTab === "bom" ? "" : "hidden"}>
-              <AllInOneBOMTab project={project} sourceProjects={sourceProjects} />
-            </div>
-
-            <div className={activeTab === "customer" ? "" : "hidden"}>
-              <AllInOneCustomerViewTab
-                project={project}
-                grandTotal={grandTotal}
-                updateField={updateField}
-                onUpdateItem={handleUpdateItem}
-              />
-            </div>
-
-            {activeTab === "customer" ? (
-              <div className="mt-5 border-t border-slate-300 pt-4 flex items-center gap-3 flex-wrap">
-                <Label className="text-xs font-semibold text-slate-700 whitespace-nowrap">Reason For Editing:</Label>
-                <Input
-                  className="h-9 rounded-sm max-w-md flex-1 min-w-[200px]"
-                  placeholder="required"
-                  value={project.edit_reason || ""}
-                  onChange={(e) => updateField("edit_reason", e.target.value)}
-                />
-                <div className="flex gap-2 ml-auto">
-                  <button
-                    onClick={() => setActiveTab("build")}
-                    className="px-5 py-2.5 text-sm bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-sm font-semibold text-slate-800 flex items-center gap-1.5 transition-colors"
+          <TabsContent value="build" forceMount className="mt-5 data-[state=inactive]:hidden">
+            <AllInOneBuildTab
+              project={project}
+              addingKey={addingKey}
+              grandTotal={quote.subtotal}
+              openSection={openSection}
+              onAddSection={handleAddSection}
+              onToggleSection={(item) =>
+                openSection?.project_id === item.project_id ? closeSection() : openSectionInline(item)
+              }
+              onRemoveSection={handleRemove}
+              onRenameSection={handleRename}
+              onDuplicateSection={handleDuplicate}
+              onUpdateSection={handleUpdateItem}
+              editorSlot={
+                openSection ? (
+                  <div
+                    id="aio-inline-editor"
+                    className="rounded-2xl border-2 border-indigo-300 overflow-hidden shadow-xl scroll-mt-4"
                   >
-                    <ArrowLeft className="w-3.5 h-3.5" /> Previous Step
-                  </button>
-                  <button
-                    onClick={handleSaveAndExit}
-                    disabled={isSaving}
-                    className="px-5 py-2.5 text-sm bg-lime-200 hover:bg-lime-300 border border-lime-500 rounded-sm font-semibold text-slate-900 flex items-center gap-1.5 transition-colors disabled:opacity-60"
-                  >
-                    <Save className="w-3.5 h-3.5" /> {isSaving ? "Saving…" : "Save Estimate"}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-5 flex justify-end">
-                <StepNavButtons activeTab={activeTab} onNavigate={setActiveTab} large />
-              </div>
-            )}
-          </div>
-        </div>
+                    <EstimatorSectionPanel item={openSection} onClose={closeSection} />
+                  </div>
+                ) : null
+              }
+            />
+          </TabsContent>
+
+          <TabsContent value="summary" forceMount className="mt-5 data-[state=inactive]:hidden">
+            <AllInOneCostSummaryTab project={project} sourceProjects={sourceProjects} grandTotal={grandTotal} />
+          </TabsContent>
+
+          <TabsContent value="bom" forceMount className="mt-5 data-[state=inactive]:hidden">
+            <AllInOneBOMTab project={project} sourceProjects={sourceProjects} />
+          </TabsContent>
+
+          <TabsContent value="customer" forceMount className="mt-5 data-[state=inactive]:hidden">
+            <AllInOneCustomerViewTab
+              project={project}
+              grandTotal={grandTotal}
+              updateField={updateField}
+              onUpdateItem={handleUpdateItem}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
-    </div>
-  );
-}
-
-// Previous Step / Next Step buttons — CoreBridge workflow navigation.
-const STEP_ORDER = ["details", "build", "customer"];
-function StepNavButtons({ activeTab, onNavigate, large }) {
-  const idx = STEP_ORDER.indexOf(activeTab);
-  if (idx === -1) return null;
-  const size = large ? "px-5 py-2.5 text-sm" : "px-3 py-1.5 text-xs";
-  return (
-    <div className="flex gap-2">
-      {idx > 0 && (
-        <button
-          onClick={() => onNavigate(STEP_ORDER[idx - 1])}
-          className={`${size} bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-sm font-semibold text-slate-800 flex items-center gap-1.5 transition-colors`}
-        >
-          <ArrowLeft className="w-3.5 h-3.5" /> Previous Step
-        </button>
-      )}
-      {idx < STEP_ORDER.length - 1 && (
-        <button
-          onClick={() => onNavigate(STEP_ORDER[idx + 1])}
-          className={`${size} bg-lime-200 hover:bg-lime-300 border border-lime-500 rounded-sm font-semibold text-slate-900 flex items-center gap-1.5 transition-colors`}
-        >
-          Next Step <ArrowRight className="w-3.5 h-3.5" />
-        </button>
-      )}
     </div>
   );
 }

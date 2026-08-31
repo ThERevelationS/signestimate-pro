@@ -2,15 +2,6 @@
   "name": "User",
   "type": "object",
   "properties": {
-    "screen_name": {
-      "type": "string",
-      "description": "Editable display name used everywhere the user appears in the app (Salesperson dropdowns, estimates, customer records). Falls back to full_name when empty."
-    },
-    "is_salesperson": {
-      "type": "boolean",
-      "default": false,
-      "description": "When true this user appears in every Salesperson dropdown (estimates, customers). Managed on the Estimate Settings page."
-    },
     "phone": {
       "type": "string",
       "description": "User's phone number"
