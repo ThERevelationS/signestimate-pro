@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { useAuth } from "@/lib/AuthContext";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
+import { safeExternalUrl } from "@/lib/safeUrl";
 
 // Cap the initial page-load fetch so we never download thousands of historical
 // projects up front. Users still get a "Load more" affordance when they hit it.
@@ -199,10 +200,10 @@ export default function FoundationProjects() {
                               <span className="text-slate-600">Equipment:</span>
                               <span className="font-medium">{project.selected_equipment?.length || 0}</span>
                             </div>
-                            {project.hyperlink && (
+                            {safeExternalUrl(project.hyperlink) && (
                               <div className="mt-2">
                                 <a
-                                  href={project.hyperlink}
+                                  href={safeExternalUrl(project.hyperlink)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"

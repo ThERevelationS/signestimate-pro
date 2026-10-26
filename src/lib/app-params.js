@@ -34,10 +34,14 @@ const getAppParamValue = (paramName, { defaultValue = undefined, removeFromUrl =
 	return null;
 }
 
+// The API origin is fixed at build time. It is deliberately never read from the
+// query string or localStorage: a crafted ?server_url= link would otherwise
+// point every authenticated SDK call (and the caller's bearer token) at an
+// attacker's host, and the poisoned value would stick in localStorage.
 const getAppParams = () => {
 	return {
 		appId: getAppParamValue("app_id", { defaultValue: import.meta.env.VITE_BASE44_APP_ID }),
-		serverUrl: getAppParamValue("server_url", { defaultValue: import.meta.env.VITE_BASE44_BACKEND_URL }),
+		serverUrl: import.meta.env.VITE_BASE44_BACKEND_URL || "",
 		token: getAppParamValue("access_token", { removeFromUrl: true }),
 		fromUrl: getAppParamValue("from_url", { defaultValue: window.location.href }),
 		functionsVersion: getAppParamValue("functions_version"),

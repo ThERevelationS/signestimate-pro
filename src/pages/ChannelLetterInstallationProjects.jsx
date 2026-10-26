@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { useAuth } from "@/lib/AuthContext";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
 import { fmtCurrency } from "@/lib/formatters";
+import { safeExternalUrl } from "@/lib/safeUrl";
 
 // Cap initial fetch so first paint isn't blocked downloading every historical
 // project. The "Load more" button raises the limit when the user asks.
@@ -228,11 +229,11 @@ export default function ChannelLetterInstallationProjects() {
                       {selectedProject.estimate_number && (
                         <div className="flex items-center gap-2 text-slate-600"><span className="font-medium">Estimate #:</span>{selectedProject.estimate_number}</div>
                       )}
-                      {selectedProject.hyperlink && (
+                      {safeExternalUrl(selectedProject.hyperlink) && (
                         <div className="flex items-center gap-2 text-slate-600">
                           <span className="font-medium">Link:</span>
                           <a 
-                            href={selectedProject.hyperlink} 
+                            href={safeExternalUrl(selectedProject.hyperlink)} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-800 underline truncate max-w-48"

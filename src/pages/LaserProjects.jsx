@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { useAuth } from "@/lib/AuthContext";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
 import { fmtCurrency } from "@/lib/formatters";
+import { safeExternalUrl } from "@/lib/safeUrl";
 
 const PAGE_SIZE = 200;
 
@@ -141,10 +142,10 @@ export default function LaserProjects() {
                     <div className="space-y-2 text-sm">
                       <p>Client: {selected.client_name}</p>
                       {selected.estimate_number && (<p>Estimate #: {selected.estimate_number}</p>)}
-                      {selected.hyperlink && (
+                      {safeExternalUrl(selected.hyperlink) && (
                         <div className="flex items-center gap-2">
                           <span>Link:</span>
-                          <a href={selected.hyperlink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline truncate max-w-48">
+                          <a href={safeExternalUrl(selected.hyperlink)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline truncate max-w-48">
                             {selected.hyperlink}
                           </a>
                         </div>
