@@ -1,24 +1,8 @@
 import { base44 } from './base44Client';
 
-
-
-
+// Client-safe integrations only. File uploads stay in the browser; every
+// restricted integration (LLM, email, image generation) runs inside a backend
+// function instead — see base44/functions/ai*.
 export const Core = base44.integrations.Core;
 
-export const InvokeLLM = base44.integrations.Core.InvokeLLM;
-
-export const SendEmail = base44.integrations.Core.SendEmail;
-
-export const SendSMS = base44.integrations.Core.SendSMS;
-
 export const UploadFile = base44.integrations.Core.UploadFile;
-
-export const GenerateImage = base44.integrations.Core.GenerateImage;
-
-export const ExtractDataFromUploadedFile = base44.integrations.Core.ExtractDataFromUploadedFile;
-
-
-
-
-
-

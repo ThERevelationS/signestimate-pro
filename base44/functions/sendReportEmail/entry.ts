@@ -9,13 +9,21 @@ function encodeBase64Url(str) {
 
 Deno.serve(async (req) => {
   try {
+    const base44 = createClientFromRequest(req);
+
+    // This endpoint is reachable from the internet, so it must verify the
+    // caller before sending anything from the shop's Gmail account. The
+    // Report-create automation invokes it as the workflow owner (an app admin).
+    const user = await base44.auth.me().catch(() => null);
+    if (!user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    if (user.role !== 'admin') return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
+
     const payload = await req.json();
     const event = payload.event;
     const data = payload.data;
     
     if (event?.type !== 'create') return new Response("Ignored", { status: 200 });
     
-    const base44 = createClientFromRequest(req);
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
     
     let toEmail = 'me';

@@ -15,7 +15,13 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me().catch(() => null);
 
-    if (user && user.role !== 'admin') {
+    // Admin-only. The daily automation invokes this as the workflow owner (an
+    // app admin); anonymous or non-admin callers are rejected so the public
+    // endpoint can't be used to burn LLM credits or overwrite fuel settings.
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (user.role !== 'admin') {
       return Response.json({ error: 'Forbidden: Admin only' }, { status: 403 });
     }
 

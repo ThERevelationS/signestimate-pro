@@ -95,33 +95,11 @@ You've also been provided with ${mockups.length === 1 ? "a sign mockup image" : 
 - If multiple distinct signs appear, create a separate line item for each
 ${hasText ? "Use the written notes below as the primary source of truth; the image fills in gaps." : "Generate items based on what you observe in the image(s)."}` : "";
 
-      const res = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are a sign-installation estimator. Parse the input into structured installation line items.
-${imageInstructions}
-
-Map installation_type:
-- "flush mount" or "face-lit" → flush_mount
-- "halo lit" / "backlit" / "reverse channel" → halo_lit
-- "raceway mounted" or "raceway" → raceway
-- "dimensional" / "flat cut" / "pvc letters" → dimensional_lettering
-
-Map letter_size from letter_height_inches:
-- ≤6" → extra_small
-- 7–12" → small
-- 13–24" → medium
-- 25–36" → large
-- 37–60" → extra_large
-- >60" → extra_extra_large
-
-Defaults if unspecified: installation_height_feet=12, wall_material="eifs", letter_height_inches=24.
-Set condition booleans (parapet, after_hours_weekend, escort_required, badging_checkin, poor_electrical_access, poor_site_access, set_hours_installation, thick_hollow_walls) to true ONLY if clearly mentioned or visible. For raceway items also set raceway_length_feet.
-
-${hasText ? `JOB DESCRIPTION / NOTES:
-${rawText}` : "(No written notes — rely entirely on the mockup image(s).)"}`,
-        ...(hasImages ? { file_urls: mockups.map(m => m.url) } : {}),
-        response_json_schema: SCHEMA
+      const res = await base44.functions.invoke('aiParseInstallScope', {
+        rawText,
+        mockup_urls: mockups.map((m) => m.url),
       });
-      setResult(res);
+      setResult(res.data.result);
     } catch (e) {
       setError(e.message || "Generation failed");
     }

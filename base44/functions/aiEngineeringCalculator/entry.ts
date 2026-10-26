@@ -25,7 +25,7 @@ Criteria provided by the user:
 
 Provide an EXTREMELY CONCISE, highly professional breakdown. Provide ONLY the recommended foundation size, pole size, estimated wind loads, and recommended concrete mix type/strength in a short, 4-bullet list. DO NOT write any introductory or concluding sentences. DO NOT explain the math. KEEP IT UNDER 50 WORDS TOTAL.`;
 
-    const result = await base44.integrations.Core.InvokeLLM({
+    const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt: prompt,
       model: 'claude_sonnet_4_6',
       file_urls: body.documentUrl ? [body.documentUrl] : undefined,

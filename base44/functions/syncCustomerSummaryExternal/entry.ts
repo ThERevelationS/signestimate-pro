@@ -15,16 +15,34 @@ Deno.serve(async (req) => {
     }
 
     // Only push when the user has the CCS lookup enabled — same gate as the
-    // CCS search function. Other users still get their local CustomerSummary
-    // (the frontend creates it before calling this).
+    // CCS search function. This field is admin-assigned only (it is write-locked
+    // on the User entity), so a user cannot grant it to themselves. Other users
+    // still get their local CustomerSummary (the frontend creates it first).
     if (!user.enable_ccs_database_lookup) {
       return Response.json({ ok: false, skipped: 'ccs_lookup_disabled' });
     }
 
     const { client_name, summary_id, linked_project, estimate_number } = await req.json();
-    if (!client_name) {
-      return Response.json({ ok: false, error: 'client_name required' }, { status: 400 });
+    if (!client_name || !summary_id) {
+      return Response.json({ ok: false, error: 'client_name and summary_id required' }, { status: 400 });
     }
+
+    // Authorize the specific record, not just the caller: the user-scoped client
+    // applies the entity's RLS, so only the summary's owner (or an admin) gets a
+    // record back. The external write is keyed on the stored client_name rather
+    // than the request body, so a caller cannot forge or overwrite another
+    // client's record in the shared external database.
+    let localSummary = null;
+    try {
+      localSummary = await base44.entities.CustomerSummary.get(summary_id);
+    } catch (e) {
+      localSummary = null;
+    }
+    if (!localSummary) {
+      return Response.json({ ok: false, error: 'Forbidden: summary not owned by caller' }, { status: 403 });
+    }
+
+    const verifiedClientName = (localSummary.client_name || '').trim() || client_name;
 
     const externalClient = createClient({
       appId: "68dfcc5e57bbbc35387da97c",
@@ -37,7 +55,7 @@ Deno.serve(async (req) => {
     let existing = [];
     try {
       existing = await externalClient.asServiceRole.entities.CustomerSummary.filter(
-        { client_name },
+        { client_name: verifiedClientName },
         '-updated_date',
         5
       );
@@ -47,8 +65,8 @@ Deno.serve(async (req) => {
     }
 
     const payload = {
-      summary_name: client_name,
-      client_name,
+      summary_name: verifiedClientName,
+      client_name: verifiedClientName,
       estimate_number: estimate_number || '',
       source_summary_id: summary_id,
       last_linked_project: linked_project || null,

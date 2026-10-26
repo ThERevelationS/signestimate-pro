@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Package, Loader2, ImageIcon } from "lucide-react";
 import { materialFromInventory } from "./installCalculator";
-import { GenerateImage } from "@/api/integrations";
+import { base44 } from "@/api/base44Client";
 
 const fmt = (v) => `$${(parseFloat(v) || 0).toFixed(2)}`;
 
@@ -66,11 +66,9 @@ export default function MaterialsList({ item, inventory, onChange }) {
     }
     setGeneratingIdx(idx);
     try {
-      const res = await GenerateImage({
-        prompt: `Photograph of "${name}" — a signage installation material or hardware item used by professional sign installers. Product is centered in the frame, full item clearly visible, neutral light background, professional product photography, sharp focus, no people, no text overlay.`,
-      });
-      if (res?.url) {
-        updateMaterial(idx, { image_url: res.url });
+      const res = await base44.functions.invoke('aiGenerateMaterialImage', { item_name: name });
+      if (res.data?.url) {
+        updateMaterial(idx, { image_url: res.data.url });
       }
     } catch (e) {
       console.error("Image generation failed:", e);

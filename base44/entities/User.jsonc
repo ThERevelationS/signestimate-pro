@@ -35,7 +35,14 @@
     "enable_ccs_database_lookup": {
       "type": "boolean",
       "default": false,
-      "description": "Enable CCS Database Lookup for this user"
+      "description": "Enable CCS Database Lookup for this user. Admin-assigned only: the field is write-locked so a user cannot grant it to themselves.",
+      "rls": {
+        "update": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
     },
     "tutorials_seen": {
       "type": "object",

@@ -55,14 +55,8 @@ export default function AddressAutocomplete({ value, onChange, placeholder, clas
     lastFetchedRef.current = q;
     setLoading(true);
     try {
-      const res = await base44.integrations.Core.InvokeLLM({
-        prompt: `Return up to 5 plausible US street-address autocomplete completions for: "${q}".
-Each must look like a real mailing address (street number + street, city, state abbr, ZIP).
-Prefer well-known streets/cities. Be FAST — do not search the web. JSON only.`,
-        response_json_schema: SCHEMA,
-        model: "gemini_3_flash"
-      });
-      setSuggestions(res?.suggestions || []);
+      const res = await base44.functions.invoke('aiAddressSuggest', { query: q });
+      setSuggestions(res.data?.suggestions || []);
       setOpen(true);
       setHighlight(-1);
     } catch (e) {

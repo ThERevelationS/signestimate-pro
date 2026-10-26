@@ -4,6 +4,9 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
+    // enable_ccs_database_lookup is write-locked on the User entity (admins
+    // only), so this is an admin-granted permission the caller cannot set on
+    // their own record.
     if (!user || !user.enable_ccs_database_lookup) {
       return Response.json({ error: 'Unauthorized: CCS database lookup not enabled for this user' }, { status: 401 });
     }

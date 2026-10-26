@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { LaserProject, Settings, User } from "@/entities/all";
 import { useSearchParams } from "react-router-dom"; // Removed useNavigate
 import { createPageUrl } from "@/utils";
+import { escapeHtml } from "@/lib/escapeHtml";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -830,7 +831,7 @@ export default function NewLaserEstimate({ embeddedId = null, embedded = false }
     const printContent = `
       <html>
         <head>
-          <title>Laser Estimate - ${project.project_name}</title>
+          <title>Laser Estimate - ${escapeHtml(project.project_name)}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
             
@@ -1133,15 +1134,15 @@ export default function NewLaserEstimate({ embeddedId = null, embedded = false }
               <div class="info-grid">
                 <div class="info-item">
                   <span class="info-label">Project:</span>
-                  <span class="info-value">${project.project_name}</span>
+                  <span class="info-value">${escapeHtml(project.project_name)}</span>
                 </div>
                 <div class="info-item">
                   <span class="info-label">Client:</span>
-                  <span class="info-value">${project.client_name}</span>
+                  <span class="info-value">${escapeHtml(project.client_name)}</span>
                 </div>
                 <div class="info-item">
                   <span class="info-label">Estimate #:</span>
-                  <span class="info-value">${project.estimate_number}</span>
+                  <span class="info-value">${escapeHtml(project.estimate_number)}</span>
                 </div>
                 <div class="info-item">
                   <span class="info-label">Date:</span>
@@ -1156,17 +1157,17 @@ export default function NewLaserEstimate({ embeddedId = null, embedded = false }
               ${project.items.map((item, i) => `
                 <div class="item">
                   <div class="item-header">
-                    Item ${i + 1}: ${item.description || `${item.item_type} item`}
+                    Item ${i + 1}: ${escapeHtml(item.description || `${item.item_type} item`)}
                   </div>
                   
                   <div class="item-details">
                     <div class="detail-row">
                       <span class="detail-label">Type:</span>
-                      <span class="detail-value">${item.item_type}</span>
+                      <span class="detail-value">${escapeHtml(item.item_type)}</span>
                     </div>
                     <div class="detail-row">
                       <span class="detail-label">Material:</span>
-                      <span class="detail-value">${item.material_type} - ${item.material_thickness}"</span>
+                      <span class="detail-value">${escapeHtml(item.material_type)} - ${escapeHtml(item.material_thickness)}"</span>
                     </div>
                     <div class="detail-row">
                       <span class="detail-label">Quantity:</span>
@@ -1251,7 +1252,7 @@ export default function NewLaserEstimate({ embeddedId = null, embedded = false }
               ${project.notes ? `
                 <div class="notes">
                   <h3>📝 Additional Notes</h3>
-                  <p>${project.notes}</p>
+                  <p>${escapeHtml(project.notes)}</p>
                 </div>
               ` : ''}
             </div>

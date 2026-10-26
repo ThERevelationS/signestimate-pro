@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Plus, Trash2, Save, Router, FileText, ListChecks, Calculator, TrendingUp } from "lucide-react";
 import { Tabs, TabsList, TabsContent } from "@/components/ui/tabs";
 import { useUnsavedChanges } from "@/components/UnsavedChangesContext";
+import { escapeHtml } from "@/lib/escapeHtml";
 import ClientSearchInput from "@/components/ClientSearchInput";
 import { upsertCustomerSummaryForEstimate } from "@/components/customerSummary/upsertCustomerSummary";
 import { Link, useNavigate } from "react-router-dom";
@@ -656,7 +657,7 @@ export default function NewCNCEstimate({ embeddedId = null, embedded = false }) 
     const printContent = `
       <html>
         <head>
-          <title>CNC Estimate - ${project.project_name}</title>
+          <title>CNC Estimate - ${escapeHtml(project.project_name)}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
             
@@ -952,11 +953,11 @@ export default function NewCNCEstimate({ embeddedId = null, embedded = false }) 
               <div class="info-grid">
                 <div class="info-item">
                   <span class="info-label">Project:</span>
-                  <span class="info-value">${project.project_name}</span>
+                  <span class="info-value">${escapeHtml(project.project_name)}</span>
                 </div>
                 <div class="info-item">
                   <span class="info-label">Client:</span>
-                  <span class="info-value">${project.client_name}</span>
+                  <span class="info-value">${escapeHtml(project.client_name)}</span>
                 </div>
                 <div class="info-item">
                   <span class="info-label">Date:</span>
@@ -971,21 +972,21 @@ export default function NewCNCEstimate({ embeddedId = null, embedded = false }) 
               ${project.items.map((item, i) => `
                 <div class="item">
                   <div class="item-header">
-                    Item ${i + 1}: ${item.description || `CNC item`}
+                    Item ${i + 1}: ${escapeHtml(item.description || `CNC item`)}
                   </div>
                   
                   <div class="item-details">
                     <div class="detail-row">
                       <span class="detail-label">Material:</span>
-                      <span class="detail-value">${item.material_type}</span>
+                      <span class="detail-value">${escapeHtml(item.material_type)}</span>
                     </div>
                     <div class="detail-row">
                       <span class="detail-label">Dimensions:</span>
-                      <span class="detail-value">${item.length}" × ${item.width}" × ${item.material_thickness}"</span>
+                      <span class="detail-value">${item.length}" × ${item.width}" × ${escapeHtml(item.material_thickness)}"</span>
                     </div>
                     <div class="detail-row">
                       <span class="detail-label">Job Type:</span>
-                      <span class="detail-value">${item.item_type}</span>
+                      <span class="detail-value">${escapeHtml(item.item_type)}</span>
                     </div>
                     <div class="detail-row">
                       <span class="detail-label">Quantity:</span>
@@ -1035,7 +1036,7 @@ export default function NewCNCEstimate({ embeddedId = null, embedded = false }) 
               ${project.notes ? `
                 <div class="notes">
                   <h3>📝 Additional Notes</h3>
-                  <p>${project.notes}</p>
+                  <p>${escapeHtml(project.notes)}</p>
                 </div>
               ` : ''}
             </div>

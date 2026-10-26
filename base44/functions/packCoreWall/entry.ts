@@ -137,7 +137,7 @@ Return array of block placements in this exact format:
 
 🚨 LAYER STACKING IS MANDATORY: After filling the first layer completely, move to Y = ${(8 + mortarGap).toFixed(1)} and fill again. Continue until height limit.`;
 
-        const response = await base44.integrations.Core.InvokeLLM({
+        const response = await base44.asServiceRole.integrations.Core.InvokeLLM({
             prompt,
             response_json_schema: {
                 type: "object",
@@ -281,8 +281,8 @@ Return array of block placements in this exact format:
         const usedVoids = new Set();
         
         for (const material of sortedMaterials) {
-            for (const void of voids) {
-                if (usedVoids.has(`${void.x},${void.y},${void.z}`)) continue;
+            for (const voidSpot of voids) {
+                if (usedVoids.has(`${voidSpot.x},${voidSpot.y},${voidSpot.z}`)) continue;
                 
                 // Try all allowed rotations for this void
                 const rotations = [
@@ -299,9 +299,9 @@ Return array of block placements in this exact format:
                     if (Math.abs(Math.sin(rot.y)) > 0.5) [effL, effW] = [effW, effL];
                     if (Math.abs(Math.sin(rot.x)) > 0.5) [effW, effH] = [effH, effW];
                     
-                    const blockX = void.x + effL/2;
-                    const blockY = void.y + effH/2;
-                    const blockZ = void.z + effW/2;
+                    const blockX = voidSpot.x + effL/2;
+                    const blockY = voidSpot.y + effH/2;
+                    const blockZ = voidSpot.z + effW/2;
                     
                     // Check if block fits within boundaries
                     if (blockX - effL/2 >= -(interiorLength/2) && blockX + effL/2 <= interiorLength/2 &&

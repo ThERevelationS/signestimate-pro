@@ -44,23 +44,8 @@ const pdfDims = async (file) => {
 
 const aiDims = async (file) => {
   const { file_url } = await base44.integrations.Core.UploadFile({ file });
-  const response = await base44.integrations.Core.InvokeLLM({
-    prompt:
-      "Look at this artwork file. Return the width and height of the printable artwork " +
-      "bounding box in INCHES. If the file shows real-world dimensions or has a known " +
-      "common size, use that. Otherwise estimate from proportions. Always positive numbers.",
-    file_urls: [file_url],
-    response_json_schema: {
-      type: "object",
-      properties: {
-        width_inches:  { type: "number" },
-        height_inches: { type: "number" },
-        confidence:    { type: "string", enum: ["low", "medium", "high"] },
-        reasoning:     { type: "string" },
-      },
-      required: ["width_inches", "height_inches"],
-    },
-  });
+  const res = await base44.functions.invoke('aiArtworkDimensions', { file_url });
+  const response = res.data?.result;
   if (!response?.width_inches || !response?.height_inches) return null;
   return {
     w: parseFloat(response.width_inches),

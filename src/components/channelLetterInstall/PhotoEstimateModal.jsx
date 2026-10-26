@@ -51,20 +51,8 @@ export default function PhotoEstimateModal({ open, onClose, onApply }) {
     setError(null);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      const res = await base44.integrations.Core.InvokeLLM({
-        prompt: `You're a sign installer reviewing a photo of a site where channel letters will be installed.
-Analyze the photo and estimate:
-- The install height (feet from ground to where letters will go)
-- The wall material (eifs, stucco, brick, concrete, metal, wood, glass, drywall)
-- Recommended install type (flush_mount, halo_lit, raceway, dimensional_lettering)
-- Site conditions: is there a parapet? poor electrical access? thick hollow walls?
-- Your confidence level (low/medium/high)
-
-Be specific and practical — these will be used in an estimate.`,
-        file_urls: [file_url],
-        response_json_schema: SCHEMA
-      });
-      setResult(res);
+      const res = await base44.functions.invoke('aiPhotoEstimate', { file_url });
+      setResult(res.data.result);
     } catch (e) {
       setError(e.message || "Analysis failed");
     }

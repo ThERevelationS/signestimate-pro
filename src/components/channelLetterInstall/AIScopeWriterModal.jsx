@@ -44,25 +44,8 @@ export default function AIScopeWriterModal({ open, onClose, onApply }) {
     setError(null);
     setResult(null);
     try {
-      const res = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are a sign-shop estimator. Parse the following rough client request into structured channel letter purchase line items.
-
-Map letter types as follows:
-- "flush mount" or "face-lit" → channel_flush_mounted
-- "halo lit" or "backlit" or "reverse channel" → channel_halo_lit
-- "raceway mounted" → channel_raceway_mounted
-- just "raceway" (no letters) → raceway
-- "dimensional" or "flat cut" or "pvc letters" → dimensional_letters
-- "logo" or "capsule" or "pillbox" → capsule_logo_pillbox
-
-For size_value: use vertical inches for channel letters (e.g. "24 inch letters" → 24), linear feet for raceway, square feet for capsule/dimensional.
-Default install_height_feet to 12 if not mentioned. Default wall_material to "eifs" if not mentioned.
-
-CLIENT REQUEST:
-${rawText}`,
-        response_json_schema: SCHEMA
-      });
-      setResult(res);
+      const res = await base44.functions.invoke('aiParseLetterPurchases', { rawText });
+      setResult(res.data.result);
     } catch (e) {
       setError(e.message || "Generation failed");
     }

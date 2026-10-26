@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { fmtCurrency } from "@/lib/formatters";
 import { ESTIMATOR_MODULES_BY_KEY } from "./estimatorRegistry";
 import { computeQuote, adjustedSectionTotal, quoteWaterfallRows } from "./aioPricing";
+import { escapeHtml } from "@/lib/escapeHtml";
 
 const bullets = (text) => (text || "").split("\n").map((l) => l.trim()).filter(Boolean);
 
@@ -18,6 +19,7 @@ const bullets = (text) => (text || "").split("\n").map((l) => l.trim()).filter(B
 // and a clean print/PDF output. All math comes from the aioPricing waterfall.
 export default function AllInOneCustomerViewTab({ project, grandTotal, updateField, onUpdateItem }) {
   const { toast } = useToast();
+  const esc = escapeHtml;
   const allItems = project.line_items || [];
   const lineItems = allItems.filter((li) => !li.missing);
   const quote = computeQuote(project);
@@ -57,28 +59,28 @@ export default function AllInOneCustomerViewTab({ project, grandTotal, updateFie
     const w = window.open("", "_blank");
     if (!w) return;
     const rowsHtml = displayLines.map((l) => `<tr>
-      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;">${l.name}${l.desc ? `<br/><span style="color:#64748b;font-size:12px;">${l.desc}</span>` : ""}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#64748b;">${l.category}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;">${esc(l.name)}${l.desc ? `<br/><span style="color:#64748b;font-size:12px;">${esc(l.desc)}</span>` : ""}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#64748b;">${esc(l.category)}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;vertical-align:top;">${fmtCurrency(l.price)}</td>
     </tr>`).join("");
     const waterfallHtml = waterfall.map((r) => `<div style="display:flex;justify-content:space-between;padding:4px 0;${r.kind === "total" ? "border-top:2px solid #0f172a;font-weight:bold;font-size:16px;padding-top:8px;" : r.kind === "subtotal" ? "font-weight:600;" : "color:#475569;"}${r.kind === "deposit" || r.kind === "balance" ? "color:#4f46e5;font-weight:600;" : ""}"><span>${r.label}</span><span>${fmtCurrency(r.amount)}</span></div>`).join("");
-    const listHtml = (title, items) => items.length === 0 ? "" : `<div style="flex:1;min-width:220px;"><b style="font-size:13px;">${title}</b><ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:#475569;">${items.map((i) => `<li style="margin:2px 0;">${i}</li>`).join("")}</ul></div>`;
-    w.document.write(`<!DOCTYPE html><html><head><title>Estimate — ${project.project_name || ""}</title></head>
+    const listHtml = (title, items) => items.length === 0 ? "" : `<div style="flex:1;min-width:220px;"><b style="font-size:13px;">${esc(title)}</b><ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:#475569;">${items.map((i) => `<li style="margin:2px 0;">${esc(i)}</li>`).join("")}</ul></div>`;
+    w.document.write(`<!DOCTYPE html><html><head><title>Estimate — ${esc(project.project_name || "")}</title></head>
 <body style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;max-width:760px;margin:32px auto;padding:0 24px;">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #4f46e5;padding-bottom:16px;">
     <div>
-      ${project.company_name ? `<p style="margin:0 0 6px;font-size:18px;font-weight:bold;color:#4f46e5;">${project.company_name}</p>` : ""}
+      ${project.company_name ? `<p style="margin:0 0 6px;font-size:18px;font-weight:bold;color:#4f46e5;">${esc(project.company_name)}</p>` : ""}
       <h1 style="margin:0;font-size:22px;">Project Estimate</h1>
       <p style="margin:4px 0 0;color:#64748b;font-size:13px;">
-        ${project.estimate_number ? `Estimate #${project.estimate_number} · ` : ""}${project.po_number ? `PO #${project.po_number} · ` : ""}Date: ${today} · Valid until: ${validUntil}
+        ${project.estimate_number ? `Estimate #${esc(project.estimate_number)} · ` : ""}${project.po_number ? `PO #${esc(project.po_number)} · ` : ""}Date: ${today} · Valid until: ${validUntil}
       </p>
-      ${project.company_phone || project.company_email ? `<p style="margin:2px 0 0;color:#64748b;font-size:12px;">${[project.company_phone, project.company_email].filter(Boolean).join(" · ")}</p>` : ""}
+      ${project.company_phone || project.company_email ? `<p style="margin:2px 0 0;color:#64748b;font-size:12px;">${esc([project.company_phone, project.company_email].filter(Boolean).join(" · "))}</p>` : ""}
     </div>
     <div style="text-align:right;font-size:13px;color:#475569;">
-      <b style="font-size:15px;color:#0f172a;">${project.project_name || ""}</b><br/>
-      ${project.client_name || ""}<br/>
-      ${project.site_address || ""}<br/>
-      ${[project.contact_name, project.contact_phone, project.contact_email].filter(Boolean).join(" · ")}
+      <b style="font-size:15px;color:#0f172a;">${esc(project.project_name || "")}</b><br/>
+      ${esc(project.client_name || "")}<br/>
+      ${esc(project.site_address || "")}<br/>
+      ${esc([project.contact_name, project.contact_phone, project.contact_email].filter(Boolean).join(" · "))}
     </div>
   </div>
   <table style="width:100%;border-collapse:collapse;margin-top:20px;font-size:14px;">
@@ -94,11 +96,11 @@ export default function AllInOneCustomerViewTab({ project, grandTotal, updateFie
     ${listHtml("Included in this estimate", inclusions)}
     ${listHtml("Not included", exclusions)}
   </div>
-  ${project.payment_terms ? `<div style="margin-top:20px;font-size:13px;color:#475569;"><b>Payment terms</b><p style="white-space:pre-wrap;margin:4px 0 0;">${project.payment_terms}</p></div>` : ""}
-  ${project.notes ? `<div style="margin-top:16px;font-size:13px;color:#475569;"><b>Notes</b><p style="white-space:pre-wrap;margin:4px 0 0;">${project.notes}</p></div>` : ""}
+  ${project.payment_terms ? `<div style="margin-top:20px;font-size:13px;color:#475569;"><b>Payment terms</b><p style="white-space:pre-wrap;margin:4px 0 0;">${esc(project.payment_terms)}</p></div>` : ""}
+  ${project.notes ? `<div style="margin-top:16px;font-size:13px;color:#475569;"><b>Notes</b><p style="white-space:pre-wrap;margin:4px 0 0;">${esc(project.notes)}</p></div>` : ""}
   <div style="display:flex;gap:48px;margin-top:48px;">
     <div style="flex:1;"><div style="border-top:1px solid #0f172a;padding-top:6px;font-size:12px;color:#475569;">Customer signature / date</div></div>
-    <div style="flex:1;"><div style="border-top:1px solid #0f172a;padding-top:6px;font-size:12px;color:#475569;">${project.company_name || "Company"} signature / date</div></div>
+    <div style="flex:1;"><div style="border-top:1px solid #0f172a;padding-top:6px;font-size:12px;color:#475569;">${esc(project.company_name || "Company")} signature / date</div></div>
   </div>
   <p style="margin-top:28px;font-size:11px;color:#94a3b8;">This estimate is valid for ${validDays} days from the date above. Pricing subject to final site verification.</p>
   <script>window.onload = () => window.print();</script>
