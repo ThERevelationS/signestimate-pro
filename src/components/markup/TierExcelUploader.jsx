@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import * as XLSX from 'xlsx';
+import * as XLSX from '@e965/xlsx';
 import { Button } from '@/components/ui/button';
 import { Upload, Download } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';

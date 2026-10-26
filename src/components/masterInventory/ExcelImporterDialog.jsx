@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from "react";
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
